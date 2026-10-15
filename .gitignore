@@ -1,0 +1,39 @@
+# ---- .NET / Visual Studio ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+*.binlog
+
+# ---- Node ----
+node_modules/
+dist/
+*.tsbuildinfo
+
+# ---- 构建产物 / 缓存 ----
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.nupkg
+
+# ---- 宠物素材（用户资产永不入库，见 docs/52） ----
+*.live2d.zip
+*.moc3
+*.motion3.json
+assets/user/
+
+# ---- 运行期状态 ----
+.state/
+*.pid
+
+# ---- 本地账本 / harness 状态（是记忆，不是源码） ----
+.dsh-code/
+.agent-teams/
+.claude/
+
+# ---- 临时 / 探针输出 ----
+tools/**/*.scan.json
+*.tmp
