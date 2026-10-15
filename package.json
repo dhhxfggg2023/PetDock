@@ -1,0 +1,18 @@
+{
+  "name": "petdock",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "depscan": "node tools/depscan.mjs",
+    "lint:core": "node tools/lint-core.mjs",
+    "lint:docs": "node tools/doclink.mjs",
+    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs"
+  },
+  "dependencies": {
+    "ajv": "^6.15.0",
+    "ajv-formats": "^0.2.0"
+  }
+}

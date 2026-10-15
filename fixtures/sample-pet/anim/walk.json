@@ -1,0 +1,10 @@
+{
+  "frames": [
+    "img/walk/walk_001.png",
+    "img/walk/walk_002.png",
+    "img/walk/walk_003.png",
+    "img/walk/walk_004.png"
+  ],
+  "fps": 8,
+  "loop": "loop"
+}

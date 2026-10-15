@@ -37,3 +37,21 @@ assets/user/
 # ---- 临时 / 探针输出 ----
 tools/**/*.scan.json
 *.tmp
+
+# ---- 探针临时件（scratch、一次性取证输出、对照实验方案）----
+# tools/probes/ 是排障工作区：一次性验证脚本、截图、DIB 转储、对照实验方案。
+# 按 docs/40 D-01a「可复用代码必须进包」，这些一次性脚本不是可复用代码，永不入库；
+# 保留在磁盘上供复盘。唯一例外是 route-report.py —— 账本 decision 指定的
+# 「路由选速唯一依据」，是长期工具而非一次性探针；它的 --json 产出仍是本机快照，不入库。
+tools/probes/*
+!tools/probes/route-report.py
+
+# ---- 根目录杂散下载（非项目资产）----
+# gj-meme-857.webp 是一次性网络下载的表情图，与项目无关，待清理（见 docs/51 R-02）。
+/gj-meme-857.webp
+
+# ---- 本机自用素材（永不入库、永不发行）----
+# assets/sample/local/ 存放「鲸鱼娘」二创贴图等只供所有者本机使用的素材：
+# 形象来自社区共创（CC BY-NC-SA 4.0），不得作为可发布资产（见账本 decision 2026-10-15）。
+# 仓库与发布物内的示例贴图一律是 tools/gen-sample-sprite.py 程序化生成的自有资产。
+assets/sample/local/

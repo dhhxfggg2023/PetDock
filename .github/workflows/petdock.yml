@@ -1,0 +1,65 @@
+name: petdock-gates
+
+# D-08 单条流水线：构建 -> 机器门禁 -> 测试 -> 内核自检。
+# 触发：main 推送与 pull_request。
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  gates:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore
+        run: dotnet restore PetDock.sln
+
+      - name: Build (Release)
+        run: dotnet build PetDock.sln -c Release
+
+      - name: Gate D-01/D-02 dependency scan
+        run: node tools/depscan.mjs
+
+      - name: Gate D-03/D-04a core lint
+        run: node tools/lint-core.mjs
+
+      - name: Gate D-04b doc link lint
+        run: node tools/doclink.mjs
+
+      # 测试步骤选择：先判断是否存在测试工程，再决定是否运行 dotnet test。
+      # 理由：当前仓库没有任何 *Test*.csproj，dotnet test PetDock.sln 在无测试工程时会
+      # 直接失败（错误信息为 No test source files / MSB1011 之类），continue-on-error
+      # 会让门禁永远不红，echo 占位则会让「有测试工程后仍被跳过」成为静默失败。
+      # 这里用条件判断：仓库里出现任何名字含 Test 的 .csproj（按 docs/41 的 D-10/D-11
+      # 测试工程命名约定）就跑 dotnet test --no-build，否则打印跳过原因。
+      # 触发条件：docs/41 D-10/D-11 的测试工程落地并被 PetDock.sln 引用时自动生效。
+      - name: Unit and ABI tests
+        run: |
+          $projects = Get-ChildItem -Path . -Recurse -Filter *.csproj |
+            Where-Object { $_.Name -match 'Test' }
+          if ($projects) {
+            dotnet test PetDock.sln -c Release --no-build
+          } else {
+            Write-Host 'No test project (*Test*.csproj) found; dotnet test skipped.'
+          }
+
+      # 内核自检：WinExe 自行分配控制台，退出码非 0 时本步骤失败、流水线变红。
+      - name: Kernel selftest
+        run: dotnet run --project packages/core/PetDock.Core -c Release -- --selftest
