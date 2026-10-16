@@ -4,7 +4,7 @@
 > Part 1 is read-only analysis of the installed DSH app on this machine; nothing under `E:\tools\DSH` was modified.
 > Part 2 is web research; every non-obvious claim carries a markdown link, and anything unconfirmed is marked **unverified**.
 
-**Evidence base for Part 1.** The packaged app `E:\tools\DSH\resources\app.asar` (121,348,951 bytes) was extracted read-only to `E:\tools\DSH_extract` with `npx --yes @electron/asar extract` (exit 0). The extracted tree plus the user profile at `C:\Users\dhhxfggg\.dsh\profiles\desktop` are the two sources. Every path cited below is a real file on disk that was read.
+**Evidence base for Part 1.** The packaged app `E:\tools\DSH\resources\app.asar` (121,348,951 bytes) was extracted read-only to `E:\tools\DSH_extract` with `npx --yes @electron/asar extract` (exit 0). The extracted tree plus the user profile at `%USERPROFILE%\.dsh\profiles\desktop` are the two sources. Every path cited below is a real file on disk that was read.
 
 ---
 
@@ -54,14 +54,14 @@ The *enforced* check is a different one: before importing a plugin, DSH checks t
 
 ### 1.2 Discovery, loading, enabling, versioning
 
-**Discovery** is by filesystem + a YAML composition, not a registry scan. A *profile* lives at `$DSH_HOME/profiles/<name>` (here `C:\Users\dhhxfggg\.dsh\profiles\desktop`) and consists of:
+**Discovery** is by filesystem + a YAML composition, not a registry scan. A *profile* lives at `$DSH_HOME/profiles/<name>` (here `%USERPROFILE%\.dsh\profiles\desktop`) and consists of:
 
 - `package.json` — the profile's own manifest, whose `dsh.profile.bundles` is an **ordered list** of bundle package names;
 - `cordis.yml` — the resolved composition (a list of `{id, name, disabled, config}` entries), 1654+ lines on this machine;
 - `cordis.patch.yml` — the user's override layer;
 - `node_modules/` — the installed plugins.
 
-The real `C:\Users\dhhxfggg\.dsh\profiles\desktop\package.json`:
+The real `%USERPROFILE%\.dsh\profiles\desktop\package.json`:
 
 ```json
 {
@@ -88,7 +88,7 @@ The real `C:\Users\dhhxfggg\.dsh\profiles\desktop\package.json`:
 [bundle layers in dsh.profile.bundles order] → [profile cordis.patch.yml] → [home-level cordis.patch.yml]
 ```
 
-A bundle's `dsh.bundle.patch` names one file or an ordered list; `bundlePatchFiles` validates the declaration, `bundlePatchPaths` resolves it, and the layer concatenates the patch lists in order. A real bundle patch is 4 lines — `C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dshmarket\cordis.patch.yml`:
+A bundle's `dsh.bundle.patch` names one file or an ordered list; `bundlePatchFiles` validates the declaration, `bundlePatchPaths` resolves it, and the layer concatenates the patch lists in order. A real bundle patch is 4 lines — `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dshmarket\cordis.patch.yml`:
 
 ```yaml
 # dsh bundle patch: inserts this plugin into a profile's layer stack.
@@ -569,13 +569,13 @@ All paths are on this machine and were read during this session.
 - `E:\tools\DSH_extract\dsh\node_modules\@deepseek-ai\dsh-sdk-protocol`, `…\dsh-sdk-app`, `…\dsh-sdk-minimal` — the SDK packages
 
 **User profile (read-only):**
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\package.json` — `dsh.profile.bundles`, 12 bundles
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\cordis.yml` — the 1654+ line composition
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\cordis.patch.yml` — user override layer
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\compatibility.json` — (referenced; not present on this machine)
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dsh-streamfold\package.json` — community manifest with `dsh.compatibility`
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\billion-context\package.json` — community manifest, `dsh.bundle.patch`
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dshmarket\cordis.patch.yml` — a 4-line bundle patch
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\node_modules\dsh-code-mode\cordis.patch.yml` — a 255-line preset patch
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\.plugin-manager\logs\` — operation logs (`pnpm.log`, `git.log`)
-- `C:\Users\dhhxfggg\.dsh\profiles\desktop\.dsh-market\state.json` — `{"disabled":[],"groups":{},"groupOrder":[],"region":"china","regionAuto":true}`
+- `%USERPROFILE%\.dsh\profiles\desktop\package.json` — `dsh.profile.bundles`, 12 bundles
+- `%USERPROFILE%\.dsh\profiles\desktop\cordis.yml` — the 1654+ line composition
+- `%USERPROFILE%\.dsh\profiles\desktop\cordis.patch.yml` — user override layer
+- `%USERPROFILE%\.dsh\profiles\desktop\compatibility.json` — (referenced; not present on this machine)
+- `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-streamfold\package.json` — community manifest with `dsh.compatibility`
+- `%USERPROFILE%\.dsh\profiles\desktop\node_modules\billion-context\package.json` — community manifest, `dsh.bundle.patch`
+- `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dshmarket\cordis.patch.yml` — a 4-line bundle patch
+- `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-code-mode\cordis.patch.yml` — a 255-line preset patch
+- `%USERPROFILE%\.dsh\profiles\desktop\.plugin-manager\logs\` — operation logs (`pnpm.log`, `git.log`)
+- `%USERPROFILE%\.dsh\profiles\desktop\.dsh-market\state.json` — `{"disabled":[],"groups":{},"groupOrder":[],"region":"china","regionAuto":true}`

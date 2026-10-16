@@ -33,6 +33,11 @@ assets/user/
 .dsh-code/
 .agent-teams/
 .claude/
+# ledger/ 是 tools/ledger-export.mjs 导出的账本快照。**刻意不入库**：私有库以后要转公开，
+# 账本里有本机绝对路径、账号名、出口 IP、路由与凭据位置等只该留在本地的东西
+# （2026-10-16 决定，见账本 decisions.md「账本出库」；历史里的 ledger/ 已用 filter-branch purge）。
+# 持久化靠：.dsh-code/ 本体 + pre-commit 钩子刷新的跨卷副本 %USERPROFILE%\petdock-ledger-backup\。
+ledger/
 
 # ---- 临时 / 探针输出 ----
 tools/**/*.scan.json

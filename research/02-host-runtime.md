@@ -2,7 +2,7 @@
 
 **Status:** paper evaluation, no code written, nothing installed.
 **Scope:** which host runtime should PetDock commit to, and which plugin VM.
-**Host facts verified on this machine (2026-10-14):** Node.js `v22.23.0` at `C:\Program Files\nodejs\node.exe`; .NET SDK `8.0.421` at `C:\Program Files\dotnet\dotnet.exe`; pnpm at `C:\Users\dhhxfggg\AppData\Local\pnpm\bin\pnpm.ps1`; git at `D:\Program Files\Git\cmd\git.exe`. **No `rustc`/`cargo` on PATH** (`Get-Command rustc,cargo` returned nothing — exit 1 was that negative result, not a probe failure). Windows host.
+**Host facts verified on this machine (2026-10-14):** Node.js `v22.23.0` at `C:\Program Files\nodejs\node.exe`; .NET SDK `8.0.421` at `C:\Program Files\dotnet\dotnet.exe`; pnpm at `%USERPROFILE%\AppData\Local\pnpm\bin\pnpm.ps1`; git at `D:\Program Files\Git\cmd\git.exe`. **No `rustc`/`cargo` on PATH** (`Get-Command rustc,cargo` returned nothing — exit 1 was that negative result, not a probe failure). Windows host.
 
 ---
 
