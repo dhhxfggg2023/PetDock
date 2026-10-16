@@ -1,0 +1,20 @@
+#!/bin/sh
+# 每次提交前刷新仓库内的账本快照（ledger/），并做一份跨卷副本。
+#
+# 为什么：开发账本（决策/教训/任务板/交接件）活在 .dsh-code/，被 .gitignore:33 忽略 ——
+# 它只在本机、不在任何提交里。让快照跟着每一次提交走，突发状况（误删/崩溃/上下文丢失）
+# 最多只损失「上一个提交之后」的那点记录。
+#
+# 本钩子**永不阻塞提交**：快照是保险，不该变成新的失败面。任何一步出错都打印一行说明并退出 0。
+# 安装：git config core.hooksPath .githooks（已设置；换机器后重跑一次即可）
+
+out=$(node tools/ledger-export.mjs --backup 2>&1)
+rc=$?
+if [ $rc -eq 0 ]; then
+  git add ledger/ >/dev/null 2>&1
+  echo "[ledger] 快照已刷新并暂存到 ledger/（含跨卷副本）"
+else
+  echo "[ledger] 快照失败（exit $rc），提交继续；手动排查：node tools/ledger-export.mjs --backup"
+  echo "$out" | tail -3
+fi
+exit 0

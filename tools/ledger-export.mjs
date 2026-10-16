@@ -126,7 +126,9 @@ const readme = `# ledger/ — 开发账本的仓库内快照
 - 导出时间：${stamp}
 - 来源账本：\`${ledgerDir}\`
 - 仓库 HEAD：\`${head}\`
-- 导出命令：\`node tools/ledger-export.mjs\`（幂等，只读账本）
+- 导出命令：\`node tools/ledger-export.mjs\`（幂等，只读账本）；\`.githooks/pre-commit\` 会让**每次提交**都自动刷新本目录（非阻塞：导出失败也不挡提交）。
+- 跨卷副本：\`node tools/ledger-export.mjs --backup\` 会把同一套文件另存到 \`%USERPROFILE%\\petdock-ledger-backup\\\`（提交钩子已默认开启；防的是项目目录被误删）。
+- **没有远程仓库**：\`git remote -v\` 为空，所以提交与快照都只在这台机器上——防误删，防不了整盘/整机故障。要真正离机，需要建一个私有远程并 \`git push\`。
 - journal：${journalNote}
 
 | 文件 | 大小 | sha256(前16) |
@@ -149,3 +151,17 @@ writeFileSync(join(outDir, 'README.md'), readme);
 console.log(`LEDGER-EXPORT-OK out=${outDir} source=${ledgerDir} files=${picked.length} head=${head.slice(0, 8)}`);
 for (const p of picked) console.log(`  ${p.name.padEnd(42)} ${String(p.size).padStart(9)} B  ${p.sha}`);
 console.log(`  ${'README.md'.padEnd(42)} ${String(statSync(join(outDir, 'README.md')).size).padStart(9)} B  （本目录说明 + 清单）`);
+
+// --backup：把同一套文件另存到用户主目录（跨卷），防「项目目录被整个删掉」这一种突发状况。
+if (argv.includes('--backup')) {
+  const backupDir = join(homedir(), 'petdock-ledger-backup');
+  mkdirSync(backupDir, { recursive: true });
+  let bytes = 0;
+  for (const entry of readdirSync(outDir, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    copyFileSync(join(outDir, entry.name), join(backupDir, entry.name));
+    bytes += statSync(join(backupDir, entry.name)).size;
+  }
+  console.log(`LEDGER-BACKUP-OK dir=${backupDir} bytes=${bytes}`);
+}
+
