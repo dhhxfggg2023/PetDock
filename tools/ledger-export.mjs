@@ -12,7 +12,7 @@
 //   node tools/ledger-export.mjs --journal-full  # 连整份 journal.jsonl 一起导出
 //
 // 幂等：重复运行覆盖同名文件。只读账本，不修改它。
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, readdirSync, rmSync, statSync, writeFileSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -110,6 +110,25 @@ if (existsSync(journal)) {
   }
 }
 
+// 剪枝：上一轮进来、这一轮不再导出的文件要删掉，否则过期交接件会永久留在快照里被新会话读到。
+// 已发生一次：源 `.dsh-code/HANDOFF-2026-10-15-M0-hang.md` 删了，`ledger/` 里那份还在。
+// 只删「本脚本拥有」的文件（同样的判定），不碰别人往这个目录里放的东西，也不碰 README.md。
+const owned = (name) =>
+  JSON_FILES.includes(name) ||
+  MD_FILES.includes(name) ||
+  name === 'journal.jsonl' ||
+  name === 'journal-tail.jsonl' ||
+  (name.endsWith('.md') && (MD_PREFIXES.some((p) => name.startsWith(p)) || MD_SUFFIXES.some((s) => name.endsWith(s))));
+const kept = new Set(picked.map((p) => p.name));
+let pruned = 0;
+for (const entry of readdirSync(outDir, { withFileTypes: true })) {
+  if (!entry.isFile() || entry.name === 'README.md') continue;
+  if (!owned(entry.name) || kept.has(entry.name)) continue;
+  rmSync(join(outDir, entry.name));
+  console.log(`  PRUNED ${entry.name}（本轮不再导出：源账本里已不存在）`);
+  pruned++;
+}
+
 let head = 'unknown';
 try {
   head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
@@ -130,6 +149,7 @@ const readme = `# ledger/ — 开发账本的仓库内快照
 - 跨卷副本：\`node tools/ledger-export.mjs --backup\` 会把同一套文件另存到 \`%USERPROFILE%\\petdock-ledger-backup\\\`（提交钩子已默认开启；防的是项目目录被误删）。
 - **没有远程仓库**：\`git remote -v\` 为空，所以提交与快照都只在这台机器上——防误删，防不了整盘/整机故障。要真正离机，需要建一个私有远程并 \`git push\`。
 - journal：${journalNote}
+- 剪枝：源账本里已被删除的交接件会从本目录一并删除（本轮删了 ${pruned} 个），免得新会话读到过期交接件。
 
 | 文件 | 大小 | sha256(前16) |
 |---|---|---|
@@ -148,7 +168,7 @@ ${rows}
 
 writeFileSync(join(outDir, 'README.md'), readme);
 
-console.log(`LEDGER-EXPORT-OK out=${outDir} source=${ledgerDir} files=${picked.length} head=${head.slice(0, 8)}`);
+console.log(`LEDGER-EXPORT-OK out=${outDir} source=${ledgerDir} files=${picked.length} pruned=${pruned} head=${head.slice(0, 8)}`);
 for (const p of picked) console.log(`  ${p.name.padEnd(42)} ${String(p.size).padStart(9)} B  ${p.sha}`);
 console.log(`  ${'README.md'.padEnd(42)} ${String(statSync(join(outDir, 'README.md')).size).padStart(9)} B  （本目录说明 + 清单）`);
 
