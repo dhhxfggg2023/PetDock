@@ -50,6 +50,13 @@ jobs:
       # 这里用条件判断：仓库里出现任何名字含 Test 的 .csproj（按 docs/41 的 D-10/D-11
       # 测试工程命名约定）就跑 dotnet test --no-build，否则打印跳过原因。
       # 触发条件：docs/41 D-10/D-11 的测试工程落地并被 PetDock.sln 引用时自动生效。
+      #
+      # !!! 本流水线从未执行过 !!!
+      # 本仓库没有 git 远程（`git remote -v` 输出为空），因此本工作流从未被 GitHub
+      # Actions 触发过、从未跑出过任何结果。下面每一步（包括覆盖率步骤）都只是
+      # 已写好的配置，不是已通过的证据。唯一的实测证据来自本机
+      # `node tools/coverage-gate.mjs`（见 tools/coverage-baseline.json）。
+      # 声称 CI 通过即说谎；要取得 CI 证据必须先添加远程并推送。
       - name: Unit and ABI tests
         run: |
           $projects = Get-ChildItem -Path . -Recurse -Filter *.csproj |
@@ -59,6 +66,19 @@ jobs:
           } else {
             Write-Host 'No test project (*Test*.csproj) found; dotnet test skipped.'
           }
+
+      # D-10a 覆盖率门禁（docs/41）：一条命令产出 + 判定。
+      # 阈值写在 tools/coverage-gate.mjs 顶部（line 80% / branch 70%），改阈值须走
+      # docs/43 RFC。当前实测远低于阈值（见 tools/coverage-baseline.json 的 measured），
+      # 因此这一步在覆盖率补齐前会失败——这是设计意图：门禁必须真红，不能为放行而
+      # 放宽阈值或注释掉。若某次确实需要放行，应显式改成 continue-on-error 并在 PR
+      # 里说明原因，而不是悄悄降低阈值。
+      #
+      # 注意：GitHub 的 windows-latest runner 上没有 testhost 权限问题，因此本步骤
+      # 用 coverlet.console 直接驱动测试工程自带的进程内入口（与
+      # tools/coverage-gate.mjs 同一路线），不依赖 `dotnet test` 的 VSTest 路径。
+      - name: Gate D-10a coverage
+        run: node tools/coverage-gate.mjs
 
       # 内核自检：WinExe 自行分配控制台，退出码非 0 时本步骤失败、流水线变红。
       - name: Kernel selftest

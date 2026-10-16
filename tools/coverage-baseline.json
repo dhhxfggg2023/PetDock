@@ -1,0 +1,23 @@
+{
+  "gate": "D-10a",
+  "thresholds": { "line": 80, "branch": 70 },
+  "measured": { "line": 5.09, "branch": 4.05, "method": 12.77 },
+  "measuredAt": "2026-10-16",
+  "measuredBy": "sdk3 (t12 attempt 2)",
+  "evidenceCommand": "node tools/coverage-gate.mjs",
+  "report": "artifacts/coverage.cobertura.xml (gitignored)",
+  "rawCounters": {
+    "linesCovered": 190,
+    "linesValid": 3734,
+    "branchesCovered": 62,
+    "branchesValid": 1531
+  },
+  "earlierMeasurement": {
+    "line": 0.02,
+    "branch": 0,
+    "method": 0.15,
+    "measuredBy": "captain (t9 attempt 5)",
+    "whyDifferent": "That run instrumented the same runner before t9 attempt 6 added 23 assertions (PetRuntimeLogicTests + AbiBaselineTests); the 8 pure-reflection ContractShapeTests executed almost no core code. Both numbers are real; the newer one supersedes it as the current scale."
+  },
+  "note": "Historical record of what the gate actually measured. NOT a target and NOT editable to make a run green - changing the thresholds requires an RFC (docs/43). 5.09% -> 80% is a project-level gap: M2 deliberately ships 32 pure-logic assertions, and the remaining coverage is host/window/GPU/plugin behaviour that belongs to M4 behaviour and M8 hardening work."
+}
