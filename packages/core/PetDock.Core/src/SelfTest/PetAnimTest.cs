@@ -1,23 +1,11 @@
 // --animtest：docs/50:21「动画可循环」的可判定判据（t1 契约 §3.3 冻结的 C1/C2/C3）。
-//
-// 命令形态（契约 §3.3 与 §5 命令 5）：`--animtest idle walk hover`，期望三行 + ANIM-OK + exit 0。
-// **expected clip 列表只从命令行来** —— core 源码里不写任何素材/插件名（docs/01 P-02 第 4 条），
-// 也不读任何素材文件（P-02 第 2 条，素材清单的文件名含被禁子串）。
-//
-// 三断言（逐字照契约 §3.3 的表格）：
-//   C1 clip-frames：一个周期内**实际观察到的不同帧数**必须等于实现方声明的帧数。
-//      声明值来自 IClipCatalog（可选接口）；不实现它时 C1 无法判定，命令按 FAIL 处理
-//      （判据要么可判定、要么如实报不可判定 —— 不许把「问不出来」当成通过）。
-//   C2 frame-stable：同一 now 连调 QueryFrame 两次，**像素签名**必须相同（docs/11:120 逐字）。
-//   C3 loop-wrap：`queryFrame(now + period)` 的签名 == `queryFrame(now)` 的签名，
-//      且中途至少出现过不同的签名 —— 只断言首尾相等无法区分「真的在循环」与「永远第 0 帧」，
-//      这条直接防 M1 t5 把「夹具空操作」当成 PASS 那一类错误。
-//
-// 「帧索引」在本文件里一律用**整帧像素的哈希**表达，而不是实现方的私有帧号：
-// 帧号是内部状态，而 docs/11:120 承诺的是「同一 now 返回同一帧（或语义上等价的帧）」——
-// 像素相同才是可观察、且实现方无从作弊的判据。
-//
-// 没有任何视图实现 → ANIM-FAIL（「没装上」必须让命令非 0 退出，M0 教训的直接要求）。
+// 命令形态：`--animtest idle walk hover`，期望三行 + ANIM-OK + exit 0。expected clip 列表只从命令行来
+// （docs/01 P-02：core 不写素材/插件名，也不读任何素材文件）。
+// 三断言：C1 clip-frames = 一个周期内实际观察到的不同帧数 == 声明帧数（声明值来自可选 IClipCatalog，
+//   不实现它时按「不可判定」FAIL，绝不默认通过）；C2 frame-stable = 同一 now 连调两次像素签名相同
+//   （docs/11:120 逐字）；C3 loop-wrap = now+period 的签名 == now 的签名且中途出现过不同签名
+//   （防「永远第 0 帧」假 PASS）。帧索引用整帧像素哈希表达：帧号是实现方私有状态，
+//   像素相同才是 docs/11:120 的可观察等价物。无视图实现 → ANIM-FAIL 非零退出（M0 教训）。
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,8 +25,7 @@ internal static class PetAnimTest
         if (view is null)
         {
             Console.WriteLine("CHECK animtest-surface FAIL no-view-implementation-in-roster");
-            Console.WriteLine("ANIM-FAIL surface");
-            return 1;
+            return Fail("surface no-view-implementation-in-roster");
         }
 
         Console.WriteLine($"CHECK animtest-surface PASS type={roster.ViewTypeName}");
@@ -46,23 +33,31 @@ internal static class PetAnimTest
         if (clips.Length == 0)
         {
             Console.WriteLine("CHECK animtest-cliplist FAIL no-clip-requested");
-            Console.WriteLine("ANIM-FAIL cliplist");
-            return 1;
+            return Fail("cliplist no-clip-requested");
         }
 
-        view.InitAsync(new PetViewContext("animtest", Array.Empty<string>(), BudgetFor(128, 128)))
-            .GetAwaiter().GetResult();
-        PetDescription description = view.Describe();
-        Console.WriteLine($"CHECK-DISPLAY animtest-describe {description}");
+        // G2：素材包缺帧/坏 clip 在 Init/Attach 阶段就会抛 —— 必须结构化失败（ANIM-FAIL + 非零退出），
+        // 绝不让未捕获异常逃出 Main 崩进程（旧路径 0xE0434352）。
+        PetDescription description;
+        RenderTarget target;
+        try
+        {
+            view.InitAsync(new PetViewContext("animtest", Array.Empty<string>(), BudgetFor(128, 128)))
+                .GetAwaiter().GetResult();
+            description = view.Describe();
+            Console.WriteLine($"CHECK-DISPLAY animtest-describe {description}");
+            // 画板按实现方声明的自然尺寸给：给错尺寸会让它交付与自己声明不符的帧（判据自身的错）。
+            int width = Math.Max(1, (int)Math.Round(description.NaturalSize.W));
+            int height = Math.Max(1, (int)Math.Round(description.NaturalSize.H));
+            var bitmaps = new BitmapRegistry();
+            target = new RenderTarget(width, height, 1.0, BudgetFor(width, height), bitmaps);
+            view.Attach(target);
+        }
+        catch (Exception error)
+        {
+            return Fail($"init error={error.GetType().Name} message={error.Message}");
+        }
 
-        // 画板按实现方声明的自然尺寸给（不是拍一个 8x8 —— 实现方按画板尺寸出帧，
-        // 给错尺寸会让它交付与自己声明不符的帧，那是判据自身的错，不是实现方的错）。
-        int width = Math.Max(1, (int)Math.Round(description.NaturalSize.W));
-        int height = Math.Max(1, (int)Math.Round(description.NaturalSize.H));
-        ResourceBudget budget = BudgetFor(width, height);
-        var bitmaps = new BitmapRegistry();
-        var target = new RenderTarget(width, height, 1.0, budget, bitmaps);
-        view.Attach(target);
         Console.WriteLine($"CHECK-DISPLAY animtest-target {target}");
 
         IClipCatalog? catalog = view as IClipCatalog;
@@ -72,14 +67,37 @@ internal static class PetAnimTest
         }
 
         int failures = 0;
+        var failedClips = new List<string>();
         foreach (string clip in clips)
         {
-            failures += RunOneClip(view, catalog, clip);
+            try
+            {
+                failures += RunOneClip(view, catalog, clip);
+            }
+            catch (Exception error)
+            {
+                // G2：单 clip 内异常（缺帧、渲染失败）降级为该 clip 的结构化失败；其余 clip 继续判。
+                Console.WriteLine($"CHECK animtest-clip-error FAIL clip={clip} error={error.GetType().Name} message={error.Message}");
+                failedClips.Add(clip);
+                failures++;
+            }
         }
 
         view.Detach();
-        Console.WriteLine(failures == 0 ? "ANIM-OK" : "ANIM-FAIL");
-        return failures == 0 ? 0 : 1;
+        if (failures == 0)
+        {
+            Console.WriteLine("ANIM-OK");
+            return 0;
+        }
+
+        return Fail(failedClips.Count > 0 ? $"clips={string.Join(",", failedClips)}" : $"failures={failures}");
+    }
+
+    /// <summary>结构化失败出口：ANIM-FAIL 必须带原因，退出码非 0（G2）。</summary>
+    private static int Fail(string reason)
+    {
+        Console.WriteLine($"ANIM-FAIL {reason}");
+        return 1;
     }
 
     private static ResourceBudget BudgetFor(int width, int height) =>
@@ -98,9 +116,8 @@ internal static class PetAnimTest
         AnimationClip? declared = FindClip(catalog, clip);
         if (declared is null)
         {
-            // 声明值问不出来 → 判据不可判定。按 FAIL 处理并说明原因，绝不「默认通过」。
-            Console.WriteLine(
-                $"CHECK animtest-declared-clip FAIL clip={clip}"
+            // 声明值问不出来 → 判据不可判定，按 FAIL 处理并说明原因。
+            Console.WriteLine($"CHECK animtest-declared-clip FAIL clip={clip}"
                 + $" reason={(catalog is null ? "no-IClipCatalog" : "clip-not-declared")}");
             return 1;
         }
@@ -108,8 +125,7 @@ internal static class PetAnimTest
         double periodMs = declared.PeriodMs;
         if (periodMs <= 0 || declared.Frames <= 0)
         {
-            Console.WriteLine(
-                $"CHECK animtest-period FAIL clip={clip} frames={declared.Frames}"
+            Console.WriteLine($"CHECK animtest-period FAIL clip={clip} frames={declared.Frames}"
                 + $" fps={PetPoint.Fmt(declared.Fps)}");
             return 1;
         }
@@ -124,9 +140,8 @@ internal static class PetAnimTest
         }
 
         int distinct = observed.Distinct().Count();
-        Console.WriteLine(
-            $"CHECK-DISPLAY clip-frames clip={clip} declared={declared.Frames} observed-distinct={distinct}"
-            + $" fps={PetPoint.Fmt(declared.Fps)} period={PetPoint.Fmt(periodMs)}ms");
+        Console.WriteLine($"CHECK-DISPLAY clip-frames clip={clip} declared={declared.Frames}"
+            + $" observed-distinct={distinct} fps={PetPoint.Fmt(declared.Fps)} period={PetPoint.Fmt(periodMs)}ms");
         Check(ref failures, $"clip-frames[{clip}]", distinct == declared.Frames,
             $"declared={declared.Frames} distinct={distinct}");
 
@@ -138,12 +153,11 @@ internal static class PetAnimTest
         Check(ref failures, $"frame-stable[{clip}]", first == second,
             $"first={first:x} second={second:x}");
 
-        // —— C3：周期绕回，且中途至少出现过不同帧 ——
-        // 采样点用 **Ceiling(periodMs)**，不是 Round：周期常常不是整数（hover = 2*1000/6 = 333.33ms），
-        // Round 会取到 333 —— 那还在周期**之内**，实现按 floor(now*fps/1000) 算得帧 1 是**正确的**，
-        // 而判据会把它读成「没有绕回」。Ceiling 取到 334 = 周期结束后的第一个毫秒，
-        // 此时任何合理的相位映射（Round 或 Floor）都落在帧 0。
-        // 这是判据自身的义务：采样点落在语义边界上时，不许把实现的合法取值判成失败。
+        // —— C3：按 clip 的 loop 语义分流（M3 契约勘误 E2）——
+        // loop 类：周期绕回（采样点用 Ceiling(periodMs)，理由见下）；once 类：到达末帧并夹住。
+        // 采样点用 Ceiling(periodMs)（不是 Round）：周期常非整数（hover=333.33ms），Round 取 333 仍在周期内，
+        // floor 型相位实现此刻返回末帧是正确的，判据会误读成「没有绕回」；Ceiling=334 是周期后第一个毫秒，
+        // 任何合理相位映射都落回帧 0。判据自身义务：采样点落在语义边界上时不许把合法取值判成失败。
         long atZero = SignatureOf(view.QueryFrame(0));
         int periodNow = (int)Math.Ceiling(periodMs);
         long atPeriod = SignatureOf(view.QueryFrame(periodNow));
@@ -153,40 +167,26 @@ internal static class PetAnimTest
             midway.Add(SignatureOf(view.QueryFrame((int)Math.Round(periodMs * step / 8.0))));
         }
 
-        bool wrapped = atZero == atPeriod;
         bool varied = midway.Any(signature => signature != atZero) || midway.Distinct().Count() > 1;
-        Console.WriteLine(
-            $"CHECK-DISPLAY loop-wrap clip={clip} at-0={atZero:x} at-period={atPeriod:x}"
-            + $" period-now={periodNow} midway-distinct={midway.Distinct().Count()}"
-            + $" wrapped={wrapped} varied={varied}");
+        // once：末帧夹住 = 周期后的第一毫秒仍是末帧（帧数-1 的采样点），且中途出现过不同帧。
+        int tailNow = (int)Math.Round(periodMs * (declared.Frames - 1) / declared.Frames);
+        long atTail = SignatureOf(view.QueryFrame(tailNow));
+        bool looping = declared.Loop != ClipLoop.Once;
+        bool wrapped = looping ? atZero == atPeriod : atTail == atPeriod;
+        Console.WriteLine($"CHECK-DISPLAY loop-wrap clip={clip} mode={(looping ? "loop" : "once")} at-0={atZero:x}"
+            + $" at-period={atPeriod:x} at-tail={atTail:x} period-now={periodNow}"
+            + $" midway-distinct={midway.Distinct().Count()} wrapped={wrapped} varied={varied}");
         Check(ref failures, $"loop-wrap[{clip}]", wrapped && varied,
-            $"wrapped={wrapped} varied={varied}");
+            $"mode={(looping ? "loop" : "once")} wrapped={wrapped} varied={varied}");
 
         return failures;
     }
 
-    private static AnimationClip? FindClip(IClipCatalog? catalog, string clip)
-    {
-        if (catalog is null)
-        {
-            return null;
-        }
+    private static AnimationClip? FindClip(IClipCatalog? catalog, string clip) =>
+        catalog?.Clips.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, clip, StringComparison.Ordinal));
 
-        foreach (AnimationClip candidate in catalog.Clips)
-        {
-            if (string.Equals(candidate.Id, clip, StringComparison.Ordinal))
-            {
-                return candidate;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// 整帧像素的 64 位签名（FNV-1a）。直接用像素而不是实现方的帧号：
-    /// 帧号是实现方的私有状态，读不到也没有约束力；像素相同才是 docs/11:120 的可观察等价物。
-    /// </summary>
+    /// <summary>整帧像素的 64 位签名（FNV-1a）：像素相同才是 docs/11:120 的可观察等价物。</summary>
     private static long SignatureOf(Frame frame)
     {
         System.Drawing.Bitmap bitmap = frame.BitmapHandle.Bitmap;
