@@ -46,8 +46,12 @@ tools/**/*.scan.json
 tools/probes/*
 !tools/probes/route-report.py
 
-# ---- 根目录杂散下载（非项目资产）----
-# gj-meme-857.webp 是一次性网络下载的表情图，与项目无关，待清理（见 docs/51 R-02）。
+# ---- 所有者提供的桌宠原图（本机自用，不入库）----
+# gj-meme-857.webp 是所有者下载并放到仓库根的桌宠原图（975x975 鲸鱼娘），
+# tools/make-pet-from-image.py 从它抠出 assets/sample/local/pet-sample.png。
+# 与 assets/sample/local/ 同理：形象来自社区共创（CC BY-NC-SA 4.0），只供本机使用，
+# 不得作为可发布资产（见账本 decision 2026-10-15）。
+# 注意：不要因为「未跟踪 + 名字像 meme」就删它——所有者把它放在仓库根正是因为它不入库。
 /gj-meme-857.webp
 
 # ---- 本机自用素材（永不入库、永不发行）----
