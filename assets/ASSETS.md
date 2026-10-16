@@ -24,6 +24,7 @@
 | `assets/icons/`（12 个文件） | 应用图标全套（16…512 PNG + icon.ico + 圆角版） | 由 `icon.jpg` 经 `tools/make-icons.py` 生成 | ⚠️ **否** — 源图 `icon.jpg` 来源不明，见 `assets/icons/README.md` 顶部警告块 | 可用 `python tools/make-icons.py` 重新生成 |
 | `assets/sample/pet-sample.png` | **retired 2026-10-16（t8 验收 3）**：仓库内自有的程序化示例贴图（128×128，蓝圆团 + 双眼，898 B）。删除原因：它不是宠物，却因为落在「示例宠物图」这个位置上被反复误当成桌宠画面；所有者明确要求「没用的图片删了，不然老是用错」。既无本地贴图又未配包时由内核画代码占位图（`SolidFrameContent`）并在日志标注 placeholder。重新生成方式：`python tools/gen-sample-sprite.py`（确定性，如将来确有必要） |
 | `assets/sample/local/`（整个目录） | 所有者**本机自用**的桌宠贴图及中间产物 | 见下方 §2；形象为社区共创鲸鱼娘 | ❌ **否** — `.gitignore` 排除，永不入库 | 从 §2 的原图重新抠即可 |
+| `assets/user/dyberpet/守岸人/`（349 个文件 / 49,854,928 B） | 所有者提供的**真实第三方桌宠素材**（DyberPet 角色包）：310 PNG + 32 WAV + 6 JSON + 1 JPG；`pet_conf.json` / `act_conf.json` / `msg_conf.json` + `action/`、`info/`、`items/`、`note/`。用途 = **M3 适配器的字段核对素材**（`docs/99` 把「DyberPet 字段未实测」列为 M3 开工前必修项） | 所有者自行下载提供（《鸣潮》守岸人；形象与音频版权归库洛游戏，**不是** CC 授权素材） | ❌ **否** — `.gitignore:26` 排除整个 `assets/user/`，永不入库、永不发行（`docs/52` §5 素材零分发） | 可由所有者副本重新放入；删掉会阻断 M3 的字段核对 |
 | `fixtures/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述） | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out fixtures/sample-pet` 重新生成（已验证幂等） |
 
 ### 仓库根（不在 `assets/` 下，但同属资产）
