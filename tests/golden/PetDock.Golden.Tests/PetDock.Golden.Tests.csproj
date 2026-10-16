@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- t10：金图回归夹具（docs/41 D-12）。对示例宠物（fixtures/sample-pet，D-13a）的首帧    -->
+  <!-- 渲染结果逐像素比对基准图，使「动画可循环」由像素证据而非自报来判定。基准 PNG 由    -->
+  <!-- core 的 golden-baseline 一次性脚本渲染（与 animtest 同一条链）；meta.json（GPU 型号   -->
+  <!-- + 驱动，D-12c）由本工程 Program 的 write-meta 模式生成。                              -->
+  <!-- 比对 actual 由 GoldenHarness.RenderFirstFrame 在本进程内走同一条链渲染：              -->
+  <!-- Discover -> BuildInstance("animtest") -> AttachAndStart(128,128,1.0) -> Start()       -->
+  <!-- -> View.SetAnimation(clip, restart) -> QueryFrame(0)。                                -->
+  <!-- 本机 vstest 的 testhost 对父进程 OpenProcess 被 ACL 拒（Win32 5），dotnet test 起不来，-->
+  <!-- 故本工程 OutputType=Exe + GenerateProgramFile=false，Program.cs 用 xunit.runner.utility -->
+  <!-- 的 AssemblyRunner 进程内执行全部测试（t9 先例，本机唯一可判定路径）。                  -->
+  <!-- 不进 PetDock.sln：sln 唯一写者是 t4，由它 dotnet sln add 本工程。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PetDock.Golden.Tests</RootNamespace>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- 自检入口：与 tests/unit 相同，Program.cs 用 AssemblyRunner 进程内跑全部测试，          -->
+  <!-- 退出码 = 失败数；普通 dotnet test 在其他机器上仍可用（vstest 适配器保留）。            -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+    <!-- AssemblyRunner 自检入口（Xunit.Runners），与 tests/unit 同款。 -->
+    <PackageReference Include="xunit.runner.utility" Version="2.9.0" PrivateAssets="all" />
+    <!-- D-12c：读 GPU 型号与驱动版本（meta.json 用）。 -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- 只引用 core：金图要驱动 docs/11 四接口链，必须引 core（t9 先例；depscan 对            -->
+  <!-- packages/ 之外的工程不开 D-02 边）。RenderTarget/PetInstance 构造器 internal，        -->
+  <!-- 只能走公开链 BuildInstance -> AttachAndStart -> Start -> QueryFrame。                 -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\packages\core\PetDock.Core\PetDock.Core.csproj" />
+  </ItemGroup>
+
+  <!-- 基准图与 meta.json 是夹具本体：复制到输出目录，比对时从输出目录取，源树保持只读。 -->
+  <ItemGroup>
+    <Content Include="baselines\**\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="baselines\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

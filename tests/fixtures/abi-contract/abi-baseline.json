@@ -1,0 +1,77 @@
+{
+  "//": "docs/41 D-11a 最小旧版调用序列基线（t4）。Append-only：删除/改名/收窄任一条目 = D-11b 违例，须走 docs/43 RFC。",
+  "//verifier": "对着 PetDock.Core.dll 反射逐条核验，判据在 tests/fixtures/PetDock.AbiContract.Tests/AbiBaselineVerifier.cs。绝不 grep 注释（M1 PetColor 教训）。",
+  "//signature-format": "方法 = Name(参数类型全名逗号分隔):返回类型全名；属性 = Name:类型全名。泛型渲染为 Base<T1,T2>，可空引用类型取其底层类型（运行时注解不可见，两侧同一渲染器，无歧义）。",
+  "interface": "petdock.runtime",
+  "api": { "major": 1, "minor": 0 },
+  "assembly": "PetDock.Core",
+  "roles": [
+    { "kind": "view", "type": "PetDock.Core.PetRuntime.IPetView", "handles": [
+      "Meta:PetDock.Core.PetRuntime.InterfaceMeta",
+      "InitAsync(PetDock.Core.PetRuntime.PetViewContext):System.Threading.Tasks.Task",
+      "Describe():PetDock.Core.PetRuntime.PetDescription",
+      "Attach(PetDock.Core.PetRuntime.RenderTarget):System.Void",
+      "Detach():System.Void",
+      "DisposeAsync():System.Threading.Tasks.Task",
+      "SetAnimation(System.String,System.Boolean):System.Boolean",
+      "QueryFrame(System.Int32):PetDock.Core.PetRuntime.Frame",
+      "OnEvent(PetDock.Core.PetRuntime.PetEvent):System.Void"
+    ] },
+    { "kind": "brain", "type": "PetDock.Core.PetRuntime.IBrain", "handles": [
+      "Meta:PetDock.Core.PetRuntime.InterfaceMeta",
+      "InitAsync(PetDock.Core.PetRuntime.BrainContext):System.Threading.Tasks.Task",
+      "DisposeAsync():System.Threading.Tasks.Task",
+      "Tick(System.Int32,PetDock.Core.PetRuntime.WorldSnapshot):System.Collections.Generic.IReadOnlyList<PetDock.Core.PetRuntime.BrainDirective>",
+      "OnEvent(PetDock.Core.PetRuntime.PetEvent):System.Void"
+    ] },
+    { "kind": "interact", "type": "PetDock.Core.PetRuntime.IPointerSurface", "handles": [
+      "Id:System.String",
+      "Priority:System.Int32",
+      "HitTest(PetDock.Core.PetRuntime.PetPoint):System.Boolean",
+      "OnPointerDown(PetDock.Core.PetRuntime.PetPoint,PetDock.Core.PetRuntime.PointerButton):PetDock.Core.PetRuntime.IPointerSession"
+    ] },
+    { "kind": "interact-session", "type": "PetDock.Core.PetRuntime.IPointerSession", "handles": [
+      "OnPointerMove(PetDock.Core.PetRuntime.PetPoint):System.Void",
+      "OnPointerUp(PetDock.Core.PetRuntime.PetPoint):System.Void",
+      "OnCancel():System.Void",
+      "Cursor:System.String"
+    ] },
+    { "kind": "state", "type": "PetDock.Core.PetRuntime.IPetState", "handles": [
+      "SchemaVersion:System.Int32",
+      "ReadAll():System.Collections.Generic.IReadOnlyDictionary<System.String,System.Text.Json.Nodes.JsonNode>",
+      "Read(System.String):System.Text.Json.Nodes.JsonNode",
+      "Write(System.Collections.Generic.IReadOnlyDictionary<System.String,System.Text.Json.Nodes.JsonNode>):System.Void",
+      "CommitAsync():System.Threading.Tasks.Task",
+      "Rollback():System.Void",
+      "Migrate(System.Int32,System.Int32,System.Collections.Generic.IReadOnlyDictionary<System.String,System.Text.Json.Nodes.JsonNode>):System.Collections.Generic.IReadOnlyDictionary<System.String,System.Text.Json.Nodes.JsonNode>"
+    ] },
+    { "kind": "clip-catalog", "type": "PetDock.Core.PetRuntime.IClipCatalog", "handles": [
+      "Clips:System.Collections.Generic.IReadOnlyList<PetDock.Core.PetRuntime.AnimationClip>"
+    ] }
+  ],
+  "enums": [
+    { "type": "PetDock.Core.PetRuntime.ClipLoop", "values": ["Once=0", "Loop=1", "PingPong=2"] },
+    { "type": "PetDock.Core.PetRuntime.PointerButton", "values": ["Left=0", "Right=1", "Middle=2"] },
+    { "type": "PetDock.Core.PetRuntime.InstanceState", "values": ["Discovered=0", "Imported=1", "Instantiated=2", "Running=3", "Suspended=4", "Disposed=5"] },
+    { "type": "PetDock.Core.PetRuntime.DisplayTier", "values": ["Real=0", "ReducedRate=1", "Placeholder=2", "Hidden=3"] },
+    { "type": "PetDock.Core.PetRuntime.DirectiveKind", "values": ["RequestCapability=0", "Emit=1", "MoveTo=2", "SetAnimation=3", "Resume=4", "Suspend=5"] }
+  ],
+  "capabilities": {
+    "//": "docs/14 §2 白名单基线（D-11b：固定项不得移除；模式项的正则不得收窄——模式样例被拒即视为收窄）。由 CapabilityIds（public，core/Sandbox/CapabilityGrant.cs）反射逐条核验。",
+    "fixed": [
+      "input.mousePosition",
+      "input.moveWindow",
+      "input.clickThrough",
+      "input.keyboardHook",
+      "assets.read:cas",
+      "persist.write:self",
+      "persist.read:self",
+      "screen.changeDpi"
+    ],
+    "patternSamples": ["network.fetch:example.com", "ipc.tier2:my-shim"]
+  },
+  "callSequence": {
+    "//": "最小旧版调用序列（docs/11 §10 的旧插件装载链，宿主侧逐阶段核验见 OldPluginLoadTests）。",
+    "view": ["Meta", "InitAsync", "Describe", "Attach", "SetAnimation", "QueryFrame", "OnEvent", "Detach", "DisposeAsync"]
+  }
+}

@@ -15,7 +15,25 @@
 //
 // 依赖方向仍是 docs/40 §2 允许的 sdk→core 一层（RANK 1→0，差值 1），
 // D-02c/D-02d 都不触发；plugins→core 仍无直达边。
+//
+// M2（t3）：ABI 四接口从 M0 的两个内容源接口扩展到 docs/11 §13 的五个类型 ——
+// IPetView / IBrain / IPointerSurface / IPetState 四个 ABI 角色接口，加上
+// IClipCatalog（可选声明接口，docs/11 的「片段清单」：SpriteSeqView 同时实现它，
+// --animtest 的 C1 才能读到实现方声明的帧数）。五个类型**全部声明在 core**
+// （packages/core/PetDock.Core/src/PetRuntime/PetView.cs:60、Brain.cs:170、
+// Interaction.cs:47、State.cs:12、ClipCatalog.cs:15），本工程一条都不重声明。
+//
+// 转发的两个方向同时成立：
+//   编译期：插件 `using PetDock.Core.PetRuntime;` 经本工程的传递引用看到的就是 core 那一份；
+//   运行期：`Assembly.LoadFrom` 装载插件 dll 后，typeof(IPetView) 解析到 core 里唯一那条
+//           CLR 类型（M1 t6 修复的 IsAssignableFrom 恒假问题在这里同样成立）。
+// 这使「插件只引用 sdk、且将来关掉传递引用」仍是唯一能工作的形态。
 using System.Runtime.CompilerServices;
 
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Compositor.IFrameContentProvider))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Compositor.IFrameContentSource))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPetView))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IBrain))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPointerSurface))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPetState))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IClipCatalog))]

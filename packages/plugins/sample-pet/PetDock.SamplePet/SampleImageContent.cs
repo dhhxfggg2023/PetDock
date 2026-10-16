@@ -28,10 +28,19 @@ internal sealed class SampleImageContent : IFrameContentSource
     /// </summary>
     public static SampleImageContent? TryLoad(out string note)
     {
+        string path = ImagePath();
         try
         {
-            note = "loaded " + ImagePath();
-            return new SampleImageContent(new Bitmap(ImagePath()));
+            if (!File.Exists(path))
+            {
+                // 明确 unavailable：不再回落到任何仓库内占位图（t8 验收 3 已把它删掉）。
+                // 文案带 placeholder 字样，日志据此标注「这是代码占位，不是宠物」。
+                note = $"unavailable: {path} missing (placeholder: kernel draws a code placeholder)";
+                return null;
+            }
+
+            note = "loaded " + path;
+            return new SampleImageContent(new Bitmap(path));
         }
         catch (Exception error)
         {
@@ -41,21 +50,16 @@ internal sealed class SampleImageContent : IFrameContentSource
     }
 
     /// <summary>
-    /// 示例图路径。优先取本机自用覆盖件 assets/sample/local/pet-sample.png（该目录被 .gitignore
-    /// 排除，只供所有者本机使用，见账本 decision 2026-10-15「鲸鱼娘二创仅限本机」）；
-    /// 不存在时回落到仓库内的自有资产 assets/sample/pet-sample.png（程序化生成，可发布）。
-    /// 两个文件的内核契约完全相同：128x128、四角 alpha=0、中心不透明。
+    /// 示例图路径：只认所有者本机自用覆盖件 assets/sample/local/pet-sample.png（.gitignore，
+    /// 见账本 decision「鲸鱼娘二创仅限本机」）。仓库内那张 898 字节的程序化蓝团已删除
+    /// （t8 验收 3：它会被误当作宠物图），所以这里不再有任何回落——本地图不存在就是
+    /// 真的没有图，TryLoad 走 unavailable，由内核画代码占位图并在日志标注 placeholder。
+    /// 显式指名请用 sprite-seq 的 PETDOCK_PET_IMAGE（单图也能作可见宠物）。
     /// </summary>
     private static string ImagePath()
     {
         string root = FindRepoRoot();
-        string local = System.IO.Path.Combine(root, "assets", "sample", "local", "pet-sample.png");
-        if (File.Exists(local))
-        {
-            return local;
-        }
-
-        return System.IO.Path.Combine(root, "assets", "sample", "pet-sample.png");
+        return System.IO.Path.Combine(root, "assets", "sample", "local", "pet-sample.png");
     }
 
     /// <summary>从 AppContext.BaseDirectory 逐级向上找仓库根：存在 docs/50-roadmap.md 即认为是根。</summary>

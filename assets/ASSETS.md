@@ -22,7 +22,7 @@
 | 路径 | 是什么 | 来源 / 授权 | 可发行？ | 删了会怎样 |
 |---|---|---|---|---|
 | `assets/icons/`（12 个文件） | 应用图标全套（16…512 PNG + icon.ico + 圆角版） | 由 `icon.jpg` 经 `tools/make-icons.py` 生成 | ⚠️ **否** — 源图 `icon.jpg` 来源不明，见 `assets/icons/README.md` 顶部警告块 | 可用 `python tools/make-icons.py` 重新生成 |
-| `assets/sample/pet-sample.png` | 仓库内**自有**示例宠物贴图（128×128，蓝圆团 + 双眼） | `tools/gen-sample-sprite.py` 程序化生成，Apache-2.0 | ✅ **是** | 可用 `python tools/gen-sample-sprite.py` 重新生成（确定性） |
+| `assets/sample/pet-sample.png` | **retired 2026-10-16（t8 验收 3）**：仓库内自有的程序化示例贴图（128×128，蓝圆团 + 双眼，898 B）。删除原因：它不是宠物，却因为落在「示例宠物图」这个位置上被反复误当成桌宠画面；所有者明确要求「没用的图片删了，不然老是用错」。既无本地贴图又未配包时由内核画代码占位图（`SolidFrameContent`）并在日志标注 placeholder。重新生成方式：`python tools/gen-sample-sprite.py`（确定性，如将来确有必要） |
 | `assets/sample/local/`（整个目录） | 所有者**本机自用**的桌宠贴图及中间产物 | 见下方 §2；形象为社区共创鲸鱼娘 | ❌ **否** — `.gitignore` 排除，永不入库 | 从 §2 的原图重新抠即可 |
 | `fixtures/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述） | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out fixtures/sample-pet` 重新生成（已验证幂等） |
 
@@ -41,7 +41,7 @@ gj-meme-857.webp                      所有者提供的原图（975×975，白�
         │         --out assets/sample/local/pet-sample.png
         ▼
 assets/sample/local/pet-sample.png    128×128 带 alpha，四角 alpha=0（满足 M0 命中穿透契约）
-        │  SampleImageContent.ImagePath() 优先取 local/，缺失则回落仓库自有资产
+        │  PETDOCK_PET_IMAGE=assets/sample/local/pet-sample.png（显式指名，sprite-seq 读它）
         ▼
 屏幕上看到的桌宠
 ```
@@ -62,10 +62,14 @@ assets/sample/local/pet-sample.png    128×128 带 alpha，四角 alpha=0（满�
 B 站「上善无形」的角色「溟月」，以 CC BY-NC-SA 4.0 开放二创），**NC 条款禁止商业使用**，
 因此它只能存在于所有者本机。
 
-架构上由两件事保证这个边界不会破：
+架构上由三件事保证这个边界不会破：
 1. `.gitignore` 排除 `assets/sample/local/` 与 `gj-meme-857.webp` —— 仓库里从来没有它们；
-2. `SampleImageContent.ImagePath()` 的「local/ 优先、回落仓库资产」—— 本机看到鲸鱼娘，
-   而 clone 这个仓库的任何人看到的是项目自有资产。
+2. `SampleImageContent.ImagePath()` **只认** `assets/sample/local/`，仓库侧没有回落资产
+   （2026-10-16 删除了那张会被误当成宠物图的程序化蓝团）——本机看到鲸鱼娘，
+   而 clone 这个仓库的人看到的是 docs/31 Sample Pack 的可动示例宠物；
+3. 可见宠物由 sprite-seq 的 `PETDOCK_PET_IMAGE` / `PETDOCK_SAMPLE_PACK` 显式指名，
+   默认（无环境变量）即 `fixtures/sample-pet/`，来源路径写进 stderr 一行
+   （`sprite-seq source=... form=pack|single-image clips=N`）。
 
 **发行前**（`docs/52` §6 清单）：本表里所有标 ❌ 的项都必须已替换为自有/CC0 资产，
 且 `icon.jpg` 与 `gj-meme-857.webp` 不得出现在任何发布物中。

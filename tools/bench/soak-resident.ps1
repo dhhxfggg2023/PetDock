@@ -137,6 +137,18 @@ if ($benchExit -eq 3) {
 }
 
 $still = Get-Process -Id $pet.Id -ErrorAction SilentlyContinue
+
+# The sampler counts samples, not wall-clock, so the pet's actual residency can
+# drift a few seconds away from -DurationSeconds. Print it and say so out loud:
+# "resident for 8 hours" must be a measured number, not an inference from the
+# harness having printed PET-STARTED.
+$residency = ((Get-Date) - $pet.StartTime).TotalSeconds
+Write-Output ("PET-RESIDENCY-SECONDS " + [Math]::Round($residency, 1))
+Write-Output ("PET-RESIDENCY-HOURS " + [Math]::Round($residency / 3600.0, 3))
+if ($residency -lt $DurationSeconds) {
+    Write-Output ("WARN residency-short by " + [Math]::Round($DurationSeconds - $residency, 1) + " s")
+}
+
 if ($still) {
     Write-Output "PET-STILL-RUNNING pid=$($pet.Id) - stopping it now that the soak is over"
     $still | Stop-Process -Force -ErrorAction SilentlyContinue

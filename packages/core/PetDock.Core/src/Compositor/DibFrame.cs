@@ -112,7 +112,15 @@ internal sealed class DibFrame : IDisposable
     }
 
     /// <summary>
-    /// 把一张 RGBA Bitmap 以预乘方式写入 DIB（尺寸必须一致；逐像素 LockBits + unsafe 循环）。
+    /// <summary>
+    /// 把一张 32bpp 位图以预乘方式写入 DIB（尺寸必须一致；逐像素 LockBits + unsafe 循环）。
+    /// **接受两种 32bpp 输入，因为上游有两层各自合法的约定**（docs/11:49 与 M0 的过渡面）：
+    ///   - `Format32bppPArgb`（**预乘** alpha）：docs/11 §2.1 对帧的硬要求（ABI 视图实现交付的就是它）；
+    ///   - `Format32bppArgb`（直通 alpha）：M0 的 `IFrameContentSource` 交付的形态（sample-pet 走这条）。
+    /// 本方法本来就是「按 a 逐通道相乘」写进 DIB，所以：
+    /// PArgb 输入**直接用**（已是预乘值，再乘一次会二次变暗 —— 这是必须区分的根本原因）；
+    /// Argb 输入按 a 预乘（M0 的既有语义，字节不变）。
+    /// 其他 32bpp 变体（Rgb/Xrgb）仍拒绝：它们的 alpha 通道不可信，写进去会让整窗变成实心。
     /// </summary>
     public void DrawBitmap(Bitmap bitmap)
     {
@@ -124,11 +132,14 @@ internal sealed class DibFrame : IDisposable
             throw new ArgumentException($"位图尺寸 {bitmap.Width}x{bitmap.Height} 与 DIB {_width}x{_height} 不一致", nameof(bitmap));
         }
 
-        if (bitmap.PixelFormat != PixelFormat.Format32bppArgb)
+        if (bitmap.PixelFormat != PixelFormat.Format32bppArgb
+            && bitmap.PixelFormat != PixelFormat.Format32bppPArgb)
         {
-            throw new ArgumentException($"需要 Format32bppArgb，实际 {bitmap.PixelFormat}", nameof(bitmap));
+            throw new ArgumentException(
+                $"需要 32bpp 带 alpha 的位图（Argb 或 PArgb），实际 {bitmap.PixelFormat}", nameof(bitmap));
         }
 
+        bool alreadyPremultiplied = bitmap.PixelFormat == PixelFormat.Format32bppPArgb;
         var rect = new Rectangle(0, 0, _width, _height);
         BitmapData data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         try
@@ -145,9 +156,19 @@ internal sealed class DibFrame : IDisposable
                     for (int x = 0; x < _width; x++)
                     {
                         byte a = s[3];
-                        d[0] = Premultiply(s[0], a);
-                        d[1] = Premultiply(s[1], a);
-                        d[2] = Premultiply(s[2], a);
+                        if (alreadyPremultiplied)
+                        {
+                            d[0] = s[0];
+                            d[1] = s[1];
+                            d[2] = s[2];
+                        }
+                        else
+                        {
+                            d[0] = Premultiply(s[0], a);
+                            d[1] = Premultiply(s[1], a);
+                            d[2] = Premultiply(s[2], a);
+                        }
+
                         d[3] = a;
                         s += 4;
                         d += 4;

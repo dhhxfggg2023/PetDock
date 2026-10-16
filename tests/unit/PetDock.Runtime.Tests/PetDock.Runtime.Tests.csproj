@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- t9：M2 ABI 面的第一层自动化判据（docs/41 D-10 单元测试 + D-11 ABI 契约基线）。       -->
+  <!-- 刻意不进 PetDock.sln（任务边界：t4 拥有 sln 与集成面）；用 dotnet run 指定本工程 独立执行。 -->
+  <!-- D-10b（docs/41:59）：纯逻辑隔离，不触真实窗口 / GPU / 文件写入；位图全部进程内内存位图。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PetDock.Runtime.Tests</RootNamespace>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+    <!-- 本机可跑的测试执行体：xunit.runner.utility 的 AssemblyRunner 在进程内直跑测试 dll。
+         不走 VSTest testhost，因为后者在本机 OpenProcess 父进程被沙箱拒绝（Win32 5），
+         整个运行中止、一条断言都跑不到。代价：dotnet test / dotnet vstest 在这台机器上不可用，
+         改用 dotnet run 指定本工程。详见 mistakes.md 的同名条目。
+         注意：本文件 XML 注释内禁止出现双连字符（MSB4025），命令行一律改单破折号。 -->
+    <PackageReference Include="xunit.runner.utility" Version="2.9.0" PrivateAssets="all" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 只引用 core（P-03 第 4 条：测试替身与生产路径一致；depscan 对 packages/ 之外不开边）。 -->
+    <ProjectReference Include="..\..\..\packages\core\PetDock.Core\PetDock.Core.csproj" />
+  </ItemGroup>
+
+  <!-- D-11a 契约基线夹具：落盘在 tests/unit/ 下、随测试复制到输出目录、被 AbiBaselineTests 真读。 -->
+  <ItemGroup>
+    <Content Include="fixtures\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- 测试入口：Program.cs 用 AssemblyRunner 在进程内执行测试，没有父进程回调、没有 testhost。
+       这是本机唯一能留下可判定测试证据的路径（mistakes.md：dotnet vstest / testhost 的
+       Win32 5 拒绝访问条目；XML 注释内不能出现双连字符，故本文件只使用单横线）。 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+</Project>

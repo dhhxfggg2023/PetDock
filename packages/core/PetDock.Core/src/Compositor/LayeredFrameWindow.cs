@@ -88,6 +88,15 @@ internal sealed class LayeredFrameWindow : Form
     /// <summary>本帧内容是否来自注入的内容源（false = 内核纯色兜底）。</summary>
     public bool HasContentSource => _content is not SolidFrameContent;
 
+    /// <summary>
+    /// 内容源**实际交付**给合成器的帧数（每次 GetFrameContent 返回非 null 就加一）。
+    /// 为什么要有它：`HasContentSource` 只证明「装上了一个非兜底的内容源」，
+    /// 「装上了但一帧都取不出来」在这条判据下是隐形的（M0 的 source=false 打 SELF-OK 就是这一类）。
+    /// 计数放在窗口里而不是内容源上，是因为内容源有两条实现路径
+    /// （ABI 视图适配器 / M0 的工厂接口），而「像素真的进了帧缓冲」只有这一处观察点。
+    /// </summary>
+    public long ContentFramesServed { get; private set; }
+
     /// <summary>帧缓冲是否就绪。</summary>
     public bool HasFrame => _frame is not null;
 
@@ -125,6 +134,13 @@ internal sealed class LayeredFrameWindow : Form
         {
             // DrawBitmap 要求位图与 DIB 尺寸严格一致；一致性由 IFrameContentSource 的契约保证。
             frame.DrawBitmap(content);
+            if (_content is not SolidFrameContent)
+            {
+                // 只数**真实内容源**交付的帧。兜底源也会返回非 null 的位图，
+                // 把它算进来会让「内容源一帧都没出」看起来像「出了 63 帧」——
+                // 这正是本判据存在的原因（M0 的 source=false 打 SELF-OK）。
+                ContentFramesServed++;
+            }
         }
         else
         {

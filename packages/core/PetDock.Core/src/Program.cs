@@ -29,13 +29,22 @@ internal static partial class Program
 
         bool selfTest = args.Any(a => string.Equals(a, "--selftest", StringComparison.Ordinal));
         bool hostTest = args.Any(a => string.Equals(a, "--hosttest", StringComparison.Ordinal));
+        bool animTest = args.Any(a => string.Equals(a, "--animtest", StringComparison.Ordinal));
+        bool driveTest = args.Any(a => string.Equals(a, "--drivetest", StringComparison.Ordinal));
+        int goldenIdx = Array.FindIndex(args, a => string.Equals(a, "--golden-baseline", StringComparison.Ordinal));
+        bool goldenTest = goldenIdx >= 0;
 
         // 等价于 ApplicationConfiguration.Initialize()：不调用生成版本，
         // 以免它内部的默认 DPI 模式覆盖上面刚设置的 Per-Monitor V2
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
-        return selfTest ? RunSelfTest() : hostTest ? RunHostTest(args) : RunResident();
+        return selfTest ? RunSelfTest()
+            : hostTest ? RunHostTest(args)
+            : animTest ? RunAnimTest(args)
+            : driveTest ? RunDriveTest(args)
+            : goldenTest ? RunGoldenBaseline(args, goldenIdx)
+            : RunResident();
     }
 
     private static int RunResident()
@@ -45,9 +54,10 @@ internal static partial class Program
         using PluginHost pluginHost = new(PluginHost.ProbePluginsRoot() ?? string.Empty);
         pluginHost.Start();
 
-        // 内容装配走运行期接入口（FrameContentProvider）：内核不认识任何素材类型，
-        // 上层插件实现 IFrameContentProvider 并提供像素；装配失败就如实退回内核纯色兜底。
-        using var window = ComposeWindow("resident");
+        // 内容装配走**唯一**的发现路径（PluginHost 名册，t1 契约 §3.2）：
+        // 名册里有视图实现（docs/11 §3）就用它出帧；否则退回 M0 的内容源工厂；
+        // 再没有就退回内核纯色兜底 —— 常驻形态下兜底是合法的（窗口仍可见可命中）。
+        using var window = ComposeWindow("resident", pluginHost);
         Application.Run(window);
         return ExitOk;
     }
@@ -61,16 +71,58 @@ internal static partial class Program
         return PluginHostSelfTest.Run(args.Where(a => !string.Equals(a, "--hosttest", StringComparison.Ordinal)).ToArray());
     }
 
-    /// <summary>
-    /// 统一的内容装配：先问上层（FrameContentLoader，plugins 层实现 IFrameContentProvider），
-    /// 拿不到就退回内核纯色兜底（SolidFrameContent）——窗口始终可见、始终可命中。
-    /// </summary>
-    private static LayeredFrameWindow ComposeWindow(string phase)
+    /// <summary>动画循环自检入口（--animtest clipA clipB ...）：判据与命令形态见
+    /// .dsh-code/M2-contract-frozen.md §3.3（C1 clip-frames / C2 同 now 同帧 / C3 周期绕回）。</summary>
+    private static int RunAnimTest(string[] args)
     {
-        IFrameContentSource? content = FrameContentLoader.TryLoad(out string note);
-        KernelLog.Write($"frame-content phase={phase} {note}");
-        return content is null ? new LayeredFrameWindow() : new LayeredFrameWindow(content);
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PetAnimTest.Run(args.Where(a => !string.Equals(a, "--animtest", StringComparison.Ordinal)).ToArray());
     }
+
+    /// <summary>宿主帧驱动自检入口（--drivetest）：生命周期 §10、降级链 §9、帧预算 §7 的判据面。</summary>
+    private static int RunDriveTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PetDriveTest.Run(args.Where(a => !string.Equals(a, "--drivetest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>金图基准生成入口（--golden-baseline outdir）：渲染示例宠物三 clip 首帧到基准 PNG，
+    /// 供 tests/PetDock.Golden.Tests 逐像素比对。走与 --animtest 完全相同的链，不另造渲染入口。</summary>
+    private static int RunGoldenBaseline(string[] args, int flagIdx)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        string outdir = args.Length > flagIdx + 1 ? args[flagIdx + 1] : string.Empty;
+        if (string.IsNullOrWhiteSpace(outdir))
+        {
+            Console.Error.WriteLine("GOLDEN-FAIL usage: --golden-baseline <outdir>");
+            return ExitFail;
+        }
+
+        return GoldenBaselineGen.Run(outdir);
+    }
+
+    /// <summary>
+    /// 内容装配的唯一入口：见 FrameComposition。装配结果连同实例一起返回，
+    /// 自检与常驻共用同一条链（两条链正是 M0 source=false 静默 SELF-OK 的成因）。
+    /// </summary>
+    private static LayeredFrameWindow ComposeWindow(string phase, PluginHost? host = null)
+    {
+        ComposeOutcome outcome = FrameComposition.Compose(phase, attachInstance: true);
+        if (outcome.Instance is not null && host is not null)
+        {
+            outcome.Instance.SuspendPort = FrameComposition.SuspendPortFor(host);
+        }
+
+        Composition = outcome;
+        KernelLog.Write($"frame-content phase={phase} {outcome.Describe()}");
+        return outcome.Content is null ? new LayeredFrameWindow() : new LayeredFrameWindow(outcome.Content);
+    }
+
+    /// <summary>最近一次内容装配的结果（自检判据读它）。</summary>
+    private static ComposeOutcome? Composition { get; set; }
 
     /// <summary>统一把自检里的布尔值写成 true / false，别处一律复用。</summary>
     private static string Flag(bool value) => value ? "true" : "false";
@@ -248,13 +300,27 @@ internal static partial class Program
             true));
 
         // 7. 帧内容与帧缓冲状态（这一帧的像素来自上层内容源还是内核纯色兜底，如实报告）。
-        //    判据含 HasContentSource（t6 加严，2026-10-16）：只有 window.HasFrame 时，
-        //    「内容源没装上、退回纯色兜底」这类静默回归仍会打印 SELF-OK 并 exit 0，
-        //    肉眼才看得出来 —— 而自检的全部意义就是让这类回归在命令行上失败。
-        //    见 .dsh-code/mistakes.md 2026-10-16 两条（跨程序集重声明 / 自检不参与退出码）。
+        //    判据三层加严（M0 教训 → t6 → t1 契约 §4.3）：
+        //      (a) HasFrame：帧缓冲真的就绪；
+        //      (b) 内容源**具体且非兜底**：source= 后面是一个真类型全名，不是 SolidFrameContent；
+        //      (c) 内容源**真的在出帧**（IFrameSourceStats.FramesServed > 0）——
+        //          只判前两条时，「装上了但一帧都取不出来」仍会静默通过。
+        //    这三条任一不成立即 SELF-FAIL + exit 1：M0 曾出现 source=false 却打 SELF-OK 并 exit 0。
+        //    见 .dsh-code/mistakes.md（2026-10-16 两条）与 M2 契约 §4.3 的负向用例要求。
+        ComposeOutcome? composition = Composition;
+        string sourceName = composition?.SourceType ?? string.Empty;
+        long servedFrames = window.ContentFramesServed;
+        bool sourceConcrete = sourceName.Length > 0
+            && !string.Equals(sourceName, FrameComposition.FallbackTypeName, StringComparison.Ordinal)
+            && !string.Equals(sourceName, nameof(SolidFrameContent), StringComparison.Ordinal);
         checks.Add(new Check("frame-content",
-            $"source={Flag(window.HasContentSource)} frame={Flag(window.HasFrame)}",
-            window.HasFrame && window.HasContentSource));
+            $"source={(sourceName.Length == 0 ? "false" : sourceName)}"
+            + $" frame={Flag(window.HasFrame)} served={servedFrames}"
+            + $" note={composition?.Note ?? "uncomposed"}",
+            window.HasFrame && window.HasContentSource && sourceConcrete && servedFrames > 0));
+        checks.Add(new Check("frame-source-kind",
+            composition?.Instance is null ? "content-provider" : "abi-view",
+            true));
 
         foreach (Check check in checks)
         {

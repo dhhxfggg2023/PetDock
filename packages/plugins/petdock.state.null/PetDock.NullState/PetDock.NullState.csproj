@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    内置 NullState（贡献点 id "petdock.state.null"，docs/11 §13：全部状态丢弃）。
+    docs/11:312 的「全部状态丢弃」是可判定形态：Read 恒 null、Write 丢弃、commit 无副作用。
+    ABI 类型经 PetDock.Sdk 类型转发解析到 core 唯一 CLR 类型；本工程不重声明接口。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

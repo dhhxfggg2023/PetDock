@@ -20,3 +20,15 @@ public interface IFrameContentSource : IDisposable
     /// </summary>
     Bitmap? GetFrameContent(Size frameSize);
 }
+
+/// <summary>
+/// 内容源的**可选**诊断面：它到底交付过几帧。
+/// 自检需要把「内容源装上了」与「内容源真的在出帧」分开判 ——
+/// 只判前者时，「装上了但一帧都取不出来」会静默通过（M0 的 source=false 打 SELF-OK 就是这一类）。
+/// 不实现本接口的内容源仍然可用，判据退化为「帧缓冲已就绪」。
+/// </summary>
+public interface IFrameSourceStats
+{
+    /// <summary>累计交付的帧数。</summary>
+    long FramesServed { get; }
+}

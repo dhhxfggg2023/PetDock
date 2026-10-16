@@ -1,0 +1,10 @@
+{
+  "gpu": "MuMu Virtual Display Adapter",
+  "driver": "20.36.41.498",
+  "generatedAt": "2026-10-16T11:10:13.8539086Z",
+  "sourceAsset": "fixtures/sample-pet",
+  "sha256": "1F913DA1DECF6966B05699989EF3CCF374973AFC5CA7A083FA47D8C382131E10",
+  "certifiedGpus": [
+    "MuMu Virtual Display Adapter"
+  ]
+}
