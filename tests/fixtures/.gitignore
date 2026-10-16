@@ -1,0 +1,8 @@
+# Synthetic DyberPet fixtures (D-13b, docs/41 §5.2) are constructor GENERATED artifacts.
+# They are intentionally NOT tracked in git:
+#   * D-13a forbids committing any ecosystem material; and
+#   * A4 (docs/52 §6 R-02) must see zero tracked DyberPet material paths.
+# The real 49.85 MB DyberPet package lives under assets/user/ (gitignored) and is NEVER copied in.
+# Regenerate from source of truth:
+#   node tools/gen-dyberpet-fixture.mjs --out tests/fixtures/dyberpet-min
+dyberpet-min/
