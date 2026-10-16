@@ -1,0 +1,19 @@
+{
+  "name": "@petdock/sdk",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PetDock Tier 1 plugin SDK — the only surface a plugin may import (docs/20).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": "./js/index.js",
+    "./presenter": "./js/presenter.js",
+    "./brain": "./js/brain.js",
+    "./interaction": "./js/interaction.js",
+    "./state": "./js/state.js",
+    "./capabilities": "./js/capabilities.js",
+    "./log": "./js/log.js"
+  }
+}

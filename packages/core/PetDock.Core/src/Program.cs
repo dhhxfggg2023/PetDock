@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Hosting;
 
 namespace PetDock.Core;
 
@@ -27,22 +28,37 @@ internal static partial class Program
         }
 
         bool selfTest = args.Any(a => string.Equals(a, "--selftest", StringComparison.Ordinal));
+        bool hostTest = args.Any(a => string.Equals(a, "--hosttest", StringComparison.Ordinal));
 
         // 等价于 ApplicationConfiguration.Initialize()：不调用生成版本，
         // 以免它内部的默认 DPI 模式覆盖上面刚设置的 Per-Monitor V2
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
-        return selfTest ? RunSelfTest() : RunResident();
+        return selfTest ? RunSelfTest() : hostTest ? RunHostTest(args) : RunResident();
     }
 
     private static int RunResident()
     {
+        // 常驻也起插件宿主（docs/13 §3：内核宿主插件是常驻行为的一部分）：
+        // 根目录探测失败 → 空根空转，不影响窗口；1Hz tick 对常驻 CPU 的影响可忽略。
+        using PluginHost pluginHost = new(PluginHost.ProbePluginsRoot() ?? string.Empty);
+        pluginHost.Start();
+
         // 内容装配走运行期接入口（FrameContentProvider）：内核不认识任何素材类型，
         // 上层插件实现 IFrameContentProvider 并提供像素；装配失败就如实退回内核纯色兜底。
         using var window = ComposeWindow("resident");
         Application.Run(window);
         return ExitOk;
+    }
+
+    /// <summary>插件宿主自检入口（--hosttest [expectedPluginId]）：
+    /// 期望插件 id 由命令行传入 —— core 源码不写插件名特判（docs/01 P-02 第 4 条）。</summary>
+    private static int RunHostTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PluginHostSelfTest.Run(args.Where(a => !string.Equals(a, "--hosttest", StringComparison.Ordinal)).ToArray());
     }
 
     /// <summary>
@@ -231,8 +247,14 @@ internal static partial class Program
             $"samples={hitChecks / 10} hits={hitHits} last-on-top={Win32.WindowDescription(lastOnTop)}",
             true));
 
-        // 7. 帧内容与帧缓冲状态（这一帧的像素来自上层内容源还是内核纯色兜底，如实报告）
-        checks.Add(new Check("frame-content", $"source={Flag(window.HasContentSource)} frame={Flag(window.HasFrame)}", window.HasFrame));
+        // 7. 帧内容与帧缓冲状态（这一帧的像素来自上层内容源还是内核纯色兜底，如实报告）。
+        //    判据含 HasContentSource（t6 加严，2026-10-16）：只有 window.HasFrame 时，
+        //    「内容源没装上、退回纯色兜底」这类静默回归仍会打印 SELF-OK 并 exit 0，
+        //    肉眼才看得出来 —— 而自检的全部意义就是让这类回归在命令行上失败。
+        //    见 .dsh-code/mistakes.md 2026-10-16 两条（跨程序集重声明 / 自检不参与退出码）。
+        checks.Add(new Check("frame-content",
+            $"source={Flag(window.HasContentSource)} frame={Flag(window.HasFrame)}",
+            window.HasFrame && window.HasContentSource));
 
         foreach (Check check in checks)
         {

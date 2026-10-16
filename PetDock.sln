@@ -6,9 +6,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PetDock.Core", "packages\co
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PetDock.SamplePet", "packages\plugins\sample-pet\PetDock.SamplePet\PetDock.SamplePet.csproj", "{D2B8E4F5-5C6A-4B7D-9E0F-1A2B3C4D5E6F}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PetDock.Sdk", "packages\sdk\csharp\PetDock.Sdk.csproj", "{A7A3D9E0-012F-4C20-D35E-6F7A8B9C02B3}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plugins", "packages\plugins", "{E3C9F5A6-6D7B-4C8E-AF1A-2B3C4D5E6F70}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample-pet", "packages\plugins\sample-pet", "{F4D0A6B7-7E8C-4D9F-B02B-3C4D5E6F7081}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sdk", "packages\sdk", "{A5E1B7C8-8F9D-4A0E-B13C-4D5E6F7A8091}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "csharp", "packages\sdk\csharp", "{B6F2C8D9-901E-4B1F-C24D-5E6F7A8B91A2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,10 +34,20 @@ Global
 		{E3C9F5A6-6D7B-4C8E-AF1A-2B3C4D5E6F70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4D0A6B7-7E8C-4D9F-B02B-3C4D5E6F7081}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F4D0A6B7-7E8C-4D9F-B02B-3C4D5E6F7081}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7A3D9E0-012F-4C20-D35E-6F7A8B9C02B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7A3D9E0-012F-4C20-D35E-6F7A8B9C02B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7A3D9E0-012F-4C20-D35E-6F7A8B9C02B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7A3D9E0-012F-4C20-D35E-6F7A8B9C02B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5E1B7C8-8F9D-4A0E-B13C-4D5E6F7A8091}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5E1B7C8-8F9D-4A0E-B13C-4D5E6F7A8091}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6F2C8D9-901E-4B1F-C24D-5E6F7A8B91A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6F2C8D9-901E-4B1F-C24D-5E6F7A8B91A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D2B8E4F5-5C6A-4B7D-9E0F-1A2B3C4D5E6F} = {F4D0A6B7-7E8C-4D9F-B02B-3C4D5E6F7081}
 		{F4D0A6B7-7E8C-4D9F-B02B-3C4D5E6F7081} = {E3C9F5A6-6D7B-4C8E-AF1A-2B3C4D5E6F70}
+		{A7A3D9E0-012F-4C20-D35E-6F7A8B9C02B3} = {B6F2C8D9-901E-4B1F-C24D-5E6F7A8B91A2}
+		{B6F2C8D9-901E-4B1F-C24D-5E6F7A8B91A2} = {A5E1B7C8-8F9D-4A0E-B13C-4D5E6F7A8091}
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

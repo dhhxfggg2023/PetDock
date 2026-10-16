@@ -19,4 +19,10 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
+  <!-- M1 契约 §4（.dsh-code/M1-contract-frozen.md）：Tier-1 沙箱基座 = WASM + WASI Preview2，     -->
+  <!-- 绑定库 = Wasmtime for .NET 34.0.2（Bytecode Alliance 官方维护）。docs/14 §4 白名单首项。 -->
+  <ItemGroup>
+    <PackageReference Include="Wasmtime" Version="34.0.2" />
+  </ItemGroup>
+
 </Project>
