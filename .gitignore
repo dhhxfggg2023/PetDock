@@ -48,16 +48,15 @@ golden-diag.*
 tools/probes/*
 !tools/probes/route-report.py
 
-# ---- 所有者提供的桌宠原图（本机自用，不入库）----
-# gj-meme-857.webp 是所有者下载并放到仓库根的桌宠原图（975x975 鲸鱼娘），
-# tools/make-pet-from-image.py 从它抠出 assets/sample/local/pet-sample.png。
-# 与 assets/sample/local/ 同理：形象来自社区共创（CC BY-NC-SA 4.0），只供本机使用，
-# 不得作为可发布资产（见账本 decision 2026-10-15）。
-# 注意：不要因为「未跟踪 + 名字像 meme」就删它——所有者把它放在仓库根正是因为它不入库。
-/gj-meme-857.webp
-
 # ---- 本机自用素材（永不入库、永不发行）----
-# assets/sample/local/ 存放「鲸鱼娘」二创贴图等只供所有者本机使用的素材：
-# 形象来自社区共创（CC BY-NC-SA 4.0），不得作为可发布资产（见账本 decision 2026-10-15）。
-# 仓库与发布物内的示例贴图一律是 tools/gen-sample-sprite.py 程序化生成的自有资产。
+# assets/sample/local/ 只供所有者本机使用：
+#   * gj-meme-857.webp —— 所有者提供的桌宠原图（975x975 鲸鱼娘，社区共创 CC BY-NC-SA 4.0）
+#   * pet-sample.png   —— 由它经 tools/make-pet-from-image.py 抠出的 128x128 贴图
+# 两者都不得作为可发布资产（见账本 decision 2026-10-15、docs/52 §5）。
+# 仓库与发布物内的示例贴图一律是 tools/gen-sample-pet.mjs 程序化生成的自有资产。
+# 注意：不要因为「未跟踪 + 名字像 meme」就删它们——所有者把它们放进这个被忽略的目录，
+# 正是因为它们不入库。
+# 摆放规则（2026-10-16 收拢，见 assets/ASSETS.md §0）：资产一律在 assets/ 树下，仓库根
+# 不再放任何素材；根目录若又出现未登记的媒体文件，`node tools/asset-manifest.mjs` 会把它
+# 报成 UNREGISTERED 并以 exit 1 结束——所以这里不需要逐文件写忽略规则。
 assets/sample/local/

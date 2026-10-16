@@ -3,7 +3,7 @@
 Usage:
     python tools/make-icons.py [source] [outdir]
 
-Default source: icon.jpg at the repository root.
+Default source: assets/icons/source/icon.jpg  (see assets/ASSETS.md §1)
 Default outdir:  assets/icons
 
 Produces:
@@ -37,7 +37,11 @@ def squircle_mask(size: int, radius_ratio: float = 0.22, supersample: int = 4) -
 
 
 def main() -> int:
-    src = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "icon.jpg"
+    src = (
+        Path(sys.argv[1])
+        if len(sys.argv) > 1
+        else REPO / "assets" / "icons" / "source" / "icon.jpg"
+    )
     outdir = Path(sys.argv[2]) if len(sys.argv) > 2 else REPO / "assets" / "icons"
 
     if not src.is_file():

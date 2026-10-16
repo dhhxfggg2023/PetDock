@@ -1,9 +1,11 @@
 # ⚠️ PLACEHOLDER — NOT CLEARED FOR RELEASE
 
-The icons in this directory are generated from `icon.jpg` at the repository
-root. **The provenance of that image is unknown** (it was forwarded by a third
-party, with no author, no source, and no licence). It is therefore usable as a
-development-time placeholder **only**.
+The icons in this directory are generated from `source/icon.jpg` — the source
+image sits beside the set it produces (it used to live in the repository root;
+it was moved here on 2026-10-16 so that all assets live under `assets/`, see
+`assets/ASSETS.md` §0). **The provenance of that image is unknown** (it was
+forwarded by a third party, with no author, no source, and no licence). It is
+therefore usable as a development-time placeholder **only**.
 
 Before any public release — installer, store listing, Steam page, GitHub
 release — this image must be replaced by artwork that is either:
@@ -20,4 +22,7 @@ Regenerate the set with:
 
     python tools/make-icons.py
 
-Source image: `icon.jpg` at the repository root.
+Source image: `assets/icons/source/icon.jpg` (163,338 B, 512×512). It is the
+script's default source and stays tracked in git, so the set is reproducible
+from a clone; `python tools/make-icons.py [source] [outdir]` overrides either
+path (default outdir is this directory).
