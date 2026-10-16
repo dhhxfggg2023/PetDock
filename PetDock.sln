@@ -36,6 +36,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "golden", "golden", "{AB8784
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PetDock.Golden.Tests", "tests\golden\PetDock.Golden.Tests\PetDock.Golden.Tests.csproj", "{268EF492-0D53-48A1-AB00-AD1926A9BDC5}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "packages", "packages", "{15ADEDDD-63A9-4887-9943-B72B0A425469}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "petdock.importer.dyberpet", "petdock.importer.dyberpet", "{26C6ED23-4B09-422F-A3A0-33857D58873E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PetDock.DyberPetImporter", "packages\plugins\petdock.importer.dyberpet\PetDock.DyberPetImporter\PetDock.DyberPetImporter.csproj", "{424DB618-66E4-4211-B8E1-4BEF873E9A38}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -86,6 +92,10 @@ Global
 		{268EF492-0D53-48A1-AB00-AD1926A9BDC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{268EF492-0D53-48A1-AB00-AD1926A9BDC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{268EF492-0D53-48A1-AB00-AD1926A9BDC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{424DB618-66E4-4211-B8E1-4BEF873E9A38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{424DB618-66E4-4211-B8E1-4BEF873E9A38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{424DB618-66E4-4211-B8E1-4BEF873E9A38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{424DB618-66E4-4211-B8E1-4BEF873E9A38}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D2B8E4F5-5C6A-4B7D-9E0F-1A2B3C4D5E6F} = {F4D0A6B7-7E8C-4D9F-B02B-3C4D5E6F7081}
@@ -101,6 +111,8 @@ Global
 		{529DCAE0-CF1C-4297-B81E-08EA279C434A} = {BAE6E14E-3FB3-4940-BC17-43C809066A02}
 		{AB8784D2-9D7B-4F8C-83C4-DDF0F1955C36} = {BF846369-B887-456A-8C08-C6A416530D4E}
 		{268EF492-0D53-48A1-AB00-AD1926A9BDC5} = {AB8784D2-9D7B-4F8C-83C4-DDF0F1955C36}
+		{26C6ED23-4B09-422F-A3A0-33857D58873E} = {E3C9F5A6-6D7B-4C8E-AF1A-2B3C4D5E6F70}
+		{424DB618-66E4-4211-B8E1-4BEF873E9A38} = {26C6ED23-4B09-422F-A3A0-33857D58873E}
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
