@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- AllowUnsafeBlocks 仅用于 PackSelfCheck 的 LockBits 像素扫描（悬停命中前提取证）。 -->
+    <!-- 有意不引用 PetDock.Sdk / PetDock.Core：kind=importer 不是 ABI 角色（PetSurfaceLoader surface-skip），
+         导入器是受信任宿主侧的独立转换程序（M3 契约 §3；WASM tier1 无文件读导入函数）。零新依赖边。 -->
+  </PropertyGroup>
+
+</Project>

@@ -186,7 +186,12 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
         return m < frames ? m : period - m;
     }
 
-    /// <summary>合成目标尺寸的帧位图并缓存。1:1 时直接 DrawImageUnscaled（像素与磁盘 PNG 逐位一致，金图取 queryFrame(0)）。</summary>
+    /// <summary>
+    /// 合成目标尺寸的帧位图并缓存。1:1 时直接 DrawImageUnscaled（像素与磁盘 PNG 逐位一致，金图取 queryFrame(0)）。
+    /// M3 契约 §2.7：帧间尺寸不一（真包 208×224 … 310×289）时**不再缩放居中**——小帧按左上角 (0,0)
+    /// 粘贴、余处保持透明（docs/11:53 alpha=0 穿透语义，悬停命中只看不透明区）；缩放居中会让不同
+    /// 动作的角色忽大忽小。大于画板的帧（画板=全包最大帧，理论上不出现）防御性等比缩小，仍左上对齐。
+    /// </summary>
     private Bitmap Compose(string clipId, int index, RenderTarget target)
     {
         string key = $"{FrameKey(clipId, index)}@{target.PixelWidth}x{target.PixelHeight}";
@@ -207,15 +212,20 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
             {
                 graphics.DrawImageUnscaled(source, 0, 0);
             }
+            else if (source.Width <= target.PixelWidth && source.Height <= target.PixelHeight)
+            {
+                // 契约 §2.7：小帧左上 (0,0) 粘贴，不缩放（角色跨动作同尺寸），余处透明穿透。
+                graphics.DrawImageUnscaled(source, 0, 0);
+            }
             else
             {
-                // 等比缩放居中，宁可留透明边不拉变形（与 M0 SampleImageContent 同一约定）
+                // 防御分支：帧大于画板时等比缩小到恰好放入，仍按左上对齐（不居中）。
                 double scale = Math.Min(
                     target.PixelWidth / (double)source.Width,
                     target.PixelHeight / (double)source.Height);
                 int w = (int)Math.Round(source.Width * scale);
                 int h = (int)Math.Round(source.Height * scale);
-                graphics.DrawImage(source, (target.PixelWidth - w) / 2, (target.PixelHeight - h) / 2, w, h);
+                graphics.DrawImage(source, 0, 0, w, h);
             }
         }
 
