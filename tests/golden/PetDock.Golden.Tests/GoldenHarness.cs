@@ -44,6 +44,25 @@ internal static class GoldenHarness
             PixelFormat.Format32bppPArgb);
     }
 
+    /// <summary>
+    /// 以指定 pack 根渲染首帧（M3 t8 t7-1：DyberPet 夹具金图）。
+    /// pack 由 PETDOCK_SAMPLE_PACK 环境变量选定（PackLoader 每实例重新读盘，无缓存），
+    /// 故在调用 RenderFirstFrame 前后设置/恢复即可，无需任何内核改动。
+    /// </summary>
+    public static Bitmap RenderFirstFrameFromPack(string packRoot, string clip)
+    {
+        string? previous = Environment.GetEnvironmentVariable("PETDOCK_SAMPLE_PACK");
+        Environment.SetEnvironmentVariable("PETDOCK_SAMPLE_PACK", packRoot);
+        try
+        {
+            return RenderFirstFrame(clip);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PETDOCK_SAMPLE_PACK", previous);
+        }
+    }
+
     /// <summary>整帧像素的 FNV-1a 64 位签名（与 core 的 PetAnimTest.SignatureOf 同一算法）。</summary>
     public static long SignatureOf(Bitmap bitmap)
     {

@@ -66,7 +66,9 @@ function disk(pxa, cx, cy, rad, rgb) { const r2 = rad * rad; for (let y = Math.m
 function hline(pxa, x0, x1, y, rgb) { for (let x = Math.max(0, x0); x <= Math.min(CW - 1, x1); x++) px(pxa, x, y, rgb[0], rgb[1], rgb[2]); }
 function makeFrame(images, i, n) {
   const pxa = fresh(); const rgb = colorOf(images);
-  const bob = n > 1 ? Math.round(Math.sin((i / Math.max(1, n - 1)) * Math.PI * 2) * 5) : 0;
+  // bob: phase over i/n (not i/(n-1)) so adjacent samples never coincide —
+  // with i/(n-1) and n=3, sin(0)=sin(π)=sin(2π)=0 produced three identical frames (t7 review).
+  const bob = n > 1 ? Math.round(Math.sin((i / n) * Math.PI * 2) * 5) : 0;
   const cy = 36 + bob;
   disk(pxa, 32, cy, 20, rgb);                      // body
   disk(pxa, 25, cy - 6, 6, [250, 250, 255]);       // left eye white
@@ -74,8 +76,17 @@ function makeFrame(images, i, n) {
   const closed = images === 'sleep' ? (i % 2 === 1) : (n === 2 && i === 1);
   if (!closed) { disk(pxa, 25, cy - 6, 3, [25, 25, 50]); disk(pxa, 39, cy - 6, 3, [25, 25, 50]); }
   else { hline(pxa, 19, 31, cy - 6, [45, 45, 70]); hline(pxa, 33, 45, cy - 6, [45, 45, 70]); }
-  return { png: encodePng(CW, CH, pxa), w: CW, h: CH };
+  const png = encodePng(CW, CH, pxa);
+  if (i > 0 && png.equals(lastPng)) {
+    // Self-check: frames inside one action must not be pixel-identical, or any
+    // consumer asserting per-frame motion (e.g. --animtest C1) silently degrades.
+    console.error(`FIXTURE-FAIL: ${images} frame ${i} is pixel-identical to frame ${i - 1}`);
+    process.exit(1);
+  }
+  lastPng = png;
+  return { png, w: CW, h: CH };
 }
+let lastPng = null;
 
 // ---------------------------------------------------------------------------
 // Fixture spec. act_num is intentionally set to DELIBERATELY mismatch the file

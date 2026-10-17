@@ -14,6 +14,9 @@ using Xunit.Abstractions;
 
 namespace PetDock.Golden.Tests;
 
+// 两类渲染测试共用 PETDOCK_SAMPLE_PACK 环境变量与全局 roster，必须串行（t8 t7-1）：
+// xunit v2 默认按 collection 并行，同一 collection 内串行执行。
+[Collection("GoldenRenderSerial")]
 public sealed class GoldenBaselineTests
 {
     private const string GpuDriftMarker = "GPU_DRIFT";

@@ -36,6 +36,12 @@ public static class Program
             return BaselineGenerator.WriteMeta();
         }
 
+        // M3 t8 t7-1：DyberPet 夹具基准一键生成（渲染 default 首帧 + 写 meta.json）。
+        if (args.FirstOrDefault() == "--golden-baseline-dyberpet")
+        {
+            return DyberPetBaselineGen.Run();
+        }
+
         string? dll = args.FirstOrDefault();
         if (dll is null)
         {

@@ -9,7 +9,8 @@
     "depscan": "node tools/depscan.mjs",
     "lint:core": "node tools/lint-core.mjs",
     "lint:docs": "node tools/doclink.mjs",
-    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs"
+    "lint:coverage": "node tools/check-dyberpet-coverage.mjs",
+    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/check-dyberpet-coverage.mjs"
   },
   "dependencies": {
     "ajv": "^6.15.0",
