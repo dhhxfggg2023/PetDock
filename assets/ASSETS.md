@@ -21,15 +21,15 @@
 图片文件。仓库根只留 `README.md` / `LICENSE` / `*.sln` / `package*.json` / `.gitignore`
 这类仓库级文件。两处「本机自用、永不入库」的目录都被 `.gitignore` 整目录排除：
 `assets/sample/local/`（最后一位所有者的桌宠素材）与 `assets/user/`（所有者提供的第三方
-宠物素材，如 DyberPet 角色包）。若仓库根又出现未登记的媒体文件，
+宠物素材与图标源图）。若仓库根又出现未登记的媒体文件，
 `node tools/asset-manifest.mjs` 会报 `UNREGISTERED` 并以 exit 1 结束。
 
 ## 1. 登记表
 
 | 路径 | 是什么 | 来源 / 授权 | 可发行？ | 删了会怎样 |
 |---|---|---|---|---|
-| `assets/icons/`（12 个生成文件 + `README.md`） | 应用图标全套（16…512 PNG + icon.ico + 圆角版） | 由 `assets/icons/source/icon.jpg` 经 `tools/make-icons.py` 生成 | ⚠️ **否** — 源图来源不明，见 `assets/icons/README.md` 顶部警告块 | 可用 `python tools/make-icons.py` 重新生成 |
-| `assets/icons/source/icon.jpg`（163,338 B，512×512） | **软件图标源图**（银发金瞳少女立绘；上一行那套图标全部由它生成） | 朋友转发，**出处与授权均不明** | ❌ **否** — 发行前必须替换（`docs/51` R-01） | **可恢复**（已入库、受 git 跟踪）；但发行前必须换成自有/CC0 图标 |
+| `assets/icons/`（12 个生成文件 + `README.md`） | 应用图标全套（16…512 PNG + icon.ico + 圆角版） | **本项目自绘**：`tools/make-icons.py` 画的白脸猫耳占位图（配色取自 `docs/31` 示例宠物金图基线中心 RGB 86,132,214） | ✅ **是** — 自有输出，随内核以 Apache-2.0 授权 | 可用 `python tools/make-icons.py` 重新生成（默认就是它） |
+| `assets/user/icons-source/icon.jpg`（163,338 B，512×512，**本机自用**） | **软件图标源图**（银发金瞳少女立绘）。2026-10-17 之前它放在 `assets/icons/source/` 且受 git 跟踪，那套图标全部由它生成 | 朋友转发，**出处与授权均不明** | ❌ **否** — 本机可用；**由它派生的图标同样不得发行**，所以仓库里的图标已改成自绘图 | 已 `git rm --cached` 出库，只在本机；删了请所有者重新提供 |
 | `assets/sample/local/`（整个目录，本机自用） | ① `gj-meme-857.webp`：所有者提供的**桌宠原图**（975×975 鲸鱼娘 Q 版，85,770 B）② `pet-sample.png`：由它经 `tools/make-pet-from-image.py` 抠出的 128×128 贴图（23,674 B，四角 alpha=0） | 所有者自行下载提供；形象来自社区共创（主流说法原型是 B 站「上善无形」的角色「溟月」，以 **CC BY-NC-SA 4.0** 开放二创，NC 禁止商业使用） | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 贴图可从原图重新抠；**原图删了不可恢复**，只能请所有者重新提供（见 §2）。**这就是 2026-10-15 被误删的那个文件** |
 | `assets/user/`（整个目录，本机自用） | 所有者提供的**真实第三方宠物素材**；当前含 `assets/user/dyberpet/守岸人/`（DyberPet 角色包，349 文件 / 49,854,928 B：310 PNG + 32 WAV + 6 JSON + 1 JPG；`pet_conf.json` / `act_conf.json` / `msg_conf.json` + `action/`、`info/`、`items/`、`note/`）。用途 = **M3 适配器的字段核对素材**（`docs/99` 把「DyberPet 字段未实测」列为 M3 开工前必修项） | 所有者自行下载提供（《鸣潮》守岸人；形象与音频版权归库洛游戏，**不是** CC 授权素材） | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 可由所有者副本重新放入；删掉会阻断 M3 的字段核对 |
 | `fixtures/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述） | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out fixtures/sample-pet` 重新生成（已验证幂等） |
@@ -61,11 +61,12 @@ assets/sample/local/pet-sample.png      128×128 带 alpha，四角 alpha=0（�
 
 `docs/01-principles.md` P-07 与 `docs/52-legal-licensing.md` §5 规定**素材零分发**：
 发布物中第三方素材数量必须为 0（`M-12`）。鲸鱼娘形象来自社区共创（CC BY-NC-SA 4.0，
-**NC 条款禁止商业使用**），DyberPet/《鸣潮》素材是商业游戏资产，因此它们只能存在于所有者本机。
+**NC 条款禁止商业使用**），DyberPet/《鸣潮》素材是商业游戏资产，图标源图来源不明，
+因此它们只能存在于所有者本机。
 
 架构上由三件事保证这个边界不会破：
-1. `.gitignore` 排除 `assets/sample/local/`（桌宠原图与派生贴图都在其中）与 `assets/user/`
-   （第三方宠物素材）—— 仓库里从来没有它们；
+1. `.gitignore` 排除 `assets/sample/local/`（桌宠原图与派生贴图）与 `assets/user/`
+   （第三方宠物素材 + 图标源图）—— 仓库里从来没有它们；
 2. `SampleImageContent.ImagePath()` **只认** `assets/sample/local/`，仓库侧没有回落资产
    （2026-10-16 删除了那张会被误当成宠物图的程序化蓝团）——本机看到鲸鱼娘，
    而 clone 这个仓库的人看到的是 docs/31 Sample Pack 的可动示例宠物；
@@ -73,6 +74,8 @@ assets/sample/local/pet-sample.png      128×128 带 alpha，四角 alpha=0（�
    默认（无环境变量）即 `fixtures/sample-pet/`，来源路径写进 stderr 一行
    （`sprite-seq source=... form=pack|single-image clips=N`）。
 
+应用图标是唯一「曾经破过这个边界」的资产：它原本派生自来源不明的 `icon.jpg`，而派生图是
+**受跟踪**的。2026-10-17 已改为 `tools/make-icons.py` 自绘、把源图移出仓库。
+
 **发行前**（`docs/52` §6 清单）：本表里所有标 ❌ 的项都必须已替换为自有/CC0 资产，
-且 `assets/icons/source/icon.jpg` 与 `assets/sample/local/` 下的任何文件都不得出现在
-任何发布物中。
+且 `assets/user/` 与 `assets/sample/local/` 下的任何文件都不得出现在任何发布物中。
