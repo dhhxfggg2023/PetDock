@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- M4 t3（t1 契约 §8）：事件重放测试工程，与 PetDock.AbiContract.Tests 平级。              -->
+  <!-- 形态必须照抄 AbiContract 的自写 Main + [Fact] 反射入口（Runner.cs），理由同它：         -->
+  <!-- 本机 DSH 沙箱让 testhost 在 SetParentProcessExitCallback→OpenProcess 上必 Win32 5，    -->
+  <!-- `dotnet test`/`dotnet vstest` 在一条断言都没跑时中止。证据一律走                          -->
+  <!-- `dotnet exec tests/fixtures/PetDock.EventReplay.Tests/bin/<cfg>/net8.0-windows/         -->
+  <!--  PetDock.EventReplay.Tests.dll`。                                                       -->
+  <!-- 夹具纪律（docs/41 D-13a 同源）：.replay.jsonl 是构造器产物，**不入库**，只在 %TEMP%    -->
+  <!-- 下生成并在退出时删除；本工程从不写 tests/ 或仓库任何目录。                               -->
+  <!-- sln 由 t3 用 dotnet sln add 挂入；ProjectConfigurationPlatforms 必须成对写             -->
+  <!-- ActiveCfg + Build.0（账本已付过的坑：只写 ActiveCfg 会被 sln build 静默跳过）。          -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PetDock.EventReplay.Tests</RootNamespace>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- 自检入口（与 AbiContract 同款）：ExitCode = 失败数；SKIP 在 strict 开关下计入失败。
+       注意：本文件 XML 注释内禁止出现双连字符（MSB4025），命令行一律用单破折号。 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 只引用 core（与 AbiContract 同一先例；depscan 只对 packages/ 下的工程判 D-02 边）。 -->
+    <ProjectReference Include="..\..\..\packages\core\PetDock.Core\PetDock.Core.csproj" />
+  </ItemGroup>
+
+</Project>

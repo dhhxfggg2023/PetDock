@@ -9,3 +9,14 @@
 # (dyberpet-min-moved/, dyberpet-idempotent1/, ...) and a plain `git add tests/` must never
 # pick one up. Every DyberPet fixture under this directory is generated, never authored.
 dyberpet-*/
+
+# Event replay fixtures (M4 t3, t1 contract §8.2) are ALSO constructor GENERATED artifacts.
+# The constructor lives in tests/fixtures/PetDock.EventReplay.Tests/FixtureConstructor.cs and writes
+# them to %TEMP%/petdock-eventreplay-<guid>/ (deleted on exit); nothing is ever written here.
+# This pattern exists so that a stray hand-written or debug-copied *.replay.jsonl can never be
+# committed by a plain `git add tests/` — D-13a's discipline (generated, never authored) applies
+# to these exactly as it does to the DyberPet trees above. The judge that enforces it at runtime
+# is EventReplayTests.GeneratedFixturesNeverLandInTheRepository.
+*.replay.jsonl
+*.replay.json
+
