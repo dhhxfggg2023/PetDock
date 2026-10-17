@@ -46,12 +46,12 @@ tools/**/*.scan.json
 golden-diag.*
 
 # ---- 探针临时件（scratch、一次性取证输出、对照实验方案）----
-# tools/probes/ 是排障工作区：一次性验证脚本、截图、DIB 转储、对照实验方案。
-# 按 docs/40 D-01a「可复用代码必须进包」，这些一次性脚本不是可复用代码，永不入库；
-# 保留在磁盘上供复盘。唯一例外是 route-report.py —— 账本 decision 指定的
-# 「路由选速唯一依据」，是长期工具而非一次性探针；它的 --json 产出仍是本机快照，不入库。
+# tools/probes/ 是排障与开发工作区：一次性验证脚本、截图、DIB 转储、对照实验方案，以及
+# 模型路由探针（route-report.py / scan-free-lane.mjs / probe-egress.mjs / probe-plugin-net.mjs）。
+# 按 docs/40 D-01a「可复用代码必须进包」，它们不是可复用产品代码；而且它们是「本项目怎么被
+# 做出来的」开发工具、与桌宠交付物无关，泄露本机安装路径与免费额度探测手法，故一律出库
+# （文件仍留在磁盘上供复盘，只是不再跟踪）。
 tools/probes/*
-!tools/probes/route-report.py
 
 # ---- 本机自用素材（永不入库、永不发行）----
 # assets/sample/local/ 只供所有者本机使用：
