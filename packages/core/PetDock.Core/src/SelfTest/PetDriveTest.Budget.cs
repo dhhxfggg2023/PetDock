@@ -135,6 +135,18 @@ internal static partial class PetDriveTest
         PetInstance instance = MakeInstance(out _, out StubBrain brain);
         instance.AttachAndStart(8, 8, 1.0);
         instance.Start();
+        // 三条指令、三个裁决点（M4 后逐字写清，避免期望再陈旧）：
+        //  · setAnimation → 落地，老 ABI 语义不变；
+        //  · not.a.capability → **必须被拒**：能力清单是白名单，该 id 不在 docs/14 §2 能力全集
+        //    （docs/14-sandbox-security.md:37 清单、:39「插件能被允许的职权范围」）之内，
+        //    HostArbiter fail-closed 记因拒绝（HostArbiter.cs:306）。夹具刻意保留这个表外 id：
+        //    这条检查要证明的正是「未授权能力必须被拒、不许静默授予」，期望 Applied=0 且 Refused=1；
+        //  · pet.drive → **必须被目录守门拒绝**：docs/16:47「本表 + §3 表 = 事件目录（共 14 个
+        //    名字），是『表外事件不得出现』这条硬约束的判定范围」，pet.drive 不在其中，
+        //    Publish fail-closed（契约 §2.2：不入 Log、留审计行）。故期望从 M2 的
+        //    CountOf=1 改为 CountOf=0 且 OutsideCatalog 恰好 +1。指令层仍记 Applied[Emit]=1：
+        //    仲裁器只裁「指令受理」，落地裁决在事件口，两层计数不同是设计而非矛盾。
+        int outsideBefore = instance.Arbiter.Events.OutsideCatalog;
         brain.Enqueue(
             BrainDirective.SetAnimation("idle"),
             BrainDirective.RequestCapability("not.a.capability", "drive"),
@@ -142,8 +154,13 @@ internal static partial class PetDriveTest
         instance.TickBrain(33, World());
         Check(ref failures, "arbiter-applied",
             instance.Arbiter.Applied[DirectiveKind.SetAnimation] == 1
+                // 拒绝只记在 _refused，Applied 里没有这个键（缺键索引会抛）——
+                // 「不得被应用」的正确断言是 ContainsKey==false，而不是索引到 0。
+                && !instance.Arbiter.Applied.ContainsKey(DirectiveKind.RequestCapability)
                 && instance.Arbiter.Refused[DirectiveKind.RequestCapability] == 1
-                && instance.Arbiter.Events.CountOf("pet.drive") == 1,
+                && instance.Arbiter.Applied[DirectiveKind.Emit] == 1
+                && instance.Arbiter.Events.CountOf("pet.drive") == 0
+                && instance.Arbiter.Events.OutsideCatalog == outsideBefore + 1,
             instance.Arbiter.Describe());
         Check(ref failures, "arbiter-refusal-recorded",
             instance.Arbiter.LastRefusal.Contains("whitelist", StringComparison.Ordinal),
