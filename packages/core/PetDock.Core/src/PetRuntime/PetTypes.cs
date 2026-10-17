@@ -88,6 +88,9 @@ public sealed record PetEvent(string Type, long At, JsonObject? Payload = null, 
     public static PetEvent Named(string type) =>
         new(type, System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
+    /// <summary>进程单调毫秒时钟（M4：指令落地与能力审计的时间戳，禁墙钟日期）。</summary>
+    public static long NowMs() => Environment.TickCount64;
+
     public override string ToString() => $"{Type}@{At}";
 }
 

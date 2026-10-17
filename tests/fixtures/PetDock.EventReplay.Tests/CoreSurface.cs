@@ -70,8 +70,10 @@ public static class CoreSurface
         PropertyInfo? outside = typeof(HostEventDispatch)
             .GetProperty("OutsideCatalog", BindingFlags.Public | BindingFlags.Instance);
         bool brainInjection = typeof(PetInstance)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Any(p => p.Name.Equals("Brain", StringComparison.Ordinal) && p.CanWrite);
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Any(m => m.Name.Equals("InstallBrain", StringComparison.Ordinal)
+                && m.GetParameters().Length == 1
+                && m.GetParameters()[0].ParameterType == typeof(IBrain));
 
         return new CoreSurfaceReport(
             catalog is not null,

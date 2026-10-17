@@ -12,6 +12,8 @@ namespace PetDock.Core.Compositor;
 /// </summary>
 internal static class Win32
 {
+    internal const int WM_ACTIVATEAPP = 0x001C;
+
     internal const int GWL_EXSTYLE = -20;
     internal const int GWL_STYLE = -16;
     internal const long WS_VISIBLE = 0x10000000L;
@@ -198,6 +200,11 @@ internal static class Win32
     [DllImport("user32.dll", SetLastError = true)]
     internal static extern bool SetCursorPos(int X, int Y);
 
+    // ---- 前台窗口 ----
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetForegroundWindow();
+
     // ---- 只读小助手 ----
 
     /// <summary>取窗口在屏幕坐标（物理像素）下的外接矩形。</summary>
@@ -245,7 +252,7 @@ internal static class Win32
     }
 
     /// <summary>进程名（诊断用）；取不到就如实写 (unknown)，不要编一个名字出来。</summary>
-    private static string ProcessNameOf(uint pid)
+    internal static string ProcessNameOf(uint pid)
     {
         try
         {

@@ -51,13 +51,17 @@ public sealed class CoreDrive : IDisposable
         string note = string.Empty;
         try
         {
-            PetSurfaceRoster roster = PetSurfaceRoster.Discover(PluginHost.ProbePluginsRoot());
+            PetSurfaceRoster roster = PetSurfaceRoster.Discover(PluginsRootForDrive());
             instance = roster.BuildInstance("eventreplay");
             if (instance is not null)
             {
                 instance.AttachAndStart(128, 128, 1.0);
                 instance.Start();
                 notes.Add("PetInstance(TickBrain/NextDeltaMs/EnforceSessionBudget)");
+            }
+            else
+            {
+                note = $"instance-not-built root={PluginsRootForDrive() ?? "(null)"} roster={roster.Describe()}";
             }
         }
         catch (Exception error)
@@ -68,7 +72,46 @@ public sealed class CoreDrive : IDisposable
 
         var drive = new CoreDrive(instance, dispatch) { KernelLogNote = note };
         drive._notes.AddRange(notes);
+        if (note.Length > 0)
+        {
+            // 装配失败时留一行可见事实（判据据此给 SKIP + 具名原因，不是静默）。
+            Console.WriteLine($"EVENT-CHECK Drive.InstanceAvailable INFO {note}");
+        }
+
         return drive;
+    }
+
+    /// <summary>
+    /// 本驱动要扫的插件根：**仓库的 `packages/plugins`**，不是 `PluginHost.ProbePluginsRoot()` 的答案。
+    ///
+    /// 为什么不能直接用 `ProbePluginsRoot()`：它从 `AppContext.BaseDirectory` 向上找第一个名为
+    /// `plugins` 的目录，而本工程位于 `tests/fixtures/PetDock.EventReplay.Tests/bin/...`——
+    /// 向上第三级就撞上 `tests/fixtures/plugins/`（M1 的 3 个探针插件夹具，全是 tier1 无视图实现），
+    /// 于是它**遮蔽**了真正的 `packages/plugins`。本会话实测：用前者 → `dirs=3 records=0 view=(none)`
+    /// → `BuildInstance` 返回 null → 三条判据 SKIP，看起来像「注入面没做好」，实际是扫错了目录。
+    /// 这是测试宿主的路径语义问题，不是内核缺陷：内核在 `dotnet exec PetDock.Core.dll` 下扫得对
+    /// （`dirs=6 records=4 view=PetDock.Builtins.SpriteSeqView`）。
+    /// 环境变量仍优先（与生产同一优先级），便于 CI 或用例临时换根。
+    /// </summary>
+    private static string? PluginsRootForDrive()
+    {
+        string? explicitRoot = PluginHost.ProbePluginsRoot();
+        if (explicitRoot is not null
+            && explicitRoot.Replace('\\', '/').Contains("/packages/plugins", StringComparison.Ordinal))
+        {
+            return explicitRoot;
+        }
+
+        for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            string candidate = Path.Combine(dir.FullName, "packages", "plugins");
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return explicitRoot;
     }
 
     /// <summary>实例装配失败时的原因（空串 = 装上了）。</summary>
@@ -117,6 +160,37 @@ public sealed class CoreDrive : IDisposable
 
     /// <summary>强制会话预算（docs/11:260 的时间触发面）。</summary>
     public bool EnforceSessionBudget(int nowMs) => _instance?.EnforceSessionBudget(nowMs) ?? false;
+
+    /// <summary>§8.4 N4 / §6.5 的注入面：把一只受控 brain 装进已装配的实例。
+    /// 走 core 的公开方法 <c>PetInstance.InstallBrain</c>（t10 落地），**不用反射**：
+    /// 反射会让判据变成「测试自己造的场景」，这里调用的就是宿主热重载 brain 要走的那条路。
+    /// 返回 false = 实例不可换装（已 disposed）或实例未装配 —— 调用方据此断言，而不是静默继续。</summary>
+    public bool InstallBrain(IBrain brain) => _instance?.InstallBrain(brain) ?? false;
+
+    /// <summary>宿主征询接缝（§6.5）：装一个在 <c>host.suspend</c> 的 bail 阶段投票的监听者。
+    /// core 侧 <c>HostArbiter.SuspendVeto</c> 是 public setter，这里只是把它包成可读的形状。</summary>
+    public bool InstallSuspendVeto(Func<string, bool> veto)
+    {
+        if (_instance is null)
+        {
+            return false;
+        }
+
+        _instance.Arbiter.SuspendVeto = reason => veto(reason);
+        return true;
+    }
+
+    /// <summary>实例当前状态的可判定面（§6.5 两个子断言都要读它）。</summary>
+    public InstanceState? State => _instance?.State;
+
+    /// <summary>brain 故障计数（§8.4 N4 判据读它）。</summary>
+    public int BrainFaults => _instance?.BrainFaults ?? -1;
+
+    /// <summary>是否已降级（§8.4 N4 判据读它）。</summary>
+    public bool BrainDegraded => _instance?.BrainDegraded ?? false;
+
+    /// <summary>仲裁器（public 面：Applied / Refused 计数、DirectiveLine、SuspendVeto、WindowMover）。</summary>
+    public HostArbiter? Arbiter => _instance?.Arbiter;
 
     public void Dispose() => _instance?.Dispose();
 }

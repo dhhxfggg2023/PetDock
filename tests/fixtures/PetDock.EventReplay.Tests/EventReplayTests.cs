@@ -408,13 +408,62 @@ public sealed class EventReplayTests
 
         if (!CoreSurface.Current.HasScriptedBrainInjection)
         {
-            // PetInstance 的 Brain 是构造器只读注入的，测试侧没有公开写入者 —— 可注入槽位归 t2（§7.4）。
-            // 负例夹具与期望已就位；执行面等 t2 的注入点。
             Skip.With(CoreSurface.Reason("PetInstance 的可注入 brain 槽位", "§8.4 N4 / docs/11:259", "t2"));
             return;
         }
 
-        Assert.Fail("brain 注入点已出现：本条应改为真跑（t3 的补测义务）");
+        using CoreDrive drive = CoreDrive.Create();
+        if (!drive.TickAvailable)
+        {
+            Skip.With(CoreSurface.Reason("可驱动实例（N4 需要真实 tick）", "§8.4 N4", "t2"));
+            return;
+        }
+
+        // 注入一只「Tick 必抛」的 brain（走 core 的公开 InstallBrain，不是反射造场景）。
+        Assert.True(drive.InstallBrain(new ThrowingBrain()), "InstallBrain 装不进去");
+
+        int appliedBefore = drive.Arbiter is null ? 0 : SumApplied(drive.Arbiter);
+        int faultsBefore = drive.BrainFaults;
+
+        drive.Tick(33, 100, WorldSnapshot.Empty(new PetRect(0, 0, 128, 128)));
+
+        // 三条判据：本 tick 的 directives 全部作废（Applied 不变）、BrainFaults++、BrainDegraded=true。
+        Assert.Equal(faultsBefore + 1, drive.BrainFaults);
+        Assert.True(drive.BrainDegraded, "Tick 抛异常后未进入 degraded");
+        Assert.Equal(appliedBefore, drive.Arbiter is null ? 0 : SumApplied(drive.Arbiter));
+
+        Console.WriteLine(
+            $"EVENT-CHECK Replay.N4_BrainFaultVoidsTheWholeTick PASS brain-faults+1=true"
+            + $" degraded=true applied-unchanged=true via=PetInstance.InstallBrain");
+    }
+
+    /// <summary>仲裁器 Applied 各 kind 之和（「本 tick 一条都没落地」的可判定面）。</summary>
+    private static int SumApplied(HostArbiter arbiter)
+    {
+        int total = 0;
+        foreach (KeyValuePair<DirectiveKind, int> pair in arbiter.Applied)
+        {
+            total += pair.Value;
+        }
+
+        return total;
+    }
+
+    /// <summary>Tick 必抛的受控 brain（§8.4 N4 的注入对象）。零依赖、无状态。</summary>
+    private sealed class ThrowingBrain : IBrain
+    {
+        public InterfaceMeta Meta => new("petdock.eventreplay.throwing-brain", "1.0.0");
+
+        public System.Threading.Tasks.Task InitAsync(BrainContext ctx) =>
+            System.Threading.Tasks.Task.CompletedTask;
+
+        public System.Threading.Tasks.Task DisposeAsync() =>
+            System.Threading.Tasks.Task.CompletedTask;
+
+        public IReadOnlyList<BrainDirective> Tick(int dtMs, WorldSnapshot world) =>
+            throw new InvalidOperationException("brain-tick-failed scripted");
+
+        public void OnEvent(PetEvent ev) { }
     }
 
     /// <summary>§8.2 规则 2 的驱动侧半边 + t1 §8.3 的 grep 双保险：驱动侧**不许**读墙钟。

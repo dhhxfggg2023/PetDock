@@ -62,7 +62,9 @@ public sealed record PluginManifest(
     IReadOnlyList<string> Capabilities,
     string Entry,
     string? LicenseSpdx,
-    PluginContributes? Contributes)
+    PluginContributes? Contributes,
+    IReadOnlyList<string>? Events = null,
+    int? PosePriority = null)
 {
     public override string ToString() => $"{Id} v{Version} kind={Kind.Value} tier={Tier}";
 }

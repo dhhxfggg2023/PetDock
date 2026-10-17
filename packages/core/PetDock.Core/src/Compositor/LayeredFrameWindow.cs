@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Core.PetRuntime;
 
 namespace PetDock.Core.Compositor;
 
@@ -13,7 +14,7 @@ namespace PetDock.Core.Compositor;
 /// 内容由 IFrameContentSource 提供（像素 + 尺寸，docs/40 D-03b：内核零上层概念）；
 /// 未注入内容源时退回不透明纯色占位帧。
 /// </summary>
-internal sealed class LayeredFrameWindow : Form
+internal sealed partial class LayeredFrameWindow : Form
 {
     private static readonly Size LogicalFrameSize = new(128, 128);
     private const int ScreenMargin = 32;
@@ -23,6 +24,9 @@ internal sealed class LayeredFrameWindow : Form
     private DibFrame? _frame;
     private bool _dragging;
     private Point _dragOffset;
+
+    /// <summary>窗口事件出口（core.window.*）：宿主订阅；Compositor 不能反向引用 PetDock.Hosting。</summary>
+    public event WindowEventDelegate? WindowEvent;
 
     /// <summary>注入内容源构造（生产与自检路径：内容由上层给，内核只收像素+尺寸）。</summary>
     public LayeredFrameWindow(IFrameContentSource content, bool ownsContent = true)
@@ -75,6 +79,21 @@ internal sealed class LayeredFrameWindow : Form
 
     /// <summary>窗口句柄（供自检读取 exstyle 与做命中探针）。</summary>
     public IntPtr WindowHandle => Handle;
+
+    /// <summary>真移窗到物理像素 (x,y)：SWP_NOSIZE|NOZORDER|NOACTIVATE。moveTo 指令的生产路径。</summary>
+    public bool MoveTo(int x, int y) =>
+        Win32.SetWindowPos(Handle, IntPtr.Zero, x, y, 0, 0,
+            Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
+
+    /// <summary>窗口当前物理位置（供 core.window.moved 的 position 与 Arbiter 校验）。</summary>
+    public (int X, int Y) CurrentPosition
+    {
+        get
+        {
+            var rect = Win32.ScreenRect(Handle);
+            return (rect.Left, rect.Top);
+        }
+    }
 
     /// <summary>
     /// 构造期的分步耗时（毫秒），供自检输出。这是唯一能量出「启动代价花在哪一步」的证据：
@@ -287,37 +306,14 @@ internal sealed class LayeredFrameWindow : Form
         MoveToBottomRight();
     }
 
-    protected override void WndProc(ref Message m)
+    private void RaiseWindowEvent(string type, System.Text.Json.Nodes.JsonObject? payload)
     {
-        if (m.Msg == Win32.WM_DPICHANGED)
-        {
-            if (m.LParam == IntPtr.Zero)
-            {
-                // 纵深防御：WM_DPICHANGED 的 lParam 必须是 RECT*，为 0 时按不处理返回，
-                // 绝不对空指针做 PtrToStructure（那是访问冲突，进程直接死）。
-                KernelLog.Write("dpi-changed 收到空 lParam，已忽略");
-                m.Result = IntPtr.Zero;
-                return;
-            }
-            uint dpi = unchecked((uint)m.WParam.ToInt64() & 0xFFFF);
-            RECT suggested = Marshal.PtrToStructure<RECT>(m.LParam);
-            KernelLog.Write($"dpi-changed dpi={dpi} suggested={suggested.Width}x{suggested.Height}");
-
-            Win32.SetWindowPos(Handle, IntPtr.Zero, suggested.Left, suggested.Top,
-                suggested.Width, suggested.Height,
-                Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
-
-            // DPI 变了 ⇒ 目标物理尺寸也变了。帧缓冲要跟着窗口的实测矩形重建并重出这一帧，
-            // 否则 DIB 与窗口尺寸不一致，画面会在换屏之后静默消失。
-            ApplyFrameToWindowSize();
-            RenderFrame();
-
-            m.Result = IntPtr.Zero;
-            return;
-        }
-
-        base.WndProc(ref m);
+        try { WindowEvent?.Invoke(type, payload); }
+        catch (Exception ex) { KernelLog.Write($"window-event-listener-failed {ex.GetType().Name}: {ex.Message}"); }
     }
+
+    /// <summary>窗口事件委托：Compositor 不能引用 PetDock.Hosting 的类型，宿主侧适配。</summary>
+    internal delegate void WindowEventDelegate(string type, System.Text.Json.Nodes.JsonObject? payload);
 
     private void OnMouseDown(object? sender, MouseEventArgs e)
     {
@@ -351,6 +347,14 @@ internal sealed class LayeredFrameWindow : Form
 
         _dragging = false;
         Capture = false;
+
+        // 拖拽落地 = 真实移窗完成：这里就是 core.window.moved 的原生生产点（契约 §2）。
+        (int X, int Y) pos = CurrentPosition;
+        RaiseWindowEvent(EventCatalog.WindowMoved, new System.Text.Json.Nodes.JsonObject
+        {
+            ["windowId"] = $"hwnd-{Handle.ToInt64():X}",
+            ["position"] = new System.Text.Json.Nodes.JsonArray(pos.X, pos.Y),
+        });
     }
 
     protected override void Dispose(bool disposing)

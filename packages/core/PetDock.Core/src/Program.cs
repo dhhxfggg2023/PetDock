@@ -31,6 +31,7 @@ internal static partial class Program
         bool hostTest = args.Any(a => string.Equals(a, "--hosttest", StringComparison.Ordinal));
         bool animTest = args.Any(a => string.Equals(a, "--animtest", StringComparison.Ordinal));
         bool driveTest = args.Any(a => string.Equals(a, "--drivetest", StringComparison.Ordinal));
+        bool eventTest = args.Any(a => string.Equals(a, "--eventtest", StringComparison.Ordinal));
         int goldenIdx = Array.FindIndex(args, a => string.Equals(a, "--golden-baseline", StringComparison.Ordinal));
         bool goldenTest = goldenIdx >= 0;
 
@@ -43,6 +44,7 @@ internal static partial class Program
             : hostTest ? RunHostTest(args)
             : animTest ? RunAnimTest(args)
             : driveTest ? RunDriveTest(args)
+            : eventTest ? RunEventTest(args)
             : goldenTest ? RunGoldenBaseline(args, goldenIdx)
             : RunResident();
     }
@@ -86,6 +88,15 @@ internal static partial class Program
         AttachConsole();
         KernelLog.ConsoleAttached = true;
         return PetDriveTest.Run(args.Where(a => !string.Equals(a, "--drivetest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>事件总线自检入口（--eventtest，M4 契约 §7.5）：判据行 `CHECK <key> PASS|FAIL <detail>`，
+    /// 末行 EVENT-OK / EVENT-FAIL n=<k>，退出码 0/n；SKIP 行不算 PASS（契约 §7.5）。</summary>
+    private static int RunEventTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return EventSelfTest.Run(args.Where(a => !string.Equals(a, "--eventtest", StringComparison.Ordinal)).ToArray());
     }
 
     /// <summary>金图基准生成入口（--golden-baseline outdir）：渲染示例宠物三 clip 首帧到基准 PNG，

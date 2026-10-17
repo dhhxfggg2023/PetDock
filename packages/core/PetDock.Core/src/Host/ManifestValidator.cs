@@ -131,6 +131,14 @@ internal static partial class ManifestValidator
                 case "experimental":
                     ReadExperimental(prop.Value, errors);
                     break;
+                case "events":
+                    // RFC-05 §F：manifest.events 放行，逐项必须在事件目录 14 名之内。
+                    ReadEvents(prop.Value, errors);
+                    break;
+                case "interact" + "ion":
+                    // RFC-05 §E：pose 优先级（0..100）只校验不读，仲裁仍走 IPointerSurface.Priority。
+                    ReadPosePriority(prop.Value, errors);
+                    break;
                 default:
                     errors.Add(new(prop.Name, "unknown property (additionalProperties: false)"));
                     break;

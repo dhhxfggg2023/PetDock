@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Sandbox;
@@ -36,10 +37,17 @@ public sealed class HostEventDispatch
     /// <summary>观察者：宿主补发事件（如 host.canceled）与插件 emit 都会到这里。</summary>
     public event EventNotifyDelegate? Published;
 
-    /// <summary>记录并发布一条事件。</summary>
+    /// <summary>记录并发布一条事件。表外事件 fail-closed：不入 Log、留审计行（契约 §2.2）。</summary>
     public void Publish(PetEvent evt)
     {
         ArgumentNullException.ThrowIfNull(evt);
+        if (!EventCatalog.Contains(evt.Type))
+        {
+            OutsideCatalog++;
+            KernelLog.Write($"event-rejected outside-catalog type={evt.Type}");
+            return;
+        }
+
         _log.Add(evt);
         try
         {
@@ -50,6 +58,9 @@ public sealed class HostEventDispatch
             KernelLog.Write($"event-observer-failed {error.GetType().Name}: {error.Message}");
         }
     }
+
+    /// <summary>被目录守门拒绝的表外事件数（判据面）。</summary>
+    public int OutsideCatalog { get; private set; }
 
     /// <summary>按类型计数（判据面）。</summary>
     public int CountOf(string type)
@@ -70,12 +81,23 @@ public sealed class HostEventDispatch
 /// <summary>事件观察者回调（自声明代替系统泛型委托，理由见 HostingTypes.cs 的先例）。</summary>
 public delegate void EventNotifyDelegate(PetEvent evt);
 
+/// <summary>宿主征询回调：suspend 指令落地前先过 host.suspend 的 bail 派发（docs/16:41 逐字）。</summary>
+public delegate bool SuspendVetoDelegate(string reason);
+
+/// <summary>宿主窗口迁移回调：moveTo 指令由窗口持有者真移窗（契约 §6）。</summary>
+public delegate bool WindowMoveDelegate(int x, int y);
+
+/// <summary>指令落地输出行（契约 §6 DIRECTIVE 行）。</summary>
+public delegate void DirectiveLineDelegate(string line);
+
 /// <summary>docs/11:162 的指令仲裁器。</summary>
 public sealed class HostArbiter
 {
     private readonly PetInstance _instance;
     private readonly Dictionary<DirectiveKind, int> _applied = new();
     private readonly Dictionary<DirectiveKind, int> _refused = new();
+    private int _moveToBatch;
+    private int _moveToSeen;
 
     internal HostArbiter(PetInstance instance)
     {
@@ -104,6 +126,28 @@ public sealed class HostArbiter
     /// <summary>本实例收到的指令总数（含被拒的）。</summary>
     public int Received { get; private set; }
 
+    /// <summary>宿主征询：suspend 落地前 bail 派发 host.suspend，返回 true = 插件否决。</summary>
+    public SuspendVetoDelegate? SuspendVeto { get; set; }
+
+    /// <summary>宿主窗口迁移：moveTo 由窗口持有者真移窗并回执成功与否。</summary>
+    public WindowMoveDelegate? WindowMover { get; set; }
+
+    /// <summary>能力裁决 broker（注入时钟；null 时维持 docs/14 白名单判定）。</summary>
+    public CapabilityBroker? Capabilities { get; set; }
+
+    /// <summary>指令落地输出行（契约 §6 DIRECTIVE 行格式；自检与常驻共用，每条指令一行）。</summary>
+    public event DirectiveLineDelegate? DirectiveLine;
+
+    /// <summary>逐字格式（契约 §6）：ok / refused 都输出；refused 带 why。</summary>
+    private void EmitDirectiveLine(string line)
+    {
+        try { DirectiveLine?.Invoke(line); }
+        catch (Exception error)
+        {
+            KernelLog.Write($"directive-line-failed {error.GetType().Name}: {error.Message}");
+        }
+    }
+
     /// <summary>
     /// 落地一批指令。顺序已按 docs/11:162 排好；同批里的一条把实例挂起之后，
     /// 后续条目仍在同一次调用里落地（它们是同一 tick 的产物），但任何试图调用插件的条目
@@ -119,6 +163,13 @@ public sealed class HostArbiter
         Received += directives.Count;
         var ordered = new List<BrainDirective>(directives);
         StableSortByPriority(ordered);
+        // 契约 §5.1：同批多条 moveTo 全部落地（LastMoveTo 为后者），但 core.window.moved 只发一条。
+        _moveToBatch = 0;
+        _moveToSeen = 0;
+        foreach (BrainDirective d in ordered)
+        {
+            if (d.Kind == DirectiveKind.MoveTo) _moveToBatch++;
+        }
 
         foreach (BrainDirective directive in ordered)
         {
@@ -149,22 +200,47 @@ public sealed class HostArbiter
         switch (directive.Kind)
         {
             case DirectiveKind.Suspend:
-                return _instance.Suspend(directive.Reason ?? "brain-suspend");
+                string reason = directive.Reason ?? "brain-suspend";
+                // docs/16:41 逐字：挂起先过 host.suspend 的 bail 派发，插件可否决。
+                if (SuspendVeto is not null && SuspendVeto(reason))
+                {
+                    LastRefusal = "suspend blocked by plugin";
+                    EmitDirectiveLine($"DIRECTIVE suspend reason={reason} event=host.suspend blocked=true");
+                    return false;
+                }
+
+                _instance.Suspend(reason);
+                EmitDirectiveLine($"DIRECTIVE suspend reason={reason} event=host.suspend blocked=false");
+                return true;
 
             case DirectiveKind.Resume:
-                return _instance.Resume(directive.Reason ?? "brain-resume");
+                // 契约 §6：先发 host.resume 再改状态。
+                Events.Publish(new PetEvent(EventCatalog.HostResume, PetEvent.NowMs(), new JsonObject
+                {
+                    ["reason"] = directive.Reason ?? "brain-resume",
+                }));
+                bool resumed = _instance.Resume(directive.Reason ?? "brain-resume");
+                EmitDirectiveLine($"DIRECTIVE resume reason={directive.Reason ?? "brain-resume"} event=host.resume");
+                return resumed;
 
             case DirectiveKind.SetAnimation:
                 if (directive.Clip is null)
                 {
                     LastRefusal = "setAnimation 缺 clip";
+                    EmitDirectiveLine("DIRECTIVE setAnimation clip= restart=false result=refused:no-clip");
                     return false;
                 }
 
                 bool switched = _instance.View.SetAnimation(directive.Clip, directive.Restart);
-                if (!switched)
+                if (switched)
+                {
+                    _instance.LastSetAnimation = (directive.Clip, directive.Restart);
+                    EmitDirectiveLine($"DIRECTIVE setAnimation clip={directive.Clip} restart={FlagOf(directive.Restart)} result=ok");
+                }
+                else
                 {
                     LastRefusal = $"setAnimation refused clip={directive.Clip}";
+                    EmitDirectiveLine($"DIRECTIVE setAnimation clip={directive.Clip} restart={FlagOf(directive.Restart)} result=refused:view");
                 }
 
                 return switched;
@@ -173,26 +249,56 @@ public sealed class HostArbiter
                 if (directive.At is not PetPoint at)
                 {
                     LastRefusal = "moveTo 缺目标点";
+                    EmitDirectiveLine("DIRECTIVE moveTo x=0 y=0 moved=false event=none");
                     return false;
                 }
 
                 LastMoveTo = at;
+                // 契约 §6：真移窗；成功发 core.window.moved，失败记因不发事件。
+                if (WindowMover is not null)
+                {
+                    bool moved = WindowMover((int)at.X, (int)at.Y);
+                    if (!moved)
+                    {
+                        LastRefusal = "moveTo win32-failed err=SetWindowPos";
+                        EmitDirectiveLine($"DIRECTIVE moveTo x={(int)at.X} y={(int)at.Y} moved=false event=none");
+                        return false;
+                    }
+                }
+
+                // 契约 §5.1：同一批里只发一条 core.window.moved（后者 = 最终位姿）。
+                _moveToSeen++;
+                if (_moveToSeen < _moveToBatch)
+                {
+                    EmitDirectiveLine($"DIRECTIVE moveTo x={(int)at.X} y={(int)at.Y} moved=true event=coalesced");
+                    return true;
+                }
+
+                Events.Publish(new PetEvent(EventCatalog.WindowMoved, PetEvent.NowMs(), new JsonObject
+                {
+                    ["windowId"] = _instance.Id,
+                    ["position"] = new JsonArray((int)at.X, (int)at.Y),
+                }));
+                EmitDirectiveLine($"DIRECTIVE moveTo x={(int)at.X} y={(int)at.Y} moved=true event=core.window.moved");
                 return true;
 
             case DirectiveKind.Emit:
                 if (directive.Event is not PetEvent evt)
                 {
                     LastRefusal = "emit 缺事件包";
+                    EmitDirectiveLine("DIRECTIVE emit type= payload-fields=0");
                     return false;
                 }
 
                 Events.Publish(evt);
+                EmitDirectiveLine($"DIRECTIVE emit type={evt.Type} payload-fields={evt.Payload?.Count ?? 0}");
                 return true;
 
             case DirectiveKind.RequestCapability:
                 if (directive.Capability is null)
                 {
                     LastRefusal = "requestCapability 缺能力 id";
+                    EmitDirectiveLine("DIRECTIVE requestCapability cap= verdict=refused latency=0 reason=no-capability");
                     return false;
                 }
 
@@ -200,7 +306,22 @@ public sealed class HostArbiter
                 if (!CapabilityIds.IsWellKnown(directive.Capability))
                 {
                     LastRefusal = $"capability not in whitelist: {directive.Capability}";
+                    EmitDirectiveLine($"DIRECTIVE requestCapability cap={directive.Capability} verdict=refused latency=0 reason=not-whitelisted");
                     return false;
+                }
+
+                if (Capabilities is not null)
+                {
+                    long requestedAt = PetEvent.NowMs();
+                    CapabilityVerdict verdict = Capabilities.Request(directive.Capability, directive.Justification, requestedAt);
+                    if (verdict.Kind == CapabilityVerdictKind.Refused)
+                    {
+                        LastRefusal = $"capability refused: {directive.Capability} reason={verdict.Reason}";
+                        EmitDirectiveLine($"DIRECTIVE requestCapability cap={directive.Capability} verdict=refused latency={verdict.LatencyMs} reason={verdict.Reason}");
+                        return false;
+                    }
+
+                    EmitDirectiveLine($"DIRECTIVE requestCapability cap={directive.Capability} verdict=accepted latency={verdict.LatencyMs} reason=-");
                 }
 
                 GrantedCapabilities++;
@@ -211,6 +332,8 @@ public sealed class HostArbiter
                 return false;
         }
     }
+
+    private static string FlagOf(bool value) => value ? "true" : "false";
 
     /// <summary>
     /// docs/11:162 的排序结果（纯函数）。自检直接断言它，而不是靠「落地副作用」反推顺序 ——

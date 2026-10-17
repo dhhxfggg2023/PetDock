@@ -65,8 +65,29 @@ public sealed partial class PetInstance : IDisposable
     /// <summary>docs/11 §3 的视图接口实现。</summary>
     public IPetView View { get; }
 
-    /// <summary>docs/11 §4 的行为层（可为 null：宿主未装配 brain 插件）。</summary>
-    public IBrain? Brain { get; }
+    /// <summary>docs/11 §4 的行为层（可为 null：宿主未装配 brain 插件）。
+    /// 生产路径只在构造时注入一次，此后只读；测试要换装走 <see cref="InstallBrain"/>。</summary>
+    public IBrain? Brain { get; private set; }
+
+    /// <summary>
+    /// 换装行为层（测试注入面，契约 §7.4 / §8.4 N4）。
+    /// 为什么是一个具名方法而不是 public setter + public 构造器：
+    ///   · 构造器保持 <c>internal</c> —— public 化等于给生产路径开一个「谁都能造一只不受 roster 约束的实例」的后门；
+    ///   · 换装能力本身是**真实且必要**的：宿主在 M4 之后要支持热重载 brain（docs/13 §5），
+    ///     而测试需要「一个 Tick 里抛异常的 brain」这类不可由插件目录构造的实现。
+    /// 返回 false = 实例已进入不可换装的终态（Disposed），调用方据此判断而不是靠异常。
+    /// 本方法不改变生产路径的任何行为：生产代码从不调用它。
+    /// </summary>
+    public bool InstallBrain(IBrain? brain)
+    {
+        if (State == InstanceState.Disposed)
+        {
+            return false;
+        }
+
+        Brain = brain;
+        return true;
+    }
 
     /// <summary>docs/11 §5 的交互层（0..n，可叠加）。</summary>
     public IReadOnlyList<IPointerSurface> Surfaces { get; }
@@ -122,6 +143,15 @@ public sealed partial class PetInstance : IDisposable
 
     /// <summary>上一帧的位图对象（空闲判定：与本帧同一个对象 = 内容未变化，docs/11:225）。</summary>
     public System.Drawing.Bitmap? LastFrameBitmap { get; internal set; }
+
+    /// <summary>
+    /// emit 推翻标记（M4 契约 §5.2）：事件观察者在同调用栈里改了位姿/动画时由宿主置位，
+    /// 下一帧 QueryFrame 前重放 SetAnimation 并清零 —— 已交付帧的像素绝不回改。
+    /// </summary>
+    public bool frameDirty { get; internal set; }
+
+    /// <summary>重放落到视图的最后一次 setAnimation（frameDirty 时由帧源重放）。</summary>
+    public (string Clip, bool Restart)? LastSetAnimation { get; internal set; }
 
     /// <summary>
     /// docs/11 §10 的 instantiated：分配画板、init()、describe()、attach() —— 顺序照 §10 表逐字。

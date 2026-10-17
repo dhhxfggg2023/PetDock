@@ -43,18 +43,19 @@ public sealed class DispatchContractTests
         Assert.True(ok, "EventBus.Emit 不存在");
 
         // §1.4 `dispatch-emit` 的**核心**断言是「异常不阻止后续监听者」：三个监听者都必须被调用。
-        // 这条断言用**我自己的**调用记录（真跑真红），不依赖 core 返回的计数器口径。
         Assert.Equal(new[] { "first", "second", "third" }, ran);
         Assert.True(Convert.ToBoolean(BusAdapter.Item(fields, 2)), "第 1 个监听者抛异常后，后续监听者没有被调用");
-        Assert.True(Convert.ToInt32(BusAdapter.Item(fields, 1)) >= 1, "异常没有被记账");
 
-        // ⚠️ 已观测事实（写给 t5，不是我该改的）：core 的 `Emit` 返回的 Item1（契约名 ran）
-        // 计的是**成功返回**的监听者数（抛异常的那个不计），本会话实测 3 个监听者 + 1 个抛异常 → ran=2。
-        // t1 §1.4 写的判据是 `listeners=3 ran=3 faults=1`。若 t2 的 `--eventtest` 直接用这个计数器，
-        // 那行会输出 ran=2 —— 口径差异需要 t2/t5 裁决（是改 §1.4 的措辞，还是让 ran 计「被调用」）。
-        // 测试侧在这里只断言「跑到了几个」与「异常被记」，不与那条措辞冲突。
-        Console.WriteLine($"EVENT-CHECK Note.EmitRanSemantics INFO listeners=3 called=3 core-ran={BusAdapter.Item(fields, 0)}"
-            + $" faults={BusAdapter.Item(fields, 1)}");
+        // `ran` 的口径（§1.4 逐字 `listeners=3 ran=3 faults=1`）：**被调用过**即计入，
+        // 抛异常的那位也 ran 了，因此它同时出现在 ran 与 faults 里 —— 两者互不排斥。
+        // 这条是断言（不是 if 判断）：t10 之前 core 计的是「成功返回数」→ ran=2，本行会红。
+        int coreRan = Convert.ToInt32(BusAdapter.Item(fields, 0));
+        int coreFaults = Convert.ToInt32(BusAdapter.Item(fields, 1));
+        Assert.Equal(3, coreRan);
+        Assert.Equal(1, coreFaults);
+
+        Console.WriteLine($"EVENT-CHECK Note.EmitRanSemantics PASS listeners=3 called=3 core-ran={coreRan}"
+            + $" faults={coreFaults}");
 
         // 反向自证：把第 1 个监听者换成不抛的，afterFaultRan 必须为 false（证明它不是常量 true）。
         var clean = new List<string>();
@@ -411,17 +412,27 @@ public sealed class DispatchContractTests
     [Fact]
     public void SuspendIsConsultedThroughBailFirst()
     {
-        if (!CoreSurface.Current.HasScriptedBrainInjection)
+        using CoreDrive drive = CoreDrive.Create();
+        if (!CoreSurface.Current.HasScriptedBrainInjection || !drive.TickAvailable)
         {
-            // 仲裁器有 SuspendVeto 钩子（本会话在 t2 的 diff 里实测到），但实例装配走
-            // roster → BuildInstance，brains 是插件集合；测试侧无法把「一个投否决票的插件」
-            // 塞进这个实例 —— 可注入面归 t2（PetInstance 构造器 internal）。
             Skip.With(CoreSurface.Reason(
                 "PetInstance/HostArbiter 的可注入 veto 与 brain 槽位（测试侧无公开写入者）", "§6.5 / §8.4 N2", "t2"));
             return;
         }
 
-        Assert.Fail("注入面已出现：本条应改为真跑两条子断言（t3 的补测义务）");
+        // 子断言 1：插件投否决票 → 状态仍 running。
+        Assert.True(drive.InstallSuspendVeto(_ => true), "SuspendVeto 装不进去");
+        drive.Apply(new[] { BrainDirective.Suspend("vetoed") });
+        Assert.Equal(InstanceState.Running, drive.State);
+
+        // 子断言 2：无否决 → 真的挂起。
+        Assert.True(drive.InstallSuspendVeto(_ => false), "SuspendVeto 装不进去（第二次）");
+        drive.Apply(new[] { BrainDirective.Suspend("allowed") });
+        Assert.Equal(InstanceState.Suspended, drive.State);
+
+        Console.WriteLine(
+            $"EVENT-CHECK Directive.SuspendIsConsultedThroughBailFirst PASS blocked-when-veto=true"
+            + $" suspended-when-allow=true via=HostArbiter.SuspendVeto");
     }
 
     /// <summary>§6.6 `directive-resume`：先发 `host.resume`（parallel）**再**改状态。
@@ -431,17 +442,44 @@ public sealed class DispatchContractTests
     {
         using CoreDrive drive = CoreDrive.Create();
         BusAdapter? bus = BusAdapter.TryCreate(drive.Dispatch);
-        if (bus is null || !drive.TickAvailable)
+        if (bus is null || !drive.TickAvailable || drive.Arbiter is null)
         {
             Skip.With(CoreSurface.Reason("EventBus + 可驱动实例（resume 事件的发布序）", "§6.6", "t2"));
             return;
         }
 
-        // core 的 resume 分支把 host.resume 发进 HostEventDispatch.Log，然后才改实例状态；
-        // 测试侧可判定的事实：该事件在日志里的位置**早于**任何后续状态观察。
-        drive.Publish("host.resume", new JsonObject { ["reason"] = "recovered" }, 0);
-        Assert.Equal(1, drive.CountOf("host.resume"));
-        Assert.Equal("host.resume", drive.Dispatch.Log[0].Type);
+        // 让实例先进入 Suspended，否则 resume 是空操作（State 已经是 Running 时 core 直接返回）。
+        drive.InstallSuspendVeto(_ => false);
+        drive.Apply(new[] { BrainDirective.Suspend("precondition") });
+        Assert.Equal(InstanceState.Suspended, drive.State);
+
+        // 顺序判据：监听者在**收到 host.resume 的那一刻**观察实例状态，必须仍是 Suspended。
+        // 这就是「先发事件、再改状态」的可判定形态 —— 若顺序反了，观察值会是 Running。
+        //
+        // 订阅点必须是实例仲裁器**自己的**那个 HostEventDispatch（`drive.Arbiter.Events`）：
+        // core 里 `HostArbiter` 构造时自建一个 Events，而 `CoreDrive.Dispatch` 是另建的记账口，
+        // 两者不是同一个实例（本会话实测：订阅 drive.Dispatch → 监听者从未被调用 → observed=null，
+        // 看起来像「事件没发」，实际是订错了总线）。
+        Assert.NotNull(drive.Arbiter);
+        InstanceState? observedAtEvent = null;
+        drive.Arbiter!.Events.Published += evt =>
+        {
+            if (string.Equals(evt.Type, "host.resume", StringComparison.Ordinal))
+            {
+                observedAtEvent = drive.State;
+            }
+        };
+
+        drive.Apply(new[] { BrainDirective.Resume("recovered") });
+
+        Assert.Equal(InstanceState.Suspended, observedAtEvent);   // 事件先于状态
+        Assert.Equal(InstanceState.Running, drive.State);         // 之后状态才变
+        // 事件数也读仲裁器自己那条总线（drive.Dispatch 是另一实例，恒为 0）。
+        Assert.Equal(1, drive.Arbiter!.Events.CountOf("host.resume"));
+
+        Console.WriteLine(
+            "EVENT-CHECK Directive.ResumeEventPrecedesStateChange PASS event-before-state=true"
+            + " observed=Suspended final=Running");
     }
 
     /// <summary>§6.7 六条指令汇总：core 的 DirectiveKind 恰好 6 个，且数值序 = docs/11:162 的仲裁序。

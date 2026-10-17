@@ -23,11 +23,23 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
     private readonly PetInstance _instance;
     private PetSize _lastSize = new(0, 0);
     private long _served;
+    private WorldProbe _probe = new();
+    private IntPtr _windowHandle;
+    private int _lastNowMs;
 
     public PetFrameSource(PetInstance instance)
     {
         _instance = instance ?? throw new ArgumentNullException(nameof(instance));
     }
+
+    /// <summary>
+    /// 世界采样与 Brain 调度的宿主窗口句柄（M4 契约 §7.2）。
+    /// 由窗口持有者在创建 LayeredFrameWindow 后注入；0 = 尚无窗口（WorldSnapshot 全兜底值）。
+    /// </summary>
+    public IntPtr WindowHandle { get => _windowHandle; set { _windowHandle = value; _probe = Probe ?? new WorldProbe(); } }
+
+    /// <summary>宿主注入的探针（自检面用它注入 TimeOfDayMinutes；null = 墙钟）。</summary>
+    public WorldProbe? Probe { get; set; }
 
     /// <summary>累计交付的帧数（自检判据：帧循环真的在从这条链上取帧）。</summary>
     public long Served => _served;
@@ -59,7 +71,31 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
         try
         {
             StartIfNeeded(frameSize);
-            Frame frame = _instance.QueryFrame(NowMs());
+            // M4 契约 §7.2：StartIfNeeded 后 QueryFrame 前插 WorldProbe.Sample + TickBrain。
+            // 采样失败绝不打断取帧（KernelLog 留痕，快照用兜底值）。
+            WorldSnapshot world;
+            int nowMs = NowMs();
+            try
+            {
+                world = _probe.Sample(_windowHandle);
+            }
+            catch (Exception probeError)
+            {
+                KernelLog.Write($"world-probe-failed instance={_instance.Id} {probeError.GetType().Name}: {probeError.Message}");
+                world = WorldSnapshot.Empty(new PetRect(0, 0, 0, 0));
+            }
+
+            if (_instance.frameDirty && _instance.LastSetAnimation is (string clip, bool restart))
+            {
+                // 契约 §5.2：事件观察者推翻了位姿 —— 下一帧前重放 setAnimation 并清零。
+                _instance.View.SetAnimation(clip, restart);
+                _instance.frameDirty = false;
+            }
+
+            int dt = nowMs - _lastNowMs;
+            _lastNowMs = nowMs;
+            _instance.TickBrain(dt < 0 ? 0 : dt, world);
+            Frame frame = _instance.QueryFrame(nowMs);
             _lastSize = new PetSize(frame.BitmapHandle.PixelWidth, frame.BitmapHandle.PixelHeight);
             _served++;
             LastFailure = null;

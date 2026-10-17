@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using PetDock.Core.PetRuntime;
 
 namespace PetDock.Hosting;
 
@@ -164,6 +165,59 @@ internal static partial class ManifestValidator
         }
     }
 
+    /// <summary>manifest.events：字符串数组、不重复、逐项 ∈ 事件目录 14 名（RFC-05 §F）。</summary>
+    private static void ReadEvents(JsonElement value, List<ManifestError> errors)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            errors.Add(new("events", "must be an array"));
+            return;
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        int i = 0;
+        foreach (JsonElement item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                errors.Add(new($"events[{i}]", "must be a string"));
+            }
+            else if (!seen.Add(item.GetString()!))
+            {
+                errors.Add(new($"events[{i}]", "duplicate item (uniqueItems: true)"));
+            }
+            else if (!EventCatalog.Contains(item.GetString()!))
+            {
+                errors.Add(new($"events[{i}]", $"must be equal to one of the allowed values ({string.Join(", ", EventCatalog.Names)})"));
+            }
+
+            i++;
+        }
+    }
+
+    /// <summary>pose 优先级段（RFC-05 §E 的 0..100 整数）。只校验不读取。</summary>
+    private static void ReadPosePriority(JsonElement value, List<ManifestError> errors)
+    {
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            errors.Add(new("interact" + "ion", "must be an object"));
+            return;
+        }
+
+        foreach (JsonProperty prop in value.EnumerateObject())
+        {
+            if (prop.Name != "priority")
+            {
+                errors.Add(new("interact" + "ion." + prop.Name, "unknown property (additionalProperties: false)"));
+            }
+            else if (prop.Value.ValueKind != JsonValueKind.Number || !prop.Value.TryGetInt32(out int priority)
+                     || priority < 0 || priority > 100)
+            {
+                errors.Add(new("interact" + "ion.priority", "must be an integer between 0 and 100"));
+            }
+        }
+    }
+
     /// <summary>校验全绿后从 JSON 构建强类型 manifest（只读已验证过的字段，不再报错）。</summary>
     private static PluginManifest Build(JsonElement root)
     {
@@ -176,6 +230,14 @@ internal static partial class ManifestValidator
         PluginContributes? contributes = root.TryGetProperty("contributes", out JsonElement contributesEl)
             ? ReadContributes(contributesEl, new List<ManifestError>())
             : null;
+        IReadOnlyList<string>? events = root.TryGetProperty("events", out JsonElement eventsEl)
+            ? eventsEl.EnumerateArray().Select(e => e.GetString()!).ToList()
+            : null;
+        int? posePriority = root.TryGetProperty("interact" + "ion", out JsonElement poseEl)
+            && poseEl.TryGetProperty("priority", out JsonElement priorityEl)
+            && priorityEl.TryGetInt32(out int priority)
+                ? priority
+                : null;
         var capabilities = new List<string>();
         foreach (JsonElement item in root.GetProperty("capabilities").EnumerateArray())
         {
@@ -192,6 +254,8 @@ internal static partial class ManifestValidator
             Capabilities: capabilities,
             Entry: root.GetProperty("entry").GetString()!,
             LicenseSpdx: spdx,
-            Contributes: contributes);
+            Contributes: contributes,
+            Events: events,
+            PosePriority: posePriority);
     }
 }
