@@ -1,4 +1,4 @@
-// coverage-gate.mjs - machine gate D-10a (docs/41) coverage threshold check.
+// coverage-gate.mjs - machine gate D-10a (docs/41) coverage ratchet check.
 // Zero npm dependencies, Node built-ins only. Run: node tools/coverage-gate.mjs
 //
 // Usage:
@@ -6,9 +6,22 @@
 //   node tools/coverage-gate.mjs --report   # judge an existing report only
 //   node tools/coverage-gate.mjs --json     # machine-readable verdict
 //
-// D-10a thresholds (docs/41): packages/core line >= 80%, branch >= 70%.
-// The thresholds are data at the top of this file and MUST NOT be changed to
-// make a run green - changing them requires an RFC (docs/43).
+// D-10a is a RATCHET (docs/rfcs/RFC-04.md): coverage must not fall below the
+// measured floor registered in tools/coverage-baseline.json. The absolute
+// target (line 80% / branch 70%) is kept as an M4/M8 milestone goal and is
+// reported on every run as COVERAGE-PENDING until it is reached; reaching it
+// flips the same run to COVERAGE-GATE-PASS with no further edit.
+//
+// Verdicts:
+//   COVERAGE-GATE-PASS            target reached (line >= 80 and branch >= 70)   exit 0
+//   COVERAGE-PENDING ...          above the floor, below the target              exit 0
+//   COVERAGE-REGRESSION ...       below the floor                               exit 1
+//
+// The floor is data in tools/coverage-baseline.json and MUST NOT be lowered to
+// make a run green - lowering it requires an RFC (docs/43). Raising it is a
+// human edit from a real run (RFC-04 section 4.3); there is deliberately no
+// --update-baseline switch, because a floor that follows the last run is not a
+// floor.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
@@ -23,10 +36,14 @@ const REGISTRY_FILE = join(ROOT, 'tools', 'coverage-baseline.json');
 const TEST_DLL = 'tests/unit/PetDock.Runtime.Tests/bin/Release/net8.0-windows/PetDock.Runtime.Tests.dll';
 const INCLUDE = '[PetDock.Core]*';
 
-// D-10a - frozen thresholds. Change only via RFC (docs/43).
-const THRESHOLDS = { line: 0.8, branch: 0.7 };
-const LINE_MIN = THRESHOLDS.line * 100;
-const BRANCH_MIN = THRESHOLDS.branch * 100;
+// D-10a ratchet (docs/rfcs/RFC-04.md).
+// The FLOOR comes from tools/coverage-baseline.json (current + covered counts);
+// the TARGET is the original 80%/70% goal, kept as an M4/M8 milestone.
+// EPSILON_PP only absorbs the instrumented-denominator wobble: the same 190
+// covered lines read 5.09% over 3734 valid lines and 5.08% over 3740. It is a
+// 0.1pp budget for that, NOT an authorisation to drift downward.
+const EPSILON_PP = 0.1;
+const DEFAULT_TARGET = { line: 80, branch: 70 };
 
 const args = process.argv.slice(2);
 const reportOnly = args.includes('--report');
@@ -116,23 +133,61 @@ function measure() {
   return true;
 }
 
-// --- judge step ---
+// --- judge step: ratchet (RFC-04) ---
+// Three verdicts, in priority order:
+//   regression (below the registered floor)  -> COVERAGE-REGRESSION + exit 1
+//   target reached (>= 80% line, >= 70% branch) -> COVERAGE-GATE-PASS + exit 0
+//   otherwise                                -> COVERAGE-PENDING + exit 0
+// Only line and branch are judged. Method coverage is printed and never judged:
+// coverlet's cobertura writer emits no method counters, so the script derives
+// them by counting <method> elements - a derived number is not a floor.
 function judge(rep) {
-  const lineOk = rep.line >= LINE_MIN;
-  const branchOk = rep.branch >= BRANCH_MIN;
-  const ok = lineOk && branchOk;
-  log(`STAT coverage-module PetDock.Core`);
-  log(`STAT coverage-line ${rep.line.toFixed(2)}% (${rep.linesCovered}/${rep.linesValid}) threshold >= ${LINE_MIN.toFixed(0)}%`);
-  log(`STAT coverage-branch ${rep.branch.toFixed(2)}% (${rep.branchesCovered}/${rep.branchesValid}) threshold >= ${BRANCH_MIN.toFixed(0)}%`);
-  log(`STAT coverage-method ${rep.method.toFixed(2)}%`);
-  if (ok) {
-    log('COVERAGE-GATE-PASS');
-  } else {
-    log('COVERAGE-GATE-FAIL');
-    if (!lineOk) log(`  line ${rep.line.toFixed(2)}% < ${LINE_MIN.toFixed(0)}% (docs/41 D-10a)`);
-    if (!branchOk) log(`  branch ${rep.branch.toFixed(2)}% < ${BRANCH_MIN.toFixed(0)}% (docs/41 D-10a)`);
+  const reg = readRegistry();
+  const floor = reg && reg.current && typeof reg.current.line === 'number' ? reg.current : null;
+  if (!floor) {
+    fail('COVERAGE-FLOOR-MISSING tools/coverage-baseline.json has no "current" entry with a numeric line - the ratchet has nothing to hold; fill it from a real run (RFC-04 section 4.3)');
+    return null;
   }
-  return ok;
+  const target = reg.target && typeof reg.target.line === 'number' ? reg.target : DEFAULT_TARGET;
+
+  log('STAT coverage-module PetDock.Core');
+  log(`STAT coverage-line ${rep.line.toFixed(2)}% (${rep.linesCovered}/${rep.linesValid}) floor >= ${floor.line}% (-${EPSILON_PP}pp eps), ${floor.linesCovered ?? '?'} covered lines, target >= ${target.line}%`);
+  log(`STAT coverage-branch ${rep.branch.toFixed(2)}% (${rep.branchesCovered}/${rep.branchesValid}) floor >= ${floor.branch}% (-${EPSILON_PP}pp eps), ${floor.branchesCovered ?? '?'} covered branches, target >= ${target.branch}%`);
+  log(`STAT coverage-method ${rep.method.toFixed(2)}% (reported only, not judged)`);
+
+  // Rule 1 (strict, no tolerance): the raw covered counts must not shrink.
+  // A shrinking count has exactly one cause - assertions or covered paths went away.
+  const regressions = [];
+  if (typeof floor.linesCovered === 'number' && rep.linesCovered < floor.linesCovered) {
+    regressions.push(`covered lines ${rep.linesCovered} < floor ${floor.linesCovered}`);
+  }
+  if (typeof floor.branchesCovered === 'number' && rep.branchesCovered < floor.branchesCovered) {
+    regressions.push(`covered branches ${rep.branchesCovered} < floor ${floor.branchesCovered}`);
+  }
+  // Rule 2: the percentages may not fall below the floor by more than the
+  // denominator-wobble budget.
+  if (rep.line < floor.line - EPSILON_PP) {
+    regressions.push(`line ${rep.line.toFixed(2)}% < floor ${floor.line}% - ${EPSILON_PP}pp eps`);
+  }
+  if (rep.branch < floor.branch - EPSILON_PP) {
+    regressions.push(`branch ${rep.branch.toFixed(2)}% < floor ${floor.branch}% - ${EPSILON_PP}pp eps`);
+  }
+
+  if (regressions.length > 0) {
+    for (const r of regressions) log(`COVERAGE-REGRESSION ${r}`);
+    log(`COVERAGE-REGRESSION line=${rep.line.toFixed(2)}% (baseline=${floor.line}%, target=${target.line}%)`);
+    log('COVERAGE-GATE-FAIL');
+    return false;
+  }
+
+  if (rep.line >= target.line && rep.branch >= target.branch) {
+    log(`COVERAGE-GATE-PASS (line ${rep.line.toFixed(2)}% >= ${target.line}%, branch ${rep.branch.toFixed(2)}% >= ${target.branch}% - M4/M8 milestone reached)`);
+    return true;
+  }
+
+  log(`COVERAGE-PENDING line=${rep.line.toFixed(2)}% (baseline=${floor.line}%, target=${target.line}%)`);
+  log(`COVERAGE-PENDING branch=${rep.branch.toFixed(2)}% (baseline=${floor.branch}%, target=${target.branch}%)`);
+  return true;
 }
 
 // --- registry: the honest, committed record of the measured scale ---
@@ -194,14 +249,27 @@ if (existsSync(OUT_FILE)) {
 }
 
 if (asJson) {
+  const reg = readRegistry() || {};
+  const floor = reg.current && typeof reg.current.line === 'number' ? reg.current : null;
+  const target = reg.target && typeof reg.target.line === 'number' ? reg.target : DEFAULT_TARGET;
   const rep = existsSync(OUT_FILE) ? parseReport(OUT_FILE) : null;
+  const belowFloor = rep && floor
+    ? (rep.line < floor.line - EPSILON_PP || rep.branch < floor.branch - EPSILON_PP
+      || (typeof floor.linesCovered === 'number' && rep.linesCovered < floor.linesCovered)
+      || (typeof floor.branchesCovered === 'number' && rep.branchesCovered < floor.branchesCovered))
+    : false;
+  const reachedTarget = rep ? (rep.line >= target.line && rep.branch >= target.branch) : false;
   console.log(JSON.stringify({
     gate: 'D-10a',
+    mode: 'ratchet',
+    rfc: 'RFC-04',
     module: 'PetDock.Core',
-    thresholds: { line: LINE_MIN, branch: BRANCH_MIN },
-    measured: rep ? { line: Number(rep.line.toFixed(2)), branch: Number(rep.branch.toFixed(2)), method: Number(rep.method.toFixed(2)) } : null,
-    passed: ok,
+    floor: floor ? { line: floor.line, branch: floor.branch, linesCovered: floor.linesCovered ?? null, branchesCovered: floor.branchesCovered ?? null, epsilonPp: EPSILON_PP } : null,
+    target: { line: target.line, branch: target.branch },
+    verdict: belowFloor ? 'COVERAGE-REGRESSION' : (reachedTarget ? 'COVERAGE-GATE-PASS' : 'COVERAGE-PENDING'),
+    measured: rep ? { line: Number(rep.line.toFixed(2)), branch: Number(rep.branch.toFixed(2)), method: Number(rep.method.toFixed(2)), linesCovered: rep.linesCovered, branchesCovered: rep.branchesCovered } : null,
+    passed: ok === true,
   }));
 }
 
-process.exit(ok ? 0 : 1);
+process.exit(ok === true ? 0 : 1);

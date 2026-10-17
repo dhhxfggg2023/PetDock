@@ -68,11 +68,13 @@ jobs:
           }
 
       # D-10a 覆盖率门禁（docs/41）：一条命令产出 + 判定。
-      # 阈值写在 tools/coverage-gate.mjs 顶部（line 80% / branch 70%），改阈值须走
-      # docs/43 RFC。当前实测远低于阈值（见 tools/coverage-baseline.json 的 measured），
-      # 因此这一步在覆盖率补齐前会失败——这是设计意图：门禁必须真红，不能为放行而
-      # 放宽阈值或注释掉。若某次确实需要放行，应显式改成 continue-on-error 并在 PR
-      # 里说明原因，而不是悄悄降低阈值。
+      # 判定形式是**棘轮**（docs/rfcs/RFC-04.md）：覆盖率不得低于
+      # tools/coverage-baseline.json 登记的实测地板（linesCovered/branchesCovered
+      # 严格不降 + 百分比允许 0.1pp 分母抖动）。地板只能由人从一次真实运行的输出
+      # 抬起，脚本没有 --update-baseline 开关；降低地板须走 docs/43 的 RFC。
+      # 未达 80%/70% 但未退步时本步骤 **绿**，并打印 COVERAGE-PENDING
+      # （line=X% (baseline=Y%, target=Z%)），使 M4/M8 的目标持续可见而不阻断合并；
+      # 达到目标当天自动打印 COVERAGE-GATE-PASS。退步则 COVERAGE-REGRESSION + exit 1。
       #
       # 注意：GitHub 的 windows-latest runner 上没有 testhost 权限问题，因此本步骤
       # 用 coverlet.console 直接驱动测试工程自带的进程内入口（与

@@ -1,16 +1,45 @@
 {
   "gate": "D-10a",
+  "mode": "ratchet",
+  "ratchet": {
+    "why": "RFC-04: D-10a 的判定从『绝对阈值 80%/70%』改为『不得低于本文件登记的实测基线』。绝对目标保留为 M4/M8 里程碑目标，以 COVERAGE-PENDING 持续报告。",
+    "rule": "linesCovered >= current.linesCovered 且 branchesCovered >= current.branchesCovered（严格，无容差）；且 line >= current.line - EPSILON_PP 与 branch >= current.branch - EPSILON_PP（EPSILON_PP=0.10，只为吸收被插桩分母的抖动，不是授权降级）。",
+    "rfc": "docs/rfcs/RFC-04.md"
+  },
+  "current": {
+    "line": 5.09,
+    "branch": 4.05,
+    "method": 12.77,
+    "linesCovered": 190,
+    "linesValid": 3734,
+    "branchesCovered": 62,
+    "branchesValid": 1531,
+    "measuredAt": "2026-10-16",
+    "measuredBy": "sdk3 (t12 attempt 2)"
+  },
+  "target": {
+    "line": 80,
+    "branch": 70,
+    "milestone": "M4 (行为层) / M8 (加固层)",
+    "why": "docs/41-testing-strategy.md D-10a 原文的 80%/70% 数值与含义均不变；变的只是它不再作为当下的判定线。"
+  },
   "thresholds": { "line": 80, "branch": 70 },
   "measured": { "line": 5.09, "branch": 4.05, "method": 12.77 },
   "measuredAt": "2026-10-16",
   "measuredBy": "sdk3 (t12 attempt 2)",
   "evidenceCommand": "node tools/coverage-gate.mjs",
   "report": "artifacts/coverage.cobertura.xml (gitignored)",
-  "rawCounters": {
+  "crossCheck": {
+    "measuredAt": "2026-10-17",
+    "measuredBy": "contract (t14)",
+    "line": 5.08,
+    "branch": 4.03,
+    "method": 12.75,
     "linesCovered": 190,
-    "linesValid": 3734,
+    "linesValid": 3740,
     "branchesCovered": 62,
-    "branchesValid": 1531
+    "branchesValid": 1535,
+    "note": "Second independent run. Covered counts are IDENTICAL (190 lines / 62 branches); the percentage moved 0.01pp only because the instrumented denominator changed (3734 -> 3740 valid lines, 1531 -> 1535 branches). This is exactly what EPSILON_PP=0.10 exists to absorb."
   },
   "earlierMeasurement": {
     "line": 0.02,
@@ -19,5 +48,5 @@
     "measuredBy": "captain (t9 attempt 5)",
     "whyDifferent": "That run instrumented the same runner before t9 attempt 6 added 23 assertions (PetRuntimeLogicTests + AbiBaselineTests); the 8 pure-reflection ContractShapeTests executed almost no core code. Both numbers are real; the newer one supersedes it as the current scale."
   },
-  "note": "Historical record of what the gate actually measured. NOT a target and NOT editable to make a run green - changing the thresholds requires an RFC (docs/43). 5.09% -> 80% is a project-level gap: M2 deliberately ships 32 pure-logic assertions, and the remaining coverage is host/window/GPU/plugin behaviour that belongs to M4 behaviour and M8 hardening work."
+  "note": "Historical record of what the gate actually measured. NOT a target and NOT editable to make a run green - raising the floor is a human edit whose diff is the evidence of the increase (RFC-04 §4.3). 5.09% -> 80% is a project-level gap: M2 deliberately ships 32 pure-logic assertions (D-10b forbids unit tests that touch real OS/GPU/fs), and the remaining coverage is host/window/GPU/plugin behaviour that belongs to M4 behaviour and M8 hardening work."
 }

@@ -10,7 +10,7 @@
   <!-- 本机 vstest 的 testhost 对父进程 OpenProcess 被 ACL 拒（Win32 5），dotnet test 起不来，-->
   <!-- 故本工程 OutputType=Exe + GenerateProgramFile=false，Program.cs 用 xunit.runner.utility -->
   <!-- 的 AssemblyRunner 进程内执行全部测试（t9 先例，本机唯一可判定路径）。                  -->
-  <!-- 不进 PetDock.sln：sln 唯一写者是 t4，由它 dotnet sln add 本工程。 -->
+  <!-- 已进 PetDock.sln（t4 dotnet sln add，构建 10 工程之一）；本文件是自检入口工程。 -->
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
