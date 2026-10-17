@@ -20,8 +20,9 @@ public static class DyberPetBaselineGen
         Bitmap frame;
         try
         {
+            using DyberPetPackLocator.PackHandle pack = DyberPetPackLocator.Acquire();
             frame = GoldenHarness.RenderFirstFrameFromPack(
-                FindPackRoot(), DyberPetBaselineTests.Clip);
+                pack.Root, DyberPetBaselineTests.Clip);
         }
         catch (Exception ex)
         {
@@ -68,31 +69,5 @@ public static class DyberPetBaselineGen
         }
 
         throw new DirectoryNotFoundException("PetDock.Golden.Tests source dir not found");
-    }
-
-    private static string FindPackRoot()
-    {
-        string? overridden = Environment.GetEnvironmentVariable("PETDOCK_DYBERPET_PACK");
-        if (!string.IsNullOrEmpty(overridden))
-        {
-            return overridden;
-        }
-
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            string candidate = Path.Combine(
-                dir.FullName, "artifacts", "dyberpet-min-golden", "petdock-sample.json");
-            if (File.Exists(candidate))
-            {
-                return Path.GetDirectoryName(candidate)!;
-            }
-
-            dir = dir.Parent;
-        }
-
-        throw new InvalidOperationException(
-            "dyberpet pack not found（先跑 importer --in tests/fixtures/dyberpet-min/dyberpet-flat " +
-            "--out artifacts/dyberpet-min-golden，或设 PETDOCK_DYBERPET_PACK）");
     }
 }

@@ -5,4 +5,7 @@
 # The real 49.85 MB DyberPet package lives under assets/user/ (gitignored) and is NEVER copied in.
 # Regenerate from source of truth:
 #   node tools/gen-dyberpet-fixture.mjs --out tests/fixtures/dyberpet-min
-dyberpet-min/
+# The pattern is deliberately wide: D-13c drills move / rename / regenerate these trees
+# (dyberpet-min-moved/, dyberpet-idempotent1/, ...) and a plain `git add tests/` must never
+# pick one up. Every DyberPet fixture under this directory is generated, never authored.
+dyberpet-*/

@@ -36,7 +36,8 @@ public sealed class DyberPetBaselineTests
         Assert.True(File.Exists(metaPath), $"missing dyberpet meta {metaPath}（先跑 --write-meta-dyberpet）");
 
         using Bitmap expected = new(baselinePng);
-        using Bitmap actual = GoldenHarness.RenderFirstFrameFromPack(FindPackRoot(), Clip);
+        using DyberPetPackLocator.PackHandle pack = AcquirePack();
+        using Bitmap actual = GoldenHarness.RenderFirstFrameFromPack(pack.Root, Clip);
 
         Assert.Equal(GoldenHarness.FrameWidth, actual.Width);
         Assert.Equal(GoldenHarness.FrameHeight, actual.Height);
@@ -81,30 +82,22 @@ public sealed class DyberPetBaselineTests
         Assert.Equal(SourceAsset, BaselineMeta.SourceAssetOf(metaPath));
     }
 
-    // 找 importer 产物 pack：优先 artifacts/dyberpet-min-golden（相对源树根），找不到则
-    // 允许环境变量直接指定（CI 可预生成到别处）。源树根 = 向上找 tests/fixtures 标记。
-    private static string FindPackRoot()
+    // 找 importer 产物 pack：PETDOCK_DYBERPET_PACK 最高优先 → artifacts/dyberpet-min-golden →
+    // 缺失时自举（DyberPetPackLocator，%TEMP% 一次性产物、用完清理）。t10 / t9-1 自足性修复。
+    private static DyberPetPackLocator.PackHandle AcquirePack()
     {
-        string? overridden = Environment.GetEnvironmentVariable("PETDOCK_DYBERPET_PACK");
-        if (!string.IsNullOrEmpty(overridden))
+        try
         {
-            return overridden;
+            return DyberPetPackLocator.Acquire();
         }
-
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null)
+        catch (Exception ex)
         {
-            string candidate = Path.Combine(dir.FullName, "artifacts", "dyberpet-min-golden", "petdock-sample.json");
-            if (File.Exists(candidate))
-            {
-                return Path.GetDirectoryName(candidate)!;
-            }
-
-            dir = dir.Parent;
+            // 渲染期定位失败必须红，且异常消息自带修复命令（t10 验收：自举不得吞掉环境变量优先级）。
+            // locator 自身已在坏包/缺 manifest 时带上 FixCommandHint，这里只在其缺失时补一次，避免重复。
+            string hint = ex.Message.Contains(DyberPetPackLocator.FixCommandHint)
+                ? string.Empty
+                : "；" + DyberPetPackLocator.FixCommandHint;
+            throw new InvalidOperationException("dyberpet pack not found（" + ex.Message + hint + "）");
         }
-
-        throw new InvalidOperationException(
-            "dyberpet pack not found（先跑 importer --in tests/fixtures/dyberpet-min/dyberpet-flat " +
-            "--out artifacts/dyberpet-min-golden，或设 PETDOCK_DYBERPET_PACK）");
     }
 }

@@ -93,7 +93,9 @@ function runCoverageGate(fixturesDir, fixtureRoots) {
       const committed = findTreeDir(fixturesDir, r);
       const fresh = join(tmp, r);
       if (committed === null) {
-        console.log('  reconcile ' + r + ': ABSENT-from-worktree (skipped; evidence = generator)');
+        // t11-3：把「找的是哪个路径」印出来，好让 ABSENT（没找到）与 drift（找到了但不一致）一眼可分。
+        console.log('  reconcile ' + r + ': ABSENT-from-worktree (looked for ' + join(fixturesDir, r) +
+          '; skipped; evidence = generator)');
         continue;
       }
       const a = hashViaGenerator(committed);
@@ -102,6 +104,9 @@ function runCoverageGate(fixturesDir, fixtureRoots) {
         console.error('COVERAGE-FAIL: fixture drift ' + r +
           ' committed=' + a + ' regenerated=' + b +
           ' \u2014 re-run node tools/gen-dyberpet-fixture.mjs --out tests/fixtures/dyberpet-min');
+        // t11-2：process.exit 会直接终止进程，**不会**执行函数末尾的 finally，
+        // 于是这次跑留在 %TEMP% 里的临时树就成了垃圾。退出前自己清一次。
+        rmSync(tmp, { recursive: true, force: true });
         process.exit(1);
       }
       reconciled += 1;
