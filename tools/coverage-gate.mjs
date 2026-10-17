@@ -259,6 +259,16 @@ if (asJson) {
       || (typeof floor.branchesCovered === 'number' && rep.branchesCovered < floor.branchesCovered))
     : false;
   const reachedTarget = rep ? (rep.line >= target.line && rep.branch >= target.branch) : false;
+  // t15-1（t15 评审的 medium）：floor 缺失时 judge() 已经失败（exit 1），JSON 里的 verdict
+  // 必须同样说「没在判」——否则只看 verdict 的机器消费者会把一个失效的门禁读成绿灯。
+  const floorMissing = floor === null;
+  const verdict = floorMissing
+    ? 'COVERAGE-FLOOR-MISSING'
+    : belowFloor
+      ? 'COVERAGE-REGRESSION'
+      : reachedTarget
+        ? 'COVERAGE-GATE-PASS'
+        : 'COVERAGE-PENDING';
   console.log(JSON.stringify({
     gate: 'D-10a',
     mode: 'ratchet',
@@ -266,7 +276,7 @@ if (asJson) {
     module: 'PetDock.Core',
     floor: floor ? { line: floor.line, branch: floor.branch, linesCovered: floor.linesCovered ?? null, branchesCovered: floor.branchesCovered ?? null, epsilonPp: EPSILON_PP } : null,
     target: { line: target.line, branch: target.branch },
-    verdict: belowFloor ? 'COVERAGE-REGRESSION' : (reachedTarget ? 'COVERAGE-GATE-PASS' : 'COVERAGE-PENDING'),
+    verdict,
     measured: rep ? { line: Number(rep.line.toFixed(2)), branch: Number(rep.branch.toFixed(2)), method: Number(rep.method.toFixed(2)), linesCovered: rep.linesCovered, branchesCovered: rep.branchesCovered } : null,
     passed: ok === true,
   }));
