@@ -1,8 +1,8 @@
 {
   "gpu": "MuMu Virtual Display Adapter",
   "driver": "20.36.41.498",
-  "generatedAt": "2026-10-16T11:10:13.5399895Z",
-  "sourceAsset": "fixtures/sample-pet",
+  "generatedAt": "2026-10-18T06:42:34.8545467Z",
+  "sourceAsset": "assets/sample-pet",
   "sha256": "1244CED09FCC728B2D9A34FB01DA6B068068D93F0BB58D1EAEAA37431FFA5422",
   "certifiedGpus": [
     "MuMu Virtual Display Adapter"

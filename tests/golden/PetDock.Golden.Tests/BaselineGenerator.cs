@@ -4,7 +4,7 @@
 // tests/golden/PetDock.Golden.Tests/baselines`，见 packages/core/src/SelfTest/GoldenBaselineGen.cs），
 // 与金图比对走的是同一条链（Discover -> BuildInstance("animtest") -> AttachAndStart(128,128,1.0)
 // -> Start -> SetAnimation(clip, restart:true) -> QueryFrame(0)），所以「渲染进没进测试进程」
-// 不再是分叉点：同一链、同一份 fixtures/sample-pet，结果逐字节可比（D-12b 确定性）。
+// 不再是分叉点：同一链、同一份 assets/sample-pet，结果逐字节可比（D-12b 确定性）。
 // 唯一区别是执行进程——基准在 core 的一次性脚本里渲染，比对 actual 由 GoldenHarness 在
 // 测试进程内渲染（本机 testhost 起不来，故本工程用 Program.cs 的 AssemblyRunner 进程内跑）。
 //
@@ -35,7 +35,7 @@ public sealed class BaselineGenerator
 
             string sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(pngPath)));
             BaselineMeta.Write(Path.Combine(sourceRoot, "baselines", clip, "frame-000.meta.json"),
-                "fixtures/sample-pet", sha256);
+                "assets/sample-pet", sha256);
             Console.WriteLine($"META-WROTE clip={clip} sha256={sha256}");
         }
 
@@ -61,7 +61,7 @@ public sealed class BaselineGenerator
 
             string sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(pngPath)));
             Assert.Equal(sha256, BaselineMeta.Sha256Of(metaPath));
-            Assert.Equal("fixtures/sample-pet", BaselineMeta.SourceAssetOf(metaPath));
+            Assert.Equal("assets/sample-pet", BaselineMeta.SourceAssetOf(metaPath));
         }
     }
 

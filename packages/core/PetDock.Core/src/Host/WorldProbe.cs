@@ -20,6 +20,15 @@ public sealed class WorldProbe
     public string? LastFocusedApp { get; private set; }
     public int SampleCount { get; private set; }
 
+    /// <summary>
+    /// 最近一次 GetCursorPos 的**原始屏幕坐标**，与窗口无关（光标在窗口外也照样有值）。
+    /// 为什么与 <see cref="LastCursor"/> 分开：`WorldSnapshot.Cursor` 按契约 §7.1 必须是
+    /// 「窗口内坐标，窗口外 → null」，而 `input.pointer.move`（docs/16 §3，host-generated）
+    /// 要的是「指针在哪」，不受窗口边界限制 —— 两者共用一个字段会让鼠标一离开宠物就再也不发事件，
+    /// 而「鼠标移过来 → 宠物反应」这条 M4 判据恰恰要求它在窗口外也继续发。
+    /// </summary>
+    public PetPoint? LastScreenCursor { get; private set; }
+
     /// <summary>Sample one world snapshot. hwnd==0 keeps the last known window rect (never had one → 0,0,0,0).</summary>
     public WorldSnapshot Sample(IntPtr hwnd)
     {
@@ -35,9 +44,10 @@ public sealed class WorldProbe
     private PetPoint? SampleCursor(IntPtr hwnd)
     {
         if (!Win32.GetCursorPos(out POINT p)) return null;
+        LastScreenCursor = new PetPoint(p.X, p.Y);
         if (hwnd == IntPtr.Zero)
         {
-            LastCursor = new PetPoint(p.X, p.Y);
+            LastCursor = LastScreenCursor;
             return LastCursor;
         }
         System.Drawing.Rectangle screen = Win32.ScreenRect(hwnd);

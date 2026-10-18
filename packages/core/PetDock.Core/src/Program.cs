@@ -129,7 +129,23 @@ internal static partial class Program
 
         Composition = outcome;
         KernelLog.Write($"frame-content phase={phase} {outcome.Describe()}");
-        return outcome.Content is null ? new LayeredFrameWindow() : new LayeredFrameWindow(outcome.Content);
+        LayeredFrameWindow window = outcome.Content is null
+            ? new LayeredFrameWindow()
+            : new LayeredFrameWindow(outcome.Content);
+
+        // 窗口句柄回填（M4-VERIFY-r2.md 的 F 号缺口）：窗口要到这一步才存在，而帧源在
+        // FrameComposition 里就先建好了。不回填的话 WorldProbe 永远拿 hwnd==0 采样 ——
+        // 鼠标取屏幕绝对坐标、WindowRect 恒 0、IsOccluded 恒 false，三类世界输入里两类的值都是假的。
+        if (outcome.Content is PetFrameSource source)
+        {
+            source.WindowHandle = window.WindowHandle;
+            // 窗口事件（core.window.focus / moved / dpiChanged）的生产点在这里接上总线：
+            // M4 修复前 LayeredFrameWindow.WindowEvent 全仓零订阅者，这三条事件发了无人收。
+            window.WindowEvent += (type, payload) => source.PublishWindowEvent(type, payload);
+            KernelLog.Write($"frame-source-bound window=0x{window.WindowHandle.ToInt64():X}");
+        }
+
+        return window;
     }
 
     /// <summary>最近一次内容装配的结果（自检判据读它）。</summary>

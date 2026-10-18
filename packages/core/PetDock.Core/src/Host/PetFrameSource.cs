@@ -21,15 +21,23 @@ namespace PetDock.Hosting;
 public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
 {
     private readonly PetInstance _instance;
+    private readonly EventBus _bus;
     private PetSize _lastSize = new(0, 0);
     private long _served;
     private WorldProbe _probe = new();
     private IntPtr _windowHandle;
     private int _lastNowMs;
+    private PetPoint? _lastCursor;
 
     public PetFrameSource(PetInstance instance)
     {
         _instance = instance ?? throw new ArgumentNullException(nameof(instance));
+        // 总线挂在实例自己的事件口上：仲裁器记账、事件目录守门、观察者投递共用同一个 Log，
+        // 于是「发出去的事件」与「自检读到的 Log」是同一份事实，不是两套。
+        _bus = new EventBus(instance.Arbiter.Events);
+        // 行为层的事件入口（docs/11:137 总线顺序 = 到达顺序）。M4 修复前这条订阅不存在，
+        // 插件实现的 OnEvent 在整个进程生命周期里一次都没被调用过。
+        instance.Arbiter.Events.Published += OnBusEvent;
     }
 
     /// <summary>
@@ -94,7 +102,21 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
 
             int dt = nowMs - _lastNowMs;
             _lastNowMs = nowMs;
-            _instance.TickBrain(dt < 0 ? 0 : dt, world);
+            int frameDt = dt < 0 ? 0 : dt;
+
+            // 契约 §1.3 第 3 步：帧循环每帧发一条 core.clock.tick（serial，{dt}）。
+            // M4 修复前这一行不存在 —— 事件目录里唯一「每帧必有」的事件在生产链上没有发布点，
+            // 于是任何订阅时钟的行为层都永远收不到它（M4-VERIFY-r2.md 的 A 号缺口）。
+            PublishTick(frameDt);
+
+            // 契约 §1.3 第 4 步：输入事件（固定类型序 pointer.move → down → up → key.*）。
+            // M4 里 down/up 由指针会话那条链发（PetInstance.PointerDown/Up），key.* 因未授权无源；
+            // 这里补的是 pointer.move —— 它的源是帧泵对光标的采样，不是 OS 钩子（docs/16 §3）。
+            // 用 LastScreenCursor（原始屏幕坐标）而不是 world.Cursor：后者按契约 §7.1 在窗口外是 null，
+            // 用它会让「鼠标还没移到宠物身上」这段最需要反应的时间窗里一条事件都发不出去。
+            PublishPointerMove(_probe.LastScreenCursor);
+
+            _instance.TickBrain(frameDt, world);
             Frame frame = _instance.QueryFrame(nowMs);
             _lastSize = new PetSize(frame.BitmapHandle.PixelWidth, frame.BitmapHandle.PixelHeight);
             _served++;
@@ -109,10 +131,126 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
         }
     }
 
+    /// <summary>
+    /// 窗口事件（core.window.focus / moved / dpiChanged）的生产入口。
+    /// 由 <c>Program.ComposeWindow</c> 把 <c>LayeredFrameWindow.WindowEvent</c> 接到这里：
+    /// M4 修复前那条 event 全仓零订阅者，三条窗口事件发了也无人消费（G 号缺口）。
+    /// 类型必须在事件目录内，否则 HostEventDispatch 会 fail-closed 拒收并留审计行 —— 那正是期望行为。
+    /// </summary>
+    public void PublishWindowEvent(string type, System.Text.Json.Nodes.JsonObject? payload)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            return;
+        }
+
+        try
+        {
+            // 同 PublishTick：Publish 才写 Log + 触发 Published；Parallel 只喂订阅表。
+            _bus.Publish(new PetEvent(type, PetEvent.NowMs(), payload));
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"window-event-failed instance={_instance.Id} type={type}"
+                + $" {error.GetType().Name}: {error.Message}");
+        }
+    }
+
     /// <summary>实例下线时释放它（帧源是实例的持有者）。</summary>
     public void Dispose()
     {
+        _instance.Arbiter.Events.Published -= OnBusEvent;
         _instance.Dispose();
+    }
+
+    /// <summary>
+    /// 发一条 core.clock.tick。
+    /// **必须走 Publish 而不是 Serial**：`EventBus.Serial`/`Parallel`/`Bail`/`Waterfall` 只把事件
+    /// 分发给 `_subs` 里注册过的监听者，**不写 Log、也不触发 `Published`**；而生产链上没有任何
+    /// 监听者注册过（行为层是经 `Published` → `IBrain.OnEvent` 收事件的）。用 Serial 的结果是
+    /// 事件既不进 Log 也不到 brain，静默蒸发 —— 这正是第一次修复后「时钟在走、brain 没反应」的原因。
+    /// `Publish` 负责两件生产链真正需要的事：目录守门 + 记 Log + 触发 `Published`。
+    /// </summary>
+    private void PublishTick(int dtMs)
+    {
+        try
+        {
+            _bus.Publish(new PetEvent(EventCatalog.ClockTick, PetEvent.NowMs(), new System.Text.Json.Nodes.JsonObject
+            {
+                ["dt"] = dtMs,
+            }));
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"clock-tick-failed instance={_instance.Id} {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 发一条 input.pointer.move（serial，`{pos, velocity?}`）。**只在光标真的动了才发**：
+    /// 每帧都发会把一条「指针移动」事件变成「帧心跳」的别名，行为层就没法区分
+    /// 「鼠标在动」与「时间在走」——而 M4 的判据正是要区分这两类。
+    /// velocity 只在两次采样都有值时给（docs/16 §3 的 `velocity?: f64` 可选语义）。
+    /// </summary>
+    private void PublishPointerMove(PetPoint? cursor)
+    {
+        if (cursor is not PetPoint now)
+        {
+            _lastCursor = null;
+            return;
+        }
+
+        if (_lastCursor is PetPoint previous
+            && Math.Abs(now.X - previous.X) < 0.5 && Math.Abs(now.Y - previous.Y) < 0.5)
+        {
+            return; // 没动：不发，也不清 _lastCursor（下次一动就是真实位移）
+        }
+
+        var payload = new System.Text.Json.Nodes.JsonObject
+        {
+            ["pos"] = new System.Text.Json.Nodes.JsonArray(now.X, now.Y),
+        };
+        if (_lastCursor is PetPoint from)
+        {
+            double dx = now.X - from.X;
+            double dy = now.Y - from.Y;
+            payload["velocity"] = Math.Sqrt((dx * dx) + (dy * dy));
+        }
+
+        _lastCursor = now;
+        try
+        {
+            // 同 PublishTick：必须走 Publish（写 Log + 触发 Published），不能走 Serial（只喂订阅表）。
+            _bus.Publish(new PetEvent(EventCatalog.PointerMove, PetEvent.NowMs(), payload));
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"pointer-move-failed instance={_instance.Id} {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 事件观察者：把落地的每条事件交给行为层（docs/11:137）。
+    /// 目录守门已在 HostEventDispatch.Publish 里做过，到这里的一定是表内事件。
+    /// 行为层抛异常不许打穿宿主循环 —— 记一行日志后继续。
+    /// </summary>
+    private void OnBusEvent(PetEvent evt)
+    {
+        IBrain? brain = _instance.Brain;
+        if (brain is null)
+        {
+            return;
+        }
+
+        try
+        {
+            brain.OnEvent(evt);
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"brain-on-event-failed instance={_instance.Id} type={evt.Type}"
+                + $" {error.GetType().Name}: {error.Message}");
+        }
     }
 
     /// <summary>首次取帧时把实例推到 running —— init/describe/attach 的顺序写在 PetInstance 里。</summary>

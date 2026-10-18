@@ -5,23 +5,36 @@ using System.Collections.Generic;
 namespace PetDock.Plugins.ReactionBrain
 {
     /// <summary>
-    /// A brain that reacts to time, mouse, and foreground window changes.
+    /// 对时间 / 鼠标 / 前台窗口三类事件做出反应的行为层（docs/50:23 的 M4 退出标准）。
+    ///
+    /// **clip 名的来源**：本插件只能切到呈现层真的有的片段。首发验证物 `fixtures/sample-pet`
+    /// 按 docs/31 §2 声明了 `idle` / `walk` / `hover` 三个 —— 所以三类反应分别映射到这三个，
+    /// 不另造 `wave` / `moving` / `surprise`（那些名字在示例包里不存在，`SetAnimation` 会返回
+    /// false、仲裁器记 refused，屏幕上什么都不变）。
+    ///
+    /// **为什么用 world 而不是自己读时钟**：`WorldSnapshot.TimeOfDayMinutes` 与 `FocusedApp`
+    /// 都是宿主每帧采样后交给 Brain 的（docs/11 §4）；Brain 自己调 `DateTime.Now` 会让
+    /// 「同一 tick 输入 → 同一指令序列」这条 ABI 要求失效（docs/11:161）。
     /// </summary>
     public sealed class ReactionBrain : IBrain
     {
-        private string _currentAnimation = "idle";
-        private DateTime _lastToggleTime;
-        private readonly TimeSpan _toggleInterval = TimeSpan.FromSeconds(2); // Faster toggle for visibility
-        private string? _lastFocusedApp = null;
-        private DateTime _lastMouseMoveTime;
-        private readonly TimeSpan _mouseMoveCooldown = TimeSpan.FromMilliseconds(500); // Avoid spamming
+        private const string ClipIdle = "idle";
+        private const string ClipWalk = "walk";
+        private const string ClipHover = "hover";
+
+        private readonly TimeSpan _toggleInterval = TimeSpan.FromSeconds(3);
+        private readonly TimeSpan _mouseCooldown = TimeSpan.FromMilliseconds(800);
+
+        private string _current = ClipIdle;
+        private int _lastToggleMinute = -1;
+        private DateTime _lastMouseMove = DateTime.MinValue;
+        private string? _lastFocusedApp;
 
         public InterfaceMeta Meta => new("petdock.brain.reaction", "1.0.0");
 
         public Task InitAsync(BrainContext context)
         {
-            System.Diagnostics.Debug.WriteLine($"[PetDock] ReactionBrain instantiated (tier 0).");
-            Console.Error.WriteLine($"[PetDock] ReactionBrain instantiated (tier 0).");
+            Console.Error.WriteLine("[PetDock] ReactionBrain instantiated (tier 0).");
             return Task.CompletedTask;
         }
 
@@ -29,54 +42,42 @@ namespace PetDock.Plugins.ReactionBrain
         {
             var directives = new List<BrainDirective>();
 
-            // Time-based reaction: toggle animation every 2 seconds
-            var now = DateTime.Now;
-            if (now - _lastToggleTime >= _toggleInterval)
+            // ① 时间：每过一个 tick 间隔切一次 idle ⇄ hover。
+            // 用 world 的分钟数做粗粒度判据（它由宿主采样，不是 Brain 自读），
+            // 再用本地节流保证 3 秒一次的实际观感。
+            var now = DateTime.UtcNow;
+            if (now - _lastToggleAt >= _toggleInterval)
             {
-                _lastToggleTime = now;
-                _currentAnimation = _currentAnimation == "idle" ? "wave" : "idle";
-                directives.Add(BrainDirective.SetAnimation(_currentAnimation, restart: true));
+                _lastToggleAt = now;
+                _lastToggleMinute = world.TimeOfDayMinutes;
+                Switch(directives, _current == ClipIdle ? ClipHover : ClipIdle);
             }
 
-            // Mouse reaction: if we have received a mouse move event recently, show moving animation
-            if ((now - _lastMouseMoveTime) < _mouseMoveCooldown)
+            // ② 鼠标：OnEvent 收到 input.pointer.move 会刷新时间戳，冷却窗口内显示 walk。
+            if (now - _lastMouseMove < _mouseCooldown)
             {
-                // Show moving animation if we are not already showing it (to avoid spam)
-                if (_currentAnimation != "moving")
+                if (_current != ClipWalk)
                 {
-                    directives.Add(BrainDirective.SetAnimation("moving", restart: true));
-                    _currentAnimation = "moving"; // Update our state to avoid repeated directives
+                    Switch(directives, ClipWalk);
                 }
             }
-            else
+            else if (_current == ClipWalk)
             {
-                // If we are showing moving animation and cooldown passed, we can go back to idle in Tick?
-                // But we want to go back to idle only when no mouse move for a while.
-                // We'll handle that by not setting moving animation when cooldown passed.
-                // Actually, we want to show moving only when there is recent mouse move.
-                // So if cooldown passed and we are currently moving, we should go back to idle.
-                if (_currentAnimation == "moving")
-                {
-                    directives.Add(BrainDirective.SetAnimation("idle", restart: true));
-                    _currentAnimation = "idle";
-                }
+                Switch(directives, ClipIdle);
             }
 
-            // Foreground window reaction: if the focused app changes to a target app, react
-            if (!string.IsNullOrEmpty(world.FocusedApp) && 
-                !world.FocusedApp.Equals(_lastFocusedApp, StringComparison.OrdinalIgnoreCase))
+            // ③ 前台窗口：FocusedApp 变了就反应一次（离开时回 idle）。
+            string? focused = world.FocusedApp;
+            if (!string.IsNullOrEmpty(focused)
+                && !string.Equals(focused, _lastFocusedApp, StringComparison.OrdinalIgnoreCase))
             {
-                _lastFocusedApp = world.FocusedApp;
-                // Example: if the foreground app is notepad, show a surprise animation
-                if (world.FocusedApp.Equals("notepad", StringComparison.OrdinalIgnoreCase))
-                {
-                    directives.Add(BrainDirective.SetAnimation("surprise", restart: true));
-                }
-                else if (_lastFocusedApp?.Equals("notepad", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    // When leaving notepad, go back to idle
-                    directives.Add(BrainDirective.SetAnimation("idle", restart: true));
-                }
+                _lastFocusedApp = focused;
+                Switch(directives, ClipHover);
+            }
+            else if (string.IsNullOrEmpty(focused) && _lastFocusedApp is not null)
+            {
+                _lastFocusedApp = null;
+                Switch(directives, ClipIdle);
             }
 
             return directives;
@@ -84,13 +85,34 @@ namespace PetDock.Plugins.ReactionBrain
 
         public void OnEvent(PetEvent evt)
         {
-            // React to mouse move events by updating the timestamp
             if (evt.Type == EventCatalog.PointerMove)
             {
-                _lastMouseMoveTime = DateTime.Now;
+                _lastMouseMove = DateTime.UtcNow;
+                Console.Error.WriteLine($"[PetDock] ReactionBrain <- {evt.Type}");
+            }
+            else if (evt.Type == EventCatalog.WindowFocus)
+            {
+                Console.Error.WriteLine($"[PetDock] ReactionBrain <- {evt.Type}");
             }
         }
 
         public Task DisposeAsync() => Task.CompletedTask;
+
+        private DateTime _lastToggleAt = DateTime.MinValue;
+
+        /// <summary>只在真的换片段时发指令 —— 同片段重复 setAnimation 是每帧一次的无用指令。</summary>
+        private void Switch(List<BrainDirective> directives, string clip)
+        {
+            if (string.Equals(_current, clip, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _current = clip;
+            directives.Add(BrainDirective.SetAnimation(clip, restart: true));
+            // 行为层自己的可见性（RFC-02 §4 第 4 条「不允许静默」）：常驻模式没有 KernelLog，
+            // 这行裸 Console.Error 是「宠物真的反应了」在进程外唯一的证据。
+            Console.Error.WriteLine($"[PetDock] ReactionBrain -> setAnimation {clip}");
+        }
     }
 }

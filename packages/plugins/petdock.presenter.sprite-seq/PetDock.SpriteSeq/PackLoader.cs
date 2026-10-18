@@ -31,7 +31,7 @@ internal sealed record PackData(
 /// 是可以的 —— 原话「鲸鱼娘不是动图，你暂时用可动的桌宠例子也是可以的，刚才我说的不好」）：
 ///   1. `PETDOCK_SAMPLE_PACK` —— 显式请求某个 pack 目录，必须含 petdock-sample.json；
 ///   2. `PETDOCK_PET_IMAGE` —— 显式请求单张贴图（所有者鲸鱼娘），合成一片段 pack；
-///   3. 默认 —— 向上探测 fixtures/sample-pet（docs/31 Sample Pack，仓库内 CC0 素材）。
+///   3. 默认 —— 向上探测 assets/sample-pet（docs/31 Sample Pack，仓库内 CC0 素材）。
 /// 自检相位（PetViewContext.PetInstanceId 以 "animtest" 开头）与默认同解，不特判：
 /// 「桌面上是哪一只」必须是可指名的事实，而不是相位副作用。
 /// 旧实现里那条「默认回落到仓库内程序化蓝团」的路径已删除（t8 验收 3）：
@@ -43,7 +43,7 @@ internal static class PackLoader
     private const string PackEnvVar = "PETDOCK_SAMPLE_PACK";
     private const string ImageEnvVar = "PETDOCK_PET_IMAGE";
     private const string SelfTestPhase = "animtest";
-    private const string PackRel = "fixtures/sample-pet";
+    private const string PackRel = "assets/sample-pet";
     private const string OwnerImageRel = "assets/sample/local/pet-sample.png";
 
     /// <summary>一个来源是不是「默认」解：默认解就是 docs/31 Sample Pack，没有任何环境变量参与。</summary>

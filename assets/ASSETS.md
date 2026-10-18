@@ -32,7 +32,7 @@
 | `assets/user/icons-source/icon.jpg`（163,338 B，512×512，**本机自用**） | **软件图标源图**（银发金瞳少女立绘）。2026-10-17 之前它放在 `assets/icons/source/` 且受 git 跟踪，那套图标全部由它生成 | 朋友转发，**出处与授权均不明** | ❌ **否** — 本机可用；**由它派生的图标同样不得发行**，所以仓库里的图标已改成自绘图 | 已 `git rm --cached` 出库，只在本机；删了请所有者重新提供 |
 | `assets/sample/local/`（整个目录，本机自用） | ① `gj-meme-857.webp`：所有者提供的**桌宠原图**（975×975 鲸鱼娘 Q 版，85,770 B）② `pet-sample.png`：由它经 `tools/make-pet-from-image.py` 抠出的 128×128 贴图（23,674 B，四角 alpha=0） | 所有者自行下载提供；形象来自社区共创（主流说法原型是 B 站「上善无形」的角色「溟月」，以 **CC BY-NC-SA 4.0** 开放二创，NC 禁止商业使用） | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 贴图可从原图重新抠；**原图删了不可恢复**，只能请所有者重新提供（见 §2）。**这就是 2026-10-15 被误删的那个文件** |
 | `assets/user/`（整个目录，本机自用） | 所有者提供的**真实第三方宠物素材**；当前含 `assets/user/dyberpet/守岸人/`（DyberPet 角色包，349 文件 / 49,854,928 B：310 PNG + 32 WAV + 6 JSON + 1 JPG；`pet_conf.json` / `act_conf.json` / `msg_conf.json` + `action/`、`info/`、`items/`、`note/`）。用途 = **M3 适配器的字段核对素材**（`docs/99` 把「DyberPet 字段未实测」列为 M3 开工前必修项） | 所有者自行下载提供（《鸣潮》守岸人；形象与音频版权归库洛游戏，**不是** CC 授权素材） | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 可由所有者副本重新放入；删掉会阻断 M3 的字段核对 |
-| `fixtures/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述） | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out fixtures/sample-pet` 重新生成（已验证幂等） |
+| `assets/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述）。2026-10-18 由 `fixtures/sample-pet/` 迁入本表下，以符合 §0 的「资产一律放在 `assets/` 树下」 | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out assets/sample-pet` 重新生成（已验证幂等） |
 
 ## 2. 桌宠形象：从原图到贴图的完整链路
 

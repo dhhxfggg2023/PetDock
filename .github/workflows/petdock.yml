@@ -43,6 +43,15 @@ jobs:
       - name: Gate D-04b doc link lint
         run: node tools/doclink.mjs
 
+      # 与 package.json 的 `npm run lint` 对齐（2026-10-18）：此前这两条门禁只在本地手工跑，
+      # 不在流水线里，于是「lint 全绿」不等于「插件 manifest 与素材摆放也绿」。
+      # D-13a 的素材指纹扫描由 asset-manifest 承担，直接服务 M-12（第三方素材发布物为 0）。
+      - name: Gate plugin manifests
+        run: node tools/validate-manifest.mjs
+
+      - name: Gate asset layout (D-13a)
+        run: node tools/asset-manifest.mjs
+
       # 测试步骤选择：先判断是否存在测试工程，再决定是否运行 dotnet test。
       # 理由：当前仓库没有任何 *Test*.csproj，dotnet test PetDock.sln 在无测试工程时会
       # 直接失败（错误信息为 No test source files / MSB1011 之类），continue-on-error

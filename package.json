@@ -10,7 +10,9 @@
     "lint:core": "node tools/lint-core.mjs",
     "lint:docs": "node tools/doclink.mjs",
     "lint:coverage": "node tools/check-dyberpet-coverage.mjs",
-    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/check-dyberpet-coverage.mjs"
+    "lint:manifest": "node tools/validate-manifest.mjs",
+    "lint:assets": "node tools/asset-manifest.mjs",
+    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/check-dyberpet-coverage.mjs"
   },
   "dependencies": {
     "ajv": "^6.15.0",

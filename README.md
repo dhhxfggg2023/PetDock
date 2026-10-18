@@ -67,7 +67,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `tests/` | 跨包集成测试、ABI 契约夹具与金图基线 |
 | `tools/` | 仓库门禁与素材生成脚本（`docs/40` 的机器可执行规则） |
 | `docs/` | 全部规格文档（00~52 + `rfcs/`） |
-| `fixtures/` | 自建示例宠物（`fixtures/sample-pet/`，CC0，可重新生成） |
+| `assets/sample-pet/` | 自建示例宠物（CC0，可用 `node tools/gen-sample-pet.mjs` 重新生成） |
 
 ## 许可
 

@@ -182,6 +182,7 @@ public sealed partial class PetInstance : IDisposable
         Description = View.Describe();
         View.Attach(Target);
         Bitmaps.ReleaseAll(); // init 之前的任何句柄都不该留在 registry 里
+        InitBrain(budget);
 
         if (State == InstanceState.Imported)
         {
@@ -191,6 +192,32 @@ public sealed partial class PetInstance : IDisposable
 
     /// <summary>docs/11 §10：discovered → imported（manifest 已读且校验通过）。</summary>
     public void MarkImported(string reason, long atMs = 0) => Move(InstanceState.Imported, reason, atMs);
+
+    /// <summary>
+    /// 行为层的初始化（docs/11 §4 的 init(ctx)）。**M4 修复前这条链上是空的**：
+    /// core 只调了视图面的 InitAsync，行为层从构造到销毁一次都没被初始化过，
+    /// 于是插件自己写在 init 里的可见日志永远不出现（M4-VERIFY-r2.md 的 E 号缺口）。
+    /// 失败按 docs/11 §9 处理：记 degraded、不抛 —— 一只坏 brain 不该让整只宠物起不来。
+    /// </summary>
+    private void InitBrain(ResourceBudget budget)
+    {
+        if (Brain is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Brain.InitAsync(new BrainContext(Id, StateLayer, budget)).GetAwaiter().GetResult();
+        }
+        catch (Exception error)
+        {
+            BrainFaults++;
+            BrainDegraded = true;
+            LastFailure = $"brain-init-failed {error.GetType().Name}: {error.Message}";
+            KernelLog.Write($"brain-init-failed instance={Id} {error.GetType().Name}: {error.Message}");
+        }
+    }
 
     /// <summary>docs/11 §10：instantiated → running（帧循环 + tick + 事件投递）。</summary>
     public void Start(long atMs = 0) => Move(InstanceState.Running, "frame loop started", atMs);

@@ -19,6 +19,12 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
+  <!-- RFC-06 §4 的自检面外迁（2026-10-18）：12 个自检/判据源文件已从 src/SelfTest/ 与 src/Host/
+       移到本工程的 test/SelfCheck/，编译产物仍是同一个 PetDock.Core.exe（六个命令行入口的命令形态
+       不变；SDK 的默认 glob 已包含 test/ 下的 .cs，此处不再重复 Compile Include）。
+       D-03a 的 core-loc 不计入 test/ 目录，故这一搬动正是还款义务要求的 LOC 下降；
+       这些文件是判据体、不是内核能力，留在此处只为让它们继续跑在 core 的入口进程里（RFC-01 §2.3）。 -->
+
   <!-- M1 契约 §4（.dsh-code/M1-contract-frozen.md）：Tier-1 沙箱基座 = WASM + WASI Preview2，     -->
   <!-- 绑定库 = Wasmtime for .NET 34.0.2（Bytecode Alliance 官方维护）。docs/14 §4 白名单首项。 -->
   <ItemGroup>

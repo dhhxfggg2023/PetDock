@@ -65,9 +65,38 @@ public sealed class PetSurfaceRoster
 
     public bool HasView => View is not null;
 
-    public IBrain? Brain => First<IBrain>();
+    public IBrain? Brain => Select<IBrain>();
 
     public IPetState? StateLayer => First<IPetState>();
+
+    /// <summary>
+    /// 行为层按**配置**选，不按 Ordinal 取首。理由：docs/11:308 规定三个默认实现的优先级高于任何第三方，
+    /// 而默认实现那个 id 在 Ordinal 上恰好排在示例反应实现之前 —— 「取首」于是把这条文档规则
+    /// 实现成了「永远选默认实现」，任何第三方行为层都装不进来。
+    /// 选择器是环境变量（与插件根目录那个同一形态）：core 里不出现任何插件 id 字面值，
+    /// 符合 docs/01 P-02 第 4 条「内核通过插件 ID 引用配置条目，但不得在代码里特判任何 ID」。
+    /// 未设置时保持原行为（取首 = 默认实现优先）。
+    /// </summary>
+    public string? BrainSelector { get; set; }
+
+    private T? Select<T>() where T : class
+    {
+        if (typeof(T) == typeof(IBrain) && !string.IsNullOrWhiteSpace(BrainSelector))
+        {
+            foreach (SurfaceRecord record in _records)
+            {
+                if (record.Interface == typeof(IBrain)
+                    && string.Equals(record.PluginId, BrainSelector, StringComparison.Ordinal))
+                {
+                    return record.Implementation as T;
+                }
+            }
+
+            KernelLog.Write($"surface-brain-selector-miss wanted={BrainSelector} fell-back=first");
+        }
+
+        return First<T>();
+    }
 
     public IReadOnlyList<IPointerSurface> Surfaces =>
         _records.Where(r => r.Interface == typeof(IPointerSurface))

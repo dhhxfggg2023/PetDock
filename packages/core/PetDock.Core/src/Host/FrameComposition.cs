@@ -54,6 +54,7 @@ internal static class FrameComposition
     {
         PetSurfaceRoster roster = PetSurfaceRoster.Discover(PluginHost.ProbePluginsRoot());
         KernelLog.Write($"surface-roster phase={phase} {roster.Describe()}");
+        roster.BrainSelector = BrainSelectorFromEnvironment();
 
         if (roster.View is not null)
         {
@@ -65,6 +66,12 @@ internal static class FrameComposition
 
             if (instance is not null)
             {
+                // 行为层选了谁必须可见：docs/11:308 让默认实现优先，任何「第三方 brain 被静默忽略」
+                // 都会在屏幕上看成「宠物不动」，而在日志里查不出来。
+                KernelLog.Write($"surface-brain instance={instance.Id}"
+                    + $" selected={(instance.Brain?.Meta.Id ?? "(none)")}"
+                    + $" selector={(roster.BrainSelector ?? "(unset)")}");
+
                 return new ComposeOutcome(
                     new PetFrameSource(instance),
                     roster.ViewTypeName,
@@ -97,4 +104,18 @@ internal static class FrameComposition
     /// <summary>挂起转发口：有真实插件宿主就转到 PluginHost.Disable，没有就用空实现。</summary>
     internal static IInstanceSuspendPort SuspendPortFor(PluginHost? host) =>
         host is null ? new NoopSuspendPort() : new HostSuspendPort(host);
+
+    /// <summary>
+    /// 行为层选择器的环境变量名（与 PETDOCK_PLUGINS_ROOT 同一形态）。
+    /// 值是一个插件 id；未设置或匹配不到时退回「取首」（= docs/11:308 的默认实现优先）。
+    /// 为什么用环境变量而不是写死：docs/01 P-02 第 4 条禁止 core 代码里特判任何插件 id，
+    /// 但允许「内核通过插件 ID 引用配置条目」—— 这条就是那个配置条目。
+    /// </summary>
+    public const string BrainSelectorEnv = "PETDOCK_BRAIN";
+
+    private static string? BrainSelectorFromEnvironment()
+    {
+        string? value = Environment.GetEnvironmentVariable(BrainSelectorEnv);
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 }

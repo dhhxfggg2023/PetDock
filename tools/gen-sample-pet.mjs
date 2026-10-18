@@ -179,7 +179,7 @@ const CLIPS = {
 
 // ---------- 落盘 ----------
 
-let outDir = path.join('fixtures', 'sample-pet')
+let outDir = path.join('assets', 'sample-pet')
 const argv = process.argv.slice(2)
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === '--out') {
