@@ -33,6 +33,7 @@
 | `assets/sample/local/`（整个目录，本机自用） | ① `gj-meme-857.webp`：所有者提供的**桌宠原图**（975×975 鲸鱼娘 Q 版，85,770 B）② `pet-sample.png`：由它经 `tools/make-pet-from-image.py` 抠出的 128×128 贴图（23,674 B，四角 alpha=0） | 所有者自行下载提供；形象来自社区共创（主流说法原型是 B 站「上善无形」的角色「溟月」，以 **CC BY-NC-SA 4.0** 开放二创，NC 禁止商业使用） | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 贴图可从原图重新抠；**原图删了不可恢复**，只能请所有者重新提供（见 §2）。**这就是 2026-10-15 被误删的那个文件** |
 | `assets/user/`（整个目录，本机自用） | 所有者提供的**真实第三方宠物素材**；当前含 `assets/user/dyberpet/守岸人/`（DyberPet 角色包，349 文件 / 49,854,928 B：310 PNG + 32 WAV + 6 JSON + 1 JPG；`pet_conf.json` / `act_conf.json` / `msg_conf.json` + `action/`、`info/`、`items/`、`note/`）。用途 = **M3 适配器的字段核对素材**（`docs/99` 把「DyberPet 字段未实测」列为 M3 开工前必修项） | 所有者自行下载提供（《鸣潮》守岸人；形象与音频版权归库洛游戏，**不是** CC 授权素材） | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 可由所有者副本重新放入；删掉会阻断 M3 的字段核对 |
 | `assets/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述）。2026-10-18 由 `fixtures/sample-pet/` 迁入本表下，以符合 §0 的「资产一律放在 `assets/` 树下」 | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out assets/sample-pet` 重新生成（已验证幂等） |
+| `assets/bongocat-pack/`（19 个文件） | M7 的 BongoCat 交互包素材（18 帧 + icon + 7 个 anim json + `petdock-sample.json` 主描述）。7 个片段：`idle`(4) / `look_up|down|left|right`(各 2) / `paw_l|paw_r`(各 3)。**自绘几何猫**，与原 BongoCat 应用的素材无任何关系 | `tools/gen-bongocat-pack.mjs` 程序化生成（编码器复用 `tools/lib/png.mjs`），CC0 | ✅ **是** — 自有输出；docs/33 §6 的三条法律约束（不引用/不打包/不逆向原应用、素材自有、包名不冒充官方）在本目录上是代码事实 | 可用 `node tools/gen-bongocat-pack.mjs --out assets/bongocat-pack` 重新生成（确定性输出） |
 
 ## 2. 桌宠形象：从原图到贴图的完整链路
 

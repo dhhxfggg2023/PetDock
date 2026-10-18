@@ -1,0 +1,23 @@
+{
+  "id": "com.petdock.bongocat.interaction",
+  "name": "BongoCat (PetDock rewrite)",
+  "version": "0.1.0",
+  "api": { "major": 1, "minor": 0 },
+  "kind": "brain",
+  "tier": 0,
+  "entry": "PetDock.BongoCat/bin/Release/net8.0-windows/PetDock.BongoCat.dll",
+  "capabilities": [
+    "input.mousePosition"
+  ],
+  "license": { "spdx": "CC0-1.0" },
+  "events": [
+    "core.clock.tick",
+    "input.pointer.move",
+    "input.key.down"
+  ],
+  "contributes": {
+    "brains": [
+      "com.petdock.bongocat.interaction"
+    ]
+  }
+}
