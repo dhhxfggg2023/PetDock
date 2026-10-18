@@ -7,13 +7,44 @@
   "engines": {
     "node": ">=20"
   },
+  "types": "./types/index.d.ts",
   "exports": {
-    ".": "./js/index.js",
-    "./presenter": "./js/presenter.js",
-    "./brain": "./js/brain.js",
-    "./interaction": "./js/interaction.js",
-    "./state": "./js/state.js",
-    "./capabilities": "./js/capabilities.js",
-    "./log": "./js/log.js"
-  }
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./js/index.js"
+    },
+    "./presenter": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/presenter.js"
+    },
+    "./brain": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/brain.js"
+    },
+    "./interaction": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/interaction.js"
+    },
+    "./state": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/state.js"
+    },
+    "./capabilities": {
+      "types": "./types/capabilities.d.ts",
+      "default": "./js/capabilities.js"
+    },
+    "./log": {
+      "types": "./types/log.d.ts",
+      "default": "./js/log.js"
+    },
+    "./errors": {
+      "types": "./types/errors.d.ts",
+      "default": "./js/errors.js"
+    }
+  },
+  "files": [
+    "js",
+    "types",
+    "README.md"
+  ]
 }

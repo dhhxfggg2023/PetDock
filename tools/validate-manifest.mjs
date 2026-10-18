@@ -66,6 +66,33 @@ function discoverManifests(dir, found = []) {
   return found;
 }
 
+/**
+ * 把一条 ajv 错误定位到「人能用 grep 找过去的坐标」。
+ *
+ * 为什么不是 `error.instancePath`：本仓库装的是 ajv **6**.15.0，它的字段叫 `dataPath`
+ * （`instancePath` 是 ajv 8 才改的名）。写 `error.instancePath` 会永远是 undefined，
+ * 于是每条错误都打印 `(root)` —— 冷启动走查的陌生作者原话是「§7 说 lint 会告诉你具体字段，
+ * 但它只说 (root)」。实测 ajv 6.15.0 的错误形状：`{keyword, dataPath, params, message}`。
+ *
+ * 光有 dataPath 还不够：`additionalProperties` 与 `required` 的 dataPath 本来就是空串
+ * （它们是**在对象上**判的），真正缺的字段名在 `params` 里。所以这里把 params 也拼进去。
+ */
+function errorWhere(error) {
+  const where = error.dataPath || error.instancePath || '';
+  const at = where === '' ? '(root)' : where;
+  const params = error.params ?? {};
+  if (typeof params.additionalProperty === 'string') {
+    return `${at} 多余字段 '${params.additionalProperty}'`;
+  }
+  if (typeof params.missingProperty === 'string') {
+    return `${at} 缺字段 '${params.missingProperty}'`;
+  }
+  if (Array.isArray(params.allowedValues)) {
+    return `${at}（允许值 ${params.allowedValues.join(' | ')}）`;
+  }
+  return at;
+}
+
 function main() {
   const explicit = process.argv.slice(2);
   const targets = explicit.length > 0
@@ -101,8 +128,7 @@ function main() {
 
     failed += 1;
     for (const error of validate.errors ?? []) {
-      const where = error.instancePath || '(root)';
-      console.log(`VIOLATION ${rel} ${where} ${error.message}`);
+      console.log(`VIOLATION ${rel} ${errorWhere(error)} ${error.message}`);
     }
   }
 
@@ -115,4 +141,36 @@ function main() {
   console.log('MANIFEST-PASS');
 }
 
-main();
+// 供同进程调用者（tools/petdock-cli/petdock.mjs 的 lint）复用的单文件校验入口。
+// 为什么导出而不是 spawn 本脚本：受限通道里管道捕获子进程输出会静默失败
+// （code_verify 通道实测 spawnSync 返回 status=null / out=undefined，pwsh 通道正常），
+// 而 docs/21 的 schema 只能有一份。返回 { ok, messages }，不打印、不退出。
+export function validateManifestFile(target) {
+  const ajv = new Ajv({ strict: false, allErrors: true });
+  addFormats(ajv);
+  const validate = ajv.compile(loadSchema());
+  const messages = [];
+
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(target, 'utf8'));
+  } catch (error) {
+    messages.push(`VIOLATION 无法解析为 JSON: ${error.message}`);
+    return { ok: false, messages };
+  }
+
+  if (validate(manifest)) {
+    messages.push(`OK id=${manifest.id} tier=${manifest.tier} kind=${manifest.kind}`);
+    return { ok: true, messages };
+  }
+
+  for (const error of validate.errors ?? []) {
+    messages.push(`VIOLATION ${errorWhere(error)} ${error.message}`);
+  }
+  return { ok: false, messages };
+}
+
+// 只有直接执行时才跑 CLI 形态；被 import 时不得有副作用。
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

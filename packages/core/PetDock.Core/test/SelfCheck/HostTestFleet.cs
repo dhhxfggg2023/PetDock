@@ -44,11 +44,26 @@ internal static class HostTestFleet
         File.WriteAllText(Path.Combine(dir, "main.js"), "// second fixture entry\n");
     }
 
+    /// <summary>递归复制：源插件的 entry 可能是子目录（docs/21 允许 `src/main.js` 这类相对路径），
+    /// 只拷顶层文件会让合法插件在临时根里变成 entry-not-found。
+    /// 跳过构建产物目录（bin/obj），它们不是插件内容且体量大。</summary>
     private static void CopyPluginFiles(string sourceDir, string targetDir)
     {
         foreach (string file in Directory.GetFiles(sourceDir))
         {
             File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)), overwrite: true);
+        }
+        foreach (string sub in Directory.GetDirectories(sourceDir))
+        {
+            string name = Path.GetFileName(sub);
+            if (string.Equals(name, "bin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "obj", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            string subTarget = Path.Combine(targetDir, name);
+            Directory.CreateDirectory(subTarget);
+            CopyPluginFiles(sub, subTarget);
         }
     }
 
