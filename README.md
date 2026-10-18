@@ -23,8 +23,14 @@ PetDock 是一个「万物皆可插件」的桌宠宿主：**内核只负责把�
 - **M3 DyberPet 适配器** — 从用户自备的 DyberPet 角色包导入 → 标准包 → sprite-seq 呈现；
   保真度按 [docs/32](docs/32-dyberpet.md) §5 为**降级档**：静态展示、动作切换、悬停反应、
   定时动作可复现；养成 / 任务 / 商店 / AI 对话不可复现，且不在 M3 范围内。
+- **M4 行为与事件** — 事件总线五种分发模式 + 14 条事件目录 + 输入钩子授权门 + Brain 指令仲裁；
+  生产链上发布 `core.clock.tick`、初始化行为层并回填窗口句柄，因此「宠物对时间 / 鼠标 /
+  前台窗口三类事件做出可见反应」在常驻真实链上成立（证据见 `.dsh-code/M4-VERIFY-r2.md` §12）。
+  本里程碑同时把自检面搬出内核源码树，使内核代码行数从 10,811 回到 8,031
+  （[docs/rfcs/RFC-07](docs/rfcs/RFC-07.md)）。
 
-未开始：**M4** 行为与事件、**M5** SDK + CLI、**M7** BongoCat + Tier 2、**M8** 稳定性加固、**M9** 打包发布。
+进行中：**M5** SDK + CLI。
+未开始：**M7** BongoCat + Tier 2、**M8** 稳定性加固、**M9** 打包发布。
 M6 插件市场按 [docs/50](docs/50-roadmap.md) 推迟。
 
 **已知欠账**：单元测试覆盖率门禁 D-10a 目前是**棘轮**（`docs/41` D-10a、`docs/rfcs/RFC-04`）——
@@ -70,7 +76,6 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `assets/sample-pet/` | 自建示例宠物（CC0，可用 `node tools/gen-sample-pet.mjs` 重新生成） |
 
 ## 许可
-
 内核 **Apache-2.0**，完整条款见 [LICENSE](LICENSE)，第三方组件声明见 [NOTICE](NOTICE)。
 插件是独立作品、各自许可（须在 manifest 的 `license` 字段声明）。
 
