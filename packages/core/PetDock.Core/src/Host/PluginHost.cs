@@ -240,6 +240,8 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
             var clock = System.Diagnostics.Stopwatch.StartNew();
             handle.Sandbox?.Dispose();
             handle.Sandbox = null;
+            handle.Tier2?.Dispose();
+            handle.Tier2 = null;
             handle.State = PluginLifecycleState.Disposed;
             long ms = clock.ElapsedMilliseconds;
             if (ms > LifecycleDisposeBudgetMs)

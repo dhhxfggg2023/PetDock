@@ -9,7 +9,7 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PACKAGES_DIR = join(ROOT, 'packages');
 const CORE_DIR = join(PACKAGES_DIR, 'core');
 
-const CORE_LOC_BUDGET = 8100; // D-03a；核定依据 RFC-07（履行 RFC-06 §4 的还款义务后降回；更早两档 9500 = RFC-01、11000 = RFC-06）
+const CORE_LOC_BUDGET = 8450; // D-03a；核定依据 RFC-10（Tier-2 沙箱+宿主接线 实测 +334；8100 = RFC-07、9500 = RFC-01、11000 = RFC-06）
 const MAX_FILE_LINES = 400; // D-03c
 const TEMP_MARKERS = ['TODO', 'FIXME', 'HACK', 'XXX']; // D-04a
 

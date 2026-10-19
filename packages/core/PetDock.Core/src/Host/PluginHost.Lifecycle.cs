@@ -26,11 +26,6 @@ public sealed partial class PluginHost
     {
         ct.ThrowIfCancellationRequested();
         string id = manifest.Id;
-        if (manifest.Tier == 2)
-        {
-            // docs/13 §1 法则二 / docs/14 §4：tier 2 独立进程 —— M1 明确不做（契约 §5.4）
-            throw new PluginLoadException(id, new[] { "tier-2 plugins run out-of-process (docs/14); not supported in M1" });
-        }
         if (_handles.Any(h => h.Manifest.Id == id && h.State != PluginLifecycleState.Disposed))
         {
             throw new PluginLoadException(id, new[] { "already loaded (duplicate id)" });
@@ -56,7 +51,21 @@ public sealed partial class PluginHost
         };
 
         // 契约 §5.3 转移表：init 失败 → 拒绝、释放资源、无半状态（任何失败都不留 handle）
-        if (manifest.Tier == 1)
+        if (manifest.Tier == 2)
+        {
+            // docs/13 §1 法则二 / docs/14 §1/§4/§5：tier 2 独立进程，M7 起真 spawn（RFC-10）。
+            // wire 契约（帧/命中图/事件包）未定，子进程当前只承载握手与 tick 往返。
+            CapabilityGate gate2 = new(manifest.Capabilities, grantedIds: null, sink: sink);
+            Tier2Sandbox tier2 = LoadTier2Sandbox(id, pluginDir, manifest, gate2, sink);
+            handle.Gate = gate2;
+            handle.Tier2 = tier2;
+            handle.State = PluginLifecycleState.Instantiated;
+            foreach (string granted in gate2.Granted)
+            {
+                handle.Leases.Add(new CapabilityLease(granted)); // M1 硬编码测试能力集（契约 §5.4）
+            }
+        }
+        else if (manifest.Tier == 1)
         {
             byte[] moduleBytes = ReadEntryModule(pluginDir, manifest);
             CapabilityGate gate = new(manifest.Capabilities, grantedIds: null, sink: sink);
@@ -241,6 +250,8 @@ public sealed partial class PluginHost
         Publish("pluginUnloading", handle.Manifest.Id);
         handle.Sandbox?.Dispose();
         handle.Sandbox = null;
+        handle.Tier2?.Dispose();
+        handle.Tier2 = null;
         handle.Gate = null;
 
         // —— 装载新实例（handle 身份与外部订阅不变 —— 契约 §5.3）——
@@ -248,9 +259,18 @@ public sealed partial class PluginHost
         {
             if (newManifest.Tier == 2)
             {
-                throw new PluginLoadException(newManifest.Id, new[] { "tier-2 plugins run out-of-process (docs/14); not supported in M1" });
+                // RFC-10：tier 2 热重载 = 杀旧子进程 + spawn 新子进程；握手不过 → 下方 catch 落 Suspended。
+                CapabilityGate gate2 = new(newManifest.Capabilities, grantedIds: null, sink: handle.Sink);
+                Tier2Sandbox tier2 = LoadTier2Sandbox(newManifest.Id, handle.PluginDir, newManifest, gate2, handle.Sink);
+                handle.Gate = gate2;
+                handle.Tier2 = tier2;
+                handle.Leases.Clear();
+                foreach (string granted in gate2.Granted)
+                {
+                    handle.Leases.Add(new CapabilityLease(granted));
+                }
             }
-            if (newManifest.Tier == 1)
+            else if (newManifest.Tier == 1)
             {
                 byte[] moduleBytes = ReadEntryModule(handle.PluginDir, newManifest);
                 CapabilityGate gate = new(newManifest.Capabilities, grantedIds: null, sink: handle.Sink);

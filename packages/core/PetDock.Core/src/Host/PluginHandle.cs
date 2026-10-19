@@ -59,6 +59,7 @@ internal sealed class PluginHandle : IPluginHandle
 
     // —— 以下字段由宿主调度线程独占写 ——
     internal PluginSandbox? Sandbox { get; set; }
+    internal Tier2Sandbox? Tier2 { get; set; }
     internal CapabilityGate? Gate { get; set; }
     internal List<CapabilityLease> Leases { get; } = new();
     internal long Ticks;
@@ -94,6 +95,6 @@ internal sealed class PluginHandle : IPluginHandle
         }
     }
 
-    /// <summary>沙箱存活 = 已装载且未释放（禁用保留为 true —— 不卸载）。</summary>
-    internal bool SandboxAlive => Sandbox is not null && Sandbox.IsLoaded;
+    /// <summary>沙箱存活 = 已装载且未释放（禁用保留为 true —— 不卸载）。tier 1 看 Sandbox，tier 2 看 Tier2。</summary>
+    internal bool SandboxAlive => (Sandbox is not null && Sandbox.IsLoaded) || (Tier2 is not null && Tier2.IsLoaded);
 }
