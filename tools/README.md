@@ -93,7 +93,50 @@ DOCLINK-FAIL
 
 通过输出 `DOCLINK-PASS`，exit 0；有违规时先输出若干 `VIOLATION ...` 行，再输出 `DOCLINK-FAIL`，exit 1。
 
-## ID 命名空间登记处（grep 确认，2026-10-16）
+## asset-fingerprint.mjs — D-13a 素材指纹扫描
+
+| 判据 | 检查内容 |
+|---|---|
+| 商业 SDK 扩展名 | `.moc3` / `.model3.json` / `.motion3.json` / `.skel` / `.atlas` / `.mtn` 命中即失败 |
+| 生态角色包结构 | DyberPet（`info/info.json` + 兄弟 `pet`/`action`/`res` 目录）、BongoCat（`conf.json` + `assets`/`img`/`image`）、Shimeji（`conf/actions.xml`） |
+| 已知哈希 | `tools/fingerprint-known.json` 里登记的 sha256（空表 = 尚未登记任何已知侵权文件） |
+
+扫描范围默认 `git ls-files`，**不是磁盘**：`assets/user/`（所有者本机自用素材）已 gitignore、
+永不发行，判它违规只会训练人忽略告警。`--all` 扫磁盘供人工排查；`--root DIR` 扫指定目录（负例自测）。
+
+目录结构判据必须在**该目录内**判定（`dir + '/' + 清单路径` 精确相等），不能用全局 `endsWith`——
+否则仓库任何一处存在该路径，就会把命中报给每一个目录（2026-10-19 实际踩过：自家合成夹具被判成
+真实素材）。**零文件即失败**：git 不可用时它不能打 PASS。
+
+```
+FP-HIT pack/model.moc3  ← Live2D Cubism 模型（docs/52 §3：永不打包）
+STAT fingerprint scanned=322 scope=git-tracked known-hashes=0 hits=1
+FINGERPRINT-FAIL 真实素材/商业 SDK 二进制不得入库，见 docs/41 D-13a 与 docs/52 §5
+```
+
+通过输出 `STAT fingerprint ... hits=0` + `FINGERPRINT-PASS`，exit 0；有命中输出若干 `FP-HIT` 行
+再 `FINGERPRINT-FAIL`，exit 1。
+
+## release.mjs — M9 发布装配
+
+把「能跑的仓库」变成「能发出去的目录」：`dotnet publish` 内核 → **按每个 manifest 的 `entry`
+逐工程 publish 插件** → 图标 → LICENSE/NOTICE/README → 出口合规检查 → 写 `release-manifest.json`
+（逐文件 sha256）。版本号唯一事实源 = `package.json` 的 `version`。
+
+为什么插件要按 entry 发布：manifest 的 `entry` 形如
+`PetDock.SamplePet/bin/Release/net8.0-windows/PetDock.SamplePet.dll`，整棵树复制（排除 `bin/`）
+会让发布物里只有 `.cs` 源码，**装完一个插件都加载不了**，而出口检查只查 manifest 存在时照样报
+`RELEASE-OK`（2026-10-19 实际踩过）。所以判据是「entry 指向的文件在不在」。
+
+```
+node tools/release.mjs              # 装配到 artifacts/release/<version>/
+node tools/release.mjs --dry-run    # 仍然真的 publish 到临时目录并跑完出口检查，只是不碰最终目录
+node tools/release.mjs --skip-publish
+```
+
+出口检查（扫**要发出去的那棵树**，不是仓库）：商业 SDK 扩展名、LICENSE/NOTICE、
+`PetDock.Core.exe`、每个插件 manifest 的 `license.spdx`、`assets/icons/icon-32.png`。
+失败打 `RELEASE-CHECK-FAIL ...` + `RELEASE-FAIL checks=N`，exit 1。
 
 | 命名空间 | 登记处 |
 |---|---|

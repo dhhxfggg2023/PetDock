@@ -1,5 +1,6 @@
 {
   "name": "petdock",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,7 +13,10 @@
     "lint:coverage": "node tools/check-dyberpet-coverage.mjs",
     "lint:manifest": "node tools/validate-manifest.mjs",
     "lint:assets": "node tools/asset-manifest.mjs",
-    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/check-dyberpet-coverage.mjs"
+    "lint:fingerprint": "node tools/asset-fingerprint.mjs",
+    "release": "node tools/release.mjs",
+    "release:dry": "node tools/release.mjs --dry-run",
+    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/check-dyberpet-coverage.mjs"
   },
   "dependencies": {
     "ajv": "^6.15.0",
