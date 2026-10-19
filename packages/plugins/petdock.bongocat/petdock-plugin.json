@@ -7,7 +7,8 @@
   "tier": 0,
   "entry": "PetDock.BongoCat/bin/Release/net8.0-windows/PetDock.BongoCat.dll",
   "capabilities": [
-    "input.mousePosition"
+    "input.mousePosition",
+    "input.keyboardHook"
   ],
   "license": { "spdx": "CC0-1.0" },
   "events": [

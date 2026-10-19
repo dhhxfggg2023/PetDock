@@ -134,12 +134,15 @@ internal sealed class UiHost : ApplicationContext
 
     private void PauseHooks()
     {
-        // 强制项：立即停止钩子，不可由插件恢复（docs/18 §1、docs/14:110）。
-        // 钩子仍然装着但不再向外发事件——卸载再装回来会丢一个窗口期的按键，而暂停的语义
-        // 本来就是「不再监听」，不是「拆掉装置」。
+        // docs/18:22 的字面要求是「立即卸载钩子线程（不可由插件恢复）」——所以这里是 Uninstall
+        // 而不是 Pause：暂停仍然把回调注册在 OS 里，那不叫卸载。
+        // 不可恢复：_keyHook 置空，且没有任何代码路径会再调用 InstallKeyboardHookIfGranted
+        // （它只在构造期跑一次）。插件即便重载也不会让钩子回来，重启宿主才会。
+        int installed = _keyHook?.IsInstalled == true ? 1 : 0;
         _hooksPaused = true;
-        _keyHook?.Pause();
-        KernelLog.Write($"tray-pause-hooks requested=1 installed={(_keyHook?.IsInstalled == true ? 1 : 0)}");
+        _keyHook?.Dispose();
+        _keyHook = null;
+        KernelLog.Write($"tray-pause-hooks uninstalled={installed} resumable=0");
     }
 
     /// <summary>

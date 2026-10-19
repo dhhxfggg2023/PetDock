@@ -304,9 +304,13 @@ internal static partial class EventSelfTest
             !granted && verdict.Reason == "not-declared"
                 && log.CountOf(EventCatalog.KeyDown) == 0 && log.CountOf(EventCatalog.KeyUp) == 0,
             $"granted={Flag(granted)} reason={verdict.Reason} hook-installed=false key-events=0");
-        // 静态面：M4 不装任何全局钩子，core 里 SetWindowsHookEx 调用点必须为 0（review 用 grep 复核）。
-        Check(ref failures, "hook-not-installed", true, "setwindowshookex-sites=0");
-        Check(ref failures, "hook-tray-not-required", !granted, "reason=no-hook-installed");
+        // 静态面：全局钩子必须有且只有一个安装点。
+        // 2026-10-19 之前这里是硬编码 `true` + "sites=0"，因为当时内核确实一个钩子都不装；
+        // 那种写法在钩子接上之后会变成一条恒真断言（它不读任何东西，永远不会红）。
+        // 现在改成真扫一遍源码：多出一个安装点就意味着有一条绕过 UiHost 授权门（docs/16:56）的路径。
+        int sites = CountHookInstallSites();
+        Check(ref failures, "hook-single-install-site", sites == 1, $"setwindowshookex-sites={sites}");
+        Check(ref failures, "hook-gated-by-grant", !granted, "reason=no-hook-installed-without-grant");
 
         // pointer-gate：无 input.mousePosition 订阅者时不分发 input.pointer.move，
         // 但 Cursor 采样照样发生（WorldSnapshot 要它）—— 见 WorldSample。

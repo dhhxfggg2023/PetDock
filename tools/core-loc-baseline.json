@@ -71,7 +71,7 @@
     },
     {
       "date": "2026-10-19",
-      "measured": 9906,
+      "measured": 9909,
       "budget": 9950,
       "note": "M7 遗留：input.key.* 的生产源（docs/16 §3 把它定为 capability only，此前全仓零生产源，BongoCat 的抬爪逻辑成立但真实键盘无反应）。这一笔同时补上 docs/14:110 要求的托盘固定项背后真正被停掉的东西——RFC-12 建了那个菜单项，但它当时只能如实写 installed=0。",
       "attribution": [
@@ -87,7 +87,7 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.cs",
             "packages/core/PetDock.Core/src/Program.cs"
           ],
-          "lines": 97
+          "lines": 100
         }
       ]
     }

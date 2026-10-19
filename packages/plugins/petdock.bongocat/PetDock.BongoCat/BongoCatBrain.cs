@@ -27,12 +27,13 @@ namespace PetDock.Plugins.BongoCat
     ///    `world.Cursor`（窗口内局部坐标，换算到屏幕要加窗口原点）。
     ///
     /// ② 敲键盘猫爪敲击（docs/33 §2 第二条）。docs/33 §4 设想 `input.keyboardHook`。
-    ///    **本插件收 `input.key.down`，但 M7 里这条事件没有生产源** —— core 里
-    ///    `SetWindowsHookEx` 调用点为 0，且 `EventSelfTest.HookGate()` 把「0 个钩子调用点」
-    ///    写成了一条断言。装钩子需要托盘上那个不可隐藏的「暂停全局输入钩子」固定项
-    ///    （docs/14:110 / docs/18:22），是 M4 预算之外的一块（RFC-05 §D 已裁决不装）。
-    ///    所以这里的行为是：**事件到达就响应，不到达就不假装** —— 见 `_pawSourceSeen`，
-    ///    它让「爪子一次都没抬过」这件事在诊断行里可分辨，而不是看起来像实现坏了。
+    ///    **2026-10-19 起这条事件有生产源了**：内核的 `KeyboardHook`（WH_KEYBOARD_LL）在
+    ///    **有插件持有 `input.keyboardHook` 时**才安装（docs/16:56），本插件的 manifest 已声明
+    ///    该能力。托盘上那个不可隐藏的「暂停全局输入钩子」固定项（docs/14:110 / docs/18:22）
+    ///    是它的安全阀，暂停后钩子不再向外发事件。
+    ///    仍然保留 `_pawSourceSeen`：**事件到达就响应，不到达就不假装** —— 钩子装不上
+    ///    （无交互桌面会话、被安全软件拦、或用户已暂停）时，「爪子一次都没抬过」必须
+    ///    在诊断行里可分辨，而不是看起来像实现坏了。
     ///
     /// ③ 闲置呼吸/眨眼（docs/33 §2 第三条）。素材侧已经有 idle 4 帧（第 4 帧是眨眼），
     ///    Brain 只要在没有任何输入时保持 `idle` 即可 —— 不需要额外代码。
@@ -193,7 +194,7 @@ namespace PetDock.Plugins.BongoCat
         {
             Console.Error.WriteLine(
                 $"[PetDock] BongoCatBrain disposed. paws={_pawCount} keyEventsSeen={_pawSourceSeen}"
-                + (_pawSourceSeen ? string.Empty : " (input.key.* has no producer in M7; see docs/rfcs/RFC-09)"));
+                + (_pawSourceSeen ? string.Empty : " (no key events received: the host installs the global hook only when a plugin holds input.keyboardHook)"));
             return Task.CompletedTask;
         }
 
