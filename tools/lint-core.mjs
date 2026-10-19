@@ -9,8 +9,11 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PACKAGES_DIR = join(ROOT, 'packages');
 const CORE_DIR = join(PACKAGES_DIR, 'core');
 
-const CORE_LOC_BUDGET = 8450; // D-03a；核定依据 RFC-10（Tier-2 沙箱+宿主接线 实测 +334；8100 = RFC-07、9500 = RFC-01、11000 = RFC-06）
-const MAX_FILE_LINES = 400; // D-03c
+// D-03a budget comes from tools/core-loc-baseline.json (RFC-11 single source of truth).
+// The file is maintained by hand and NEVER auto-written: a floor that follows the last
+// run is not a floor (same discipline as RFC-04 section 4.3 for coverage).
+const LOC_BASELINE_FILE = join(ROOT, 'tools', 'core-loc-baseline.json');
+const MAX_FILE_LINES = 400; // D-03c (unchanged by RFC-11; adjusting it still needs an RFC)
 const TEMP_MARKERS = ['TODO', 'FIXME', 'HACK', 'XXX']; // D-04a
 
 // D-03b word list: docs/01-principles.md P-02 plus docs/02-glossary.md section 2.
@@ -83,7 +86,67 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// D-03a + D-03c: kernel source size (D-03a excludes test dirs, D-03c covers them)
+// D-03a baseline (RFC-11): read the single source of truth, then validate the declaration
+// chain. Four things are machine-checkable; the honesty of the attribution is not (D-08d).
+function readLocBaseline() {
+  const text = readText(LOC_BASELINE_FILE);
+  if (text === null) {
+    return { error: `LOC-BASELINE-MISSING tools/core-loc-baseline.json (RFC-11 single source of truth)` };
+  }
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    return { error: `LOC-BASELINE-BAD-JSON tools/core-loc-baseline.json ${err.message}` };
+  }
+  const budget = data.budget;
+  if (typeof budget !== 'number' || !Number.isFinite(budget) || budget <= 0) {
+    return { error: 'LOC-BASELINE-BAD-BUDGET tools/core-loc-baseline.json "budget" must be a positive number' };
+  }
+  const history = Array.isArray(data.history) ? data.history : [];
+  if (history.length === 0) {
+    return { error: 'LOC-BASELINE-NO-HISTORY tools/core-loc-baseline.json "history" must record at least one measurement' };
+  }
+  const last = history[history.length - 1];
+  if (last.budget !== budget) {
+    return {
+      error: `LOC-BASELINE-BUDGET-MISMATCH top-level budget ${budget} != last history entry ${last.budget} (declare the raise in history, do not only bump the top number)`,
+    };
+  }
+  // Entries must be ordered by date so "previous entry" is unambiguous.
+  for (let i = 1; i < history.length; i += 1) {
+    if (String(history[i].date) < String(history[i - 1].date)) {
+      return { error: `LOC-BASELINE-DATE-ORDER history[${i}] date ${history[i].date} is earlier than history[${i - 1}] ${history[i - 1].date}` };
+    }
+  }
+  // Arithmetic closure: declared attribution must add up to the measured delta.
+  for (let i = 1; i < history.length; i += 1) {
+    const cur = history[i];
+    const prev = history[i - 1];
+    const delta = cur.measured - prev.measured;
+    const declared = (cur.attribution ?? []).reduce((sum, a) => sum + (Number(a.lines) || 0), 0);
+    if (delta !== declared) {
+      return {
+        error: `LOC-BASELINE-ATTRIBUTION-GAP history[${i}] ${cur.date}: measured delta ${delta} but attribution declares ${declared} (difference ${delta - declared})`,
+      };
+    }
+    for (const entry of cur.attribution ?? []) {
+      for (const rel of entry.files ?? []) {
+        if (!existsSync(join(ROOT, rel))) {
+          return { error: `LOC-BASELINE-ATTRIBUTION-MISSING-FILE history[${i}] ${cur.date}: ${rel} does not exist` };
+        }
+      }
+    }
+  }
+  const genesis = history[0];
+  const lastDeclared = history.length > 1 ? history[history.length - 1].measured - history[history.length - 2].measured : 0;
+  return { budget, genesis, last, lastDeclared, entries: history.length };
+}
+
+const baseline = readLocBaseline();
+const CORE_LOC_BUDGET = baseline.error ? null : baseline.budget;
+if (baseline.error) violations.push(`VIOLATION D-03a ${baseline.error}`);
+
 let coreLoc = 0;
 let coreFiles = 0;
 if (existsSync(CORE_DIR)) {
@@ -101,9 +164,9 @@ if (existsSync(CORE_DIR)) {
     }
   }
 }
-if (coreLoc > CORE_LOC_BUDGET) {
+if (CORE_LOC_BUDGET !== null && coreLoc > CORE_LOC_BUDGET) {
   violations.push(
-    `VIOLATION D-03a packages/core ${coreLoc} lines exceeds CORE_LOC_BUDGET ${CORE_LOC_BUDGET}`
+    `VIOLATION D-03a packages/core ${coreLoc} lines exceeds budget ${CORE_LOC_BUDGET} (declare the raise in tools/core-loc-baseline.json history, RFC-11)`
   );
 }
 
@@ -140,8 +203,17 @@ if (existsSync(PACKAGES_DIR)) {
   }
 }
 
-console.log(`STAT core-loc ${coreLoc}/${CORE_LOC_BUDGET}`);
+console.log(`STAT core-loc ${coreLoc}/${CORE_LOC_BUDGET === null ? '?' : CORE_LOC_BUDGET}`);
 console.log(`STAT core-files ${coreFiles}`);
+if (!baseline.error) {
+  // Trend line for AM-03: growth since the genesis measurement, plus what the last
+  // declaration accounted for. This is the "observation" side of the anti-metric.
+  const sinceGenesis = coreLoc - baseline.genesis.measured;
+  const last = baseline.lastDeclared >= 0 ? `+${baseline.lastDeclared}` : `${baseline.lastDeclared}`;
+  console.log(
+    `STAT core-loc-trend ${sinceGenesis >= 0 ? '+' : ''}${sinceGenesis} since ${baseline.genesis.measured} (${baseline.genesis.date}); last declared ${last} in history[${baseline.entries - 1}]`
+  );
+}
 for (const v of violations) console.log(v);
 if (violations.length > 0) {
   console.log('LINT-CORE-FAIL');

@@ -47,20 +47,21 @@ DEPSCAN-FAIL
 
 | 规则 | 检查内容 |
 |---|---|
-| D-03a | `packages/core/**/*.cs` 行数合计（排除 `obj/`、`bin/`、`test/`）超过 `CORE_LOC_BUDGET = 8000` 即失败 |
+| D-03a | `packages/core/**/*.cs` 行数合计（排除 `obj/`、`bin/`、`test/`）超过 `tools/core-loc-baseline.json` 的 `budget` 即失败。该文件是**唯一事实源**，人工维护：抬升预算 = 在 `history` 追加一条带逐切片归属表（`slice`/`files`/`lines`）的记录，不走 RFC（`docs/rfcs/RFC-11.md`）。门禁同时校验归属表行数求和 = 相邻两条 `measured` 之差、归属文件真实存在、末条 `budget` = 顶层 `budget`；归属表**内容的诚实性**机器判不了，登记为审查项 `D-08d` |
 | D-03b | 概念黑名单（词表抄自 `docs/01-principles.md` P-02 与 `docs/02-glossary.md` §2），在 `packages/core` 下所有源码与配置文件中大小写不敏感逐行搜索，命中即失败并给行号 |
 | D-03c | `packages/core` 下任何 `.cs` 源文件超过 `MAX_FILE_LINES = 400` 行即失败（含 `test/`） |
 | D-04a | 源码中整词出现 `T<临时标记>`（大小写不敏感，词表见脚本 `TEMP_MARKERS`）即失败，扫描 `packages/` 全部层 |
 
 范围细节：D-03b 扫描源码与配置文件扩展名（`.md` 不计，与 `docs/40:85` 对 TODO 的说明同理——
 文档自己解释规则不算违规）；D-04a 只扫源码扩展名；`obj/`、`bin/`、`node_modules/` 一律跳过。
-通过态先输出两行 `STAT`（`core-loc` 计数 / `core-files` 计数）供 AM-03 趋势观测。
+通过态先输出三行 `STAT`（`core-loc` 计数/预算 / `core-files` 计数 / `core-loc-trend` 自创世条的增减与上一条申报额）供 AM-03 趋势观测。
 
 失败样例（本 README 自身受同一黑名单约束，故黑名单词与临时标记一律用 `<...>` 占位）：
 
 ```
-STAT core-loc 0/8000
-STAT core-files 0
+STAT core-loc 9000/8450
+STAT core-files 64
+VIOLATION D-03a packages/core 9000 lines exceeds budget 8450 (declare the raise in tools/core-loc-baseline.json history, RFC-11)
 VIOLATION D-03b packages/core/Host.cs:17 <blacklisted-term>
 VIOLATION D-03c packages/core/Host.cs 452 lines exceeds MAX_FILE_LINES 400
 VIOLATION D-04a packages/core/Host.cs:23 <temp-marker>
