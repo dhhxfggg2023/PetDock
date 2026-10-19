@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 8450,
+  "budget": 9700,
   "history": [
     {
       "date": "2026-10-18",
@@ -38,6 +38,34 @@
           "slice": "M8 D-14 --perftest 入口分派",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 11
+        }
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "measured": 9633,
+      "budget": 9700,
+      "note": "RFC-12：UI 母体（托盘 + 主控面板四页 + 授权弹窗 + 性能页 + 只读花名册）。这是自 RFC-01 以来最大的一笔增长，且是路线图外的补账：docs/18 定义的整套界面此前一行未实现，M8 仪表盘因此无处安放。同期 Program.cs 因 D-03c 拆分与入口迁出净减 205 行，已从本笔增量中扣抵。",
+      "attribution": [
+        {
+          "slice": "RFC-12 UI 母体（新建 9 个文件）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs",
+            "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/PerfPage.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Roster.cs",
+            "packages/core/PetDock.Core/src/Program.SelfTest.cs"
+          ],
+          "lines": 1398
+        },
+        {
+          "slice": "Program.cs 拆分与入口迁出（D-03c 还款）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": -205
         }
       ]
     }
