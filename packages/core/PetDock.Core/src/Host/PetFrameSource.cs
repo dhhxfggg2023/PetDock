@@ -132,7 +132,31 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
     }
 
     /// <summary>
-    /// 窗口事件（core.window.focus / moved / dpiChanged）的生产入口。
+    /// 发一条 input.key.down / up（emit，`{vkey, modifiers}`，docs/16 §3）。
+    /// 与 pointer.move 的区别：那条由帧泵采样光标得到（host-generated），这条必须来自**真实的
+    /// 设备钩子**——docs/16 §3 把 key 事件的 Source 定为 `capability only`，轮询或伪造都不成立。
+    /// 钩子本身在 UiHost 里，只有插件持 `input.keyboardHook` 时才装（docs/16:56）。
+    /// </summary>
+    public void PublishKeyStroke(int vkey, int modifiers, bool down)
+    {
+        try
+        {
+            _bus.Publish(new PetEvent(
+                down ? EventCatalog.KeyDown : EventCatalog.KeyUp,
+                PetEvent.NowMs(),
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["vkey"] = vkey,
+                    ["modifiers"] = modifiers,
+                }));
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"key-event-failed instance={_instance.Id} {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    /// <summary>窗口事件（core.window.focus / moved / dpiChanged）的生产入口。
     /// 由 <c>Program.ComposeWindow</c> 把 <c>LayeredFrameWindow.WindowEvent</c> 接到这里：
     /// M4 修复前那条 event 全仓零订阅者，三条窗口事件发了也无人消费（G 号缺口）。
     /// 类型必须在事件目录内，否则 HostEventDispatch 会 fail-closed 拒收并留审计行 —— 那正是期望行为。

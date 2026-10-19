@@ -69,7 +69,9 @@ internal static partial class Program
         // 再没有就退回内核纯色兜底 —— 常驻形态下兜底是合法的（窗口仍可见可命中）。
         using var window = ComposeWindow("resident", pluginHost);
         ComposeOutcome? composed = Composition;
-        var host = new UiHost(window, composed?.Instance, pluginHost);
+        // 帧源要交给 UiHost：键盘钩子的事件必须走 PetFrameSource.PublishKeyStroke 才能进总线
+        // （docs/16 §3 的 input.key.* 是 capability only，没有第二条合法生产路径）。
+        var host = new UiHost(window, composed?.Instance, pluginHost, composed?.Content as PetFrameSource);
         using (host)
         {
             Application.Run(host);

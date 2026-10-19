@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Core.Input;
 using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
@@ -35,6 +36,7 @@ internal static class UiSelfTest
             AuthorizationDialogCheck();
             PerfEmptyHonest();
             PerfPageSample();
+            KeyboardHookContract();
             failures = _failed;
         }
         catch (Exception error)
@@ -209,6 +211,45 @@ internal static class UiSelfTest
         page.Bind(new PerfSummary("60.0s", 1, 0, rows));
         Check("ui-perf-rows", page.RowCount == 1 && page.SummaryText.Contains("降级 1", StringComparison.Ordinal),
             $"rows={page.RowCount} summary={page.SummaryText}");
+        return failures;
+    }
+
+    /// <summary>
+    /// docs/14:110 + docs/16:56：键盘钩子的两条硬约束。
+    /// ① 没有插件持权时**不安装**（一个装了却没人要的全局钩子只是白拿用户的每一次按键）；
+    /// ② 安装后必须能被托盘固定项停止，且停止后不再向外发事件。
+    /// 不测「真的敲键盘」——那需要交互式桌面会话与外部输入，无人值守跑不出来；
+    /// 真实按键的端到端证据在 --eventtest/--drivetest 与手工走查里，不在这一条。
+    /// </summary>
+    private static int KeyboardHookContract()
+    {
+        int failures = 0;
+
+        // ① 无持权者：UiHost 构造后不应装钩子。
+        using (var window = new LayeredFrameWindow())
+        {
+            window.Hide();
+            using var host = new UiHost(window, null, null);
+            Check("ui-keyhook-not-installed-without-grantee", !host.KeyboardHookInstalled,
+                $"installed={host.KeyboardHookInstalled}");
+        }
+
+        // ② 钩子本体：安装 → 暂停 → 卸载，全程不抛；暂停期间不向外发事件。
+        var strokes = new List<KeyStroke>();
+        using var hook = new KeyboardHook(strokes.Add);
+        bool installed = hook.Install();
+        Check("ui-keyhook-install", installed && hook.IsInstalled, $"installed={installed}");
+
+        hook.Pause();
+        bool pausedFlag = hook.Paused;
+        hook.Resume();
+        Check("ui-keyhook-pause-resume", pausedFlag && !hook.Paused, $"paused={pausedFlag}");
+
+        hook.Uninstall();
+        Check("ui-keyhook-uninstall", !hook.IsInstalled, $"installed={hook.IsInstalled}");
+
+        // 暂停/恢复不应产生任何事件（回调只由 OS 触发，这里验证的是它没有副作用）。
+        Check("ui-keyhook-no-synthetic-events", strokes.Count == 0, $"strokes={strokes.Count}");
         return failures;
     }
 

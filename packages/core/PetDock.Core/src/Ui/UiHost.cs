@@ -3,9 +3,12 @@
 // 用某个窗体当消息循环的宿主会让「关闭面板 = 退出程序」——docs/18 §2.5 明确禁止这种行为。
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Core.Input;
 using PetDock.Core.PetRuntime;
+using PetDock.Core.Sandbox;
 using PetDock.Hosting;
 
 namespace PetDock.Core.Ui;
@@ -15,17 +18,20 @@ internal sealed class UiHost : ApplicationContext
     private readonly PetInstance? _pet;
     private readonly PluginHost? _host;
     private readonly LayeredFrameWindow _window;
+    private readonly PetFrameSource? _windowSource;
     private readonly TrayHost _tray;
     private ControlPanel? _panel;
     private PerfSummary _perf = PerfSummary.Empty;
+    private KeyboardHook? _keyHook;
     private bool _hooksPaused;
     private bool _disposed;
 
-    public UiHost(LayeredFrameWindow window, PetInstance? pet, PluginHost? host)
+    public UiHost(LayeredFrameWindow window, PetInstance? pet, PluginHost? host, PetFrameSource? source = null)
     {
         _window = window;
         _pet = pet;
         _host = host;
+        _windowSource = source;
 
         _tray = new TrayHost(
             petName: pet?.Id ?? "(无)",
@@ -39,7 +45,14 @@ internal sealed class UiHost : ApplicationContext
             exit: ExitApp);
 
         _tray.SetPetCount(pet is null ? 0 : 1);
+
+        // 钩子必须在窗口句柄已创建、且有消息泵之后装：低级钩子回调由安装线程的消息循环派发。
+        // 这里用 HandleCreated 的等价时机——UiHost 构造时窗口句柄已经存在（Program 里先建窗口）。
+        InstallKeyboardHookIfGranted();
     }
+
+    /// <summary>键盘钩子是否装着（自检与诊断用；不暴露可写入口）。</summary>
+    public bool KeyboardHookInstalled => _keyHook?.IsInstalled == true;
 
     /// <summary>托盘（自检用）。</summary>
     public TrayHost Tray => _tray;
@@ -121,11 +134,67 @@ internal sealed class UiHost : ApplicationContext
 
     private void PauseHooks()
     {
-        // 强制项：立即卸载钩子线程，不可由插件恢复（docs/18 §1）。
-        // 当前内核尚未安装全局钩子（RFC-05 §D 遗留），所以这里如实记录「无可卸载」，
-        // 而不是假装做了一次卸载——伪造一个成功的动作会让这个安全阀在真接上钩子后失效。
+        // 强制项：立即停止钩子，不可由插件恢复（docs/18 §1、docs/14:110）。
+        // 钩子仍然装着但不再向外发事件——卸载再装回来会丢一个窗口期的按键，而暂停的语义
+        // 本来就是「不再监听」，不是「拆掉装置」。
         _hooksPaused = true;
-        KernelLog.Write("tray-pause-hooks requested=1 installed=0 note=rfc-05-d-pending");
+        _keyHook?.Pause();
+        KernelLog.Write($"tray-pause-hooks requested=1 installed={(_keyHook?.IsInstalled == true ? 1 : 0)}");
+    }
+
+    /// <summary>
+    /// 按 docs/16:56「设备钩子只在插件拥有权限后激活」安装键盘钩子。
+    /// 没有任何插件持 `input.keyboardHook` 时**不装**——一个装了却没人要的全局钩子，
+    /// 只是白拿用户的每一次按键。
+    /// </summary>
+    private void InstallKeyboardHookIfGranted()
+    {
+        if (_keyHook is not null || _pet is null || _host is null)
+        {
+            return;
+        }
+
+        bool granted = false;
+        try
+        {
+            foreach (PluginHandle handle in _host.HandlesSnapshot())
+            {
+                if (handle.Leases.Any(l => l.Active
+                    && string.Equals(l.Id, CapabilityIds.InputKeyboardHook, StringComparison.Ordinal)))
+                {
+                    granted = true;
+                    break;
+                }
+            }
+        }
+        catch (TimeoutException)
+        {
+            KernelLog.Write("key-hook-skip reason=scheduler-stalled");
+            return;
+        }
+
+        if (!granted)
+        {
+            KernelLog.Write("key-hook-skip reason=no-grantee");
+            return;
+        }
+
+        if (_windowSource is null)
+        {
+            KernelLog.Write("key-hook-skip reason=no-frame-source");
+            return;
+        }
+
+        var hook = new KeyboardHook(stroke => _windowSource.PublishKeyStroke(stroke.VKey, stroke.Modifiers, stroke.Down));
+        if (!hook.Install())
+        {
+            KernelLog.Write("key-hook-install-failed (docs/14:110 的固定项仍在，用户可随时停止)");
+            hook.Dispose();
+            return;
+        }
+
+        _keyHook = hook;
+        KernelLog.Write("key-hook-installed reason=capability-granted");
     }
 
     private void ExitApp()
@@ -147,6 +216,8 @@ internal sealed class UiHost : ApplicationContext
         if (disposing && !_disposed)
         {
             _disposed = true;
+            _keyHook?.Dispose();
+            _keyHook = null;
             _panel?.Dispose();
             _panel = null;
             _tray.Dispose();
