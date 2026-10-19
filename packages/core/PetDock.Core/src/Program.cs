@@ -74,7 +74,7 @@ internal static partial class Program
     }
 
     /// <summary>动画循环自检入口（--animtest clipA clipB ...）：判据与命令形态见
-    /// .dsh-code/M2-contract-frozen.md §3.3（C1 clip-frames / C2 同 now 同帧 / C3 周期绕回）。</summary>
+    /// docs/handoff/M2-contract-frozen.md §3.3（C1 clip-frames / C2 同 now 同帧 / C3 周期绕回）。</summary>
     private static int RunAnimTest(string[] args)
     {
         AttachConsole();

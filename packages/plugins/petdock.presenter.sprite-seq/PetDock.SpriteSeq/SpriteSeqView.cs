@@ -16,7 +16,7 @@ namespace PetDock.Builtins;
 public sealed class SpriteSeqView : IPetView, IClipCatalog
 {
     /// <summary>运行期贡献点 id：逐字等于 docs/11:310（连字符在这里合法；manifest 的 id 字段是另一件事，
-    /// 见 .dsh-code/M2-contract-frozen.md §11.2——本值不是 manifest id，不参与 docs/21 pattern）。</summary>
+    /// 见 docs/handoff/M2-contract-frozen.md §11.2——本值不是 manifest id，不参与 docs/21 pattern）。</summary>
     public InterfaceMeta Meta => new("petdock.presenter.sprite-seq", "1.0.0");
 
     private PackData? _pack;

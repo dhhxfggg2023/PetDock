@@ -2,7 +2,7 @@
 // tools/gen-dyberpet-fixture.mjs
 // D-13b deterministic DyberPet synthetic-fixture constructor (zero npm deps, Node ESM, engines node>=20).
 //
-// Spec (binding): .dsh-code/M3-contract-frozen.md
+// Spec (binding): docs/handoff/M3-contract-frozen.md
 //   §1.2 layout detection  §2.2-§2.7 frame/fps/loop/clip/naturalSize  §9 t4-note (act_num boundary + 0-frame action)
 // Modeled on the real package assets/user/dyberpet/守岸人 (gitignored, read-only, NEVER copied in here —
 // every pixel below is procedurally generated geometry, no third-party bytes).

@@ -1,4 +1,4 @@
-// M1 契约 §5（.dsh-code/M1-contract-frozen.md）：沙箱事件是内核与上层之间唯一的
+// M1 契约 §5（docs/handoff/M1-contract-frozen.md）：沙箱事件是内核与上层之间唯一的
 // 异步通报通道。事件只携带「发生了什么」，不携带任何素材/插件生态词汇（docs/40 D-03b）。
 // P-05（docs/01 §5）：沙箱内的任何异常都必须在这里落成事件，绝不能穿透进宿主事件循环。
 using System.Text;

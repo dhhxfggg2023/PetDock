@@ -20,7 +20,7 @@ internal sealed record DyberPetAction(
 
 /// <summary>
 /// DyberPet 真包 → sprite-seq 标准包（petdock-sample.json + anim/*.json）的转换核心。
-/// 逐条裁决出自 .dsh-code/M3-contract-frozen.md：
+/// 逐条裁决出自 docs/handoff/M3-contract-frozen.md：
 ///   §2.2 帧数 = 文件枚举（前缀取 act_conf 的 images 字段，不是动作名）；
 ///   §2.3 act_num 不消费（真包 18 前缀无一与文件数相等，sleep 20>16）——只进 provenance；
 ///   §2.4 fps = 1/frame_refresh（缺/≤0 回落 0.120 → 8.3333fps，不许 fps=act_num/frame_refresh）；

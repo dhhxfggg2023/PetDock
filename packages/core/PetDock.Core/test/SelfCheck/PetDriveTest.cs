@@ -287,7 +287,7 @@ internal static partial class PetDriveTest
 
 /// <summary>
 /// ABI 类型面的自述（--drivetest 的对照行）：四接口在哪个命名空间、以及**哪个名字对应 docs/11 的哪个接口**。
-/// 对照表的完整版在 .dsh-code/M2-name-map.md（core 之外，因为那几行本身会撞 D-03b 黑名单）。
+/// 对照表的完整版在 docs/handoff/M2-name-map.md（core 之外，因为那几行本身会撞 D-03b 黑名单）。
 /// </summary>
 internal static class PetRuntimeAbiTypes
 {

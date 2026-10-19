@@ -1,4 +1,4 @@
-// M1 契约 §5（.dsh-code/M1-contract-frozen.md）：能力句柄 = docs/14 §2 的白名单 ID 模型。
+// M1 契约 §5（docs/handoff/M1-contract-frozen.md）：能力句柄 = docs/14 §2 的白名单 ID 模型。
 // 白名单而非黑名单；安装期一次性声明；每次授予/拒绝记审计。本文件只负责「ID 的合法性」，
 // 不负责「是否授予」——授予判定在 CapabilityGate。
 // 注意：docs/14 §2 中的 assets.write:cas 与 audio.play 是「明令禁止项」，

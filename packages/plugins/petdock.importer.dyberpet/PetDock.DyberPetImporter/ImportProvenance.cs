@@ -70,7 +70,7 @@ internal static class ImportProvenance
         var doc = new Dictionary<string, object?>
         {
             ["generator"] = "petdock.importer.dyberpet (M3 t3)",
-            ["contract"] = ".dsh-code/M3-contract-frozen.md",
+            ["contract"] = "docs/handoff/M3-contract-frozen.md",
             ["source"] = new Dictionary<string, object?>
             {
                 ["dir"] = sourceDir,

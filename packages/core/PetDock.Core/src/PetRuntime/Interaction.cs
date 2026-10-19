@@ -1,5 +1,5 @@
 // docs/11 §5 的指针交互接口的 C# 绑定。
-// 接口名 = IPointerSurface（对应 docs/11 哪一个接口、为什么换名，见 .dsh-code/M2-name-map.md）。
+// 接口名 = IPointerSurface（对应 docs/11 哪一个接口、为什么换名，见 docs/handoff/M2-name-map.md）。
 // 三条语义（docs/11:188-190）逐条落在注释上：
 // - 这一层不做「点击」，只做「会话」：任何点击都必须表达为 session 开始/结束，
 //   好让宿主在「拖动 / 长按 / 双击」之间仲裁；

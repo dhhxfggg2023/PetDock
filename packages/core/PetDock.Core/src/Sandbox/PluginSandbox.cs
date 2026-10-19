@@ -1,4 +1,4 @@
-// M1 契约 §4.6 / §5（.dsh-code/M1-contract-frozen.md）：Tier-1 沙箱基座主类型。
+// M1 契约 §4.6 / §5（docs/handoff/M1-contract-frozen.md）：Tier-1 沙箱基座主类型。
 // 冻结映射（契约 §4.6）：
 //   - 每插件独立 Engine + Store（本类型每实例各持一份）；
 //   - 内存预算 → Store.SetLimits；每片 CPU → Fuel；墙钟 → EpochDeadline（阈值已设，纪元未推进）；

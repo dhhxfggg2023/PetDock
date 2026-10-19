@@ -1,5 +1,5 @@
 // docs/11 §3 的视图接口（本 namespace 里的 C# 名 = IPetView）的绑定。
-// 它对应 docs/11 哪个接口、以及为什么接口名与上下文类型名都换过，写在 .dsh-code/M2-name-map.md
+// 它对应 docs/11 哪个接口、以及为什么接口名与上下文类型名都换过，写在 docs/handoff/M2-name-map.md
 // （core 之外的文件）——两张冻结文档在那个词上真实冲突，是否走 RFC 由队长裁定，本文件只实现。
 //
 // §3 的成员一个不少：meta / init / describe / attach / detach / dispose / setAnimation /

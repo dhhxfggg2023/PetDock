@@ -1,7 +1,7 @@
 # PetDock.EventReplay.Tests — M4 事件重放测试（t3）
 
 本工程是 docs/50:51「事件重放测试」与「ABI 契约测试」里**重放**那一半的物证。
-契约权威：`.dsh-code/M4-contract-frozen.md` §8（夹具格式 / 确定性 / 五条负例 / 谁不做什么）。
+契约权威：`docs/handoff/M4-contract-frozen.md` §8（夹具格式 / 确定性 / 五条负例 / 谁不做什么）。
 
 ## 怎么跑（本机唯一可行通道）
 

@@ -1,4 +1,4 @@
-// --eventtest：M4（行为与事件）的可判定判据（.dsh-code/M4-contract-frozen.md §4/§5/§6/§7）。
+// --eventtest：M4（行为与事件）的可判定判据（docs/handoff/M4-contract-frozen.md §4/§5/§6/§7）。
 // 命令形态：`--eventtest`，每行 `CHECK <key> PASS|FAIL <detail>`，末行 EVENT-OK / EVENT-FAIL n=<k>，
 // 退出码 0 / n —— 与 --animtest / --drivetest 同构（契约 §7.5）。
 // 分工：本文件 = 入口 + 能力 + 仲裁 + 指令 + 钩子 + 世界采样；总线语义与目录守门在 EventSelfTest.Bus.cs。

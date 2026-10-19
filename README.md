@@ -25,12 +25,15 @@ PetDock 是一个「万物皆可插件」的桌宠宿主：**内核只负责把�
   定时动作可复现；养成 / 任务 / 商店 / AI 对话不可复现，且不在 M3 范围内。
 - **M4 行为与事件** — 事件总线五种分发模式 + 14 条事件目录 + 输入钩子授权门 + Brain 指令仲裁；
   生产链上发布 `core.clock.tick`、初始化行为层并回填窗口句柄，因此「宠物对时间 / 鼠标 /
-  前台窗口三类事件做出可见反应」在常驻真实链上成立（证据见 `.dsh-code/M4-VERIFY-r2.md` §12）。
+  前台窗口三类事件做出可见反应」在常驻真实链上成立（证据见 `docs/handoff/M4-VERIFY-r2.md` §12）。
   本里程碑同时把自检面搬出内核源码树，使内核代码行数从 10,811 回到 8,031
   （[docs/rfcs/RFC-07](docs/rfcs/RFC-07.md)）。
 
-进行中：**M5** SDK + CLI。
-未开始：**M7** BongoCat + Tier 2、**M8** 稳定性加固、**M9** 打包发布。
+- **M5 SDK + CLI** — SDK 类型绑定 + CLI 六命令（`tools/petdock-cli/`，commit 667024b）。
+
+进行中：**M7** BongoCat + Tier 2 —— tier 0（BongoCat 交互重写 + [RFC-09](docs/rfcs/RFC-09.md)）
+已提交（ef30cf8）；Tier 2 沙箱写一半（`packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs`，未提交）。
+未开始：**M8** 稳定性加固、**M9** 打包发布。
 M6 插件市场按 [docs/50](docs/50-roadmap.md) 推迟。
 
 **已知欠账**：单元测试覆盖率门禁 D-10a 目前是**棘轮**（`docs/41` D-10a、`docs/rfcs/RFC-04`）——
@@ -73,6 +76,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `tests/` | 跨包集成测试、ABI 契约夹具与金图基线 |
 | `tools/` | 仓库门禁与素材生成脚本（`docs/40` 的机器可执行规则） |
 | `docs/` | 全部规格文档（00~52 + `rfcs/`） |
+| `docs/handoff/` | 里程碑交接/契约/验证档案（M1~M4 过程记录；本机存档不入库，入口见 `docs/98-ai-handoff.md`） |
 | `assets/sample-pet/` | 自建示例宠物（CC0，可用 `node tools/gen-sample-pet.mjs` 重新生成） |
 
 ## 许可

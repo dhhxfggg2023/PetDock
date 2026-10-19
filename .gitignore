@@ -39,6 +39,11 @@ assets/user/
 # 持久化靠：.dsh-code/ 本体 + pre-commit 钩子刷新的跨卷副本 %USERPROFILE%\petdock-ledger-backup\。
 ledger/
 
+# docs/handoff/ 是里程碑交接/契约/验证档案（2026-10-19 自 .dsh-code/ 聚合而来）。与 ledger/
+# 同款理由不入库：账本类工作档案、含本机路径；留在磁盘 + 跨卷备份
+# （%USERPROFILE%\petdock-ledger-backup\handoff\）。入口索引：docs/98-ai-handoff.md
+docs/handoff/
+
 # ---- 临时 / 探针输出 ----
 tools/**/*.scan.json
 *.tmp

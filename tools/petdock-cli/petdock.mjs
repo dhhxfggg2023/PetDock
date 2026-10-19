@@ -84,7 +84,7 @@ function abiVersion() {
  * schema，schema 只有一份）：这里用动态 import 在**同进程内**调它的具名导出，
  * 而不是 spawn 一个子进程 —— 因为管道捕获子进程输出在受限通道里会静默失败
  * （实测 code_verify 通道里 spawnSync 报 `status=null out=undefined`，pwsh 通道正常；
- * 见 .dsh-code/mistakes.md 的「code_verify 通道里跑一个会在自己旁边写辅助脚本的探针」）。
+ * 见 ledger/mistakes.md 的「code_verify 通道里跑一个会在自己旁边写辅助脚本的探针」）。
  * 同进程调用让本命令在两条通道下都可判定。
  */
 async function validateManifest(manifestPath) {

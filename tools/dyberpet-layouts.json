@@ -13,7 +13,7 @@
       "layouts": ["dyberpet.flat", "dyberpet.nested"],
       "fixture_roots": ["dyberpet-flat", "dyberpet-nested"],
       "material": "zero — fixtures are synthetic geometry produced by tools/gen-dyberpet-fixture.mjs (CC0-style procedural PNG); the real 49.85 MB package under assets/user/ is gitignored and never copied",
-      "contract": ".dsh-code/M3-contract-frozen.md §1.2 (layout detection) and §9 t4-note"
+      "contract": "docs/handoff/M3-contract-frozen.md §1.2 (layout detection) and §9 t4-note"
     }
   }
 }

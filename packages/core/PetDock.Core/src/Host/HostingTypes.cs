@@ -1,4 +1,4 @@
-// M1 契约 §5.2（.dsh-code/M1-contract-frozen.md）冻结的宿主类型与接口。
+// M1 契约 §5.2（docs/handoff/M1-contract-frozen.md）冻结的宿主类型与接口。
 // 契约原文把宿主划在 sdk 侧；本任务按队长分派落 packages/core/src/Host —— docs/01 P-01
 // 内核六能力表第 2 项就是「插件宿主」，t3 的沙箱基座（src/Sandbox）同此先例。
 // 命名空间按契约冻结为 PetDock.Hosting；程序集仍是 PetDock.Core，命名空间与程序集名互不约束。

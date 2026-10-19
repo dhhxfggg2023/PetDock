@@ -1,9 +1,9 @@
-// M2 契约 §1（.dsh-code/M2-contract-frozen.md）：Pet Runtime ABI 的核心数据类型在 core 声明。
+// M2 契约 §1（docs/handoff/M2-contract-frozen.md）：Pet Runtime ABI 的核心数据类型在 core 声明。
 // docs/11-pet-runtime-abi.md 是 FROZEN-v1，本文件是它的 C# 绑定；sdk/csharp 只对这里做
 // TypeForwardedTo（M1 t6 教训：同名同命名空间重声明 = 两个 CLR 类型 = IsAssignableFrom 恒假）。
 //
 // 标识符与 docs/11 名字的逐条对照，以及「为什么四个接口里有两个换了名」，
-// 写在 .dsh-code/M2-name-map.md（core 之外）—— 本文件不展开它，只给出这几条例外：
+// 写在 docs/handoff/M2-name-map.md（core 之外）—— 本文件不展开它，只给出这几条例外：
 //   Point / Rect / Size / Color → PetPoint / PetRect / PetSize / PetColor
 //     （System.Drawing 有同名类型，宿主侧的帧缓冲是 GDI+，两份会在同一文件并见）
 //   FrameIndex / Ms / ScaleFactor / PetInstanceId → int / int / double / string
@@ -71,7 +71,7 @@ public readonly record struct PetColor(int R, int G, int B, int A)
 
 /// <summary>
 /// 接口元数据（docs/11 §3/§4 的 `readonly meta: { id, version }`）。
-/// Id 是运行期真值，必须与 docs/11:310-312 逐字一致（见 .dsh-code/M2-name-map.md §2）。
+/// Id 是运行期真值，必须与 docs/11:310-312 逐字一致（见 docs/handoff/M2-name-map.md §2）。
 /// </summary>
 public readonly record struct InterfaceMeta(string Id, string Version)
 {

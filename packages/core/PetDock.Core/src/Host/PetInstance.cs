@@ -11,7 +11,7 @@
 // 本类是 partial：状态机与诊断在这里，帧与仲裁在 PetInstance.Frames.cs，
 // 下单与打点（§5）在 PetInstance.Pointer.cs —— 三块各自 <400 行（docs/40 D-03c）。
 // 词汇约束（docs/40 D-03b / tools/lint-core.mjs）：需要指「§3 那个实现」时一律说 surface / view，
-// 名字对照表在 .dsh-code/M2-name-map.md（core 之外）。
+// 名字对照表在 docs/handoff/M2-name-map.md（core 之外）。
 using System;
 using System.Collections.Generic;
 using PetDock.Core.Compositor;
