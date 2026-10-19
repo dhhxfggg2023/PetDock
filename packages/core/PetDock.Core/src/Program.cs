@@ -32,6 +32,7 @@ internal static partial class Program
         bool animTest = args.Any(a => string.Equals(a, "--animtest", StringComparison.Ordinal));
         bool driveTest = args.Any(a => string.Equals(a, "--drivetest", StringComparison.Ordinal));
         bool eventTest = args.Any(a => string.Equals(a, "--eventtest", StringComparison.Ordinal));
+        bool perfTest = args.Any(a => string.Equals(a, "--perftest", StringComparison.Ordinal));
         int goldenIdx = Array.FindIndex(args, a => string.Equals(a, "--golden-baseline", StringComparison.Ordinal));
         bool goldenTest = goldenIdx >= 0;
 
@@ -45,6 +46,7 @@ internal static partial class Program
             : animTest ? RunAnimTest(args)
             : driveTest ? RunDriveTest(args)
             : eventTest ? RunEventTest(args)
+            : perfTest ? RunPerfTest(args)
             : goldenTest ? RunGoldenBaseline(args, goldenIdx)
             : RunResident();
     }
@@ -97,6 +99,15 @@ internal static partial class Program
         AttachConsole();
         KernelLog.ConsoleAttached = true;
         return EventSelfTest.Run(args.Where(a => !string.Equals(a, "--eventtest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>功耗门禁入口（--perftest，docs/41 D-14）：判据行 `CHECK perf-<name> PASS|FAIL`，
+    /// 末行 PERF-OK / PERF-FAIL。采样逻辑在 test/SelfCheck/PerfGate.cs（不计入 D-03a 预算）。</summary>
+    private static int RunPerfTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PerfGate.Run(args.Where(a => !string.Equals(a, "--perftest", StringComparison.Ordinal)).ToArray());
     }
 
     /// <summary>金图基准生成入口（--golden-baseline outdir）：渲染示例宠物三 clip 首帧到基准 PNG，

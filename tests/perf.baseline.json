@@ -1,0 +1,22 @@
+{
+  "note": "M8 D-14 baseline: EX2 private working set fix \u002B steady-state leak judge",
+  "captured_at": "2026-10-19 20:24:03",
+  "env": {
+    "os": "Microsoft Windows NT 10.0.26100.0",
+    "cpu": "13th Gen Intel(R) Core(TM) i9-13900HX",
+    "cores": 32
+  },
+  "m-02": {
+    "cpu_idle_pct": 0.079,
+    "limit": 0.5
+  },
+  "m-04": {
+    "private_ws_mb": 10.711,
+    "limit": 150
+  },
+  "m-03": {
+    "first_frame_ms": 147.142,
+    "limit": 1500
+  },
+  "unit": "docs/41 D-14a/b/c\uFF1B--write-baseline \u6BCF\u6539\u4E00\u6B21\u5FC5\u987B\u5E26 note"
+}
