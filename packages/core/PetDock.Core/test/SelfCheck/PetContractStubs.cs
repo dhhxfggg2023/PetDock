@@ -47,7 +47,28 @@ internal sealed class StubView : IPetView, IClipCatalog
     public void DeclareClip(string id, int frames, double fps, ClipLoop loop = ClipLoop.Loop) =>
         _clips.Add(new AnimationClip(id, frames, fps, loop));
 
-    public System.Threading.Tasks.Task InitAsync(PetViewContext ctx) => System.Threading.Tasks.Task.CompletedTask;
+    /// <summary>
+    /// 最近一次 init 收到的上下文（自检读它断言宿主把素材根传到了实现方，
+    /// RFC-15 §3.2 第 3 跳）。null = 还没 init 过。
+    /// </summary>
+    public PetViewContext? LastContext { get; private set; }
+
+    /// <summary>
+    /// 所有桩件视图收到的 init 上下文（静态记录）。
+    /// 为什么静态：换宠物时宿主会造一份**新的**实现对象（名册里那一份正被旧实例用着），
+    /// 拿不到新对象就观测不到它收到的素材根（RFC-15 §3.2 第 3 跳的判据要观测的就是它）。
+    /// </summary>
+    public static readonly List<PetViewContext> ReceivedContexts = new();
+
+    /// <summary>清空静态记录（判据之间互不干扰）。</summary>
+    public static void ClearReceivedContexts() => ReceivedContexts.Clear();
+
+    public System.Threading.Tasks.Task InitAsync(PetViewContext ctx)
+    {
+        LastContext = ctx;
+        ReceivedContexts.Add(ctx);
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
 
     public PetDescription Describe() =>
         new(new PetSize(8, 8), 12, false, new[] { "frames" }, Array.Empty<string>());

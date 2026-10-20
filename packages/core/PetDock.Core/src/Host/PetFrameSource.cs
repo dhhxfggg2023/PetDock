@@ -18,7 +18,7 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Hosting;
 
 /// <summary>把 PetInstance 的当前帧交给分层窗的内容源适配器。</summary>
-public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
+public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector
 {
     private readonly PetInstance _instance;
     private readonly EventBus _bus;
@@ -54,6 +54,13 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats
 
     /// <summary>IFrameSourceStats 的视图：把「交付过几帧」摆到接口上，判据读得到。</summary>
     long IFrameSourceStats.FramesServed => _served;
+
+    /// <summary>
+    /// 现在交付的是不是真内容。降级链走到占位图档之后，本源交出的就是**内核占位帧**，
+    /// 那不是视图实现画出来的 —— 这时必须自述为「不是真内容」，
+    /// 否则外面会把占位帧当成「宠物还在动」（docs/11 §9 的降级语义）。
+    /// </summary>
+    public bool DeliversRealContent => _instance.Display.Tier < DisplayTier.Placeholder;
 
     /// <summary>所属实例（宿主侧记账与挂起转发用）。</summary>
     public PetInstance Instance => _instance;

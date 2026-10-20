@@ -72,14 +72,42 @@ internal static partial class Program
         // 内容装配走**唯一**的发现路径（PluginHost 名册，t1 契约 §3.2）：
         // 名册里有视图实现（docs/11 §3）就用它出帧；否则退回 M0 的内容源工厂；
         // 再没有就退回内核纯色兜底 —— 常驻形态下兜底是合法的（窗口仍可见可命中）。
+        //
+        // 窗口持有的是**可替换内容源代理**（RFC-15 §3.3）：换宠物时换的是代理里面那一份，
+        // 合成器层一行不改。代理在这里创建，导入路径通过它换源。
         using var window = ComposeWindow("resident", pluginHost);
         ComposeOutcome? composed = Composition;
-        // 帧源要交给 UiHost：键盘钩子的事件必须走 PetFrameSource.PublishKeyStroke 才能进总线
+        var frames = composed?.Content is null
+            ? null
+            : new SwappableFrameSource(composed.Content, composed.Roster);
+        if (frames is not null)
+        {
+            frames.WindowHandle = window.WindowHandle;
+            // 窗口事件（core.window.focus / moved / dpiChanged）的生产点接上总线：
+            // M4 修复前 LayeredFrameWindow.WindowEvent 全仓零订阅者，这三条事件发了无人收。
+            window.WindowEvent += (type, payload) => frames.PublishWindowEvent(type, payload);
+        }
+
+        // 恢复上次导入的宠物（RFC-15 §3.4 的清单里记着「当前选中哪一只」）。
+        // 清单里没有、或素材目录不见了、或这个包加载不了 ⇒ 保留默认那只，不报错、不空桌。
+        PetInstance? pet = composed?.Instance;
+        if (frames?.Roster is not null)
+        {
+            PetInstance? restored = PetImportService.RestoreFromCatalog(PetDataStore.Resolve(), frames.Roster);
+            if (restored is not null)
+            {
+                frames.Replace(new PetFrameSource(restored));
+                PetImportService.ReleaseInstance(pet, restored);
+                pet = restored;
+            }
+        }
+
+        // 帧源要交给 UiHost：键盘钩子的事件必须走帧源才能进总线
         // （docs/16 §3 的 input.key.* 是 capability only，没有第二条合法生产路径）。
         //
         // 宿主**不在这里启动**：装载期的授权弹窗需要一个活着的消息泵，而消息泵由
         // Application.Run 起来 —— 装载因此推迟到 UiHost 的第一个滴答（RFC-13 §2.4）。
-        var host = new UiHost(window, composed?.Instance, pluginHost, composed?.Content as PetFrameSource, port);
+        var host = new UiHost(window, composed?.Instance, pluginHost, frames, port);
         using (host)
         {
             Application.Run(host);

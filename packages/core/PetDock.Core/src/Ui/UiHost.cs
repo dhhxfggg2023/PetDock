@@ -24,13 +24,17 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>滴答间隔（毫秒）：够快让询问及时弹出来，又不至于让 UI 一直忙。</summary>
     private const int TickMs = 250;
 
-    private readonly PetInstance? _pet;
+    private readonly PetInstance? _initialPet;
     private readonly PluginHost? _host;
     private readonly LayeredFrameWindow _window;
-    private readonly PetFrameSource? _windowSource;
+    private readonly SwappableFrameSource? _frames;
+    private readonly PetImportService? _import;
     private readonly TrayHost _tray;
     private readonly UiConsentPort? _consent;
     private readonly ResidentFrameLoop _loop;
+
+    /// <summary>当前宠物（导入会换它，所以不是 readonly）。</summary>
+    private PetInstance? _pet;
 
     /// <summary>滴答器。用的是 System.Windows.Forms.Timer（靠消息循环驱动）——
     /// System.Threading.Timer 跑在自己的线程上，弹窗会开到没有消息泵的线程上。
@@ -49,15 +53,27 @@ internal sealed partial class UiHost : ApplicationContext
         LayeredFrameWindow window,
         PetInstance? pet,
         PluginHost? host,
-        PetFrameSource? source = null,
+        SwappableFrameSource? frames = null,
         UiConsentPort? consent = null)
     {
         _window = window;
+        _initialPet = pet;
         _pet = pet;
         _host = host;
-        _windowSource = source;
+        _frames = frames;
         _consent = consent;
         _loop = new ResidentFrameLoop(window);
+
+        // 导入服务：宿主编排在它那里，UI 只负责「选目录」与「显示错误条」（RFC-15 §3.5）。
+        if (frames is not null && frames.Roster is not null)
+        {
+            _import = new PetImportService(
+                PetDataStore.Resolve(),
+                frames,
+                frames.Roster,
+                () => _pet,
+                next => _pet = next);
+        }
 
         _tray = new TrayHost(
             petName: pet?.Id ?? "(无)",
@@ -77,6 +93,9 @@ internal sealed partial class UiHost : ApplicationContext
         _timer.Tick += OnTick;
         _timer.Start();
     }
+
+    /// <summary>导入服务（可空：没有名册就没有导入能力；自检用它读结果）。</summary>
+    public PetImportService? Import => _import;
 
     /// <summary>键盘钩子是否装着（自检与诊断用；不暴露可写入口）。</summary>
     public bool KeyboardHookInstalled => _keyHook?.IsInstalled == true;

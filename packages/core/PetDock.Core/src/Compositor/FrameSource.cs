@@ -32,3 +32,16 @@ public interface IFrameSourceStats
     /// <summary>累计交付的帧数。</summary>
     long FramesServed { get; }
 }
+
+/// <summary>
+/// 内容源的**可选**自述面：它现在交付的是不是「真的」内容。
+/// 为什么需要它：窗口判「内容源是真的」用「类型不是内核兜底」这一条，
+/// 而内容源可以被**代理**（RFC-15 §3.3 的可替换内容源：窗口持有的是代理，代理里那份才可能是兜底）。
+/// 不问代理一句，窗口就会把兜底帧算成真内容 —— M0 的 source=false 静默 SELF-OK 就会复活。
+/// 不实现本接口的内容源按「是真的」处理（保持既有行为）。
+/// </summary>
+public interface IFrameContentInspector
+{
+    /// <summary>当前交付的是真内容（来自视图实现）而不是内核纯色兜底。</summary>
+    bool DeliversRealContent { get; }
+}

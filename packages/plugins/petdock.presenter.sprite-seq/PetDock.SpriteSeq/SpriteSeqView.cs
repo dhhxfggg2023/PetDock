@@ -37,10 +37,10 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
             return Task.CompletedTask; // 幂等：重复 init 不重读盘（docs/11:119 的读盘只发生在 init 侧）
         }
 
-        // 素材来源由 PackLoader 的三条优先级定位（PETDOCK_SAMPLE_PACK → PETDOCK_PET_IMAGE →
-        // 默认 fixtures/sample-pet），宿主不写插件 id 特判，所以这里不按相位分流：
-        // 自检相位与正常启动解析到同一个默认包，「桌面上是哪一只」不因测试而变。
-        string located = PackLoader.Locate(context.PetInstanceId);
+        // 素材来源先看宿主为本实例解析好的素材根（按实例），再看进程级环境变量与默认探测（按进程）。
+        // 显式路径优先于环境变量：全局变量没法表达「这只宠物用这份素材，那只用那份」。
+        string? explicitRoot = PackLoader.LocateFromAssetRoots(context.AssetRoots);
+        string located = explicitRoot ?? PackLoader.Locate(context.PetInstanceId);
         PackData pack;
         string imageDir;
         if (PackLoader.IsPackRoot(located))
@@ -70,6 +70,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
         Console.Error.WriteLine(
             $"sprite-seq source={located} form={(PackLoader.IsPackRoot(located) ? "pack" : "single-image")}"
             + $" clips={pack.Clips.Count} instance={context.PetInstanceId}"
+            + $" source-kind={(explicitRoot is not null ? "explicit" : "env-or-default")}"
             + $" default={(PackLoader.IsDefaultLocation(located) ? "docs/31-sample-pack" : "explicit")}");
         return Task.CompletedTask;
     }

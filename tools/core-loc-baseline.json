@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 11700,
+  "budget": 12650,
   "history": [
     {
       "date": "2026-10-18",
@@ -156,6 +156,60 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
           ],
           "lines": 11
+        }
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "measured": 12636,
+      "budget": 12650,
+      "note": "RFC-15：宠物导入 v1（docs/18 §2.1 要求的「导入」此前一行代码都没有）。用户选一个素材包目录 → 复制进用户数据区 → 写清单 → 用新素材根重建实例 → 换内容源 → 释放旧实例。core 不解析任何素材格式（格式知识留在视图实现侧，D-03b）。增量分五片，与 RFC-15 §5 的分片建议一一对应。测试面（test/SelfCheck/ImportChecks.cs、PetContractStubs.cs）不计入本预算（D-03a 只算 src）；插件侧（视图实现按实例级素材根定位素材）同样不计入。",
+      "attribution": [
+        {
+          "slice": "RFC-15 A 用户数据根与清单（落盘、复制、护栏、清单读写）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs"
+          ],
+          "lines": 297
+        },
+        {
+          "slice": "RFC-15 C 换源接缝（可替换内容源代理、实例级素材根透传、真内容自述面）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/SwappableFrameSource.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.Assets.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs",
+            "packages/core/PetDock.Core/src/PetRuntime/PetView.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs",
+            "packages/core/PetDock.Core/src/Host/PetFrameSource.cs",
+            "packages/core/PetDock.Core/src/Compositor/FrameSource.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
+          ],
+          "lines": 245
+        },
+        {
+          "slice": "RFC-15 导入编排（复制→登记→重建→换源→释放的固定顺序与失败回滚 + 启动时按清单恢复上次选中的宠物）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs"
+          ],
+          "lines": 210
+        },
+        {
+          "slice": "RFC-15 D 宠物页 UI（导入入口、目录选择器、内联错误条、空态文案）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
+          ],
+          "lines": 191
+        },
+        {
+          "slice": "RFC-15 E 装配接线（代理内容源 + 清单 + 面板回调 + 启动时按清单恢复上次选中的宠物）",
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 72
         }
       ]
     }

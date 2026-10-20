@@ -34,10 +34,20 @@ public sealed class PetViewContext
         string petInstanceId,
         System.Collections.Generic.IReadOnlyList<string> assets,
         ResourceBudget budget)
+        : this(petInstanceId, assets, budget, null)
+    {
+    }
+
+    public PetViewContext(
+        string petInstanceId,
+        System.Collections.Generic.IReadOnlyList<string> assets,
+        ResourceBudget budget,
+        System.Collections.Generic.IReadOnlyList<string>? assetRoots)
     {
         PetInstanceId = petInstanceId ?? throw new System.ArgumentNullException(nameof(petInstanceId));
         Assets = assets ?? System.Array.Empty<string>();
         Budget = budget;
+        AssetRoots = assetRoots ?? System.Array.Empty<string>();
     }
 
     /// <summary>实例 id。</summary>
@@ -45,6 +55,15 @@ public sealed class PetViewContext
 
     /// <summary>宿主已就绪的素材引用。</summary>
     public System.Collections.Generic.IReadOnlyList<string> Assets { get; }
+
+    /// <summary>
+    /// 宿主为本实例解析好的素材根目录（每个元素一个目录）。
+    /// 为什么要有它：docs/11:113 的 assets 是「CAS 引用」——内容寻址的键，不是机器路径。
+    /// 而 CAS 尚未落地（docs/15 §2 整节零实现），所以宿主手上真实持有的是**目录**。
+    /// 视图实现据此去读自己的素材，而不必依赖进程级环境变量（那是全局的，不适合按实例切换）。
+    /// 宿主填什么、视图怎么用，由实现方各自负责；core 不解析这里的任何内容（D-03b）。
+    /// </summary>
+    public System.Collections.Generic.IReadOnlyList<string> AssetRoots { get; }
 
     /// <summary>宿主预算（docs/11:235 的自愿降级通道）。</summary>
     public ResourceBudget Budget { get; }

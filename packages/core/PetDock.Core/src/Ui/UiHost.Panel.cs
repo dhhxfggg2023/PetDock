@@ -27,6 +27,7 @@ internal sealed partial class UiHost
         }
 
         _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled);
+        _panel.SetImportCommand(RunImportFromPanel);
         _panel.FormClosed += (_, _) =>
         {
             // 关闭面板不退出程序（§2.5）：只是把它丢掉，托盘还在。
@@ -39,6 +40,30 @@ internal sealed partial class UiHost
     /// <summary>取一次快照（面板每次重绘都调用它，不缓存）。</summary>
     public UiSnapshot Snapshot() =>
         UiRoster.Build(_pet, _host, _perf);
+
+    /// <summary>
+    /// 面板「导入素材包」入口的执行体（UI 线程）。
+    /// 面板负责弹目录选择器、把目录交过来；宿主编排做复制、登记与换源（RFC-15 §3.3）。
+    /// 失败时把原因交回面板，由面板显示成内联错误条 —— 不弹模态框（docs/18 §5）。
+    /// </summary>
+    private bool RunImportFromPanel(string sourceDir, out string message)
+    {
+        PetImportService? import = _import;
+        if (import is null)
+        {
+            message = "导入功能不可用：没有可用的内容源。";
+            return false;
+        }
+
+        ImportResult result = import.Import(sourceDir);
+        message = result.Message;
+        if (result.Ok)
+        {
+            _tray.SetPetCount(1);
+        }
+
+        return result.Ok;
+    }
 
     /// <summary>触发一次性能采样并把结果留在快照里（面板的采样按钮走这里）。</summary>
     public void NotePerf(PerfSummary perf) => _perf = perf ?? PerfSummary.Empty;

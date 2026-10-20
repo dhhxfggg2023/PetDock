@@ -134,6 +134,9 @@ internal sealed partial class ControlPanel : Form
         // 插件页有自己的列表与操作栏（partial 的另一半建），所以它不进共享的 BindListOn。
         InitPluginPage();
 
+        // 宠物页有自己的导入入口与内联错误条（另一个 partial 建）。
+        InitPetsPage();
+
         // 性能页是独立控件页（有采样按钮），单独挂一个 TabPage
         var perfTab = MakePage(PanelPages.Perf);
         _perfPage.Dock = DockStyle.Fill;
@@ -238,7 +241,7 @@ internal sealed partial class ControlPanel : Form
 
         BindListOn(_pages.TabPages[0]);
         _status.Text = snapshot.Pets.Count == 0
-            ? "尚无宠物运行。导入功能见 docs/15 管线（本节未接线）。"
+            ? "尚无宠物运行。可点「导入素材包…」选一个素材包目录（docs/18 §2.1）。"
             : $"共 {snapshot.Pets.Count} 只宠物。内存为进程级读数。";
     }
 

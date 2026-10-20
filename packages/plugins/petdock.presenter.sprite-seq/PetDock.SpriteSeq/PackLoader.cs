@@ -111,6 +111,70 @@ internal static class PackLoader
             + $" 也没有 {OwnerImageRel}（要显式指名，设 {PackEnvVar}=<pack 目录> 或 {ImageEnvVar}=<png>）");
     }
 
+    /// <summary>
+    /// 按宿主给的实例级素材根定位（RFC-15 §3.2 第 4 跳）。
+    /// 优先级高于进程级环境变量：显式路径是**按实例**的，环境变量是**按进程**的，
+    /// 全局变量没法表达「这只宠物用这份素材，那只用那份」。
+    /// 返回 null = 宿主没给素材根（调用方回落到 Locate 的三条优先级）。
+    /// 抛 FileNotFoundException = 宿主给了但那些路径里没有一个是可用素材 —— 这不是「没有素材」，
+    /// 而是「用户指名的东西没了」，两者必须区分。
+    /// </summary>
+    public static string? LocateFromAssetRoots(IReadOnlyList<string> assetRoots)
+    {
+        if (assetRoots is null || assetRoots.Count == 0)
+        {
+            return null;
+        }
+
+        var candidates = new List<string>();
+        foreach (string raw in assetRoots)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            string full;
+            try
+            {
+                full = Path.GetFullPath(raw);
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                // 宿主给了一个连路径都规整不出来的字符串：算作一次未命中，继续看下一个候选。
+                continue;
+            }
+
+            candidates.Add(full);
+            if (Directory.Exists(full))
+            {
+                // 目录形态：必须自带清单文件才算素材根；只是普通目录就跳过（宿主可能给了多个候选根）。
+                if (IsPackRoot(full))
+                {
+                    return full;
+                }
+
+                continue;
+            }
+
+            if (File.Exists(full)
+                && string.Equals(Path.GetExtension(full), ".png", StringComparison.OrdinalIgnoreCase))
+            {
+                return full;
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            // 全是空白项 —— 等价于宿主没给，回落到进程级定位。
+            return null;
+        }
+
+        throw new FileNotFoundException(
+            $"宿主给的素材根里没有一个是可用素材（候选 {candidates.Count} 个）：{string.Join(" | ", candidates)}"
+            + $"；可用形态为含 {ManifestName} 的目录，或单个 .png 文件");
+    }
+
     /// <summary>定位到的是 docs/31 pack 目录（含 petdock-sample.json）还是单张贴图。</summary>
     public static bool IsPackRoot(string located) =>
         Directory.Exists(located) && File.Exists(Path.Combine(located, ManifestName));

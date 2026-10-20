@@ -58,7 +58,7 @@ internal sealed partial class UiHost
             return;
         }
 
-        if (_windowSource is null)
+        if (_frames is null)
         {
             LogHookSkip("no-frame-source");
             return;
@@ -151,7 +151,7 @@ internal sealed partial class UiHost
     /// <summary>真正装钩子（只在 UI 线程上做：钩子回调由安装线程的消息循环派发）。</summary>
     private bool InstallHook()
     {
-        PetFrameSource source = _windowSource!;
+        SwappableFrameSource source = _frames!;
         var hook = new KeyboardHook(stroke => source.PublishKeyStroke(stroke.VKey, stroke.Modifiers, stroke.Down));
         if (!hook.Install())
         {

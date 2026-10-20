@@ -37,7 +37,8 @@ public sealed partial class PetInstance : IDisposable
         IReadOnlyList<IPointerSurface> surfaces,
         IPetState? stateLayer,
         string pluginId,
-        string sourceKind)
+        string sourceKind,
+        IReadOnlyList<string>? assetRoots = null)
     {
         Id = instanceId;
         View = view;
@@ -46,6 +47,7 @@ public sealed partial class PetInstance : IDisposable
         StateLayer = stateLayer;
         PluginId = pluginId;
         SourceKind = sourceKind;
+        AssetRoots = assetRoots ?? Array.Empty<string>();
         Display = new DegradationChain();
         Arbiter = new HostArbiter(this);
         Bitmaps = new BitmapRegistry();
@@ -177,7 +179,13 @@ public sealed partial class PetInstance : IDisposable
         var budget = new ResourceBudget(
             FrameBudgetGuard.FrameBudgetMs, FrameBudgetGuard.IdleFrameBudgetMs, pixelWidth * pixelHeight);
         Target = new RenderTarget(pixelWidth, pixelHeight, scale, budget, Bitmaps);
-        var ctx = new PetViewContext(Id, Description?.Assets ?? Array.Empty<string>(), budget);
+        // 素材根由宿主显式给出（RFC-15 §3.2 第 3 跳）：Description?.Assets 在 init 之前必为空
+        // （Description 要到 InitAsync 之后才被赋值），拿它当素材引用等于永远给不出素材。
+        var ctx = new PetViewContext(
+            Id,
+            Description?.Assets ?? Array.Empty<string>(),
+            budget,
+            AssetRoots);
         View.InitAsync(ctx).GetAwaiter().GetResult();
         Description = View.Describe();
         View.Attach(Target);

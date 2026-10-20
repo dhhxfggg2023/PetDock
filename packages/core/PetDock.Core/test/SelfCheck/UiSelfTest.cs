@@ -39,6 +39,7 @@ internal static class UiSelfTest
             PerfPageSample();
             KeyboardHookContract();
             ResidentLoopChecks.Run(Check);
+            ImportChecks.Run(Check);
             failures = _failed;
         }
         catch (Exception error)

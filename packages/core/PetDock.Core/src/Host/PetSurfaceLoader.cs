@@ -143,8 +143,15 @@ public sealed class PetSurfaceRoster
         return roster;
     }
 
-    /// <summary>名册里第一个视图实现建出的宠物实例（无视图 → null）。</summary>
-    public PetInstance? BuildInstance(string instanceIdPrefix)
+    /// <summary>
+    /// 名册里第一个视图实现建出的宠物实例（无视图 → null）。
+    /// assetRoots 是宿主为本实例解析好的素材根（RFC-15 §3.2）：空 = 没给，
+    /// 视图实现回落到它自己的定位逻辑。
+    /// freshView = true 时用**新的一份**实现对象建实例（换宠物要用）：
+    /// 名册里的实现对象是装载时创建的那一个，两个实例共用它 ⇒ 新实例初始化时
+    /// 旧实例还在用它，旧实例一释放就把新宠物一起带走了（视图实现大多不抗重复 init）。
+    /// </summary>
+    public PetInstance? BuildInstance(string instanceIdPrefix, IReadOnlyList<string>? assetRoots = null, bool freshView = false)
     {
         IPetView? view = View;
         if (view is null)
@@ -153,7 +160,35 @@ public sealed class PetSurfaceRoster
         }
 
         string pluginId = Find<IPetView>()!.PluginId;
-        return new PetInstance($"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll");
+        if (freshView)
+        {
+            view = FreshView(view);
+        }
+
+        return new PetInstance($"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots);
+    }
+
+    /// <summary>
+    /// 造一份新的视图实现对象（同一类型、无参构造）。
+    /// 造不出来就退回原对象：换宠物失败时旧宠物还在，不该因为「造不出新对象」就空桌。
+    /// </summary>
+    private static IPetView FreshView(IPetView original)
+    {
+        try
+        {
+            Type type = original.GetType();
+            if (type.GetConstructor(Type.EmptyTypes) is null)
+            {
+                return original;
+            }
+
+            return Activator.CreateInstance(type) as IPetView ?? original;
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"surface-fresh-view-failed {error.GetType().Name}: {error.Message}");
+            return original;
+        }
     }
 
     /// <summary>一行诊断（自检与日志共用）。</summary>

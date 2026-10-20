@@ -25,7 +25,8 @@ internal sealed record ComposeOutcome(
     IFrameContentSource? Content,
     string SourceType,
     string Note,
-    PetInstance? Instance)
+    PetInstance? Instance,
+    PetSurfaceRoster? Roster)
 {
     /// <summary>装上了一个具体（非兜底）的内容源。</summary>
     public bool HasContent => Content is not null && SourceType.Length > 0;
@@ -76,7 +77,8 @@ internal static class FrameComposition
                     new PetFrameSource(instance),
                     roster.ViewTypeName,
                     $"via=roster view={roster.ViewTypeName} dirs={roster.DiscoveredDirs}",
-                    instance);
+                    instance,
+                    roster);
             }
         }
 
@@ -90,7 +92,8 @@ internal static class FrameComposition
                     content,
                     content is null ? string.Empty : provider.GetType().FullName ?? provider.GetType().Name,
                     $"via=content-provider note={provider.Note}",
-                    null);
+                    null,
+                    roster);
             }
             catch (Exception error)
             {
@@ -98,7 +101,7 @@ internal static class FrameComposition
             }
         }
 
-        return new ComposeOutcome(null, string.Empty, NoteNoSurface, null);
+        return new ComposeOutcome(null, string.Empty, NoteNoSurface, null, roster);
     }
 
     /// <summary>挂起转发口：有真实插件宿主就转到 PluginHost.Disable，没有就用空实现。</summary>
