@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 11550,
+  "budget": 11700,
   "history": [
     {
       "date": "2026-10-18",
@@ -133,6 +133,29 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": 589
+        }
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "measured": 11621,
+      "budget": 11700,
+      "note": "RFC-14：常驻形态上屏。实测发现常驻路径从不调用 window.Show()、也从不启动帧泵——桌面上没有宠物（tools/probes/resident-window-probe.py 实测：宠物分层窗 visible=False，唯一可见窗口是授权弹窗）。增量分两片：常驻帧循环类（新建）+ UiHost 接线与托盘改道。测试面（test/SelfCheck/ResidentLoopChecks.cs）不计入本预算（D-03a 只算 src）。",
+      "attribution": [
+        {
+          "slice": "RFC-14 常驻帧循环（窗口可见性 ↔ 帧泵绑定，新建）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.cs"
+          ],
+          "lines": 124
+        },
+        {
+          "slice": "RFC-14 UiHost 接线与托盘命令改道常驻帧循环",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+          ],
+          "lines": 11
         }
       ]
     }

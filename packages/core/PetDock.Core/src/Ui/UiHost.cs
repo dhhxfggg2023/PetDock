@@ -30,6 +30,7 @@ internal sealed partial class UiHost : ApplicationContext
     private readonly PetFrameSource? _windowSource;
     private readonly TrayHost _tray;
     private readonly UiConsentPort? _consent;
+    private readonly ResidentFrameLoop _loop;
 
     /// <summary>滴答器。用的是 System.Windows.Forms.Timer（靠消息循环驱动）——
     /// System.Threading.Timer 跑在自己的线程上，弹窗会开到没有消息泵的线程上。
@@ -41,6 +42,7 @@ internal sealed partial class UiHost : ApplicationContext
     private PerfSummary _perf = PerfSummary.Empty;
     private bool _hooksPaused;
     private bool _hostStarted;
+    private bool _petShown;
     private bool _disposed;
 
     public UiHost(
@@ -55,6 +57,7 @@ internal sealed partial class UiHost : ApplicationContext
         _host = host;
         _windowSource = source;
         _consent = consent;
+        _loop = new ResidentFrameLoop(window);
 
         _tray = new TrayHost(
             petName: pet?.Id ?? "(无)",
@@ -96,11 +99,16 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>授权端口（自检用；null = 没有 UI 授权端口）。</summary>
     public UiConsentPort? Consent => _consent;
 
+    /// <summary>常驻帧循环（自检用；判据要能读到真实的生产对象，而不是自己造一份）。</summary>
+    public ResidentFrameLoop Loop => _loop;
+
     /// <summary>
-    /// 滴答（UI 线程）：三件事，顺序就是它们的依赖顺序。
+    /// 滴答（UI 线程）：四件事，顺序就是它们的依赖顺序。
     /// ① 首次滴答才启动宿主 —— 装载必须在消息泵起来之后，否则授权弹窗无处可开（RFC-13 §2.4）；
-    /// ② 弹出待答的授权询问（装载期与复核期都走这一条）；
-    /// ③ 按当前持权情况装键盘钩子（现在才可能真的有持权者了）。
+    /// ② 首次滴答才把宠物窗口显示出来并起帧泵 —— 构造期还没有消息泵，
+    ///    在那时 Show() 会建出一个不泵消息的窗体（RFC-14 §2.2）；
+    /// ③ 弹出待答的授权询问（装载期与复核期都走这一条）；
+    /// ④ 按当前持权情况装键盘钩子（现在才可能真的有持权者了）。
     /// </summary>
     private void OnTick(object? sender, EventArgs e)
     {
@@ -108,6 +116,13 @@ internal sealed partial class UiHost : ApplicationContext
         {
             _hostStarted = true;
             _host.Start();
+        }
+
+        // 只在首滴答显示一次：用户从托盘隐藏宠物之后，任何滴答都不许把它弹回来。
+        if (!_petShown)
+        {
+            _petShown = true;
+            _loop.Start();
         }
 
         _consent?.Pump();
@@ -123,6 +138,7 @@ internal sealed partial class UiHost : ApplicationContext
             _timer.Stop();
             _timer.Dispose();
             _consent?.Close();
+            _loop.Dispose();
             _keyHook?.Dispose();
             _keyHook = null;
             _panel?.Dispose();

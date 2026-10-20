@@ -9,18 +9,13 @@ namespace PetDock.Core.Ui;
 
 internal sealed partial class UiHost
 {
-    /// <summary>显示/隐藏宠物窗口。</summary>
+    /// <summary>
+    /// 显示/隐藏宠物窗口。走 <see cref="ResidentFrameLoop"/>：显示就起泵、隐藏就停泵。
+    /// 直接摸窗口的 Show/Hide 会绕过「隐藏即停泵」——宠物看不见了，CPU 却还在烧（RFC-14 §2.2）。
+    /// </summary>
     private void ToggleAll()
     {
-        if (_window.Visible)
-        {
-            _window.Hide();
-        }
-        else
-        {
-            _window.Show();
-            _window.BringToFrontOfTopmost();
-        }
+        _loop.Toggle();
     }
 
     /// <summary>暂停/恢复宠物实例。</summary>
@@ -43,8 +38,8 @@ internal sealed partial class UiHost
         }
     }
 
-    /// <summary>隐藏宠物窗口（窗口仍在，只是不可见）。</summary>
-    private void HidePet() => _window.Hide();
+    /// <summary>隐藏宠物窗口（窗口仍在，只是不可见；帧泵一并停掉）。</summary>
+    private void HidePet() => _loop.Hide();
 
     /// <summary>
     /// 移除宠物。真正释放实例由进程退出负责（实例持有 CAS 引用）——
@@ -52,7 +47,7 @@ internal sealed partial class UiHost
     /// </summary>
     private void RemovePet()
     {
-        _window.Hide();
+        _loop.Hide();
     }
 
     /// <summary>
