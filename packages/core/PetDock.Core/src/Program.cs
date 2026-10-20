@@ -69,6 +69,11 @@ internal static partial class Program
             autoLoad: true,
             consent: port);
 
+        // 跨进程授权记忆（RFC-19 §2.3 第 1 点）：把上次进程记住的授予灌进会话记忆，
+        // 于是「允许（记住这个决定）」过的插件这次启动不再被问。
+        // 必须在 Start() 之前接：装载发生在 Start() 之后，那时再播种就晚了。
+        pluginHost.AttachConsentStore(new ConsentStore(PetDataStore.Resolve().Root));
+
         // 内容装配走**唯一**的发现路径（PluginHost 名册，t1 契约 §3.2）：
         // 名册里有视图实现（docs/11 §3）就用它出帧；否则退回 M0 的内容源工厂；
         // 再没有就退回内核纯色兜底 —— 常驻形态下兜底是合法的（窗口仍可见可命中）。

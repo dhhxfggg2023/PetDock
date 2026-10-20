@@ -136,6 +136,10 @@ internal static class PluginHostSelfTest
             failures += ConsentHostChecks.Run(host, target.Manifest, consentCheck);
             failures += ConsentHostChecks.Tier0Leases(host, consentCheck);
             failures += ConsentHostChecks.RestrictConsentCheck(host, target.Manifest.Id, consentCheck);
+
+            // —— 跨进程授权记忆（RFC-19 §3）：落盘往返、播种、仅本次不落盘、收窄后落盘 ——
+            // 放在授权链路之后：它会改宿主的记忆与落盘状态。
+            failures += ConsentPersistChecks.Run(host, target.Manifest.Id, consentCheck);
         }
 
         // ———— 阶段二：临时根 + 显式装载 + 热重载 + 即插即用 ————

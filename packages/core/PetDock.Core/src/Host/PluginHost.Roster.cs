@@ -216,7 +216,12 @@ public sealed partial class PluginHost
         }
 
         // 拒绝**总是**进记忆；授予只在「允许（记住这个决定）」下进记忆（docs/18 §3）
-        Consent.Remember(manifest.Id, granted, declined, rememberGrants: answer.Scope == ConsentScope.Session);
+        bool remember = answer.Scope == ConsentScope.Session;
+        Consent.Remember(manifest.Id, granted, declined, rememberGrants: remember);
+
+        // 跨进程记忆（RFC-19 §2.3 第 2 点）：「允许（记住这个决定）」的授予集落盘。
+        // 「仅本次」不写盘 —— 它下次就该再问（RFC-19 §2.2）。
+        SaveConsentGrants(manifest.Id, remember);
         return granted;
     }
 
@@ -303,6 +308,10 @@ public sealed partial class PluginHost
         // 命中黑名单里的文件扩展名条目）。
         ConsentMemory memory = Consent;
         memory.Restrict(pluginId, keepSet);
+
+        // 跨进程记忆（RFC-19 §2.3 第 3 点）：收窄是撤销动作，撤销若不跨进程，
+        // 下次启动能力会悄悄回来 —— 比「撤销没生效」更坏。所以收窄后的集合要落盘。
+        SaveConsentGrants(pluginId, remember: true);
         return changed;
     }
 }

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 13350,
+  "budget": 13600,
   "history": [
     {
       "date": "2026-10-18",
@@ -259,6 +259,32 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": 87
+        }
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "measured": 13535,
+      "budget": 13600,
+      "note": "RFC-19：授权决定的跨进程记忆。落点 <data>/consent.json，写盘姿势照抄 RFC-15/18 的两阶段提交。持久化裁决：'允许（记住这个决定）'的授予集持久化，插件页收窄后的授予集持久化（撤销不跨进程则下次启动能力会悄悄回来），'仅本次'不持久化，拒绝不持久化（docs/18 §3 要求被拒项在弹窗里不可重新勾选，持久化拒绝等于永久锁死且无清除出口）。",
+      "attribution": [
+        {
+          "slice": "RFC-19 A 授权记忆落盘存储（读写 + 损坏回落 + 两阶段提交）",
+          "files": ["packages/core/PetDock.Core/src/Host/ConsentStore.cs"],
+          "lines": 147
+        },
+        {
+          "slice": "RFC-19 B 记忆接线（装载前播种 / 落账后写盘 / 收窄后写盘）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Consent.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Roster.cs"
+          ],
+          "lines": 104
+        },
+        {
+          "slice": "RFC-19 C 装配接线（常驻形态在 Start 之前接上存储）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 5
         }
       ]
     }
