@@ -15,8 +15,10 @@ internal sealed record PetLine(
     string State,
     string Memory);
 
-/// <summary>插件页一行。Granted 是当前有效的能力句柄数（docs/14 §2「能力是句柄」）。</summary>
+/// <summary>插件页一行。Granted 是当前有效的能力句柄数（docs/14 §2「能力是句柄」）。
+/// Id 放最前：插件页的两个入口要「对某个插件说话」，必须有 id（RFC-13 §2.6）。</summary>
 internal sealed record PluginLine(
+    string Id,
     string Name,
     string Version,
     int Tier,

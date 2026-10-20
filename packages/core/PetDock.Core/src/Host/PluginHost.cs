@@ -26,6 +26,7 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
     private readonly string _pluginsRoot;
     private readonly int _tickIntervalMs;
     private readonly bool _autoLoad;
+    private readonly ICapabilityConsentPort? _consent;
     private readonly Thread _thread;
     private readonly BlockingCollection<HostCommand> _commands = new(new ConcurrentQueue<HostCommand>());
     private readonly ConcurrentDictionary<string, string> _dirById = new(StringComparer.Ordinal);
@@ -41,12 +42,19 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
     public event LifecycleEventDelegate? LifecycleEvent;
 
     /// <summary>构造即持有根目录与节奏；Start() 之前不占线程、不碰文件系统。
-    /// autoLoad=false 供自检/测试：只起调度器，装载由调用方显式驱动。</summary>
-    public PluginHost(string pluginsRoot, int tickIntervalMs = ResidentTickMs, bool autoLoad = true)
+    /// autoLoad=false 供自检/测试：只起调度器，装载由调用方显式驱动。
+    /// consent 为授权端口（RFC-13 §2.1）：null = 无人值守，授予集 = 声明 ∩ 白名单（不弹窗）；
+    /// 非 null = 装载期逐项询问，授予集 = 用户勾选的子集。</summary>
+    public PluginHost(
+        string pluginsRoot,
+        int tickIntervalMs = ResidentTickMs,
+        bool autoLoad = true,
+        ICapabilityConsentPort? consent = null)
     {
         _pluginsRoot = pluginsRoot ?? string.Empty;
         _tickIntervalMs = Math.Max(10, tickIntervalMs);
         _autoLoad = autoLoad;
+        _consent = consent;
         _thread = new Thread(Loop)
         {
             Name = "petdock-plugin-host",

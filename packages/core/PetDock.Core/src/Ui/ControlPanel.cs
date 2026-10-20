@@ -1,5 +1,7 @@
 // 主控面板（docs/18 §2 + RFC-12 §2.5）：单窗口、左导航右内容、四页。
-// 面板只读展示（§2.4「面板只读展示，不改任何宠物/插件状态」），唯一的写操作是刷新快照与采样。
+// 面板只读展示（§2.4「面板只读展示，不改任何宠物/插件状态」），写操作只有三处：
+//   ① 刷新快照与采样；② 插件页的「授权」「禁用/启用」两个入口（RFC-13 §2.6）。
+// 后者只**发出意图**（把选中的 pluginId 交给回调），真正的判定与落账在宿主侧。
 // 单实例由 ControlPanelHost 保证（RFC-12 §2.5「再次点托盘只激活已有窗口」）。
 using System;
 using System.Collections.Generic;
@@ -7,6 +9,10 @@ using System.Drawing;
 using System.Windows.Forms;
 
 namespace PetDock.Core.Ui;
+
+/// <summary>插件页操作回调（带被操作的 pluginId）。
+/// D-03b：系统自带的同名泛型委托含黑名单子串，所以自声明一个，理由同 UiCommand。</summary>
+internal delegate void PluginCommand(string pluginId);
 
 /// <summary>四个页面的稳定 id（自检按 id 断言，不按标题文字）。</summary>
 internal static class PanelPages
@@ -30,8 +36,9 @@ internal static class PanelPages
 
 /// <summary>
 /// 主控面板窗口。数据来源是一个取快照的委托（不持有宿主引用，便于自检在没有宿主时也能建树）。
+/// 插件页的操作入口在另一个 partial 文件里（ControlPanel.Plugins.cs），避免单文件超行数上限。
 /// </summary>
-internal sealed class ControlPanel : Form
+internal sealed partial class ControlPanel : Form
 {
     private readonly Func<UiSnapshot> _snapshot;
     private readonly ListView _list;
@@ -39,11 +46,24 @@ internal sealed class ControlPanel : Form
     private readonly Dictionary<string, Button> _nav = new(StringComparer.Ordinal);
     private readonly TabControl _pages;
     private readonly PerfPage _perfPage;
+
+    /// <summary>插件页「授权」入口的回调（可空：没人接就静默）。</summary>
+    private readonly PluginCommand? _authorize;
+
+    /// <summary>插件页「禁用/启用」入口的回调（可空：没人接就静默）。</summary>
+    private readonly PluginCommand? _toggleDisabled;
+
     private string _current = PanelPages.Pets;
 
-    public ControlPanel(Func<UiSnapshot> snapshot, bool showWindow)
+    public ControlPanel(
+        Func<UiSnapshot> snapshot,
+        bool showWindow,
+        PluginCommand? authorize = null,
+        PluginCommand? toggleDisabled = null)
     {
         _snapshot = snapshot ?? (() => UiSnapshot.Empty);
+        _authorize = authorize;
+        _toggleDisabled = toggleDisabled;
 
         Text = "PetDock — 主控面板";
         StartPosition = FormStartPosition.CenterScreen;
@@ -110,6 +130,9 @@ internal sealed class ControlPanel : Form
         };
 
         _perfPage = new PerfPage(_snapshot);
+
+        // 插件页有自己的列表与操作栏（partial 的另一半建），所以它不进共享的 BindListOn。
+        InitPluginPage();
 
         // 性能页是独立控件页（有采样按钮），单独挂一个 TabPage
         var perfTab = MakePage(PanelPages.Perf);
@@ -217,34 +240,6 @@ internal sealed class ControlPanel : Form
         _status.Text = snapshot.Pets.Count == 0
             ? "尚无宠物运行。导入功能见 docs/15 管线（本节未接线）。"
             : $"共 {snapshot.Pets.Count} 只宠物。内存为进程级读数。";
-    }
-
-    private void BindPlugins(UiSnapshot snapshot)
-    {
-        _list.Items.Clear();
-        _list.Columns.Clear();
-        _list.Columns.Add("插件名", 180);
-        _list.Columns.Add("版本", 90);
-        _list.Columns.Add("Tier", 60);
-        _list.Columns.Add("已授权能力数", 110);
-        _list.Columns.Add("状态", 120);
-
-        foreach (PluginLine line in snapshot.Plugins)
-        {
-            _list.Items.Add(new ListViewItem(new[]
-            {
-                line.Name,
-                line.Version,
-                line.Tier.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                line.Granted.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                line.State,
-            }));
-        }
-
-        BindListOn(_pages.TabPages[1]);
-        _status.Text = snapshot.Plugins.Count == 0
-            ? "尚无插件装载。"
-            : $"共 {snapshot.Plugins.Count} 个插件。";
     }
 
     private void BindSettings(UiSnapshot snapshot)

@@ -23,7 +23,10 @@ internal static class PluginHostSelfTest
         string? expectedId = null;
         for (int i = 0; i < args.Length; i++)
         {
-            if (string.Equals(args[i], "--memory-probe", StringComparison.Ordinal))
+            // 带取值的旗标：取值本身不是「期望的插件 id」，必须跳过。
+            // 少了这一步，`--hosttest --log tmp.log` 会把 tmp.log 当成插件 id 去查句柄。
+            if (string.Equals(args[i], "--memory-probe", StringComparison.Ordinal)
+                || string.Equals(args[i], "--log", StringComparison.Ordinal))
             {
                 i++; // 跳过该旗标的取值
                 continue;
@@ -126,6 +129,13 @@ internal static class PluginHostSelfTest
                 Console.WriteLine($"CHECK-DISPLAY target-faults faults={targetFaults} (budget-probe target)");
                 failures += HostBudgetProbe.RunConsecutiveFaultDrive(root, expectedId);
             }
+
+            // —— 授权链路（RFC-13 §3）：装载期询问、拒绝后不再问、tier 0 也产租约 ——
+            // 放在最后：收窄授权会改闸门状态，放前面会污染 disable/resume 判据。
+            HostCheck consentCheck = (name, ok, detail) => Check(ref failures, name, ok, detail);
+            failures += ConsentHostChecks.Run(host, target.Manifest, consentCheck);
+            failures += ConsentHostChecks.Tier0Leases(host, consentCheck);
+            failures += ConsentHostChecks.RestrictConsentCheck(host, target.Manifest.Id, consentCheck);
         }
 
         // ———— 阶段二：临时根 + 显式装载 + 热重载 + 即插即用 ————

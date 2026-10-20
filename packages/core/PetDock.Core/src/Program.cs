@@ -61,8 +61,13 @@ internal static partial class Program
     {
         // 常驻也起插件宿主（docs/13 §3：内核宿主插件是常驻行为的一部分）：
         // 根目录探测失败 → 空根空转，不影响窗口；1Hz tick 对常驻 CPU 的影响可忽略。
-        using PluginHost pluginHost = new(PluginHost.ProbePluginsRoot() ?? string.Empty);
-        pluginHost.Start();
+        // 授权端口先建：装载期要弹窗，而弹窗只能开在 UI 线程上（RFC-13 §2.4）。
+        var port = new UiConsentPort();
+        using PluginHost pluginHost = new(
+            PluginHost.ProbePluginsRoot() ?? string.Empty,
+            PluginHost.ResidentTickMs,
+            autoLoad: true,
+            consent: port);
 
         // 内容装配走**唯一**的发现路径（PluginHost 名册，t1 契约 §3.2）：
         // 名册里有视图实现（docs/11 §3）就用它出帧；否则退回 M0 的内容源工厂；
@@ -71,7 +76,10 @@ internal static partial class Program
         ComposeOutcome? composed = Composition;
         // 帧源要交给 UiHost：键盘钩子的事件必须走 PetFrameSource.PublishKeyStroke 才能进总线
         // （docs/16 §3 的 input.key.* 是 capability only，没有第二条合法生产路径）。
-        var host = new UiHost(window, composed?.Instance, pluginHost, composed?.Content as PetFrameSource);
+        //
+        // 宿主**不在这里启动**：装载期的授权弹窗需要一个活着的消息泵，而消息泵由
+        // Application.Run 起来 —— 装载因此推迟到 UiHost 的第一个滴答（RFC-13 §2.4）。
+        var host = new UiHost(window, composed?.Instance, pluginHost, composed?.Content as PetFrameSource, port);
         using (host)
         {
             Application.Run(host);

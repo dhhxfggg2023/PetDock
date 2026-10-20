@@ -51,24 +51,27 @@ public sealed partial class PluginHost
         };
 
         // 契约 §5.3 转移表：init 失败 → 拒绝、释放资源、无半状态（任何失败都不留 handle）
+        // 授权在装载期一次性决定（RFC-13 §2.1）：resolved = 本次实际授予集（问过端口 → 用户勾选的子集；
+        // 无端口 → 声明 ∩ 白名单）。声明集原样传给 CapabilityGate，非白名单项由它自己记 not-in-whitelist 审计。
+        IReadOnlyList<string> resolved = ResolveGranted(manifest);
         if (manifest.Tier == 2)
         {
             // docs/13 §1 法则二 / docs/14 §1/§4/§5：tier 2 独立进程，M7 起真 spawn（RFC-10）。
             // wire 契约（帧/命中图/事件包）未定，子进程当前只承载握手与 tick 往返。
-            CapabilityGate gate2 = new(manifest.Capabilities, grantedIds: null, sink: sink);
+            CapabilityGate gate2 = new(manifest.Capabilities, grantedIds: resolved, sink: sink);
             Tier2Sandbox tier2 = LoadTier2Sandbox(id, pluginDir, manifest, gate2, sink);
             handle.Gate = gate2;
             handle.Tier2 = tier2;
             handle.State = PluginLifecycleState.Instantiated;
             foreach (string granted in gate2.Granted)
             {
-                handle.Leases.Add(new CapabilityLease(granted)); // M1 硬编码测试能力集（契约 §5.4）
+                handle.Leases.Add(new CapabilityLease(granted)); // 授权集 = 用户勾选项（RFC-13 §2.1）
             }
         }
         else if (manifest.Tier == 1)
         {
             byte[] moduleBytes = ReadEntryModule(pluginDir, manifest);
-            CapabilityGate gate = new(manifest.Capabilities, grantedIds: null, sink: sink);
+            CapabilityGate gate = new(manifest.Capabilities, grantedIds: resolved, sink: sink);
             PluginSandbox sandbox = new(gate, sink, CalibratedBudgets());
             try
             {
@@ -87,13 +90,21 @@ public sealed partial class PluginHost
             handle.State = PluginLifecycleState.Instantiated;
             foreach (string granted in gate.Granted)
             {
-                handle.Leases.Add(new CapabilityLease(granted)); // M1 硬编码测试能力集（契约 §5.4）
+                handle.Leases.Add(new CapabilityLease(granted)); // 授权集 = 用户勾选项（RFC-13 §2.1）
             }
         }
         else
         {
-            // tier 0：声明式资源包（docs/13 §2）—— 无执行体，登记即 Instantiated
+            // tier 0：声明式资源包（docs/13 §2）—— 无执行体，登记即 Instantiated。
+            // 但仍建能力闸门并产租约（RFC-13 §2.5）：docs/14 §2 明写 input.mousePosition
+            // 「Tier 0 可请求」，不产租约则 docs/16:56 的设备钩子门对 tier 0 声明者永远不成立。
+            CapabilityGate gate0 = new(manifest.Capabilities, grantedIds: resolved, sink: sink);
+            handle.Gate = gate0;
             handle.State = PluginLifecycleState.Instantiated;
+            foreach (string granted in gate0.Granted)
+            {
+                handle.Leases.Add(new CapabilityLease(granted)); // 授权集 = 用户勾选项（RFC-13 §2.1）
+            }
         }
 
         handle.State = PluginLifecycleState.Running;
@@ -257,10 +268,12 @@ public sealed partial class PluginHost
         // —— 装载新实例（handle 身份与外部订阅不变 —— 契约 §5.3）——
         try
         {
+            // 重载同样走授权解析（RFC-13 §2.1）：新 manifest 的能力集 = 用户勾选的子集。
+            IReadOnlyList<string> resolved = ResolveGranted(newManifest);
             if (newManifest.Tier == 2)
             {
                 // RFC-10：tier 2 热重载 = 杀旧子进程 + spawn 新子进程；握手不过 → 下方 catch 落 Suspended。
-                CapabilityGate gate2 = new(newManifest.Capabilities, grantedIds: null, sink: handle.Sink);
+                CapabilityGate gate2 = new(newManifest.Capabilities, grantedIds: resolved, sink: handle.Sink);
                 Tier2Sandbox tier2 = LoadTier2Sandbox(newManifest.Id, handle.PluginDir, newManifest, gate2, handle.Sink);
                 handle.Gate = gate2;
                 handle.Tier2 = tier2;
@@ -273,7 +286,7 @@ public sealed partial class PluginHost
             else if (newManifest.Tier == 1)
             {
                 byte[] moduleBytes = ReadEntryModule(handle.PluginDir, newManifest);
-                CapabilityGate gate = new(newManifest.Capabilities, grantedIds: null, sink: handle.Sink);
+                CapabilityGate gate = new(newManifest.Capabilities, grantedIds: resolved, sink: handle.Sink);
                 PluginSandbox sandbox = new(gate, handle.Sink, CalibratedBudgets());
                 if (!sandbox.Load(moduleBytes))
                 {
@@ -289,7 +302,15 @@ public sealed partial class PluginHost
             }
             else
             {
+                // tier 0 也要建闸门并产租约（RFC-13 §2.5）：与 tier 1/2 同形，
+                // 否则 docs/16:56 的设备钩子门对 tier 0 声明者永远不成立。
+                CapabilityGate gate0 = new(newManifest.Capabilities, grantedIds: resolved, sink: handle.Sink);
+                handle.Gate = gate0;
                 handle.Leases.Clear();
+                foreach (string granted in gate0.Granted)
+                {
+                    handle.Leases.Add(new CapabilityLease(granted));
+                }
             }
             handle.Manifest = newManifest;
             handle.ManifestHash = newHash;

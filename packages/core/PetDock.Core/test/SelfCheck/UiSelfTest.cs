@@ -34,6 +34,7 @@ internal static class UiSelfTest
             PanelSingleton();
             RosterReadOnly();
             AuthorizationDialogCheck();
+            ConsentUiChecks.Run(Emit, Check);
             PerfEmptyHonest();
             PerfPageSample();
             KeyboardHookContract();

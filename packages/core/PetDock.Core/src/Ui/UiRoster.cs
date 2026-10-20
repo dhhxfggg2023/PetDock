@@ -34,6 +34,7 @@ internal static class UiRoster
             foreach (PluginRow row in host.Roster())
             {
                 plugins.Add(new PluginLine(
+                    Id: row.Id,
                     Name: row.Name,
                     Version: row.Version,
                     Tier: row.Tier,

@@ -11,12 +11,18 @@ internal static class HostTestFleet
     public const string BrokenId = "bad-hyphen";
     public const string Tier2Id = "com.example.heavybrain";
     public const string SecondId = "com.example.secondbrain";
+    public const string Tier0Id = "com.example.zerobrain";
 
     /// <summary>临时插件根：goodbrain（从仓库复制来的合法 tier1）+ broken（manifest 多处违规）
     /// + heavybrain（schema 合法但 tier2，装载期拒绝）。</summary>
+    /// <remarks>
+    /// 夹具根建在 AppContext.BaseDirectory 下，**不用** %TEMP%：本机实测自检进程在运行期
+    /// 于 %TEMP% 下建目录再往里写会被持续拒绝（UnauthorizedAccessException，与权限位无关），
+    /// 同操作在 pwsh 里正常。BaseDirectory 是进程启动前就存在的目录。
+    /// </remarks>
     public static string CreateTempRoot(string sourcePluginDir, out string goodDir)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-hosttest-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(AppContext.BaseDirectory, "petdock-hosttest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
 
         goodDir = Path.Combine(root, "goodbrain");
@@ -42,6 +48,19 @@ internal static class HostTestFleet
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, ManifestValidator.ManifestFileName), SecondManifest);
         File.WriteAllText(Path.Combine(dir, "main.js"), "// second fixture entry\n");
+    }
+
+    /// <summary>
+    /// 投放一个合法 tier 0 插件（声明式资源包，无执行体）。
+    /// 存在的理由：docs/14 §2 明写 input.mousePosition「Tier 0 可请求」，所以 tier 0 必须
+    /// 也有能力闸门与租约；仓库里的插件以 tier 0 为主，但夹具要给一个**确定的** id 与
+    /// **确定的**能力集，自检才能断言授予子集。
+    /// </summary>
+    public static void WriteTier0Plugin(string root)
+    {
+        string dir = Path.Combine(root, "zerobrain");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, ManifestValidator.ManifestFileName), Tier0Manifest);
     }
 
     /// <summary>递归复制：源插件的 entry 可能是子目录（docs/21 允许 `src/main.js` 这类相对路径），
@@ -109,6 +128,22 @@ internal static class HostTestFleet
           "entry": "main.js",
           "capabilities": ["persist.read:self"],
           "license": { "spdx": "Apache-2.0" }
+        }
+        """;
+
+    // tier 0：声明式资源包，无执行体。带一项能力，用来断言 tier 0 也建闸门也产租约
+    // （docs/14 §2 明写 input.mousePosition「Tier 0 可请求」）。
+    private const string Tier0Manifest = """
+        {
+          "id": "com.example.zerobrain",
+          "name": "Zero Brain Fixture",
+          "version": "0.1.0",
+          "api": { "major": 1, "minor": 0 },
+          "kind": "brain",
+          "tier": 0,
+          "entry": "main.js",
+          "capabilities": ["input.mousePosition"],
+          "license": { "spdx": "MIT" }
         }
         """;
 }
