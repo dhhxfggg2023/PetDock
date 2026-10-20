@@ -33,6 +33,9 @@ internal sealed partial class UiHost : ApplicationContext
     private readonly UiConsentPort? _consent;
     private readonly ResidentFrameLoop _loop;
 
+    /// <summary>设置存储（可空：没有数据区就没有设置页的持久化；自检形态常常是 null）。</summary>
+    private readonly UserSettingsStore? _settings;
+
     /// <summary>当前宠物（导入会换它，所以不是 readonly）。</summary>
     private PetInstance? _pet;
 
@@ -54,7 +57,8 @@ internal sealed partial class UiHost : ApplicationContext
         PetInstance? pet,
         PluginHost? host,
         SwappableFrameSource? frames = null,
-        UiConsentPort? consent = null)
+        UiConsentPort? consent = null,
+        UserSettingsStore? settings = null)
     {
         _window = window;
         _initialPet = pet;
@@ -62,7 +66,16 @@ internal sealed partial class UiHost : ApplicationContext
         _host = host;
         _frames = frames;
         _consent = consent;
+        _settings = settings;
         _loop = new ResidentFrameLoop(window);
+
+        // 启动时读设置：空闲降帧阈值立即套用到帧泵（不用等用户点「应用」）。
+        if (_settings is not null)
+        {
+            UserSettings loaded = _settings.Load();
+            _loop.SetTargetFrameMs(loaded.IdleFrameBudgetMs);
+            KernelLog.Write($"settings-loaded {loaded.Describe()}");
+        }
 
         // 导入服务：宿主编排在它那里，UI 只负责「选目录」与「显示错误条」（RFC-15 §3.5）。
         if (frames is not null && frames.Roster is not null)

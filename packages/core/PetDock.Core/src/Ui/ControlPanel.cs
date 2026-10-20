@@ -137,6 +137,9 @@ internal sealed partial class ControlPanel : Form
         // 宠物页有自己的导入入口与内联错误条（另一个 partial 建）。
         InitPetsPage();
 
+        // 设置页有自己的可写控件（开机自启 / 空闲降帧阈值 / 应用）。
+        InitSettingsPage();
+
         // 性能页是独立控件页（有采样按钮），单独挂一个 TabPage
         var perfTab = MakePage(PanelPages.Perf);
         _perfPage.Dock = DockStyle.Fill;
@@ -253,15 +256,23 @@ internal sealed partial class ControlPanel : Form
         _list.Columns.Add("值", 300);
         _list.Columns.Add("说明", 300);
 
-        AddSetting("开机自启", "关", "默认关（docs/18 §2.3）");
-        AddSetting("语言", "zh-CN", "zh-CN / en-US");
-        AddSetting("空闲降帧阈值", "33.3 ms", "= 1000/30，见 FrameBudget.IdleFrameBudgetMs");
+        SettingsView view = snapshot.Settings ?? SettingsView.Default;
+        AddSetting("开机自启", view.StartupEnabled ? "开" : "关", "默认关（docs/18 §2.3）；事实源是注册表");
+        AddSetting("语言", view.Language, "zh-CN / en-US（文案未本地化：只持久化选择）");
+        AddSetting("空闲降帧阈值", view.IdleFrameBudgetMs.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ms", "帧周期；改完立即生效");
         AddSetting("宠物数", snapshot.Pets.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), "当前实例");
         AddSetting("诊断：日志目录", "(未接线)", "打开日志目录属后续切片");
         AddSetting("诊断：导出诊断包", "(未接线)", "脱敏导出，docs/18 §2.3");
 
-        BindListOn(_pages.TabPages[3]);
-        _status.Text = "设置项为只读展示；持久化（docs/17）未接线。";
+        TabPage? settingsPage = FindPage(PanelPages.Settings);
+        if (settingsPage is null)
+        {
+            return;
+        }
+
+        BindListOn(settingsPage);
+        BindSettingsValues(snapshot.Settings);
+        _status.Text = "设置项可改：勾选与阈值在下方操作栏，改完点「应用」。";
     }
 
     private void AddSetting(string name, string value, string note) =>

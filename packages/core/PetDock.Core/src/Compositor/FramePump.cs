@@ -10,7 +10,6 @@ namespace PetDock.Core.Compositor;
 /// </summary>
 internal sealed class FramePump : IDisposable
 {
-    private const double TargetFrameMs = 1000.0 / 30.0;
     private const double FrameBudgetMs = 8.3;
 
     private readonly Stopwatch _clock = new();
@@ -23,6 +22,27 @@ internal sealed class FramePump : IDisposable
     private double _maxFrameMs;
     private double _totalFrameMs;
     private long _startTicks;
+
+    /// <summary>
+    /// 目标帧周期（毫秒）。默认 30fps（= 1000/30）。
+    /// 可在运行期改（docs/18 §2.3 的「空闲降帧阈值」设置项）：改完立即生效，不用重启。
+    /// 用 Volatile 读写：设置线程写、帧泵线程读。
+    /// </summary>
+    private double _targetFrameMs = 1000.0 / 30.0;
+
+    /// <summary>当前目标帧周期（毫秒）。</summary>
+    public double TargetFrameMs => Volatile.Read(ref _targetFrameMs);
+
+    /// <summary>
+    /// 改目标帧周期。越界会被拉回 [16.7, 200] 毫秒（60fps ~ 5fps）——
+    /// 让用户把周期设成 0 毫秒等于让帧泵忙转，那是自伤。
+    /// </summary>
+    public void SetTargetFrameMs(double milliseconds)
+    {
+        double clamped = Math.Clamp(milliseconds, 1000.0 / 60.0, 1000.0 / 5.0);
+        Volatile.Write(ref _targetFrameMs, clamped);
+        KernelLog.Write($"frame-pump-target {clamped:0.0}ms");
+    }
 
     /// <summary>已跑完的帧数。</summary>
     public int Frames => (int)Interlocked.Read(ref _frames);
@@ -169,6 +189,7 @@ internal sealed class FramePump : IDisposable
             }
 
             // 睡眠补偿：把这一帧多花的时间从下一帧的睡眠里扣掉，长期不漂移
+            // （周期在运行期可改，所以每轮都重新读一次 TargetFrameMs）。
             next += (long)Math.Round(TargetFrameMs);
             long now = _clock.ElapsedMilliseconds;
             long wait = next - now;

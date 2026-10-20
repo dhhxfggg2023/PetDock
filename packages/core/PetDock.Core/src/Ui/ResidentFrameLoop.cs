@@ -1,7 +1,7 @@
 // 常驻形态的「窗口可见性 ↔ 帧循环」绑定（RFC-14 §2.1）。
 //
 // 为什么要有这个类：RFC-14 的实证是「常驻进程里有一个 128x128 的分层窗，但它 visible=False，
-// 而且常驻形态根本没有帧泵」。修这两件事要同时做 —— 只显示不���泵，屏幕上是一张静止的首帧；
+// 而且常驻形态根本没有帧泵」。修这两件事要同时做 —— 只显示不启泵，屏幕上是一张静止的首帧；
 // 只起泵不显示，帧在跑而用户看不见。把这两件事绑在一个类里，是为了**让它们不可能只做一半**：
 // 显示窗口就一定有泵，隐藏窗口就一定没有泵。
 //
@@ -29,10 +29,26 @@ internal sealed class ResidentFrameLoop : IDisposable
     private bool _pumping;
     private bool _disposed;
 
+    /// <summary>目标帧周期（毫秒）。泵还没起时先记着，起泵时套用（docs/18 §2.3 的空闲降帧阈值）。</summary>
+    private double _targetFrameMs = 1000.0 / 30.0;
+
     public ResidentFrameLoop(LayeredFrameWindow window)
     {
         _window = window ?? throw new ArgumentNullException(nameof(window));
     }
+
+    /// <summary>
+    /// 设置目标帧周期（毫秒）。立即生效：泵在跑就改泵，泵没起就记下来等它起。
+    /// 越界由 FramePump.SetTargetFrameMs 拉回 [16.7, 200]。
+    /// </summary>
+    public void SetTargetFrameMs(double milliseconds)
+    {
+        _targetFrameMs = milliseconds;
+        _pump?.SetTargetFrameMs(milliseconds);
+    }
+
+    /// <summary>当前目标帧周期（毫秒）。</summary>
+    public double TargetFrameMs => _pump?.TargetFrameMs ?? _targetFrameMs;
 
     /// <summary>宠物窗口当前是否可见。</summary>
     public bool Visible => _window.Visible;
@@ -69,6 +85,7 @@ internal sealed class ResidentFrameLoop : IDisposable
         }
 
         var pump = new FramePump();
+        pump.SetTargetFrameMs(_targetFrameMs);
         pump.Start(() => _window.RenderFrame());
         _pump = pump;
         _pumping = true;

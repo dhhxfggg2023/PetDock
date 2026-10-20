@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 12650,
+  "budget": 13350,
   "history": [
     {
       "date": "2026-10-18",
@@ -210,6 +210,55 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
           ],
           "lines": 72
+        }
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "measured": 13279,
+      "budget": 13350,
+      "note": "RFC-18：设置持久化 v1（docs/18 §2.3 的可写设置页）。三条裁决：① 开机自启的事实源是注册表 HKCU Run 键，设置文件不重复存这一项（同一事实存两处必然漂移）；② 空闲降帧阈值 = 帧泵目标周期，运行期立即生效，越界钳制 [1000/60, 1000/5]；③ 语言只持久化，界面文案未本地化（登记为欠账）。每宠物默认项与诊断两项本次不做。",
+      "attribution": [
+        {
+          "slice": "RFC-18 A 设置形态与落盘（设置记录 + 越界钳制 + settings.json 两阶段提交 + 损坏回落默认）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs"
+          ],
+          "lines": 173
+        },
+        {
+          "slice": "RFC-18 B 开机自启的注册表读写（事实源唯一；自检用独立值名，不动用户那一项）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/StartupRegistration.cs"
+          ],
+          "lines": 137
+        },
+        {
+          "slice": "RFC-18 C 设置页可写形态（勾选框 / 阈值框 / 应用按钮 / 内联状态标签 + 只读清单刷新）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
+          ],
+          "lines": 208
+        },
+        {
+          "slice": "RFC-18 D 帧周期运行期可变（帧泵目标周期 + 常驻循环转发）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/FramePump.cs",
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.cs"
+          ],
+          "lines": 38
+        },
+        {
+          "slice": "RFC-18 E 宿主接线（启动时读设置推给帧泵 + 设置动作的执行体 + 快照带设置状态 + 装配创建设置存储）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": 87
         }
       ]
     }

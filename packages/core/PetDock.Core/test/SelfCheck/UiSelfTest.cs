@@ -40,6 +40,7 @@ internal static class UiSelfTest
             KeyboardHookContract();
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
+            SettingsChecks.Run(Check);
             failures = _failed;
         }
         catch (Exception error)

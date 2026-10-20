@@ -47,11 +47,25 @@ internal sealed record PerfSummary(
     public bool IsEmpty => Rows.Count == 0;
 }
 
+/// <summary>
+/// 设置页的当前状态（docs/18 §2.3）。面板读它来摆放控件，宿主改它来生效。
+/// StartupEnabled 的事实源是注册表，不是设置文件（同一事实存两处必然漂移）。
+/// </summary>
+internal sealed record SettingsView(
+    double IdleFrameBudgetMs,
+    string Language,
+    bool StartupEnabled)
+{
+    /// <summary>没有设置可读时的默认状态。</summary>
+    public static SettingsView Default { get; } = new(1000.0 / 30.0, "zh-CN", false);
+}
+
 /// <summary>面板一次重绘所需的全部数据。</summary>
 internal sealed record UiSnapshot(
     IReadOnlyList<PetLine> Pets,
     IReadOnlyList<PluginLine> Plugins,
-    PerfSummary Perf)
+    PerfSummary Perf,
+    SettingsView? Settings = null)
 {
     public static UiSnapshot Empty { get; } = new(
         System.Array.Empty<PetLine>(),

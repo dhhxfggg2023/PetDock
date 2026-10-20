@@ -107,7 +107,11 @@ internal static partial class Program
         //
         // 宿主**不在这里启动**：装载期的授权弹窗需要一个活着的消息泵，而消息泵由
         // Application.Run 起来 —— 装载因此推迟到 UiHost 的第一个滴答（RFC-13 §2.4）。
-        var host = new UiHost(window, composed?.Instance, pluginHost, frames, port);
+        //
+        // 传的是 pet（可能被恢复逻辑换过），不是 composed?.Instance —— 传错就等于
+        // 「恢复了清单里的宠物，但桌面上还是原来那只」。
+        var settingsStore = new UserSettingsStore(PetDataStore.Resolve().Root);
+        var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore);
         using (host)
         {
             Application.Run(host);

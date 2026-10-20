@@ -28,6 +28,7 @@ internal sealed partial class UiHost
 
         _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled);
         _panel.SetImportCommand(RunImportFromPanel);
+        _panel.SetSettingsCommand(ApplySettings);
         _panel.FormClosed += (_, _) =>
         {
             // 关闭面板不退出程序（§2.5）：只是把它丢掉，托盘还在。
@@ -39,7 +40,62 @@ internal sealed partial class UiHost
 
     /// <summary>取一次快照（面板每次重绘都调用它，不缓存）。</summary>
     public UiSnapshot Snapshot() =>
-        UiRoster.Build(_pet, _host, _perf);
+        UiRoster.Build(_pet, _host, _perf, SettingsView());
+
+    /// <summary>
+    /// 设置页的当前状态（读数来源：设置文件 + 注册表）。
+    /// 开机自启从注册表读——它的事实源就在那儿，设置文件不重复保存这一项。
+    /// </summary>
+    private SettingsView SettingsView()
+    {
+        UserSettings settings = _settings?.Load() ?? UserSettings.Default;
+        return new SettingsView(
+            settings.IdleFrameBudgetMs,
+            settings.Language,
+            StartupRegistration.IsEnabled());
+    }
+
+    /// <summary>
+    /// 设置页「应用」的执行体（UI 线程）。
+    /// 顺序：① 开机自启（注册表）② 落盘设置文件 ③ 把新阈值推给帧泵。
+    /// 每一步都可能失败，失败要说清楚是哪一步——「已保存设置，但开机自启未生效」比「保存失败」诚实。
+    /// 返回 null = 全部成功；返回字符串 = 失败或部分失败的原因。
+    /// </summary>
+    private string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows)
+    {
+        var problems = new List<string>();
+
+        // ① 开机自启：事实源是注册表。要不要动它，取决于「勾选状态与注册表现状是否一致」。
+        bool registered = StartupRegistration.IsEnabled();
+        if (startWithWindows != registered)
+        {
+            string? failure = startWithWindows
+                ? StartupRegistration.Enable()
+                : StartupRegistration.Disable();
+            if (failure is not null)
+            {
+                problems.Add(failure);
+            }
+        }
+
+        // ② 落盘。写失败要说清楚「设置没存上」。
+        UserSettings previous = _settings?.Load() ?? UserSettings.Default;
+        var updated = new UserSettings(idleFrameBudgetMs, previous.Language);
+        try
+        {
+            _settings?.Save(updated);
+        }
+        catch (Exception error)
+        {
+            problems.Add($"设置未能保存：{error.Message}");
+        }
+
+        // ③ 立即推给帧泵（不用重启）。这一步不会失败：越界值在 FramePump 里被拉回合法区间。
+        _loop.SetTargetFrameMs(idleFrameBudgetMs);
+        KernelLog.Write($"settings-applied idle={updated.IdleFrameBudgetMs:0.0}ms startup={startWithWindows}");
+
+        return problems.Count == 0 ? null : string.Join("；", problems);
+    }
 
     /// <summary>
     /// 面板「导入素材包」入口的执行体（UI 线程）。

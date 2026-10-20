@@ -15,7 +15,7 @@ internal static class UiRoster
     /// 装配一次快照。pets 允许为空（常驻路径只装配一个实例，且装配失败时确实没有宠物）；
     /// plugins 来自宿主只读花名册；perf 由调用方给出（采样是显式动作，不在重绘里偷偷做）。
     /// </summary>
-    public static UiSnapshot Build(PetInstance? pet, PluginHost? host, PerfSummary perf)
+    public static UiSnapshot Build(PetInstance? pet, PluginHost? host, PerfSummary perf, SettingsView? settings = null)
     {
         var pets = new List<PetLine>(1);
         if (pet is not null)
@@ -43,7 +43,7 @@ internal static class UiRoster
             }
         }
 
-        return new UiSnapshot(pets, plugins, perf);
+        return new UiSnapshot(pets, plugins, perf, settings);
     }
 
     /// <summary>
