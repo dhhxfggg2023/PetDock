@@ -59,6 +59,18 @@ internal sealed class ResidentFrameLoop : IDisposable
     /// <summary>已出帧数（停泵后保留最后一次读数，便于判据比较「停之前」与「停之后」）。</summary>
     public int Frames => _pump?.Frames ?? 0;
 
+    /// <summary>单帧最慢耗时（毫秒）。诊断包读它（RFC-17 §3.2）。</summary>
+    public double MaxFrameMs => _pump?.MaxFrameMs ?? 0;
+
+    /// <summary>单帧平均耗时（毫秒，累计平均 —— 诊断包必须标明这一点）。</summary>
+    public double AvgFrameMs => _pump?.AvgFrameMs ?? 0;
+
+    /// <summary>超过 SM-04 预算的帧数。</summary>
+    public long OverBudgetFrames => _pump?.OverBudgetFrames ?? 0;
+
+    /// <summary>帧泵已运行时长（毫秒）。</summary>
+    public long ElapsedMs => _pump?.ElapsedMs ?? 0;
+
     /// <summary>
     /// 显示窗口并起帧泵。幂等：窗口已可见且泵在跑时直接返回。
     /// 顺序有意如此：**先显示再起泵** —— 反过来的话，头几帧会被画进一个还看不见的窗口。

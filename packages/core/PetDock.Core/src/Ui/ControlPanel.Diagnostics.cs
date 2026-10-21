@@ -1,0 +1,139 @@
+// 设置页的诊断入口（RFC-17 §3.4 / §3.5；docs/18 §2.3 的两行）。
+//
+// 面板只**发出意图**（与设置页的「应用」同款纪律）：面板不碰文件系统、不碰进程。
+// 宿主侧执行完把一句话回来说，面板把它显示成内联状态标签 —— 不弹模态框（docs/18 §5）。
+//
+// 为什么不弹保存对话框选导出位置：RFC-15 §4 已经登记过一次「自检形态下弹目录选择器
+// 会挂住自检进程」。导出路径固定在数据区下、完成后打开所在目录，用户想换地方自己拿。
+using System;
+using System.Windows.Forms;
+
+namespace PetDock.Core.Ui;
+
+internal sealed partial class ControlPanel
+{
+    /// <summary>「打开日志目录」按钮。</summary>
+    private readonly Button _openLogsButton = new()
+    {
+        Text = "打开日志目录",
+        Name = "diag-open-logs",
+        Width = 120,
+        Height = 28,
+    };
+
+    /// <summary>「导出诊断包」按钮。</summary>
+    private readonly Button _exportBundleButton = new()
+    {
+        Text = "导出诊断包（脱敏后）",
+        Name = "diag-export-bundle",
+        Width = 150,
+        Height = 28,
+    };
+
+    /// <summary>诊断动作的回调（宿主侧执行）。</summary>
+    private DiagnosticCommand? _diagnosticCommand;
+
+    /// <summary>诊断动作的回调形状：给一个动作名，宿主侧回一句话（成功或失败原因）。</summary>
+    internal delegate string DiagnosticCommand(string op);
+
+    /// <summary>设置页诊断入口的控件名（自检按它们断言入口存在）。</summary>
+    public IReadOnlyList<string> DiagnosticControlNames =>
+        new[] { _openLogsButton.Name, _exportBundleButton.Name };
+
+    /// <summary>诊断动作名（自检按它调宿主侧回调，不靠模拟点击）。</summary>
+    public const string DiagnosticOpOpenLogs = "open-logs";
+
+    /// <summary>诊断动作名：导出诊断包。</summary>
+    public const string DiagnosticOpExportBundle = "export-bundle";
+
+    /// <summary>给设置页装一个宿主侧的诊断回调（构造时传入）。</summary>
+    public void SetDiagnosticCommand(DiagnosticCommand? command) => _diagnosticCommand = command;
+
+    /// <summary>
+    /// 设置页列表当前所有行的文字（自检断言诊断两行不再是「(未接线)」）。
+    /// 走的是**共享列表**（面板四页共用一个 ListView），所以自检要先切到设置页。
+    /// </summary>
+    public IReadOnlyList<string> SettingsRowTexts
+    {
+        get
+        {
+            var texts = new List<string>();
+            foreach (ListViewItem item in _list.Items)
+            {
+                var cells = new List<string>();
+                foreach (ListViewItem.ListViewSubItem sub in item.SubItems)
+                {
+                    cells.Add(sub.Text);
+                }
+
+                texts.Add(string.Join(" | ", cells));
+            }
+
+            return texts;
+        }
+    }
+
+    /// <summary>
+    /// 自检入口：直接走宿主侧回调（与点按钮同一条路），
+    /// 区别只是不经过按钮事件 —— 自检不该靠模拟点击来证明功能。
+    /// </summary>
+    internal string TryDiagnosticForCheck(string op)
+    {
+        string message = RunDiagnostic(op);
+        ShowSettingsStatus(message, ok: !message.StartsWith("无法", StringComparison.Ordinal)
+            && !message.Contains("失败", StringComparison.Ordinal));
+        return message;
+    }
+
+    /// <summary>把两个诊断按钮挂进设置页的操作栏。</summary>
+    private void InitDiagnosticsPage()
+    {
+        _openLogsButton.Click += (_, _) => RunDiagnostic(DiagnosticOpOpenLogs);
+        _exportBundleButton.Click += (_, _) => RunDiagnostic(DiagnosticOpExportBundle);
+
+        TabPage? page = FindPage(PanelPages.Settings);
+        if (page is null)
+        {
+            return;
+        }
+
+        var bar = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 40,
+            FlowDirection = FlowDirection.LeftToRight,
+            Padding = new Padding(8, 6, 8, 6),
+            WrapContents = false,
+        };
+        bar.Controls.Add(_openLogsButton);
+        bar.Controls.Add(_exportBundleButton);
+
+        // 操作栏与状态标签都 Dock=Bottom：后加的先排版 —— 状态标签先加、操作栏后加。
+        page.Controls.Add(bar);
+    }
+
+    /// <summary>执行一个诊断动作并把结果显示成内联状态。</summary>
+    private string RunDiagnostic(string op)
+    {
+        if (_diagnosticCommand is null)
+        {
+            string unavailable = "诊断功能不可用：宿主未接管诊断动作。";
+            ShowSettingsStatus(unavailable, ok: false);
+            return unavailable;
+        }
+
+        string message;
+        try
+        {
+            message = _diagnosticCommand(op);
+        }
+        catch (Exception error)
+        {
+            message = "诊断动作失败：" + error.GetType().Name + " " + error.Message;
+        }
+
+        ShowSettingsStatus(message, ok: !message.StartsWith("无法", StringComparison.Ordinal)
+            && !message.Contains("失败", StringComparison.Ordinal));
+        return message;
+    }
+}

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 14475,
+  "budget": 16300,
   "history": [
     {
       "date": "2026-10-18",
@@ -324,6 +324,54 @@
             "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs"
           ],
           "lines": 50
+        }
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "measured": 16240,
+      "budget": 16300,
+      "note": "RFC-17：诊断包导出（docs/18 §2.3 的两行诊断入口，此前一行代码都没有）。常驻形态的 KernelLog 终于有地方落——KernelLog 加可插的 sink，ResidentLog 接管落盘（写入路径只做内存操作，落盘交给后台线程，帧泵线程不做同步文件 IO）；脱敏发生在落盘前，磁盘上从来没有明文路径。诊断包是 .zip（.NET 8 内置 System.IO.Compression，零新增依赖），内含 summary/runtime/plugins/instances/audit/manifest 六节加 logs/ 副本，manifest 逐文件给 sha256；导出路径固定，不弹对话框，失败一律落设置页内联状态标签。实测增量 +1823，超出 RFC-17 §5 预估：超出部分主要在脱敏规则表（每类占位符与最长路径前缀优先的替换顺序）、D-03c 单文件 400 行上限把包装配拆成 DiagnosticBundle（文件层）与 DiagnosticSections（文本装配）两个文件、以及日志落盘层的文件生命周期拆成 ResidentLog.Files.cs。测试面（test/SelfCheck/DiagnosticChecks.cs、DiagnosticBundleChecks.cs）不计入本预算（D-03a 只算 src）；发布装配侧不计入 core。",
+      "attribution": [
+        {
+          "slice": "RFC-17 A 运行期日志落盘层与脱敏规则（KernelLog sink、后台写入、滚动与目录上限、脱敏占位符）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/ResidentLog.cs",
+            "packages/core/PetDock.Core/src/Host/ResidentLog.Files.cs",
+            "packages/core/PetDock.Core/src/Host/RedactRules.cs"
+          ],
+          "lines": 714
+        },
+        {
+          "slice": "RFC-17 B 诊断包装配（读数模型、zip 导出、六节文本装配与逐文件 sha256 清单）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DiagnosticReadings.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticBundle.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticSections.cs"
+          ],
+          "lines": 581
+        },
+        {
+          "slice": "RFC-17 C 诊断服务与面板入口（读数采集、打开日志目录、导出诊断包、设置页两个按钮）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Diagnostics.cs"
+          ],
+          "lines": 447
+        },
+        {
+          "slice": "RFC-17 D 接线与读数出口（KernelLog sink 出口、沙箱事件快照、帧泵耗时读数、常驻装配顺序）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/KernelLog.cs",
+            "packages/core/PetDock.Core/src/Host/HostEventSink.cs",
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": 81
         }
       ]
     }

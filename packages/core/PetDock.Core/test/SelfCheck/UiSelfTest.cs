@@ -43,6 +43,8 @@ internal static class UiSelfTest
             SettingsChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
+            DiagnosticChecks.Run(Check);
+            DiagnosticBundleChecks.Run(Check);
             failures = _failed;
         }
         catch (Exception error)

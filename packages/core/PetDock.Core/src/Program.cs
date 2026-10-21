@@ -1,6 +1,7 @@
 // 实现 docs/12 §6「可执行检查」的进程入口：DPI 感知设置、常驻运行与 --selftest 自检
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -116,11 +117,34 @@ internal static partial class Program
         // 传的是 pet（可能被恢复逻辑换过），不是 composed?.Instance —— 传错就等于
         // 「恢复了清单里的宠物，但桌面上还是原来那只」。
         var settingsStore = new UserSettingsStore(PetDataStore.Resolve().Root);
-        var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore);
+
+        // 常驻形态的运行期日志落盘 + 诊断服务（RFC-17 §3.1 / §3.4）。
+        // 装配顺序有讲究：落盘层挂到 KernelLog.Sink 之后，这一行往后每一个
+        // KernelLog.Write 都会留痕；日志目录不存在就建一个空的（空目录也是成功）。
+        PetDataStore dataStore = PetDataStore.Resolve();
+        var residentLog = new ResidentLog(
+            Path.Combine(dataStore.Root, DiagnosticService.LogsFolder),
+            RedactRules.ForCurrentMachine(dataStore.Root, PluginHost.ProbePluginsRoot()));
+        residentLog.Start();
+        KernelLog.Sink = residentLog;
+        KernelLog.Write("resident-log-started");
+
+        var diagnostics = new DiagnosticService(dataStore, pluginHost, pet, residentLog);
+
+        var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore, diagnostics);
+
+        // 帧循环是 UiHost 建的，诊断服务比它先存在 —— 帧读数只能事后回填（RFC-17 §3.2）。
+        diagnostics.FrameLoop = host.Loop;
         using (host)
         {
             Application.Run(host);
         }
+
+        // 进程正常退出：落盘剩余的行、关掉活动文件、去掉 .part 后缀
+        // （写完才算硬证据，docs/17 §3）。
+        KernelLog.Sink = null;
+        residentLog.Complete();
+        residentLog.Dispose();
 
         return ExitOk;
     }

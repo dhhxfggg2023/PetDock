@@ -29,6 +29,7 @@ internal sealed partial class UiHost
         _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled);
         _panel.SetImportCommand(RunImportFromPanel);
         _panel.SetSettingsCommand(ApplySettings);
+        _panel.SetDiagnosticCommand(RunDiagnosticOp);
         _panel.FormClosed += (_, _) =>
         {
             // 关闭面板不退出程序（§2.5）：只是把它丢掉，托盘还在。

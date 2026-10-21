@@ -58,7 +58,8 @@ internal sealed partial class UiHost : ApplicationContext
         PluginHost? host,
         SwappableFrameSource? frames = null,
         UiConsentPort? consent = null,
-        UserSettingsStore? settings = null)
+        UserSettingsStore? settings = null,
+        DiagnosticService? diagnostics = null)
     {
         _window = window;
         _initialPet = pet;
@@ -67,6 +68,7 @@ internal sealed partial class UiHost : ApplicationContext
         _frames = frames;
         _consent = consent;
         _settings = settings;
+        _diagnostics = diagnostics;
         _loop = new ResidentFrameLoop(window);
 
         // 启动时读设置：空闲降帧阈值立即套用到帧泵（不用等用户点「应用」）。

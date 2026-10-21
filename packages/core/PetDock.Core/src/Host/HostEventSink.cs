@@ -56,6 +56,22 @@ internal sealed class PluginEventSink : ISandboxEventSink
         KernelLog.Write($"sandbox plugin={_pluginId} kind={evt.Kind} {evt.Detail}");
     }
 
+    /// <summary>
+    /// 最近的沙箱事件（环形缓冲里的那些，最多 Capacity 条）。
+    /// 诊断包用它导出 audit.jsonl（RFC-17 §3.2）——
+    /// 这是**最近**的事件，不是全量历史，摘要里必须如实写明。
+    /// </summary>
+    public IReadOnlyList<SandboxEvent> RecentEvents
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _recent.ToArray();
+            }
+        }
+    }
+
     /// <summary>Resume 时的句柄重发审计（宿主侧策略事件，非沙箱产生；gate 无公开 Grant，
     /// M1 的重发记录由宿主补审计 —— 见 PluginHost.ResumeHandle）。</summary>
     public void EmitRegrant(string capabilityId)
