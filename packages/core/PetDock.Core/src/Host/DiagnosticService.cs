@@ -102,6 +102,12 @@ internal sealed class DiagnosticService
         return result.Message + "（目录：" + _rules.Text(DiagnosticsDirectory) + "）";
     }
 
+    /// <summary>
+    /// 跨进程审计流水（可空：没接流水时回退到环形缓冲）。
+    /// 导出前要先 FlushNow —— 否则包里少最后一段（与日志层同一条纪律）。
+    /// </summary>
+    public AuditTrail? Trail { get; set; }
+
     /// <summary>采集一次读数。全部取自现成读数，不引入新的测量链。</summary>
     public DiagnosticReadings CollectReadings()
     {
@@ -151,6 +157,63 @@ internal sealed class DiagnosticService
             {
                 // 事件取不到：审计一节留空，摘要里的计数也照实写 0。
             }
+        }
+
+        // 跨进程审计流水（RFC-20 §3.4）：流水可用就用流水，流水不可用才回退到环形缓冲。
+        // 「回退」必须写在摘要里 —— 读者要知道自己看的是不是全量。
+        DiagnosticTrailSummary trailSummary;
+        AuditTrail? trail = Trail;
+        if (trail is not null)
+        {
+            // 先把缓冲里的行落盘，否则包里少最后一段。
+            try
+            {
+                trail.FlushNow();
+            }
+            catch (Exception)
+            {
+                // 落不下去就照常往下走：包里的审计一节少几行，也比整个导出失败强。
+            }
+
+            AuditTrailRead read = AuditTrail.ReadAll(trail.TrailDirectory);
+            if (read.Available)
+            {
+                // 流水可用就**只**用流水：环形缓冲里的那些事件已经在流水里了，
+                // 两边都写会变成同一批事件记两遍。
+                audit.Clear();
+                foreach (AuditTrailRow row in read.Rows)
+                {
+                    audit.Add(new DiagnosticAuditRow(row.PluginId, row.Kind, row.Detail, row.Timestamp));
+                }
+
+                trailSummary = new DiagnosticTrailSummary(
+                    Available: true,
+                    Rows: read.Rows.Count,
+                    Files: read.Files,
+                    Incomplete: read.Incomplete,
+                    Dropped: trail.DroppedCount,
+                    Note: read.Note);
+            }
+            else
+            {
+                trailSummary = new DiagnosticTrailSummary(
+                    Available: false,
+                    Rows: 0,
+                    Files: 0,
+                    Incomplete: 0,
+                    Dropped: 0,
+                    Note: read.Note);
+            }
+        }
+        else
+        {
+            trailSummary = new DiagnosticTrailSummary(
+                Available: false,
+                Rows: 0,
+                Files: 0,
+                Incomplete: 0,
+                Dropped: 0,
+                Note: "(本次未接审计流水，审计一节为环形缓冲最近事件)");
         }
 
         var instances = new List<DiagnosticInstanceRow>();
@@ -209,7 +272,8 @@ internal sealed class DiagnosticService
             AuditCount: auditCount,
             DeniedCount: deniedCount,
             BudgetCount: budgetCount,
-            GuestFaultCount: guestFaultCount);
+            GuestFaultCount: guestFaultCount,
+            Trail: trailSummary);
     }
 
     /// <summary>

@@ -79,13 +79,36 @@ internal static class DiagnosticSections
             }
         }
 
-        sb.Append("沙箱事件（最近 ").Append(readings.Audit.Count.ToString(CultureInfo.InvariantCulture))
-            .Append(" 条，非全量历史）: audit=")
+        sb.Append("沙箱事件（本次会话内计数）: audit=")
             .Append(readings.AuditCount.ToString(CultureInfo.InvariantCulture))
             .Append(" denied=").Append(readings.DeniedCount.ToString(CultureInfo.InvariantCulture))
             .Append(" budget=").Append(readings.BudgetCount.ToString(CultureInfo.InvariantCulture))
             .Append(" guest-fault=").Append(readings.GuestFaultCount.ToString(CultureInfo.InvariantCulture))
             .Append(Environment.NewLine);
+
+        // 审计流水（RFC-20 §3.4）：两组数字并排 —— 上面是「本次会话」，这里是「跨进程总量」。
+        // 读者不该把会话计数误读成历史总量，所以两个口径必须同时在场。
+        DiagnosticTrailSummary trail = readings.Trail ?? DiagnosticTrailSummary.Unavailable;
+        sb.Append("审计流水（跨进程）: ");
+        if (!trail.Available)
+        {
+            sb.Append("(不可用) ").Append(trail.Note)
+                .Append(" —— 审计一节回退为环形缓冲最近事件（非全量）")
+                .Append(Environment.NewLine);
+        }
+        else
+        {
+            sb.Append("rows=").Append(trail.Rows.ToString(CultureInfo.InvariantCulture))
+                .Append(" files=").Append(trail.Files.ToString(CultureInfo.InvariantCulture))
+                .Append(" incomplete=").Append(trail.Incomplete.ToString(CultureInfo.InvariantCulture))
+                .Append(" dropped=").Append(trail.Dropped.ToString(CultureInfo.InvariantCulture));
+            if (trail.Incomplete > 0)
+            {
+                sb.Append(" (含未完成文件：上次进程被强杀)");
+            }
+
+            sb.Append(Environment.NewLine);
+        }
 
         return rules.Text(sb.ToString());
     }
@@ -177,7 +200,7 @@ internal static class DiagnosticSections
         return rules.Text(doc.ToJsonString(Indented));
     }
 
-    /// <summary>沙箱事件流水（每行一个 JSON）。</summary>
+    /// <summary>审计事件流水（每行一个 JSON）。时间戳来自跨进程流水（RFC-20）。</summary>
     public static string BuildAudit(DiagnosticReadings readings, RedactRules rules)
     {
         var sb = new StringBuilder();
@@ -189,6 +212,13 @@ internal static class DiagnosticSections
                 ["kind"] = row.Kind,
                 ["detail"] = rules.AuditText(row.Detail),
             };
+
+            // 回退到环形缓冲时事件没有时间戳：那一格留空，而不是编一个。
+            if (!string.IsNullOrEmpty(row.Timestamp))
+            {
+                item["timestamp"] = row.Timestamp;
+            }
+
             sb.Append(item.ToJsonString()).Append(Environment.NewLine);
         }
 

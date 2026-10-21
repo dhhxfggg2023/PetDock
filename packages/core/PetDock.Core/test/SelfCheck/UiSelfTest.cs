@@ -45,6 +45,7 @@ internal static class UiSelfTest
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);
             DiagnosticBundleChecks.Run(Check);
+            AuditTrailChecks.Run(Check);
             failures = _failed;
         }
         catch (Exception error)

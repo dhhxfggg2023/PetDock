@@ -1,0 +1,208 @@
+// AuditTrail 的文件那一半：开文件、落盘、收尾（去掉 .part）、目录总量上限。
+//
+// 为什么要拆出来：D-03c 的单文件 400 行上限。主文件 AuditTrail.cs 讲的是
+// 「谁在记、记什么、记成什么行」，这里讲的是「文件生命周期」——
+// 两件事的失败模式与不变量不同，混在一个文件里时谁也说不清
+// 哪一段该在哪把锁底下跑。
+//
+// 不变量（与主文件同一套）：
+//   只有后台写入线程碰文件；其它线程只往队列里放行。
+//   本文件的所有写盘方法都在 _commitGate 之内被调用（持锁者就是那一瞬间的唯一写者）。
+//   队列锁（_gate）不覆盖「写文件」那段——这正是 ResidentLog 踩过的坑：
+//   两处并发 commit 会让行写坏、字节数算错，于是上限永不触发。
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
+using System.Threading;
+using PetDock.Core.Compositor;
+
+namespace PetDock.Hosting;
+
+internal sealed partial class AuditTrail
+{
+    /// <summary>commit 的串行锁（后台线程与调用线程都要落盘，见 Flush）。</summary>
+    private readonly object _commitGate = new();
+
+    // —— 只被后台写入线程访问 ——
+    private StreamWriter? _writer;
+    private long _fileBytes;
+
+    /// <summary>后台线程：等信号 → 落盘 → 再等。</summary>
+    private void Loop()
+    {
+        while (true)
+        {
+            _signal.Wait(200);
+            Flush();
+            lock (_gate)
+            {
+                if (_completed)
+                {
+                    break;
+                }
+            }
+        }
+
+        Flush();
+        Finish();
+    }
+
+    /// <summary>把缓冲里的行写进文件。写失败只计数，不抛。</summary>
+    private void Flush()
+    {
+        string[] batch;
+        lock (_gate)
+        {
+            if (_buffer.Count == 0)
+            {
+                return;
+            }
+
+            batch = _buffer.ToArray();
+            _buffer.Clear();
+        }
+
+        lock (_commitGate)
+        {
+            try
+            {
+                EnsureWriter();
+
+                // 取一次局部引用：字段是可空的，编译器不会因为 EnsureWriter 保证了它非空就消掉警告。
+                StreamWriter writer = _writer!;
+                foreach (string line in batch)
+                {
+                    writer.Write(line);
+                    _fileBytes += line.Length;
+                }
+
+                writer.Flush();
+
+                // 目录总量上限：每次落盘后看一眼，超了就从最旧的文件开始删。
+                // 流水**不承诺**永久保存（RFC-20 §3.5）—— 保留期策略是后续切片。
+                EnforceDirCap();
+            }
+            catch (Exception error)
+            {
+                lock (_gate)
+                {
+                    _available = false;
+                    _dropped += batch.Length;
+                }
+
+                KernelLog.Write("audit-trail-unavailable " + error.GetType().Name);
+            }
+        }
+    }
+
+    /// <summary>打开（或复用）当前活动文件。</summary>
+    private void EnsureWriter()
+    {
+        if (_writer is not null)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(_directory);
+        string path = Path.Combine(_directory, _fileName + ".part");
+        _writer = new StreamWriter(
+            new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read),
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        _fileBytes = 0;
+    }
+
+    /// <summary>关掉活动文件并去掉 .part 后缀（它从这一刻起才是硬证据）。</summary>
+    private void Finish()
+    {
+        lock (_commitGate)
+        {
+            if (_writer is null)
+            {
+                return;
+            }
+
+            try
+            {
+                _writer.Flush();
+                _writer.Dispose();
+            }
+            catch (Exception)
+            {
+                // 关不掉就留着 .part —— 残留的 .part 会在导出时被标注为未完成。
+            }
+
+            _writer = null;
+
+            try
+            {
+                string part = Path.Combine(_directory, _fileName + ".part");
+                string done = Path.Combine(_directory, _fileName);
+                if (File.Exists(part))
+                {
+                    if (File.Exists(done))
+                    {
+                        File.Delete(done);
+                    }
+
+                    File.Move(part, done);
+                }
+            }
+            catch (Exception)
+            {
+                // 同上。
+            }
+        }
+    }
+
+    /// <summary>目录总量超上限时，从最旧的文件开始删。</summary>
+    private void EnforceDirCap()
+    {
+        try
+        {
+            if (!Directory.Exists(_directory))
+            {
+                return;
+            }
+
+            var done = new List<(string Path, long Size, DateTime Written)>();
+            long total = 0;
+            foreach (string file in Directory.EnumerateFiles(_directory, "audit-*.jsonl*"))
+            {
+                var info = new FileInfo(file);
+                total += info.Length;
+                done.Add((file, info.Length, info.LastWriteTimeUtc));
+            }
+
+            if (total <= MaxDirBytes)
+            {
+                return;
+            }
+
+            done.Sort((a, b) => a.Written.CompareTo(b.Written));
+
+            foreach ((string path, long size, _) in done)
+            {
+                if (total <= MaxDirBytes)
+                {
+                    break;
+                }
+
+                try
+                {
+                    File.Delete(path);
+                    total -= size;
+                }
+                catch (Exception)
+                {
+                    // 删不掉就留着（可能正被别的进程打开）。
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // 目录扫描失败不该影响流水本身。
+        }
+    }
+}

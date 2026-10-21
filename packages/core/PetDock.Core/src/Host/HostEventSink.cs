@@ -16,6 +16,13 @@ internal sealed class PluginEventSink : ISandboxEventSink
     private readonly Queue<SandboxEvent> _recent = new();
     private readonly string _pluginId;
 
+    /// <summary>
+    /// 跨进程审计流水（RFC-20 §3.3 第 1 点）：环形缓冲之外的多一条去向。
+    /// 可空 —— 没接流水时（自检形态、旧路径）行为与今天完全一致。
+    /// 写流水绝不抛给调用点（流水自己的问题不该让一次能力判定失败）。
+    /// </summary>
+    internal AuditTrail? Trail { get; set; }
+
     public PluginEventSink(string pluginId)
     {
         _pluginId = pluginId;
@@ -54,6 +61,14 @@ internal sealed class PluginEventSink : ISandboxEventSink
             }
         }
         KernelLog.Write($"sandbox plugin={_pluginId} kind={evt.Kind} {evt.Detail}");
+
+        // 跨进程流水（RFC-20）：环形缓冲会丢、进程一退就没了，流水不会。
+        // 放在锁外：写盘在后台线程上做，这里只入队。
+        AuditTrail? trail = Trail;
+        if (trail is not null)
+        {
+            trail.Record(_pluginId, evt);
+        }
     }
 
     /// <summary>

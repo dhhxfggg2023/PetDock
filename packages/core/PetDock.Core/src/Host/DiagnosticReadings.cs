@@ -37,8 +37,35 @@ internal sealed record DiagnosticInstanceRow(
     string LastFailure,
     string Transitions);
 
-/// <summary>沙箱事件在诊断包里的一行。</summary>
-internal sealed record DiagnosticAuditRow(string PluginId, string Kind, string Detail);
+/// <summary>
+/// 审计事件在诊断包里的一行。
+/// Timestamp 是 RFC-20 带来的那一半：环形缓冲里的事件本来就没有时间戳，
+/// 那正是「查不清」的另一半原因。回退到环形缓冲时这一格是空串。
+/// </summary>
+internal sealed record DiagnosticAuditRow(string PluginId, string Kind, string Detail, string Timestamp = "");
+
+/// <summary>
+/// 跨进程审计流水的摘要（RFC-20 §3.4）。
+/// 记「规模与范围」，并**如实标注**是否存在未完成的 .part 残留、
+/// 以及流水本身是否可用 —— 不可用时诊断包要写明并回退，绝不假装全。
+/// </summary>
+internal sealed record DiagnosticTrailSummary(
+    bool Available,
+    int Rows,
+    int Files,
+    int Incomplete,
+    int Dropped,
+    string Note)
+{
+    /// <summary>没有流水时的诚实形态。</summary>
+    public static DiagnosticTrailSummary Unavailable { get; } = new(
+        Available: false,
+        Rows: 0,
+        Files: 0,
+        Incomplete: 0,
+        Dropped: 0,
+        Note: "(审计流水不可用)");
+}
 
 /// <summary>一次导出要收的全部读数。</summary>
 internal sealed record DiagnosticReadings(
@@ -59,7 +86,8 @@ internal sealed record DiagnosticReadings(
     int AuditCount,
     int DeniedCount,
     int BudgetCount,
-    int GuestFaultCount)
+    int GuestFaultCount,
+    DiagnosticTrailSummary? Trail = null)
 {
     /// <summary>空读数（没有宠物也没有插件时的诚实形态：一个数字都不编）。</summary>
     public static DiagnosticReadings Empty { get; } = new(
@@ -80,5 +108,6 @@ internal sealed record DiagnosticReadings(
         AuditCount: 0,
         DeniedCount: 0,
         BudgetCount: 0,
-        GuestFaultCount: 0);
+        GuestFaultCount: 0,
+        Trail: DiagnosticTrailSummary.Unavailable);
 }

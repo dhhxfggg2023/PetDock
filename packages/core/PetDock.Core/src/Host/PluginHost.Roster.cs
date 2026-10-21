@@ -219,6 +219,16 @@ public sealed partial class PluginHost
         bool remember = answer.Scope == ConsentScope.Session;
         Consent.Remember(manifest.Id, granted, declined, rememberGrants: remember);
 
+        // 跨进程审计流水（RFC-20 §3.3 第 3 点）：这次**用户决定**进流水。
+        // 闸门那边记的是「拿到了哪些授予」，这边记的是「问了什么、答了什么」——
+        // 问过没问过、拒了什么，只有宿主知道。
+        RecordConsentDecision(
+            manifest.Id,
+            candidates,
+            granted,
+            declined,
+            remember ? "remember" : "once");
+
         // 跨进程记忆（RFC-19 §2.3 第 2 点）：「允许（记住这个决定）」的授予集落盘。
         // 「仅本次」不写盘 —— 它下次就该再问（RFC-19 §2.2）。
         SaveConsentGrants(manifest.Id, remember);
@@ -308,6 +318,28 @@ public sealed partial class PluginHost
         // 命中黑名单里的文件扩展名条目）。
         ConsentMemory memory = Consent;
         memory.Restrict(pluginId, keepSet);
+
+        // 跨进程审计流水（RFC-20 §3.3 第 3 点）：收窄是**用户做的决定**，进流水。
+        // 逐项撤销由闸门自己发 revoke 事件，这里记的是「这次收窄留下了什么」。
+        var kept = new List<string>();
+        var revoked = new List<string>();
+        foreach (string id in keepSet)
+        {
+            kept.Add(id);
+        }
+
+        if (gate is not null)
+        {
+            foreach (string id in gate.Granted.ToArray())
+            {
+                if (!keepSet.Contains(id))
+                {
+                    revoked.Add(id);
+                }
+            }
+        }
+
+        RecordRestrictDecision(pluginId, kept, revoked);
 
         // 跨进程记忆（RFC-19 §2.3 第 3 点）：收窄是撤销动作，撤销若不跨进程，
         // 下次启动能力会悄悄回来 —— 比「撤销没生效」更坏。所以收窄后的集合要落盘。

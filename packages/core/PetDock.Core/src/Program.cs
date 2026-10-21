@@ -75,6 +75,15 @@ internal static partial class Program
         // 必须在 Start() 之前接：装载发生在 Start() 之后，那时再播种就晚了。
         pluginHost.AttachConsentStore(new ConsentStore(PetDataStore.Resolve().Root));
 
+        // 跨进程审计流水（RFC-20 §3.3 第 2 点）：同样必须在 Start() 之前接——
+        // 装载期就会发 grant 事件，那时流水还没接上，那批授权证据就永远丢了
+        // （与 RFC-19 同一纪律：一个道理）。
+        PetDataStore dataStore = PetDataStore.Resolve();
+        var auditTrail = new AuditTrail(
+            Path.Combine(dataStore.Root, AuditTrail.AuditFolder),
+            RedactRules.ForCurrentMachine(dataStore.Root, PluginHost.ProbePluginsRoot()));
+        auditTrail.Start();
+        pluginHost.AttachAuditTrail(auditTrail);
         // 内容装配走**唯一**的发现路径（PluginHost 名册，t1 契约 §3.2）：
         // 名册里有视图实现（docs/11 §3）就用它出帧；否则退回 M0 的内容源工厂；
         // 再没有就退回内核纯色兜底 —— 常驻形态下兜底是合法的（窗口仍可见可命中）。
@@ -121,7 +130,6 @@ internal static partial class Program
         // 常驻形态的运行期日志落盘 + 诊断服务（RFC-17 §3.1 / §3.4）。
         // 装配顺序有讲究：落盘层挂到 KernelLog.Sink 之后，这一行往后每一个
         // KernelLog.Write 都会留痕；日志目录不存在就建一个空的（空目录也是成功）。
-        PetDataStore dataStore = PetDataStore.Resolve();
         var residentLog = new ResidentLog(
             Path.Combine(dataStore.Root, DiagnosticService.LogsFolder),
             RedactRules.ForCurrentMachine(dataStore.Root, PluginHost.ProbePluginsRoot()));
@@ -130,6 +138,10 @@ internal static partial class Program
         KernelLog.Write("resident-log-started");
 
         var diagnostics = new DiagnosticService(dataStore, pluginHost, pet, residentLog);
+
+        // 诊断包的审计一节读跨进程流水（RFC-20 §3.4）。流水不可用时诊断包自己回退
+        // 到环形缓冲，并在摘要里写明「不是全量」。
+        diagnostics.Trail = auditTrail;
 
         var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore, diagnostics);
 
@@ -145,6 +157,10 @@ internal static partial class Program
         KernelLog.Sink = null;
         residentLog.Complete();
         residentLog.Dispose();
+
+        // 审计流水同样收尾：落盘剩余的行、去掉 .part（RFC-20 §3.3 第 4 点）。
+        auditTrail.Complete();
+        auditTrail.Dispose();
 
         return ExitOk;
     }

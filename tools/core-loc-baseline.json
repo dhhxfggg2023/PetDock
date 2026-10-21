@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 16300,
+  "budget": 17200,
   "history": [
     {
       "date": "2026-10-18",
@@ -372,6 +372,47 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": 81
+        }
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "measured": 17138,
+      "budget": 17200,
+      "note": "RFC-20：跨进程审计流水（按进程分文件的 JSONL 流水 + 宿主侧接线 + 诊断包改用流水）。实测增量 +898：流水本体三份 616 行（写/读/事件分类三半分开，D-03c 单文件 400 行上限），宿主接线 125 行，诊断侧 123 行。",
+      "attribution": [
+        {
+          "slice": "RFC-20 A 流水本体（写、读、分类三半分开，各自的不变量不同）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/AuditTrail.cs",
+            "packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs",
+            "packages/core/PetDock.Core/src/Host/AuditTrail.Read.cs"
+          ],
+          "lines": 616
+        },
+        {
+          "slice": "RFC-20 B 宿主接线（事件落点多一口、授权与收窄各记一条、装载期挂上流水）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Audit.cs",
+            "packages/core/PetDock.Core/src/Host/HostEventSink.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Lifecycle.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Roster.cs"
+          ],
+          "lines": 143
+        },
+        {
+          "slice": "RFC-20 C 诊断侧（审计一节改用流水、摘要加流水规模与未完成标注、行多时间戳）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticReadings.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticSections.cs"
+          ],
+          "lines": 123
+        },
+        {
+          "slice": "RFC-20 D 常驻装配（造流水、接进宿主、退出时收尾）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 16
         }
       ]
     }

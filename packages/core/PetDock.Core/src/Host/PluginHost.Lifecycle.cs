@@ -45,6 +45,9 @@ public sealed partial class PluginHost
         string manifestHash = ManifestValidator.NormalizedHash(manifestText);
 
         PluginEventSink sink = new(id);
+        // 跨进程审计流水（RFC-20 §3.3 第 2 点）：接在事件落点上，
+        // 装载期发出的授予/拒绝事件才会进流水。必须在 Start() 之前接好流水（AttachAuditTrail）。
+        sink.Trail = _trail;
         PluginHandle handle = new(this, manifest, pluginDir, sink, manifestHash)
         {
             State = PluginLifecycleState.Imported,
