@@ -12,10 +12,15 @@ namespace PetDock.Hosting;
 /// <summary>
 /// 用户设置快照。字段可空性：docs/17 §2 说「只许加可空字段」，所以新增项一律带默认值，
 /// 旧文件缺字段时读出来就是默认值，不需要迁移代码。
+///
+/// 第三个字段（OnboardingCompletedVersion）是 RFC-16 §3.1 加的一次性判定：null = 没做过引导，
+/// &gt;= 1 = 做过。它**可空**而不是「bool 做过」—— 以后要出引导 v2 时，
+/// 「v1 做过、v2 没做过」是能被区分出来的状态。
 /// </summary>
 internal sealed record UserSettings(
     double IdleFrameBudgetMs,
-    string Language)
+    string Language,
+    int? OnboardingCompletedVersion = null)
 {
     /// <summary>清单版本（docs/17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
@@ -35,6 +40,13 @@ internal sealed record UserSettings(
     /// <summary>默认设置（文件缺失或损坏时的回落值）。</summary>
     public static UserSettings Default { get; } =
         new(DefaultIdleFrameBudgetMs, DefaultLanguage);
+
+    /// <summary>
+    /// 引导的一次性判定（RFC-16 §3.1）。null = 没做过；&gt;= 1 = 做过第几版。
+    /// 这是 v1 的版本号；引导出 v2 时把这里改成 2，v1 做过的用户仍会看到 v2（这是有意的：
+    /// 引导内容变了就该再走一遍），而 v2 做完的标记是 2。
+    /// </summary>
+    public const int OnboardingVersion = 1;
 
     /// <summary>
     /// 把越界的值拉回合法区间。写入前与读出后各过一遍：
@@ -57,5 +69,6 @@ internal sealed record UserSettings(
     public string Describe() =>
         $"idle-frame={IdleFrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture)}ms"
         + $" language={Language}"
+        + $" onboarding={(OnboardingCompletedVersion?.ToString(CultureInfo.InvariantCulture) ?? "(none)")}"
         + $" start-with-windows=(见注册表)";
 }

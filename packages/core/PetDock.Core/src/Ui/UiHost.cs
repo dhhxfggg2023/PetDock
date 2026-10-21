@@ -135,14 +135,25 @@ internal sealed partial class UiHost : ApplicationContext
     public ResidentFrameLoop Loop => _loop;
 
     /// <summary>
-    /// 滴答（UI 线程）：四件事，顺序就是它们的依赖顺序。
+    /// 滴答（UI 线程）：五件事，顺序就是它们的依赖顺序。
     /// ① 首次滴答才启动宿主 —— 装载必须在消息泵起来之后，否则授权弹窗无处可开（RFC-13 §2.4）；
     /// ② 首次滴答才把宠物窗口显示出来并起帧泵 —— 构造期还没有消息泵，
     ///    在那时 Show() 会建出一个不泵消息的窗体（RFC-14 §2.2）；
-    /// ③ 弹出待答的授权询问（装载期与复核期都走这一条）；
-    /// ④ 按当前持权情况装键盘钩子（现在才可能真的有持权者了）。
+    /// ③ 首次运行时弹一次引导（RFC-16 §3.3）：构造期没有消息泵，所以也放在滴答里；
+    /// ④ 弹出待答的授权询问（装载期与复核期都走这一条）——
+    ///    **引导窗开着的时候不泵**：模态窗自带消息循环，滴答器在模态期间仍会触发，
+    ///    两个模态窗叠在一起，用户先看到的是压在引导上的授权框。询问留在端口队列里
+    ///    （UiConsentPort.PendingCount 可证），引导关掉后照常弹；
+    /// ⑤ 按当前持权情况装键盘钩子（现在才可能真的有持权者了）。
     /// </summary>
-    private void OnTick(object? sender, EventArgs e)
+    private void OnTick(object? sender, EventArgs e) => TickOnce();
+
+    /// <summary>
+    /// 滴答的正文（UI 线程）。拆成独立方法是给自检一个**可驱动的**入口：
+    /// 判据要证明「引导窗开着时不泵授权询问」，就得能在一个确定的时间里点一次滴答，
+    /// 而不是等计时器自己撞上（撞上了也不知道是第几次）。
+    /// </summary>
+    internal void TickOnce()
     {
         if (!_hostStarted && _host is not null)
         {
@@ -157,7 +168,14 @@ internal sealed partial class UiHost : ApplicationContext
             _loop.Start();
         }
 
-        _consent?.Pump();
+        PumpOnboarding();
+
+        // 引导窗开着时不泵授权询问（询问留队列，不丢）。
+        if (!OnboardingOpen)
+        {
+            _consent?.Pump();
+            ConsentPumpCount++;
+        }
 
         InstallKeyboardHookIfGranted();
     }

@@ -79,8 +79,13 @@ internal sealed partial class UiHost
         }
 
         // ② 落盘。写失败要说清楚「设置没存上」。
+        //
+        // 读出 → 只改一个字段 → 整份写回（RFC-16 §3.2 的纪律）。
+        // 凭记忆造一份 UserSettings 写回去会抹掉引导的一次性标记：
+        // 用户在引导里做完（标记已写），随后在设置页点一次「应用」，标记被抹，
+        // 下次启动引导又弹一遍。这里的 `with` 表达式保住其余字段。
         UserSettings previous = _settings?.Load() ?? UserSettings.Default;
-        var updated = new UserSettings(idleFrameBudgetMs, previous.Language);
+        var updated = previous with { IdleFrameBudgetMs = idleFrameBudgetMs };
         try
         {
             _settings?.Save(updated);

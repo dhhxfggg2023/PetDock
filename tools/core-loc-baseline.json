@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 13600,
+  "budget": 14475,
   "history": [
     {
       "date": "2026-10-18",
@@ -285,6 +285,45 @@
           "slice": "RFC-19 C 装配接线（常驻形态在 Start 之前接上存储）",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "measured": 14417,
+      "budget": 14475,
+      "note": "RFC-16：首次运行引导 v1（docs/18 §4 的三步引导，此前一行代码都没有）。一次性判定落 settings.json 的可空字段 onboardingCompletedVersion（null=没做过，旧文件缺字段即 null，不需要迁移）；第 2 步的放置走既有的 PetImportService.Import，不新造第二条导入语义；引导窗开着时滴答器不泵授权询问，询问留在 UiConsentPort 队列里。实测增量 +882，超出 RFC-16 §5 预估的 425~605：超出部分主要在引导窗的控件树与页内错误条（WinForms 每个控件都要显式 Dock/Height/颜色），以及 D-03c 单文件 400 行上限把三步控件树逼到第二个 partial 文件。测试面（test/SelfCheck/OnboardingChecks.cs、OnboardingConsentChecks.cs）不计入本预算（D-03a 只算 src）；发布装配侧（tools/release.mjs 带上 assets/sample-pet 并加出口断言）不计入 core。",
+      "attribution": [
+        {
+          "slice": "RFC-16 A 引导窗（三步控件树 + 示意动画 + 页内错误条 + 公开读数）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs",
+            "packages/core/PetDock.Core/src/Ui/ThroughHintPanel.cs"
+          ],
+          "lines": 563
+        },
+        {
+          "slice": "RFC-16 B 宿主编排（滴答触发、引导与授权窗互斥、放置示例、写设置）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Onboarding.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 194
+        },
+        {
+          "slice": "RFC-16 C 自带示例素材的定位（只定位，不复制不解析）",
+          "files": ["packages/core/PetDock.Core/src/Host/BundledExampleAssets.cs"],
+          "lines": 75
+        },
+        {
+          "slice": "RFC-16 D 一次性标记落 settings.json（可空字段 + 读坏值当没做过 + 设置页写盘不抹标记）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs"
+          ],
+          "lines": 50
         }
       ]
     }

@@ -71,7 +71,32 @@ internal sealed class UserSettingsStore
             }
 
             string language = (string?)obj["language"] ?? UserSettings.DefaultLanguage;
-            return new UserSettings(period, language).Clamped();
+
+            // 引导的一次性判定（RFC-16 §3.1）：可空字段，旧文件缺它就是「没做过」，
+            // 不需要迁移。值坏掉（不是数字 / 是负数）当没做过 —— 一次引导不该因为
+            // 一个手滑改坏的文件就把用户卡在引导里出不来。
+            int? onboarding = null;
+            if (obj["onboardingCompletedVersion"] is JsonNode marker)
+            {
+                try
+                {
+                    int version = marker.GetValue<int>();
+                    if (version > 0)
+                    {
+                        onboarding = version;
+                    }
+                    else
+                    {
+                        KernelLog.Write("settings-field-unreadable field=onboardingCompletedVersion reason=not-positive");
+                    }
+                }
+                catch (Exception error)
+                {
+                    KernelLog.Write($"settings-field-unreadable field=onboardingCompletedVersion {error.GetType().Name}");
+                }
+            }
+
+            return new UserSettings(period, language, onboarding).Clamped();
         }
         catch (Exception error)
         {
@@ -83,6 +108,10 @@ internal sealed class UserSettingsStore
     /// <summary>
     /// 写设置。两阶段提交 + docs/17 §4 要求的 agent_id 与 timestamp。
     /// 写失败抛异常（调用方负责把失败说清楚，不能假装存上了）。
+    ///
+    /// 整份重写（RFC-16 §3.2 的纪律）：调用方必须**先读出再改一个字段**，
+    /// 不能凭记忆造一份 UserSettings 写回来 —— 那会把别的字段抹掉
+    /// （典型后果：引导写完一次性标记，用户随后在设置页点一次「应用」，标记被抹，引导又弹一次）。
     /// </summary>
     public void Save(UserSettings settings)
     {
@@ -95,6 +124,14 @@ internal sealed class UserSettingsStore
             ["idleFrameBudgetMs"] = value.IdleFrameBudgetMs,
             ["language"] = value.Language,
         };
+
+        // 引导的一次性判定（RFC-16 §3.1）。没做过就**不写这个键**，
+        // 而不是写 null —— 「键不存在」与「键存在但为 null」在演化上是两件事，
+        // 前者明确是「这一版还没有这个概念」。
+        if (value.OnboardingCompletedVersion is int onboarding)
+        {
+            doc["onboardingCompletedVersion"] = onboarding;
+        }
 
         string? dir = System.IO.Path.GetDirectoryName(_path);
         if (!string.IsNullOrEmpty(dir))

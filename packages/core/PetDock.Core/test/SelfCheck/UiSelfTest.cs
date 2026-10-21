@@ -41,6 +41,8 @@ internal static class UiSelfTest
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
             SettingsChecks.Run(Check);
+            OnboardingChecks.Run(Check);
+            OnboardingConsentChecks.Run(Check);
             failures = _failed;
         }
         catch (Exception error)

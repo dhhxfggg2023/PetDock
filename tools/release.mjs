@@ -67,6 +67,12 @@ function plan(version) {
       why: '托盘与窗口图标（docs/18 §1 指定 icon-32.png）',
     },
     {
+      from: path.join('assets', 'sample-pet'),
+      to: path.join('assets', 'sample-pet'),
+      kind: 'tree',
+      why: '引导第 2 步要放置的示例宠物（RFC-16 §3.3）；缺它，发行版启动时 PackLoader 找不到素材会抛 FileNotFoundException',
+    },
+    {
       from: 'LICENSE',
       to: 'LICENSE',
       kind: 'file',
@@ -206,6 +212,14 @@ function auditOutput(outDir, version) {
   // ⑥ 版本号一致性：产物文件名与 package.json 必须同源
   if (!fs.existsSync(path.join(outDir, 'PetDock.Core.runtimeconfig.json'))) {
     fail('发布物缺 PetDock.Core.runtimeconfig.json（.NET 运行时配置）');
+  }
+
+  // ⑦ 示例素材包必须在（RFC-16 §3.3 第 2 步要放置它）。
+  // 这条曾经缺失：发布装配只搬 assets/icons，于是发行版启动时视图实现
+  // 从程序目录向上找不到 assets/sample-pet/petdock-sample.json，直接抛 FileNotFoundException。
+  const samplePack = path.join(outDir, 'assets', 'sample-pet', 'petdock-sample.json');
+  if (!fs.existsSync(samplePack)) {
+    fail('发布物缺 assets/sample-pet/petdock-sample.json（引导要放置的示例宠物）');
   }
 
   console.log(`STAT release version=${version} plugins=${manifestCount} files=${walkFiles(outDir).length}`);
