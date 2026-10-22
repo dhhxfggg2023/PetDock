@@ -10,6 +10,7 @@
 //   UiHost.Hook.cs   键盘钩子的安装门（docs/16:56）
 //   UiHost.Tray.cs   托盘命令
 //   UiHost.Panel.cs  面板、插件页入口与授权复核
+//   UiHost.Position.cs 窗口位置的恢复与落盘（RFC-22）
 using System;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
@@ -103,6 +104,10 @@ internal sealed partial class UiHost : ApplicationContext
 
         _tray.SetPetCount(pet is null ? 0 : 1);
 
+        // 窗口位置的两条链路（RFC-22 §3.2）：拖拽落地 → 落盘。订阅的是窗口层的委托：
+        // 它已经是 `core.window.moved` 的原生生产点，宿主只是多做一件事（记下来），事件本身不变。
+        _window.WindowEvent += OnWindowEventForPosition;
+
         // 滴答器在这里起：装载期的授权询问必须等消息泵起来才有地方弹窗（RFC-13 §2.4）。
         _timer = new System.Windows.Forms.Timer { Interval = TickMs };
         _timer.Tick += OnTick;
@@ -168,6 +173,10 @@ internal sealed partial class UiHost : ApplicationContext
         {
             _petShown = true;
             _loop.Start();
+
+            // 窗口刚显示出来：把保存的位置摆回去（RFC-22 §3.3）。放在 Show 之后、第一帧之前，
+            // 窗口就不会在屏幕上先闪一下右下角再跳走。
+            TryRestorePosition();
         }
 
         // RFC-21 §3.4：全屏档把泵停了，没有泵 tick 就没有人重新判定 ——
@@ -201,6 +210,9 @@ internal sealed partial class UiHost : ApplicationContext
             _keyHook = null;
             _panel?.Dispose();
             _panel = null;
+
+            // 退订窗口事件：窗口生命周期比宿主长一点点时，别让一个已释放的宿主继续被调用。
+            _window.WindowEvent -= OnWindowEventForPosition;
             _tray.Dispose();
         }
 

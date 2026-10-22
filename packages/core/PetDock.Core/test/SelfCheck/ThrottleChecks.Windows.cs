@@ -27,67 +27,6 @@ namespace PetDock.Hosting;
 
 internal static partial class ThrottleChecks
 {
-    private static Form? _foreground;
-
-    private static void CloseLeftoverWindows() => CloseForeground();
-
-    /// <summary>把一个小窗（明显不盖满显示器）推成前台窗 —— 「前台不是全屏」这一态。</summary>
-    private static void SmallForeground()
-    {
-        CloseForeground();
-        var form = new Form
-        {
-            FormBorderStyle = FormBorderStyle.None,
-            StartPosition = FormStartPosition.Manual,
-            ShowInTaskbar = false,
-            AutoScaleMode = AutoScaleMode.None,
-            Bounds = new Rectangle(80, 80, 320, 240),
-        };
-        form.Show();
-        Application.DoEvents();
-        AcquireForeground(form.Handle);
-        Application.DoEvents();
-        _foreground = form;
-    }
-
-    private static void CloseForeground()
-    {
-        Form? form = _foreground;
-        _foreground = null;
-        if (form is null)
-        {
-            return;
-        }
-
-        try
-        {
-            form.Close();
-        }
-        catch (Exception)
-        {
-            // 关不掉也不影响判据：下一次 SmallForeground 会覆盖它。
-        }
-
-        form.Dispose();
-        Application.DoEvents();
-    }
-
-    /// <summary>
-    /// 抢前台：释放 ALT（前台锁对「用户刚按过 ALT」有豁免）后 SetForegroundWindow。
-    /// 返回是否真的抢到（GetForegroundWindow() == hwnd）—— 抢不到时调用方必须 FAIL，不许假装。
-    /// </summary>
-    private static bool AcquireForeground(IntPtr hwnd)
-    {
-        Win32Extra.keybd_event(Win32Extra.VK_MENU, 0, Win32Extra.KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero);
-        Win32Extra.keybd_event(
-            Win32Extra.VK_MENU, 0, Win32Extra.KEYEVENTF_EXTENDEDKEY | Win32Extra.KEYEVENTF_KEYUP, UIntPtr.Zero);
-        Win32Extra.SetForegroundWindow(hwnd);
-        Application.DoEvents();
-        return Win32Extra.GetForegroundWindow() == hwnd;
-    }
-
-    private static string ForegroundDescription() => Win32.WindowDescription(Win32Extra.GetForegroundWindow());
-
     /// <summary>真的无边框窗铺满主显示器，并抢到前台 —— 「前台窗确实盖满显示器」这一态。</summary>
     private sealed class FullscreenForeground : IDisposable
     {

@@ -41,6 +41,11 @@ internal static partial class ThrottleChecks
         {
             // 用户设置故意给 60fps：静止档的 33.3ms 上限只有这样才不是恒等式（RFC-21 §8 第 1 条）。
             const double userFrameMs = 1000.0 / 60.0;
+
+            // 「前台不是全屏」这一世界状态必须在**起泵之前**就成立：档位判定发生在第一个 tick，
+            // 那时前台若是一个盖满显示器的窗，循环直接进全屏档、泵被停掉，后面所有读数都是 0。
+            string? world = EnsureNotFullscreenWorld();
+
             using var loop = new ResidentFrameLoop(fixture.Window);
             loop.SetTargetFrameMs(userFrameMs);
             loop.Start();
@@ -49,6 +54,12 @@ internal static partial class ThrottleChecks
             long ticks0 = loop.Ticks;
             long composed0 = loop.Composed;
             long submitted0 = loop.Submitted;
+
+            // 先等泵出第一帧（冷路径 ~600ms），否则 600ms 窗量到的是启动延迟而不是稳态速率。
+            WaitFor(ConvergeMs, () => loop.Ticks > ticks0);
+            ticks0 = loop.Ticks;
+            composed0 = loop.Composed;
+            submitted0 = loop.Submitted;
             Spin(SpinMs);
             long ticks = loop.Ticks - ticks0;
             long composed = loop.Composed - composed0;
@@ -60,7 +71,8 @@ internal static partial class ThrottleChecks
             //   ticks >= 10 —— 等待窗内泵真的跑了足够多 tick（相对下界，不是帧数快照）；
             //   composed >= ticks —— 合成本身**不被档位跳过**（t11 的语义，动画能不能回来的判据面）；
             //   submitted <= 4 —— 真的上屏次数被压到极低（600ms 里 30fps 本该 ~18 次）。
-            bool skipsOk = tier == FrameTier.Idle
+            bool skipsOk = world is null
+                && tier == FrameTier.Idle
                 && ticks >= 10
                 && submitted <= 4
                 && composed >= ticks;
@@ -69,17 +81,20 @@ internal static partial class ThrottleChecks
                 + " ticks=" + ticks.ToString(CultureInfo.InvariantCulture)
                 + " composed=" + composed.ToString(CultureInfo.InvariantCulture)
                 + " submitted=" + submitted.ToString(CultureInfo.InvariantCulture)
-                + " skipped=" + skipped.ToString(CultureInfo.InvariantCulture));
+                + " skipped=" + skipped.ToString(CultureInfo.InvariantCulture)
+                + WorldSuffix(world));
 
             // 静止档的周期上限：设置 16.7ms ⇒ 档位给 33.3ms（max(设置, 1000/30)）。
             double idleTarget = loop.TargetFrameMs;
-            bool capOk = tier == FrameTier.Idle
+            bool capOk = world is null
+                && tier == FrameTier.Idle
                 && Near(idleTarget, FrameThrottlePolicy.IdleCapMs)
                 && idleTarget > userFrameMs;
             done("ui-throttle-idle-period-cap", capOk,
                 "setting=" + Fmt(userFrameMs) + "ms"
                 + " tier=" + Token(tier)
-                + " target=" + Fmt(idleTarget) + "ms");
+                + " target=" + Fmt(idleTarget) + "ms"
+                + WorldSuffix(world));
 
             DiagnosticLine(done, loop);
 
@@ -113,11 +128,13 @@ internal static partial class ThrottleChecks
         KernelLog.Sink = logs;
         try
         {
+            // 先立住「前台不是全屏」这一世界（理由同 LoopChecks：档位在第一个 tick 就定了）。
+            string? world = EnsureNotFullscreenWorld();
             using var loop = new ResidentFrameLoop(fixture.Window);
             loop.SetTargetFrameMs(1000.0 / 30.0);
             loop.Start();
 
-            bool startedPumping = WaitFor(ConvergeMs, () => loop.Pumping);
+            bool startedPumping = WaitFor(ConvergeMs, () => loop.Ticks > 0);
             long ticksBeforeExit = loop.Ticks;
 
             // ① 真的把泵打退：内容源故障 ⇒ 下一 tick 抛异常 ⇒ 泵自退。
@@ -167,7 +184,7 @@ internal static partial class ThrottleChecks
             Spin(300);
             bool hiddenNoHeal = !loop.Pumping && loop.Ticks == ticksBeforeHidden;
 
-            bool allOk = exitOk && healOk && exitedAgain && hiddenNoHeal;
+            bool allOk = world is null && exitOk && healOk && exitedAgain && hiddenNoHeal;
             done("ui-throttle-pump-self-heals", allOk,
                 "pumpingBeforeExit=" + Flag(startedPumping)
                 + " pumpingAfterExit=" + Flag(pumpingLied)
@@ -181,7 +198,8 @@ internal static partial class ThrottleChecks
                 + " hiddenPumpingAfter=" + Flag(loop.Pumping)
                 + " hiddenTicks+" + (loop.Ticks - ticksBeforeHidden).ToString(CultureInfo.InvariantCulture)
                 + " ticksBeforeExit=" + ticksBeforeExit.ToString(CultureInfo.InvariantCulture)
-                + " paths=只验了 tick-failed（内容源抛异常）；tick-returned-false / no-tick 未造");
+                + " paths=只验了 tick-failed（内容源抛异常）；tick-returned-false / no-tick 未造"
+                + WorldSuffix(world));
         }
         catch (Exception error)
         {
@@ -196,7 +214,9 @@ internal static partial class ThrottleChecks
 
     /// <summary>⑧⑨ 全屏：停泵不藏窗 / 恢复时首帧立即提交。</summary>
     private static void FullscreenChecks(Check done, ResidentFrameLoop loop, LayerFixture fixture)
-    {        SmallForeground();
+    {
+        // 抢不到前台也继续：下面 FullscreenForeground.Create 会自己断言并报 foreground-not-acquired。
+        _ = SmallForeground();
         FullscreenForeground full = FullscreenForeground.Create(out string acquire);
         if (!full.Acquired)
         {
@@ -244,7 +264,7 @@ internal static partial class ThrottleChecks
         }
 
         // 恢复：离开全屏，前台回到一个明显不盖满的小窗，然后走生产路径的恢复驱动（UiHost.TickOnce 调它）。
-        SmallForeground();
+        _ = SmallForeground();
         loop.Reevaluate();
         bool resumed = WaitFor(ConvergeMs, () => loop.Pumping);
         long submittedAfterResume = loop.Submitted;

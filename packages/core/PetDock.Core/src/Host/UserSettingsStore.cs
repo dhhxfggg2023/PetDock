@@ -7,6 +7,7 @@
 // 落盘姿势照抄 RFC-15 的 PetDataStore.RegisterActive：先写 .tmp 再整文件替换。
 // 写到一半断电的话，旧文件还在，不会留下半个 JSON。
 using System;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -96,7 +97,28 @@ internal sealed class UserSettingsStore
                 }
             }
 
-            return new UserSettings(period, language, onboarding).Clamped();
+            // 窗口位置（RFC-22 §3.4）。缺键、不是对象、坐标不是整数，一律当「没存过」——
+            // 位置坏掉时正确的行为是回到默认位，而不是带着一个荒谬坐标启动（宠物会跑到屏幕外）。
+            Point? petPosition = null;
+            if (obj["petPosition"] is JsonObject position)
+            {
+                try
+                {
+                    petPosition = new Point(
+                        position["x"]!.GetValue<int>(),
+                        position["y"]!.GetValue<int>());
+                }
+                catch (Exception error)
+                {
+                    KernelLog.Write($"settings-field-unreadable field=petPosition {error.GetType().Name}");
+                }
+            }
+            else if (obj["petPosition"] is JsonNode notObject)
+            {
+                KernelLog.Write($"settings-field-unreadable field=petPosition reason=not-an-object type={notObject.GetType().Name}");
+            }
+
+            return new UserSettings(period, language, onboarding, petPosition).Clamped();
         }
         catch (Exception error)
         {
@@ -131,6 +153,16 @@ internal sealed class UserSettingsStore
         if (value.OnboardingCompletedVersion is int onboarding)
         {
             doc["onboardingCompletedVersion"] = onboarding;
+        }
+
+        // 窗口位置（RFC-22 §3.2）：没存过就不写这个键（与引导标记同一条纪律）。
+        if (value.PetPosition is Point position)
+        {
+            doc["petPosition"] = new JsonObject
+            {
+                ["x"] = position.X,
+                ["y"] = position.Y,
+            };
         }
 
         string? dir = System.IO.Path.GetDirectoryName(_path);

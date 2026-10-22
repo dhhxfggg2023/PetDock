@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 18377,
+  "budget": 18627,
   "history": [
     {
       "date": "2026-10-18",
@@ -509,6 +509,40 @@
           "slice": "HostArbiter.cs 让出事件派发类（拆片的另一侧，净减）",
           "files": ["packages/core/PetDock.Core/src/Host/HostArbiter.cs"],
           "lines": -60
+        }
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "measured": 18572,
+      "budget": 18627,
+      "note": "RFC-22「宠物窗口位置持久化」+ 同片判据侧修正。位置存 `settings.json` 的**可空**字段 `petPosition`（可空 = 没存过就退回构造期默认摆放，绝不写出 (0,0) 这种会落在屏幕左上角的假位置）；落盘只发生在「拖拽落地」这一个时刻（拖动中不写盘），恢复发生在首滴答 Show 之后、第一帧之前；恢复前用 `Screen.WorkingArea` 判可见（与工作区相交面积 > 0），不可见的旧位置**丢弃但不改写文件**。同片还修了判据侧三处世界/时序缺陷（浏览器最大化前台时 ui-resident-frame-loop 与 ui-throttle-* 会静默在「全屏世界」里断言）：① 依赖前台不是全屏的判据必须先重建并**验证**前台；② 首帧是冷路径（本机实测遮挡情况下可达 ~0.9s/tick），不能再被当成 600ms 窗里的稳态测；③ 静止档夹具改单帧（前一提交）。按 D-03a 只申报 src 面增量，test/SelfCheck 的判据体不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-22 A 位置可见性策略（纯几何，无 Win32 调用，可无桌面断言）",
+          "files": ["packages/core/PetDock.Core/src/Compositor/ScreenPlacement.cs"],
+          "lines": 49
+        },
+        {
+          "slice": "RFC-22 B 设置字段与读写（可空 petPosition + Describe 读数 + 坏值回退）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs"
+          ],
+          "lines": 43
+        },
+        {
+          "slice": "RFC-22 C 宿主接线（恢复与落盘两条链 + 首滴答恢复点 + Dispose 退订）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Position.cs"
+          ],
+          "lines": 138
+        },
+        {
+          "slice": "RFC-22 D 判据专用事件入口（从生产路径同一个委托抬 core.window.moved）",
+          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"],
+          "lines": 12
         }
       ]
     }

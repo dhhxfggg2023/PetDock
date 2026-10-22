@@ -31,11 +31,16 @@ internal static class ResidentLoopChecks
 
     private static void WindowAndLoop(Check check)
     {
+        // 帧循环只在「前台不是全屏」时出帧：前台若不是我们自己的小窗（而是一个盖满显示器的
+        // 程序），第一个 tick 就会把循环判成全屏档并停泵，帧计数恒为 0 —— 那是判据的世界没造对，
+        // 不是产品缺陷（2026-10-22 实测：同一份二进制浏览器最大化时 FAIL、否则 PASS）。
+        string? world = ThrottleChecks.EnsureNotFullscreenWorld();
         using var window = new LayeredFrameWindow();
         using var loop = new ResidentFrameLoop(window);
 
         bool visible = false;
         int framesAfterStart = 0;
+        long ticksInWindow = 0;
         int framesAfterHide = 0;
         bool pumping = false;
         bool stopped = false;
@@ -46,10 +51,16 @@ internal static class ResidentLoopChecks
             visible = window.Visible;
             pumping = loop.Pumping;
 
-            // 让泵跑一会儿：帧计数必须增长。
+            // 让泵跑起来：先**等**它出帧（首帧是冷路径；本机若宠物窗被前台全屏窗盖住，
+            // 遮挡档每 tick 还要做一次不透明取样，实测能到 ~0.9s/tick），再量它到底出没出帧。
+            // 这一条断言的是「泵真的在出帧」，不是帧率 —— 帧率归 --perftest 的 D-14 判据。
             int before = loop.Frames;
+            long ticksBefore = loop.Ticks;
+            WaitForFrames(loop, before);
+            long ticksWarm = loop.Ticks - ticksBefore;
             Spin(WaitMs);
             framesAfterStart = loop.Frames - before;
+            ticksInWindow = loop.Ticks - ticksBefore - ticksWarm;
 
             // 隐藏 → 停泵：隐藏之后帧计数不得再增长。
             loop.Hide();
@@ -73,10 +84,25 @@ internal static class ResidentLoopChecks
         }
 
         check("ui-resident-window-visible", visible, $"visible={visible}");
-        check("ui-resident-frame-loop", pumping && framesAfterStart > 0,
-            $"pumping={pumping} frames={framesAfterStart} waitMs={WaitMs}");
+        check("ui-resident-frame-loop", world is null && pumping && framesAfterStart > 0,
+            $"pumping={pumping} frames={framesAfterStart} waitMs={WaitMs}"
+            + $" tier={loop.Tier} skipped={loop.Skipped} reused={window.LastFrameReused} ticks+{ticksInWindow}"
+            + (world is null ? string.Empty : " world=" + world));
         check("ui-resident-hidden-stops-pump", stopped,
             $"framesAfterHide={framesAfterHide} pumping={loop.Pumping}");
+    }
+
+    /// <summary>
+    /// 等帧计数超过 <paramref name="before"/>（最多 8s）。首帧是冷路径，遮挡档下每 tick 又更慢，
+    /// 所以这里等的是「出没出帧」，不是「多快出帧」。
+    /// </summary>
+    private static void WaitForFrames(ResidentFrameLoop loop, int before)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (clock.ElapsedMilliseconds < 8000 && loop.Frames <= before)
+        {
+            Thread.Sleep(25);
+        }
     }
 
     /// <summary>

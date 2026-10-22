@@ -15,6 +15,7 @@
 //   ui-settings-inline-status        成功/失败都写在内联标签上，不弹模态框
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Windows.Forms;
@@ -52,6 +53,12 @@ internal static class SettingsChecks
             check("ui-settings-registry-is-source", false, "exception");
             check("ui-settings-threshold-live", false, "exception");
             check("ui-settings-inline-status", false, "exception");
+            check("ui-position-round-trip", false, "exception");
+            check("ui-position-absent-is-null", false, "exception");
+            check("ui-position-bad-field-falls-back", false, "exception");
+            check("ui-position-policy-visible", false, "exception");
+            check("ui-position-save-on-move", false, "exception");
+            check("ui-position-restore-applies", false, "exception");
         }
         finally
         {
@@ -126,6 +133,73 @@ internal static class SettingsChecks
         bool noModal = OwnedFormCount() == formsBefore;
         check("ui-settings-inline-status", shown && noModal,
             $"shown={shown} text={panel.SettingsStatusText} ownedForms={OwnedFormCount()}");
+
+        // ⑨ 位置往返（RFC-22 §4）：写进去、读回来，读数里带 position。
+        store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, PetPosition: new Point(120, 340)));
+        UserSettings withPosition = store.Load();
+        bool positionRoundTrip = withPosition.PetPosition == new Point(120, 340)
+            && withPosition.Describe().Contains("position=120,340", StringComparison.Ordinal);
+        check("ui-position-round-trip", positionRoundTrip, withPosition.Describe());
+
+        // ⑩ 没存过 = null（不是 `0,0` —— 后者会把宠物吸到左上角）。
+        File.Delete(Path.Combine(root, UserSettingsStore.SettingsFile));
+        UserSettings fresh = store.Load();
+        check("ui-position-absent-is-null", fresh.PetPosition is null, fresh.Describe());
+
+        // ⑪ 坏值：坐标不是整数 ⇒ 当「没存过」，且留一行可查的日志。
+        File.WriteAllText(
+            Path.Combine(root, UserSettingsStore.SettingsFile),
+            "{ \"petPosition\": { \"x\": \"abc\", \"y\": 1 } }");
+        UserSettings broken = store.Load();
+        check("ui-position-bad-field-falls-back", broken.PetPosition is null, broken.Describe());
+
+        // ⑫ 可见性策略（纯函数）：屏内、跨边（贴着屏幕边缘）都算可见，完全在屏外算不可见。
+        Rectangle[] areas =
+        {
+            new(0, 0, 1920, 1040),
+            new(1920, 0, 1280, 1024),
+        };
+        var windowSize = new Size(128, 128);
+        bool inside = ScreenPlacement.IsVisible(new Point(100, 100), windowSize, areas);
+        bool straddling = ScreenPlacement.IsVisible(new Point(1900, 500), windowSize, areas);
+        bool outside = ScreenPlacement.IsVisible(new Point(5000, 5000), windowSize, areas);
+        check("ui-position-policy-visible", inside && straddling && !outside,
+            $"inside={inside} straddling={straddling} outside={outside}");
+
+        // ⑬⑭ 要造真窗口与真宿主：放在最后，因为它们会在真桌面上摆出一台宠物窗。
+        RunPositionIoChecks(check, store);
+    }
+
+    /// <summary>窗口/宿主级的两个位置判据（⑬⑭）。</summary>
+    private static void RunPositionIoChecks(Check check, UserSettingsStore store)
+    {
+        // ⑬ 移动落盘（端到端）：真窗口、真宿主、真 store —— 从窗口层的事件委托进，
+        //    文件里必须出现那个坐标。「事件到了没人落盘」正是本 RFC 要修的症状。
+        using (var window = new LayeredFrameWindow())
+        {
+            using var host = new UiHost(window, null, null, null, null, store);
+            window.RaiseMovedForCheck(300, 420);
+            UserSettings afterMove = store.Load();
+            check("ui-position-save-on-move", afterMove.PetPosition == new Point(300, 420),
+                afterMove.Describe());
+        }
+
+        // ⑭ 恢复接线（RFC-22 §3.3）：存一个屏幕内的位置，宿主必须真的把窗口摆过去；
+        //    再存一个屏幕外的位置，宿主必须**不动**窗口（丢弃 = 保留默认位，而不是摆到 20000,20000）。
+        using (var window = new LayeredFrameWindow())
+        {
+            using var host = new UiHost(window, null, null, null, null, store);
+            store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, PetPosition: new Point(200, 180)));
+            host.TryRestorePosition();
+            (int restoredX, int restoredY) = window.CurrentPosition;
+            bool restored = restoredX == 200 && restoredY == 180;
+
+            store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, PetPosition: new Point(20000, 20000)));
+            host.TryRestorePosition();
+            (int keptX, int keptY) = window.CurrentPosition;
+            check("ui-position-restore-applies", restored && keptX == 200 && keptY == 180,
+                $"restored={restoredX},{restoredY} afterOffscreen={keptX},{keptY}");
+        }
     }
 
     /// <summary>设置文件里不该出现开机自启这一项（事实源是注册表）。</summary>

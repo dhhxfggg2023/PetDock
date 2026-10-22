@@ -31,6 +31,18 @@ internal sealed partial class LayeredFrameWindow
         base.WndProc(ref m);
     }
 
+    /// <summary>
+    /// 判据专用（RFC-22 §4）：按给定的最终坐标抬一次「拖拽落地」事件。
+    /// 自检没有真鼠标，而生产路径（OnMouseUp）除了抬事件只剩拖拽状态 —— 接线本身不必被复制，
+    /// 所以让自检从**同一个委托**进。
+    /// </summary>
+    internal void RaiseMovedForCheck(int x, int y) =>
+        RaiseWindowEvent(EventCatalog.WindowMoved, new JsonObject
+        {
+            ["windowId"] = $"hwnd-{Handle.ToInt64():X}",
+            ["position"] = new JsonArray(x, y),
+        });
+
     private void HandleDpiChanged(ref Message m)
     {
         if (m.LParam == IntPtr.Zero)
