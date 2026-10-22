@@ -14,6 +14,12 @@ public sealed class WorldProbe
     private readonly Func<int>? _timeOfDayMinutes;
     private PetRect _lastWindowRect = new(0, 0, 0, 0);
 
+    // 前台进程名的按句柄缓存：`ProcessNameOf` 内部是一次全进程枚举（GetProcessById），
+    // 每 tick 采样会以 ~3KB/帧的速度制造 GC 垃圾，D-14d 的稳态判据被它顶成 FAIL。
+    // 同一前台句柄必是同一进程，句柄变了才需要重新问一次。
+    private IntPtr _focusedHandle;
+    private string? _focusedName;
+
     public WorldProbe(Func<int>? timeOfDayMinutes = null) => _timeOfDayMinutes = timeOfDayMinutes;
 
     public PetPoint? LastCursor { get; private set; }
@@ -68,11 +74,28 @@ public sealed class WorldProbe
     {
         IntPtr hwnd = Win32.GetForegroundWindow();
         if (hwnd == IntPtr.Zero) return null;
-        if (Win32.GetWindowThreadProcessId(hwnd, out uint pid) == 0) return null;
-        string name = Win32.ProcessNameOf(pid);
-        if (string.IsNullOrEmpty(name) || name == "(unknown)") return null; // contract: never "(unknown)"
-        LastFocusedApp = name;
-        return name;
+
+        // 同一个前台句柄只问一次进程名。`ProcessNameOf` 每次都要 `Process.GetProcessById`
+        // （起一个 Process 对象 + 读进程信息），30fps 下这是每帧一次的分配，实测把 D-14d 的
+        // 稳态判据顶成 FAIL。句柄变了才重问：句柄复用（同数值换了窗）存在，所以键是句柄本身。
+        if (hwnd != _focusedHandle)
+        {
+            _focusedHandle = hwnd;
+            if (Win32.GetWindowThreadProcessId(hwnd, out uint pid) == 0)
+            {
+                _focusedName = null;
+            }
+            else
+            {
+                string name = Win32.ProcessNameOf(pid);
+                // 契约 §7.1：这里**永不**返回 "(unknown)"，取不到就当「没有前台应用」。
+                _focusedName = string.IsNullOrEmpty(name) || name == "(unknown)" ? null : name;
+            }
+        }
+
+        if (_focusedName is null) return null;
+        LastFocusedApp = _focusedName;
+        return _focusedName;
     }
 
     private bool SampleOccluded(IntPtr hwnd)

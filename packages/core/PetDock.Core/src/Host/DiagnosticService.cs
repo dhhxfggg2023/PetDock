@@ -273,22 +273,37 @@ internal sealed class DiagnosticService
             DeniedCount: deniedCount,
             BudgetCount: budgetCount,
             GuestFaultCount: guestFaultCount,
-            Trail: trailSummary);
+            Trail: trailSummary,
+            ThrottleTier: FrameLoop is null ? string.Empty : TierToken(FrameLoop.Tier),
+            ThrottleTicks: FrameLoop?.Ticks ?? 0,
+            ThrottleSubmitted: FrameLoop?.Submitted ?? 0,
+            ThrottleSkipped: FrameLoop?.Skipped ?? 0);
     }
 
     /// <summary>
-    /// 帧预算一行。**只写常量**：FrameBudgetGuard 的跳帧/连续超时计数在生产路径上
+    /// 帧预算一行。常量部分**只写常量**：FrameBudgetGuard 的跳帧/连续超时计数在生产路径上
     /// 没有采集点（core 今天没有持有它的实例），写一个编造的数字比不写更坏。
+    /// RFC-21 §3.4 追加的是**档位与提交计数** —— 它们取自 ResidentFrameLoop 的真实计数器
+    /// （Tier / Ticks / Submitted / Skipped / TierChanges / ProbeFailures 都是生产路径上的读数）；
+    /// 没有帧循环时如实写「未接」，绝不编 0。
     /// </summary>
-    private static string FrameBudgetLine()
+    private string FrameBudgetLine()
     {
-        return "frame=" + FrameBudgetGuard.FrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture) + "ms"
+        string core = "frame=" + FrameBudgetGuard.FrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture) + "ms"
             + " idle=" + FrameBudgetGuard.IdleFrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture) + "ms"
             + " global=" + FrameBudgetGuard.GlobalFrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture) + "ms"
             + " limit=" + FrameBudgetGuard.ConsecutiveTimeoutLimit.ToString(CultureInfo.InvariantCulture)
             + " skips=(未在生产路径采集) consecutive=(未在生产路径采集)"
             + " dropped=(未在生产路径采集) global-over=(未在生产路径采集)";
+        ResidentFrameLoop? loop = FrameLoop;
+        return loop is null
+            ? core + " throttle=(未接帧循环)"
+            : core + " throttle(" + loop.Describe() + ")";
     }
+
+    /// <summary>档位 token（与 ResidentFrameLoop.Describe 的 tier= 同一个写法：小写枚举名）。</summary>
+    private static string TierToken(PetDock.Core.Ui.FrameTier tier) =>
+        tier.ToString().ToLowerInvariant();
 
     /// <summary>程序版本（读程序集元信息；读不到就说读不到）。</summary>
     private static string ProgramVersion()

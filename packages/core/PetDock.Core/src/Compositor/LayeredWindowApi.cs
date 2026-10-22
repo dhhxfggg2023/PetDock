@@ -205,6 +205,42 @@ internal static class Win32
     [DllImport("user32.dll")]
     internal static extern IntPtr GetForegroundWindow();
 
+    // ---- DWM（RFC-21 §3.2）：只用来回答「DWM 有没有把本窗藏起来」，不判遮挡 ----
+
+    /// <summary>
+    /// DWMWA_CLOAKED 的属性号。经实测钉死 = 14：传错属性号时 DWM **静默返回 S_OK + 0**（实测 attr=33 就是 S_OK/0），
+    /// 于是「永远没被藏」看起来像一条正常读数。这个数字必须写死在常量上，不许从别处猜。
+    /// </summary>
+    internal const int DWMWA_CLOAKED = 14;
+
+    [DllImport("dwmapi.dll")]
+    internal static extern int DwmGetWindowAttribute(IntPtr hwnd, int attr, out int value, int size);
+
+    // ---- 显示器（RFC-21 §3.2 的全屏判定要显示器矩形） ----
+
+    internal const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+
+    /// <summary>窗口类名（RFC-21 §3.2 的全屏判定要排除桌面本体与任务栏的窗口类）。取不到返回 "(unknown)"。
+    /// <paramref name="buffer"/> 由调用方复用：调用点每 tick 都跑，每次 new 一个 StringBuilder(256)
+    /// 就是每帧 512B 的纯垃圾（D-14d 稳态判据会因此变红）。</summary>
+    internal static string ClassNameOf(IntPtr hwnd, StringBuilder buffer)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return "(unknown)";
+        }
+
+        buffer.Clear();
+        int length = GetClassName(hwnd, buffer, buffer.Capacity);
+        return length > 0 ? buffer.ToString() : "(unknown)";
+    }
+
     // ---- 只读小助手 ----
 
     /// <summary>取窗口在屏幕坐标（物理像素）下的外接矩形。</summary>
@@ -303,6 +339,26 @@ internal struct RECT
 
     public int Width => Right - Left;
     public int Height => Bottom - Top;
+}
+
+/// <summary>
+/// GetMonitorInfo 的输出（RFC-21 §3.2）。字段顺序由 Win32 定义写死，不许调换；
+/// rcMonitor / rcWork 复用同一个 RECT，不重复定义。
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct MONITORINFO
+{
+    /// <summary>调用前必须写成 sizeof(MONITORINFO)，否则 GetMonitorInfo 返回 false。</summary>
+    public int cbSize;
+
+    /// <summary>显示器的完整矩形（物理像素）。全屏判定比的就是它。</summary>
+    public RECT rcMonitor;
+
+    /// <summary>工作区矩形（扣掉任务栏等）。本片不用，但结构体必须完整，否则后面字段错位。</summary>
+    public RECT rcWork;
+
+    /// <summary>MONITORINFOF_PRIMARY = 1；其余位保留。</summary>
+    public uint dwFlags;
 }
 
 [StructLayout(LayoutKind.Sequential)]

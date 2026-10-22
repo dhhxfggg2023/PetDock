@@ -16,13 +16,16 @@
 //   ui-audit-trail-not-in-repo         流水不落在仓库里
 //   ui-audit-trail-consent-recorded    宿主侧的授权决定也进流水
 //   ui-audit-trail-summary-honest      摘要里的流水规模与未完成标注如实
+//   ui-audit-trail-flushnow-file-exists FlushNow 之后文件必然存在、行数齐全
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Threading;
 using PetDock.Core.Sandbox;
 using PetDock.Hosting;
 
@@ -46,6 +49,7 @@ internal static class AuditTrailChecks
         "ui-audit-trail-not-in-repo",
         "ui-audit-trail-consent-recorded",
         "ui-audit-trail-summary-honest",
+        "ui-audit-trail-flushnow-file-exists",
     };
 
     /// <summary>探针用的假机器事实（不取本机真实值）。</summary>

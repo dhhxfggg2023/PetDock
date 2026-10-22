@@ -46,6 +46,8 @@ internal static class UiSelfTest
             DiagnosticChecks.Run(Check);
             DiagnosticBundleChecks.Run(Check);
             AuditTrailChecks.Run(Check);
+            // RFC-21 §4：静态节流分档的判据（ui-throttle-*）。判据体在 ThrottleChecks。
+            ThrottleChecks.Run(Check);
             failures = _failed;
         }
         catch (Exception error)

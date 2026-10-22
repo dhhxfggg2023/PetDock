@@ -92,8 +92,7 @@ internal sealed partial class LayeredFrameWindow : Form
         {
             var rect = Win32.ScreenRect(Handle);
             return (rect.Left, rect.Top);
-        }
-    }
+        }    }
 
     /// <summary>
     /// 构造期的分步耗时（毫秒），供自检输出。这是唯一能量出「启动代价花在哪一步」的证据：
@@ -103,6 +102,13 @@ internal sealed partial class LayeredFrameWindow : Form
 
     /// <summary>窗口的逻辑尺寸（不随 DPI 变化）。</summary>
     public Size LogicalSize => LogicalFrameSize;
+
+    /// <summary>
+    /// 最近一帧的外表内容是否与上一次是同一个位图对象（RFC-21 §3.5）。
+    /// 与 <see cref="HasContentSource"/> 同一个姿势：**问内容源，不问类型**。
+    /// 内容源可能是代理（RFC-15 §3.3），代理必须问里面那一份；不实现该自述面的内容源恒 false。
+    /// </summary>
+    public bool LastFrameReused => (_content as IFrameReuseInspector)?.LastFrameReused ?? false;
 
     /// <summary>本帧内容是否来自注入的内容源（false = 内核纯色兜底）。</summary>
     public bool HasContentSource => _content is IFrameContentInspector inspector
@@ -133,12 +139,16 @@ internal sealed partial class LayeredFrameWindow : Form
         RenderFrame();
     }
 
-    /// <summary>
-    /// 绘制并提交一帧：内容位图（或纯色兜底）→ 预乘 DIB → UpdateLayeredWindow。
-    /// 首帧与帧泵的每一帧都走这一条路，保证自检里测到的就是真实渲染路径。
-    /// 返回 false 表示帧缓冲不可用，帧泵应停止。
-    /// </summary>
+    /// <summary>绘制并提交一帧：内容位图（或纯色兜底）→ 预乘 DIB → UpdateLayeredWindow。
+    /// 首帧与帧泵的每一帧都走这条路；返回 false = 帧缓冲不可用。**语义一字不变**：合成 + 提交两步依次做。</summary>
     public bool RenderFrame()
+    {
+        return ComposeFrame() && PresentFrame();
+    }
+
+    /// <summary>合成：对齐 DIB 尺寸 → 向内容源要一帧 → 写进 DIB，**不提交**（不调 UpdateLayeredWindow）。
+    /// 为什么必须与提交分开，见 RFC-21 §8 第 9 条。</summary>
+    public bool ComposeFrame()
     {
         if (_frame is null)
         {
@@ -157,11 +167,8 @@ internal sealed partial class LayeredFrameWindow : Form
             frame.DrawBitmap(content);
             if (HasContentSource)
             {
-                // 只数**真实内容源**交付的帧。兜底源也会返回非 null 的位图，
-                // 把它算进来会让「内容源一帧都没出」看起来像「出了 63 帧」——
-                // 这正是本判据存在的原因（M0 的 source=false 打 SELF-OK）。
-                // 判据走 HasContentSource 而不是「类型不是兜底」：内容源可能是代理
-                // （RFC-15 §3.3 的可替换内容源），代理自身不是兜底，它里面那份才是。
+                // 只数**真实内容源**交付的帧：兜底源也会返回非 null 的位图，算进来会让
+                // 「一帧都没出」看起来像「出了 63 帧」（M0 的 source=false 打 SELF-OK）。
                 ContentFramesServed++;
             }
         }
@@ -170,8 +177,20 @@ internal sealed partial class LayeredFrameWindow : Form
             frame.FillOpaque(Color.FromArgb(0xFF, 0x3A, 0x6E, 0xC0));
         }
 
+        return true;
+    }
+
+    /// <summary>提交：把当前 DIB 推上屏（UpdateLayeredWindow），不重新合成。
+    /// 一次上屏是整窗合成；「只合成」那半只是 128×128×4 写入（30fps 下约 2MB/s）。</summary>
+    public bool PresentFrame()
+    {
+        if (_frame is null)
+        {
+            return false;
+        }
+
         Rectangle screenRect = Win32.ScreenRect(Handle);
-        frame.Present(new Point(screenRect.Left, screenRect.Top), 255);
+        _frame.Present(new Point(screenRect.Left, screenRect.Top), 255);
         return true;
     }
 

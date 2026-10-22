@@ -170,6 +170,12 @@ internal sealed partial class UiHost : ApplicationContext
             _loop.Start();
         }
 
+        // RFC-21 §3.4：全屏档把泵停了，没有泵 tick 就没有人重新判定 ——
+        // 恢复必须由泵之外的东西驱动。这里是全屏档**唯一**的恢复驱动（TickMs = 250）。
+        // 它只判定与起泵，不提交帧（离开全屏那一帧除外）；窗口不可见时它什么都不做
+        // （可见性归 Start/Hide 独占，这里碰它就是第二个可见性属主）。
+        _loop.Reevaluate();
+
         PumpOnboarding();
 
         // 引导窗开着时不泵授权询问（询问留队列，不丢）。

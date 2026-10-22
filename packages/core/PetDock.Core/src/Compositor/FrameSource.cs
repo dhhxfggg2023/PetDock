@@ -45,3 +45,16 @@ public interface IFrameContentInspector
     /// <summary>当前交付的是真内容（来自视图实现）而不是内核纯色兜底。</summary>
     bool DeliversRealContent { get; }
 }
+
+/// <summary>
+/// 内容源的**可选**自述面：最近一帧与上一帧是不是**同一个位图对象**（RFC-21 §3.5）。
+/// 为什么是对象身份而不是像素比较：像素比较要逐像素扫全帧（8.3ms 预算里做不起），
+/// 而「实现方复用了同一张位图」正是「内容没变」可判定、且零成本的等价条件。
+/// 不实现本接口的内容源恒 false ⇒ 静态节流永远进不了 Idle 档（fail-active：
+/// 宁可多烧电，也不许把一只有动画的宠物冻住）。
+/// </summary>
+public interface IFrameReuseInspector
+{
+    /// <summary>最近交付的帧是否复用了上一次的位图对象。</summary>
+    bool LastFrameReused { get; }
+}

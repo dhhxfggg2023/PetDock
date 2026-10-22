@@ -14,6 +14,7 @@
 // 单机单环境（docs/41:129）：基线里记 CPU 型号与系统版本，换了机器就重新采基线并说明。
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -22,10 +23,11 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
-internal static class PerfGate
+internal static partial class PerfGate
 {
     private const double CpuIdleMax = 0.5;        // D-14a（单核百分比）
     private const double PrivateWsMaxMb = 150;    // D-14b
@@ -52,21 +54,20 @@ internal static class PerfGate
         }
 
         using var window = Compose();
-        window.Show();
+        // 位置由本方法定（判据要确定几何）；**可见性与泵归 ResidentFrameLoop**（t15 硬约束 2）：
+        // Start() 自己 Show + BringToFrontOfTopmost + PresentFirstFrame + 起泵，本文件不碰这三件事。
         window.MoveToCenter();
+        using var loop = new ResidentFrameLoop(window);
+        loop.Start();
         Application.DoEvents();
-        window.PresentFirstFrame();
 
         // D-14c：进程启动 → 首帧上屏。StartTime 读不到时（权限/时钟）如实报 -1 而不是编一个数。
         double firstFrameMs = MeasureFirstFrameMs(window);
 
         using Process self = Process.GetCurrentProcess();
 
-        var pump = new FramePump();
-        pump.Start(() => window.RenderFrame());
-
-        // 空闲采样：窗口静止、无输入、泵按 30fps 出同一帧（与常驻形态一致）。
-        var cpu = new CpuSampler(self);
+        // 采样窗内每 250ms 调一次 Reevaluate —— 与 UiHost 的 UI 滴答同频，也是泵停着时唯一的驱动源。
+        var cpu = new CpuSampler(self, loop);
 
         // 预热窗口必须落在「内存基线」之前：JIT 与首次分配发生在启动后头一两秒，
         // 把它们算进 D-14d 会让每条判据都报 20% 的假增长（本机实录：8.70→10.46MB =
@@ -76,8 +77,14 @@ internal static class PerfGate
         long wsStart = PrivateWorkingSetBytes(self);
         int handlesStart = self.HandleCount;
 
+        // 空闲窗的起止快照：相减得到「这一窗真的跑了多少 tick / 提交了几帧」。
+        // 为什么必须有它：驱动面换成 ResidentFrameLoop 之后，CPU 低可能是「在静止档跳过提交」，
+        // 也可能是「泵根本没跑」—— 只有 tick 计数能把这两件事分开（RFC-21 t15）。
+        LoopReadings idleStart = LoopReadings.Of(loop);
         TimeSpan cpuSpan;
         double cpuPct = cpu.Sample(seconds * 1000, out cpuSpan);
+        LoopReadings idle = LoopReadings.Of(loop).Minus(idleStart);
+        double idleRate = cpuSpan.TotalSeconds > 0 ? idle.Ticks / cpuSpan.TotalSeconds : 0;
 
         // D-14d 的短形态：**稳态**是否还在长。不能拿「启动前 → 跑完」比——那个差值里全是
         // JIT/GC 堆收敛（本机实录：预热后 8s 内仍长 0.57MB = 5.75%，判 FAIL 而根本没有泄漏）。
@@ -106,8 +113,10 @@ internal static class PerfGate
             stabilityPct = wsMid > 0 ? (wsSoak - wsMid) * 100.0 / wsMid : 0;
         }
 
-        pump.Stop();
-        pump.Dispose();
+        // 遮挡态（RFC-21 §4）：造真 topmost 覆盖窗压住宠物窗 5 秒，采 CPU + 档位 + 计数。
+        // 放在泄漏窗之后：D-14d 要的是相邻两窗的稳态增长，中间插进建窗/关窗会污染它。
+        OccludedSample occluded = MeasureOccluded(loop, window, cpu, idleRate);
+        Application.DoEvents();
 
         double wsMb = wsEnd / (1024.0 * 1024.0);
         double leakPct = stabilityPct;
@@ -116,8 +125,16 @@ internal static class PerfGate
         Emit($"CHECK-DISPLAY perf-raw cpu={Fmt(cpuPct)}% over={cpuSpan.TotalSeconds:0.0}s"
             + $" ws-start={Mb(wsStart)} ws-mid={Mb(wsMid)} ws-end={Mb(wsEnd)} first-frame={Fmt(firstFrameMs)}ms"
             + $" handles={handlesStart}->{handlesMid}->{handlesEnd}");
+        Emit("CHECK-DISPLAY perf-throttle-idle " + idle.Detail(cpuSpan.TotalSeconds));
 
         int failures = 0;
+        // 「门禁测到了产品那条路」本身要能证伪：泵若根本没跑（全屏档把泵停了、或 loop 没起来），
+        // 下面每条 CPU 读数都会漂亮得离谱。ticks>0 且 composed>=ticks 才说明真的在出帧。
+        Check(ref failures, "perf-loop-running", idle.Ticks > 0 && idle.Composed >= idle.Ticks,
+            "ticks=" + idle.Ticks.ToString(CultureInfo.InvariantCulture)
+            + " composed=" + idle.Composed.ToString(CultureInfo.InvariantCulture)
+            + " tier=" + idle.Tier.ToString().ToLowerInvariant()
+            + " (0 tick = 驱动面没跑，CPU 读数不可信)");
         Check(ref failures, "perf-cpu-idle", cpuPct <= CpuIdleMax,
             $"{Fmt(cpuPct)}% <= {Fmt(CpuIdleMax)}% (M-02, {cpuSpan.TotalSeconds:0.0}s avg)");
         Check(ref failures, "perf-private-ws", wsMb <= PrivateWsMaxMb,
@@ -130,6 +147,7 @@ internal static class PerfGate
             $"steady-growth {Fmt(leakPct)}% <= {Fmt(LeakMaxPct)}%"
             + $" handle={handlesMid}->{handlesEnd} (D-14d full judgement needs --soak 28800)");
         failures += Regression(failures: 0, cpuPct, wsMb, firstFrameMs, writeBaseline, note);
+        JudgeOccluded(occluded, ref failures);
 
         Emit(failures == 0 ? "PERF-OK" : "PERF-FAIL");
         return failures == 0 ? 0 : 1;
@@ -319,58 +337,4 @@ internal static class PerfGate
     private static string Mb(long bytes) => Fmt(bytes / (1024.0 * 1024.0));
     private static double Round(double v) => Math.Round(v, 3);
     private static string Fmt(double v) => v.ToString("0.00", CultureInfo.InvariantCulture);
-
-    /// <summary>CPU 采样：TotalProcessorTime 的增量 / 墙钟 / 核数。冷启动噪声靠 Warmup 隔开。</summary>
-    private sealed class CpuSampler
-    {
-        private readonly Process _p;
-
-        public CpuSampler(Process p) => _p = p;
-
-        public void Warmup(int ms) => Thread.Sleep(ms);
-
-        public double Sample(int ms, out TimeSpan span)
-        {
-            _p.Refresh();
-            TimeSpan before = _p.TotalProcessorTime;
-            var wall = Stopwatch.StartNew();
-            while (wall.ElapsedMilliseconds < ms)
-            {
-                Application.DoEvents();
-                Thread.Sleep(20);
-            }
-
-            wall.Stop();
-            _p.Refresh();
-            span = wall.Elapsed;
-            double cpuMs = (_p.TotalProcessorTime - before).TotalMilliseconds;
-            return cpuMs / span.TotalMilliseconds / Environment.ProcessorCount * 100.0;
-        }
-    }
-
-    /// <summary>
-    /// PROCESS_MEMORY_COUNTERS_EX2。`PrivateWorkingSetSize` 只在 EX2 里存在——早先按
-    /// PROCESS_MEMORY_COUNTERS_EX 声明却多写了一个同名字段，API 按 EX 的 cb 填充，
-    /// 那个字段永远读到 0，于是 D-14b 的读数恒为 0.00MB、判据退化成恒真（本机实录已修正）。
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PROCESS_MEMORY_COUNTERS_EX2
-    {
-        public int cb;
-        public uint PageFaultCount;
-        public UIntPtr PeakWorkingSetSize;
-        public UIntPtr WorkingSetSize;
-        public UIntPtr QuotaPeakPagedPoolUsage;
-        public UIntPtr QuotaPagedPoolUsage;
-        public UIntPtr QuotaPeakNonPagedPoolUsage;
-        public UIntPtr QuotaNonPagedPoolUsage;
-        public UIntPtr PagefileUsage;
-        public UIntPtr PeakPagefileUsage;
-        public UIntPtr PrivateUsage;
-        public UIntPtr PrivateWorkingSetSize;
-        public UIntPtr SharedWorkingSetSize;
-    }
-
-    [DllImport("psapi.dll", SetLastError = true)]
-    private static extern bool GetProcessMemoryInfo(IntPtr process, ref PROCESS_MEMORY_COUNTERS_EX2 counters, int size);
 }

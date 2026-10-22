@@ -92,6 +92,8 @@ internal sealed class FramePump : IDisposable
 
             _tick = tick;
             _stopping = false;
+            _hasExited = false;
+            _exitReason = null;
             _frames = 0;
             _overBudgetFrames = 0;
             _maxFrameMs = 0;
@@ -106,6 +108,38 @@ internal sealed class FramePump : IDisposable
             _thread.Start();
         }
     }
+
+    /// <summary>
+    /// 泵线程是否已自行退出（RFC-21 t13）。
+    /// `Loop()` 有三条自行 break 的路（tick 为 null / tick 返回 false / tick 抛异常），
+    /// 而它**不会**清 `_thread`，也不会通知任何人 —— 于是外面看到的「泵在跑」可能早已不成立。
+    /// 本标志是那个事实的唯一读数面；`Start` 置 false、`Loop` 尾部置 true，都在 `_gate` 内。
+    /// </summary>
+    public bool HasExited
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _hasExited;
+            }
+        }
+    }
+
+    /// <summary>台行退出原因（"tick-returned-false" / "tick-failed" / "stopped"；null = 没退出过）。</summary>
+    public string? ExitReason
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _exitReason;
+            }
+        }
+    }
+
+    private bool _hasExited;
+    private string? _exitReason;
 
     /// <summary>停止帧泵并等待线程退出。</summary>
     public void Stop()
@@ -151,6 +185,7 @@ internal sealed class FramePump : IDisposable
 
             if (tick is null)
             {
+                SetExitReason("no-tick");
                 break;
             }
 
@@ -162,6 +197,7 @@ internal sealed class FramePump : IDisposable
             catch (Exception error)
             {
                 KernelLog.Write($"frame-tick-failed {error.Message}");
+                SetExitReason("tick-failed");
                 keepGoing = false;
             }
 
@@ -185,6 +221,13 @@ internal sealed class FramePump : IDisposable
 
             if (!keepGoing)
             {
+                // tick 回调自己说不干了（例如 Res..Loop 判成全屏档）：这是**正常的**自退，
+                // 与异常自退区分开 —— 自愈方要据此决定是重启还是接受停帧。
+                if (ExitReason is null)
+                {
+                    SetExitReason("tick-returned-false");
+                }
+
                 break;
             }
 
@@ -219,6 +262,20 @@ internal sealed class FramePump : IDisposable
         lock (_gate)
         {
             _stopping = false;
+            // 泵线程走到这里就意味着「已经没有泵在出帧了」—— 无论哪条路 break 出来。
+            // 这个标志是外面唯一能发现这件事的地方（RFC-21 t13）；`_thread` 故意不清：
+            // `Stop()` 靠它判断是否 Join，改它会与 Stop 的既有语义打架。
+            _hasExited = true;
+            _exitReason ??= "stopped";
+        }
+    }
+
+    /// <summary>记录退出原因（锁内写；先到先得，不覆盖已经记下的那条）。</summary>
+    private void SetExitReason(string reason)
+    {
+        lock (_gate)
+        {
+            _exitReason ??= reason;
         }
     }
 

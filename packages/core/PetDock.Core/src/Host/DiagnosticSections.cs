@@ -42,6 +42,21 @@ internal static class DiagnosticSections
 
         sb.Append("帧预算自检: ").Append(readings.FrameBudgetLine).Append(Environment.NewLine);
 
+        // RFC-21 §3.4：档位与提交计数。没接帧循环时明说「未接」，不写 0 ——
+        // 「没接上」与「一帧都没提交」在数字上看起来一样，在结论上完全不同。
+        if (readings.HasThrottle)
+        {
+            sb.Append("节流档位: tier=").Append(readings.ThrottleTier)
+                .Append(" ticks=").Append(readings.ThrottleTicks.ToString(CultureInfo.InvariantCulture))
+                .Append(" submitted=").Append(readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture))
+                .Append(" skipped=").Append(readings.ThrottleSkipped.ToString(CultureInfo.InvariantCulture))
+                .Append(Environment.NewLine);
+        }
+        else
+        {
+            sb.Append("节流档位: (未接帧循环)").Append(Environment.NewLine);
+        }
+
         sb.Append("插件 (").Append(readings.Plugins.Count.ToString(CultureInfo.InvariantCulture)).Append("):").Append(Environment.NewLine);
         if (readings.RosterUnavailable)
         {
@@ -133,6 +148,12 @@ internal static class DiagnosticSections
             ["frameElapsedMs"] = readings.FrameElapsedMs,
             ["targetFrameMs"] = Math.Round(readings.TargetFrameMs, 3),
             ["frameBudget"] = readings.FrameBudgetLine,
+            // RFC-21 §3.4：档位与提交计数。没接帧循环时不写数字（null），
+            // 写成 0 会让「没接上」和「一帧都没提交」看起来一样。
+            ["throttleTier"] = readings.HasThrottle ? readings.ThrottleTier : null,
+            ["throttleTicks"] = readings.HasThrottle ? readings.ThrottleTicks : (long?)null,
+            ["throttleSubmitted"] = readings.HasThrottle ? readings.ThrottleSubmitted : (long?)null,
+            ["throttleSkipped"] = readings.HasThrottle ? readings.ThrottleSkipped : (long?)null,
         };
         return rules.Text(doc.ToJsonString(Indented));
     }

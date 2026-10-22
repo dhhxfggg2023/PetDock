@@ -22,7 +22,7 @@ namespace PetDock.Hosting;
 /// 内容源代理：持有「当前内容源」，可随时替换。
 /// 窗口持有的是它，替换的是它里面的那一份。
 /// </summary>
-internal sealed class SwappableFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector
+internal sealed class SwappableFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector, IFrameReuseInspector
 {
     private IFrameContentSource _current;
     private bool _disposed;
@@ -86,6 +86,14 @@ internal sealed class SwappableFrameSource : IFrameContentSource, IFrameSourceSt
     /// </summary>
     public bool DeliversRealContent =>
         Current is IFrameContentInspector inspector ? inspector.DeliversRealContent : HasRealSource;
+
+    /// <summary>
+    /// RFC-21 §3.5：外表帧是否与上一次是同一个位图对象。与 <see cref="DeliversRealContent"/>
+    /// 同一个纪律 —— **问里面那一份**，不自己答：换宠物后判据必须跟着新源走，
+    /// 代理若自己答，换源后「内容没变」会被判在旧宠物身上。
+    /// </summary>
+    public bool LastFrameReused =>
+        Current is IFrameReuseInspector reuse && reuse.LastFrameReused;
 
     /// <summary>
     /// 换成新的内容源。旧源**不**在这里释放 —— 换源与释放是两件事，

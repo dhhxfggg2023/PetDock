@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 17200,
+  "budget": 18377,
   "history": [
     {
       "date": "2026-10-18",
@@ -413,6 +413,84 @@
           "slice": "RFC-20 D 常驻装配（造流水、接进宿主、退出时收尾）",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 16
+        }
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "measured": 17170,
+      "budget": 18300,
+      "note": "RFC-20 遗留：审计流水取批次竞态修复。`AuditTrail.Files.cs` 的 `Flush()` 原来「取批次」与「写文件」各拿一次锁，中间可能被别的线程插入而写坏行、算错字节数（`ui-audit-trail-file-written` 偶发 files=0）。改为同一把 `_commitGate` 覆盖两段。**这不是 RFC-21 的增量**，与节流无关 —— 按 RFC-21 §5 的明文禁令（「不得把别的切片的增量混进这条记录」）单列一条，不与节流合并记账。",
+      "attribution": [
+        {
+          "slice": "RFC-20 遗留：审计流水取批次竞态（Flush 的取批次与写文件并入同一把 _commitGate）",
+          "files": ["packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs"],
+          "lines": 32
+        }
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "measured": 18307,
+      "budget": 18377,
+      "note": "RFC-21：静态节流分档（docs/12 §4 的静止降帧 / 遮挡 10fps / 全屏停泵，此前帧泵恒定 30fps）。实测增量 +1137，超出 RFC-21 §5 预估的 330~400 近三倍——超出部分不在判定逻辑，而在四件实施期才暴露的事：① 探测层（ThrottleProbe 278 行）必须自建 DWM cloaked 探测 + 五点不透明取样 + 前台窗覆盖比较三套读数，任何一套单独用都会给出相反结论（t2 审计的实证）；② 「静止档不能跳合成，只能跳提交」这条修正把帧循环拆成 Advance/Reevaluate 两个入口与独立的合成/提交记账（ResidentFrameLoop.Throttle 310 行 + ResidentFrameLoop 净 +169）；③ 帧泵自退自愈（t13）给 FramePump 加了 HasExited/ExitReason 自述面 +57 行；④ 探测层是每帧都跑的热路径，实测发现三处每 tick 分配（WindowDescription 的两个 StringBuilder + Process.GetProcessById、ClassNameOf 的 StringBuilder、SampleAlpha 的方法组转委托）把 D-14d 的稳态判据顶红，于是加了按句柄缓存与复用缓冲（WorldProbe +23、ThrottleProbe/LayeredWindowApi/ResidentFrameLoop.Throttle 内含）。测试面（test/SelfCheck/ThrottleChecks*.cs 三份 + PerfGate.Throttle.cs + PerfGate.Sampler.cs）不计入本预算（D-03a 只算 src）。",
+      "attribution": [
+        {
+          "slice": "RFC-21 A 探测层（DWM cloaked / 五点不透明取样 / 前台窗覆盖显示器 / 类名缓冲复用）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/ThrottleProbe.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredWindowApi.cs"
+          ],
+          "lines": 334
+        },
+        {
+          "slice": "RFC-21 B 档位判定（唯一判定属主，纯函数式 Decide）",
+          "files": ["packages/core/PetDock.Core/src/Ui/FrameThrottlePolicy.cs"],
+          "lines": 145
+        },
+        {
+          "slice": "RFC-21 C 帧循环两入口（Advance 每 tick 合成后判档、Reevaluate 作泵停时的唯一驱动源、自退自愈、alpha 委托复用）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.Throttle.cs",
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.cs"
+          ],
+          "lines": 479
+        },
+        {
+          "slice": "RFC-21 D 帧泵自述面（HasExited / ExitReason 四条退出路径）",
+          "files": ["packages/core/PetDock.Core/src/Compositor/FramePump.cs"],
+          "lines": 57
+        },
+        {
+          "slice": "RFC-21 E 复用接缝与窗口读数（IFrameReuseInspector 转发、帧像素取样、DWM 属性声明）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/FrameSource.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
+          ],
+          "lines": 32
+        },
+        {
+          "slice": "RFC-21 F 诊断读数（档位、目标周期、四类计数进诊断包与性能面板）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DiagnosticReadings.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticSections.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs"
+          ],
+          "lines": 46
+        },
+        {
+          "slice": "RFC-21 G 宿主接线（实例级复用自述面透传 + UI 滴答调 Reevaluate）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetFrameSource.cs",
+            "packages/core/PetDock.Core/src/Host/SwappableFrameSource.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 21
+        },
+        {
+          "slice": "RFC-21 H 世界探针热路径（前台进程名按句柄缓存，D-14d 稳态判据要求）",
+          "files": ["packages/core/PetDock.Core/src/Host/WorldProbe.cs"],
+          "lines": 23
         }
       ]
     }

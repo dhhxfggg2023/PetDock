@@ -52,20 +52,32 @@ internal sealed partial class AuditTrail
     /// <summary>把缓冲里的行写进文件。写失败只计数，不抛。</summary>
     private void Flush()
     {
-        string[] batch;
-        lock (_gate)
-        {
-            if (_buffer.Count == 0)
-            {
-                return;
-            }
-
-            batch = _buffer.ToArray();
-            _buffer.Clear();
-        }
-
+        // 取批次与写文件必须在**同一把** commit 锁里。
+        //
+        // 为什么（2026-10-21 实测）：分开放的时候，「缓冲空」不再等价于「行已落盘」——
+        // 后台线程（Loop 每 200ms 调一次 Flush）取走批次、正卡在写文件之前的那一小段窗口里，
+        // 主线程的 FlushNow() 看到 _buffer.Count == 0 就直接返回，
+        // 而文件是在 EnsureWriter() 里才建的 ⇒ 目录里一个文件都没有
+        // （判据 ui-audit-trail-file-written 偶发 files=0 就是这么来的）。
+        // 合成一把锁之后，「缓冲空」重新等价于「该写的都写完了」，
+        // FlushNow() 的语义（返回时行已在文件里、文件确实存在）才立得住。
+        //
+        // 锁序只有 _commitGate → _gate 一条（下面 catch 块里也是这个顺序），
+        // 没有任何地方反向嵌套 ⇒ 不会死锁。
         lock (_commitGate)
         {
+            string[] batch;
+            lock (_gate)
+            {
+                if (_buffer.Count == 0)
+                {
+                    return;
+                }
+
+                batch = _buffer.ToArray();
+                _buffer.Clear();
+            }
+
             try
             {
                 EnsureWriter();
@@ -92,9 +104,29 @@ internal sealed partial class AuditTrail
                     _dropped += batch.Length;
                 }
 
-                KernelLog.Write("audit-trail-unavailable " + error.GetType().Name);
+                KernelLog.Write("audit-trail-unavailable " + DescribeFailure(error));
             }
         }
+    }
+
+    /// <summary>
+    /// 流水写不下去时，诊断日志里写什么。
+    ///
+    /// 类型 + 脱敏后的消息，不带堆栈：
+    ///   类型让我们知道是哪一类故障（IOException / UnauthorizedAccessException …）；
+    ///   消息让我们知道**为什么**——只记类型的话，流水写不下去永远是「静默故障」，
+    ///   2026-10-21 那次排查就只看到一句 IOException，什么也没说。
+    ///   消息要脱敏：它常带绝对路径（含用户名），落盘日志与 stderr 都不该有它。
+    /// </summary>
+    private string DescribeFailure(Exception error)
+    {
+        string message = (error.Message ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ');
+        if (message.Length > 200)
+        {
+            message = message[..200] + "...";
+        }
+
+        return error.GetType().Name + " msg=" + _rules.Text(message);
     }
 
     /// <summary>打开（或复用）当前活动文件。</summary>

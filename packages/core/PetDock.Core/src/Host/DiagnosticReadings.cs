@@ -87,8 +87,18 @@ internal sealed record DiagnosticReadings(
     int DeniedCount,
     int BudgetCount,
     int GuestFaultCount,
-    DiagnosticTrailSummary? Trail = null)
+    DiagnosticTrailSummary? Trail = null,
+    string ThrottleTier = "",
+    long ThrottleTicks = 0,
+    long ThrottleSubmitted = 0,
+    long ThrottleSkipped = 0)
 {
+    /// <summary>
+    /// RFC-21 §3.4 / docs/12 §4：当前档位是否是「真的读过」。
+    /// 空串 = 没有帧循环（诊断包要写「未接」，绝不能把空串当 active）。
+    /// </summary>
+    public bool HasThrottle => ThrottleTier.Length > 0;
+
     /// <summary>空读数（没有宠物也没有插件时的诚实形态：一个数字都不编）。</summary>
     public static DiagnosticReadings Empty { get; } = new(
         ProgramVersion: "(unknown)",

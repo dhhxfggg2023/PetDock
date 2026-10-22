@@ -18,7 +18,7 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Hosting;
 
 /// <summary>把 PetInstance 的当前帧交给分层窗的内容源适配器。</summary>
-public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector
+public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector, IFrameReuseInspector
 {
     private readonly PetInstance _instance;
     private readonly EventBus _bus;
@@ -61,6 +61,13 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFr
     /// 否则外面会把占位帧当成「宠物还在动」（docs/11 §9 的降级语义）。
     /// </summary>
     public bool DeliversRealContent => _instance.Display.Tier < DisplayTier.Placeholder;
+
+    /// <summary>
+    /// RFC-21 §3.5：外表帧是否与上一次是同一个位图对象。零成本 —— 判据本来就在
+    /// <see cref="PetInstance.LastFrameReused"/>（对象身份比较，不是像素比较）。
+    /// 静态节流的静止档靠它判「内容没变」；判定属主是 FrameThrottlePolicy，本类只自述事实。
+    /// </summary>
+    public bool LastFrameReused => _instance.LastFrameReused;
 
     /// <summary>所属实例（宿主侧记账与挂起转发用）。</summary>
     public PetInstance Instance => _instance;
