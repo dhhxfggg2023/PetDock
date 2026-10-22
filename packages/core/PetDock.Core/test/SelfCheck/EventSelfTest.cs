@@ -31,6 +31,7 @@ internal static partial class EventSelfTest
             failures += HookGate();
             failures += WorldSample(skipped);
             failures += FrameOrder();
+            failures += EventLogBounds();
         }
         catch (Exception error)
         {

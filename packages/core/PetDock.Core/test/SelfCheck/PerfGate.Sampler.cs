@@ -95,4 +95,6 @@ internal static partial class PerfGate
 
     [DllImport("psapi.dll", SetLastError = true)]
     private static extern bool GetProcessMemoryInfo(IntPtr process, ref PROCESS_MEMORY_COUNTERS_EX2 counters, int size);
+
+    // GDI/USER 对象的读数与 P/Invoke 在 PerfGate.Soak.cs（长跑取证半边），此处不再重复声明。
 }

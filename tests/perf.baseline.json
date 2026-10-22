@@ -1,22 +1,26 @@
 {
-  "note": "RFC-21",
-  "captured_at": "2026-10-21 22:34:38",
+  "note": "D-14d \u6539\u53E3\u5F84\uFF1A\u5224\u51C6\u4ECE\u6BDB\u5DE5\u4F5C\u96C6\u6362\u6210\u300C\u5F3A\u5236\u56DE\u6536\u540E\u4ECD\u9A7B\u7559\u7684\u6258\u7BA1\u5806 0.5MB \u002B GDI/USER/\u53E5\u67C4\u4E0D\u589E\u300D\uFF0CD-14e \u57FA\u7EBF\u6BD4\u5BF9\u540C\u6539 retained_heap_mb\uFF1Bws \u8BFB\u6570\u4FDD\u7559\u4E3A\u5C55\u793A\uFF08GC \u63D0\u4EA4\u6BB5\u566A\u58F0 13.7~23.5MB\uFF0C2026-10-22 \u5B9E\u6D4B\uFF09",
+  "captured_at": "2026-10-22 09:49:54",
   "env": {
     "os": "Microsoft Windows NT 10.0.26100.0",
     "cpu": "13th Gen Intel(R) Core(TM) i9-13900HX",
     "cores": 32
   },
   "m-02": {
-    "cpu_idle_pct": 0.083,
+    "cpu_idle_pct": 0.058,
     "limit": 0.5
   },
   "m-04": {
-    "private_ws_mb": 12.871,
+    "private_ws_mb": 15.422,
     "limit": 150
   },
   "m-03": {
-    "first_frame_ms": 233.795,
+    "first_frame_ms": 297.524,
     "limit": 1500
   },
-  "unit": "docs/41 D-14a/b/c\uFF1B--write-baseline \u6BCF\u6539\u4E00\u6B21\u5FC5\u987B\u5E26 note"
+  "d-14d": {
+    "retained_heap_mb": -0.031,
+    "limit_mb": 0.5
+  },
+  "unit": "docs/41 D-14a/b/c/d\uFF1B--write-baseline \u6BCF\u6539\u4E00\u6B21\u5FC5\u987B\u5E26 note"
 }

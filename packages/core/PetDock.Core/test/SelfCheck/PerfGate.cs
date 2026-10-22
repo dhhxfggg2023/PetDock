@@ -32,8 +32,12 @@ internal static partial class PerfGate
     private const double CpuIdleMax = 0.5;        // D-14a（单核百分比）
     private const double PrivateWsMaxMb = 150;    // D-14b
     private const double FirstFrameMaxMs = 1500;  // D-14c
-    private const double LeakMaxPct = 5;          // D-14d
-    private const double RegressionMaxPct = 5;    // D-14e
+    private const double RetainedGrowthMaxMb = 0.5;  // D-14d 短形态（回收后仍驻留的增量）
+    private const double RegressionMaxPct = 5;
+
+    // D-14e 的 CPU 噪声地板（百分点）：空闲基线在 0.03~0.07% 抖，0.01pp 就是 16%，
+    // 5% 相对阈值小于读数分辨率 —— 见 perf-regression 判据处注释。
+    private const double CpuNoiseFloorPct = 0.05;    // D-14e
     private const int WarmupMs = 1500;            // 预热窗口：JIT/首次分配不算进 D-14d 基线
     private const int StabilityWindowMs = 5000;   // D-14d 短形态的第二个采样窗（稳态增长）
 
@@ -74,7 +78,7 @@ internal static partial class PerfGate
         // 20.26% FAIL，而整段时间里根本没有泄漏）。D-14d 问的是稳态之后是否持续增长，
         // 所以基线取在预热之后、测量窗口之前。
         cpu.Warmup(WarmupMs);
-        long wsStart = PrivateWorkingSetBytes(self);
+        long wsStart = RetainedWorkingSetBytes(self);
         int handlesStart = self.HandleCount;
 
         // 空闲窗的起止快照：相减得到「这一窗真的跑了多少 tick / 提交了几帧」。
@@ -89,28 +93,37 @@ internal static partial class PerfGate
         // D-14d 的短形态：**稳态**是否还在长。不能拿「启动前 → 跑完」比——那个差值里全是
         // JIT/GC 堆收敛（本机实录：预热后 8s 内仍长 0.57MB = 5.75%，判 FAIL 而根本没有泄漏）。
         // 所以比的是两个相邻采样窗之间的增长：第一个窗口结束时取基线，再跑一个窗口看还长多少。
-        long wsMid = PrivateWorkingSetBytes(self);
+        long wsMid = RetainedWorkingSetBytes(self);
+        long heapWinMid = GC.GetTotalMemory(true);
+        var guiWinMid = GuiResources(self);
         int handlesMid = self.HandleCount;
         double stabilityPct = 0;
         long wsEnd = wsMid;
+        long heapWinEnd = heapWinMid;
+        var guiWinEnd = guiWinMid;
         int handlesEnd = handlesMid;
         if (seconds >= 4)
         {
             cpu.Sample(StabilityWindowMs, out _);
-            wsEnd = PrivateWorkingSetBytes(self);
+            wsEnd = RetainedWorkingSetBytes(self);
+            heapWinEnd = GC.GetTotalMemory(true);
+            guiWinEnd = GuiResources(self);
             handlesEnd = self.HandleCount;
             stabilityPct = wsMid > 0 ? (wsEnd - wsMid) * 100.0 / wsMid : 0;
         }
 
         if (soakSeconds > 0)
         {
-            cpu.Sample(soakSeconds * 1000, out _);
-            long wsSoak = PrivateWorkingSetBytes(self);
-            handlesEnd = self.HandleCount;
-            Emit($"INFO perf-soak seconds={soakSeconds} ws-mid={Mb(wsMid)} ws-end={Mb(wsSoak)}"
-                + $" soak-growth={Fmt(wsMid > 0 ? (wsSoak - wsMid) * 100.0 / wsMid : 0)}%");
-            wsEnd = wsSoak;
-            stabilityPct = wsMid > 0 ? (wsSoak - wsMid) * 100.0 / wsMid : 0;
+            SoakReadings soak = RunSoak(cpu, self, soakSeconds, wsMid, handlesMid);
+            wsEnd = soak.WsEnd;
+            heapWinEnd = soak.HeapEnd;
+            guiWinEnd = (soak.GdiEnd, soak.UserEnd);
+            handlesEnd = soak.HandlesEnd;
+            stabilityPct = soak.GrowthPct;
+            // 长跑窗的起点读数也换成它的（否则「驻留增量」会拿 10s 窗的起点比长跑窗的终点）。
+            heapWinMid = soak.HeapMid;
+            guiWinMid = (soak.GdiMid, soak.UserMid);
+            handlesMid = soak.HandlesMid;
         }
 
         // 遮挡态（RFC-21 §4）：造真 topmost 覆盖窗压住宠物窗 5 秒，采 CPU + 档位 + 计数。
@@ -141,12 +154,23 @@ internal static partial class PerfGate
             $"{Fmt(wsMb)}MB <= {Fmt(PrivateWsMaxMb)}MB (M-04)");
         Check(ref failures, "perf-first-frame", firstFrameMs >= 0 && firstFrameMs <= FirstFrameMaxMs,
             $"{Fmt(firstFrameMs)}ms <= {Fmt(FirstFrameMaxMs)}ms (M-03)");
-        // D-14d 每 8h ≤5%：短跑测的是「稳态窗内是否还在长」。泄漏只有增长方向——内存回落
-        // 不是缺陷，所以判据是 leakPct <= 上限，不是 |leakPct| <= 上限。
-        Check(ref failures, "perf-leak-short", leakPct <= LeakMaxPct,
-            $"steady-growth {Fmt(leakPct)}% <= {Fmt(LeakMaxPct)}%"
-            + $" handle={handlesMid}->{handlesEnd} (D-14d full judgement needs --soak 28800)");
-        failures += Regression(failures: 0, cpuPct, wsMb, firstFrameMs, writeBaseline, note);
+        // D-14d 每 8h ≤5%：短跑测的是「稳态窗内**回收后仍驻留**的东西是否还在长」。
+        //
+        // 2026-10-22 改口径（原因与三次实测见 PerfGate.Soak.cs 文件头）：毛工作集在有分配压力
+        // 但没有自然 GC 的窗口里会跟着「GC 已提交、尚未回收的段」一起涨（实测 180s +43~49%、
+        // 300s +76%，而同期 retained-heap 是 0.63→0.62MB 平的），判它会把「GC 还没跑」当成泄漏。
+        // 所以这里判两件**回收后仍然存在**的东西：① 托管堆驻留增量 ≤0.5MB；② 非托管对象不增
+        // （GDI/USER/句柄，泄漏时只能靠它们看出来）。增长方向才算缺陷，内存回落不是缺陷。
+        double retainedMb = (heapWinEnd - heapWinMid) / (1024.0 * 1024.0);
+        int gdiDelta = guiWinEnd.Gdi - guiWinMid.Gdi;
+        int userDelta = guiWinEnd.User - guiWinMid.User;
+        int handleDelta = handlesEnd - handlesMid;
+        bool nativeOk = gdiDelta <= 0 && userDelta <= 0 && handleDelta <= 0;
+        Check(ref failures, "perf-leak-short", retainedMb <= RetainedGrowthMaxMb && nativeOk,
+            $"retained {Fmt(retainedMb)}MB <= {Fmt(RetainedGrowthMaxMb)}MB"
+            + $" gdi={gdiDelta:+0;-0;0} user={userDelta:+0;-0;0} handles={handleDelta:+0;-0;0}"
+            + $" (毛工作集 {Fmt(leakPct)}% 只作展示：见 INFO perf-soak)");
+        failures += Regression(failures: 0, cpuPct, wsMb, firstFrameMs, retainedMb, writeBaseline, note);
         JudgeOccluded(occluded, ref failures);
 
         Emit(failures == 0 ? "PERF-OK" : "PERF-FAIL");
@@ -155,7 +179,7 @@ internal static partial class PerfGate
 
     /// <summary>D-14e/D-14f：与 tests/perf.baseline.json 比对；--write-baseline 时重钉基线。</summary>
     private static int Regression(int failures, double cpuPct, double wsMb, double firstFrameMs,
-        bool writeBaseline, string note)
+        double retainedMb, bool writeBaseline, string note)
     {
         string path = BaselinePath;
         if (writeBaseline)
@@ -173,7 +197,8 @@ internal static partial class PerfGate
                 ["m-02"] = new JsonObject { ["cpu_idle_pct"] = Round(cpuPct), ["limit"] = CpuIdleMax },
                 ["m-04"] = new JsonObject { ["private_ws_mb"] = Round(wsMb), ["limit"] = PrivateWsMaxMb },
                 ["m-03"] = new JsonObject { ["first_frame_ms"] = Round(firstFrameMs), ["limit"] = FirstFrameMaxMs },
-                ["unit"] = "docs/41 D-14a/b/c；--write-baseline 每改一次必须带 note",
+                ["d-14d"] = new JsonObject { ["retained_heap_mb"] = Round(retainedMb), ["limit_mb"] = RetainedGrowthMaxMb },
+                ["unit"] = "docs/41 D-14a/b/c/d；--write-baseline 每改一次必须带 note",
             };
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
@@ -193,14 +218,26 @@ internal static partial class PerfGate
         double bCpu = Num(b, "m-02", "cpu_idle_pct");
         double bWs = Num(b, "m-04", "private_ws_mb");
         double bFirst = Num(b, "m-03", "first_frame_ms");
+        double bRetained = Num(b, "d-14d", "retained_heap_mb");
 
         string detail = $"cpu {Fmt(bCpu)}->{Fmt(cpuPct)} ws {Fmt(bWs)}->{Fmt(wsMb)}"
-            + $" first {Fmt(bFirst)}->{Fmt(firstFrameMs)} baseline-cpu={bEnv}";
+            + $" first {Fmt(bFirst)}->{Fmt(firstFrameMs)} retained {Fmt(bRetained)}->{Fmt(retainedMb)}MB"
+            + $" (cpu-noise-floor {Fmt(CpuNoiseFloorPct)}pp)"
+            + $" baseline-cpu={bEnv}";
         // 环境不同时**不算回归失败**（跨硬件比较没有意义，docs/41:129 单机单环境），但必须显式提示。
         bool sameEnv = bEnv == CpuModel();
         double cpuDelta = bCpu > 0 ? (cpuPct - bCpu) * 100 / bCpu : 0;
-        double wsDelta = bWs > 0 ? (wsMb - bWs) * 100 / bWs : 0;
-        bool regressed = sameEnv && (cpuDelta > RegressionMaxPct || wsDelta > RegressionMaxPct);
+        // CPU 一侧保留 D-14e 的**相对**语义（docs/41:130），但要套一个噪声地板：
+        // 空闲基线实测在 0.03~0.07% 之间抖（0.01 个百分点就是 16%），5% 的相对阈值在这个量级上
+        // 小于读数分辨率 —— 一条恒红或者恒绿的门禁都不是门禁（2026-10-20/10-22 两次实测踩到）。
+        // 地板取 0.05 个百分点 = M-02 上限 0.50% 的 1/10：只有跨过它，相对恶化才值得判红。
+        bool cpuRegressed = cpuDelta > RegressionMaxPct && cpuPct - bCpu > CpuNoiseFloorPct;
+        // 内存一侧比的是 retained-heap（2026-10-22 改）：毛工作集的差值里全是 GC 提交段噪声
+        // （同一命令 13.7~23.5MB），拿它比基线只会得到随机红绿；retained 才是「变肥了没有」。
+        // 阈值用**绝对量**而非百分比：retained 的基线本身就贴着 0（实测 -0.03~+0.00MB），
+        // 拿 0 附近的两个数算百分比，每次都会算出几十个百分点 —— 噪声地板就是 RetainedGrowthMaxMb。
+        bool regressed = sameEnv
+            && (cpuRegressed || retainedMb - bRetained > RetainedGrowthMaxMb);
         Check(ref failures, "perf-regression", !regressed, detail + (sameEnv ? "" : " (env-changed: 重钉基线)"));
         return failures;
     }

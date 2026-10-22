@@ -21,66 +21,6 @@ using PetDock.Core.Sandbox;
 
 namespace PetDock.Hosting;
 
-/// <summary>
-/// 已落地事件与宿主自身补发事件的分发口（M2 的最小面）。
-/// 总线路由（docs/16 的 emit / parallel / serial / bail / waterfall 五种分发模式）属 M3/M4；
-/// M2 只提供「记账 + 可注入的观察者」两个能力，好让判据（t4/t5）能读到 emit 真的落地了。
-/// 事件信封（docs/02 §1.4）不在此解释载荷语义 —— 总线不解释载荷（同条款）。
-/// </summary>
-public sealed class HostEventDispatch
-{
-    private readonly List<PetEvent> _log = new();
-
-    /// <summary>每条落地的事件（M2 记账；顺序 = 落地顺序）。</summary>
-    public IReadOnlyList<PetEvent> Log => _log;
-
-    /// <summary>观察者：宿主补发事件（如 host.canceled）与插件 emit 都会到这里。</summary>
-    public event EventNotifyDelegate? Published;
-
-    /// <summary>记录并发布一条事件。表外事件 fail-closed：不入 Log、留审计行（契约 §2.2）。</summary>
-    public void Publish(PetEvent evt)
-    {
-        ArgumentNullException.ThrowIfNull(evt);
-        if (!EventCatalog.Contains(evt.Type))
-        {
-            OutsideCatalog++;
-            KernelLog.Write($"event-rejected outside-catalog type={evt.Type}");
-            return;
-        }
-
-        _log.Add(evt);
-        try
-        {
-            Published?.Invoke(evt);
-        }
-        catch (Exception error)
-        {
-            KernelLog.Write($"event-observer-failed {error.GetType().Name}: {error.Message}");
-        }
-    }
-
-    /// <summary>被目录守门拒绝的表外事件数（判据面）。</summary>
-    public int OutsideCatalog { get; private set; }
-
-    /// <summary>按类型计数（判据面）。</summary>
-    public int CountOf(string type)
-    {
-        int n = 0;
-        foreach (PetEvent evt in _log)
-        {
-            if (string.Equals(evt.Type, type, StringComparison.Ordinal))
-            {
-                n++;
-            }
-        }
-
-        return n;
-    }
-}
-
-/// <summary>事件观察者回调（自声明代替系统泛型委托，理由见 HostingTypes.cs 的先例）。</summary>
-public delegate void EventNotifyDelegate(PetEvent evt);
-
 /// <summary>宿主征询回调：suspend 指令落地前先过 host.suspend 的 bail 派发（docs/16:41 逐字）。</summary>
 public delegate bool SuspendVetoDelegate(string reason);
 
@@ -394,7 +334,7 @@ public sealed class HostArbiter
         }
 
         return $"arbiter {text} leases={GrantedCapabilities}"
-            + $" moveTo={LastMoveTo?.ToString() ?? "-"} emits={Events.Log.Count}"
+            + $" moveTo={LastMoveTo?.ToString() ?? "-"} emits={Events.TotalPublished}"
             + $" received={Received} last-refusal={LastRefusal}";
     }
 }

@@ -493,6 +493,24 @@
           "lines": 23
         }
       ]
+    },
+    {
+      "date": "2026-10-22",
+      "measured": 18330,
+      "budget": 18377,
+      "note": "`--perftest --soak` 的 D-14d 短形态判红（毛工作集 +40~75% 且没有平台期）归因：**不是泄漏，是 GC 已提交段**。180s 实测 heap 2.07→10.05MB 而 gc0/gc2 全程 0 —— 分配率约 45KB/s（30 tick/s × `core.clock.tick` 的 PetEvent+JsonObject）太低，GC 把 gen0 预算抬得很大，短窗内一次都不回收；强制回收后 retained 只有 0.6MB 且全程持平，GDI/USER/句柄零增。判据因此从「毛工作集 ≤5%」改成「forced-GC 后的 retained 托管堆 ≤0.5MB 且非托管计数不增」，毛工作集降为展示读数。同片两件 src 改动：① `HostEventDispatch._log` 的无界 `List<PetEvent>` 改成 256 条环形窗口 + 全量 `TotalPublished` + 按类型的全量计数（`CountOf` 不再只数窗口内）；② 改完 `HostArbiter.cs` 越过 D-03c 的 400 行上限，把事件派发类整体拆到独立文件。测试面（`PerfGate.Soak.cs`、`EventSelfTest.Log.cs`、`PerfGate.cs` 判定改动）按 D-03a 不计入本预算。",
+      "attribution": [
+        {
+          "slice": "D-14d 根因修复：事件日志有界化（256 条环形窗口 + 全量 total + 按类型全量计数），并按 D-03c 拆进独立文件",
+          "files": ["packages/core/PetDock.Core/src/Host/EventDispatchLog.cs"],
+          "lines": 83
+        },
+        {
+          "slice": "HostArbiter.cs 让出事件派发类（拆片的另一侧，净减）",
+          "files": ["packages/core/PetDock.Core/src/Host/HostArbiter.cs"],
+          "lines": -60
+        }
+      ]
     }
   ]
 }
