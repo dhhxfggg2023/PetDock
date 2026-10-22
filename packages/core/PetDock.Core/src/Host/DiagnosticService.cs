@@ -106,7 +106,14 @@ internal sealed class DiagnosticService
     /// 跨进程审计流水（可空：没接流水时回退到环形缓冲）。
     /// 导出前要先 FlushNow —— 否则包里少最后一段（与日志层同一条纪律）。
     /// </summary>
+    /// <summary>跨进程审计流水（可写口：装配层接上；未接时诊断包摘要如实写「不可用」）。</summary>
     public AuditTrail? Trail { get; set; }
+
+    /// <summary>
+    /// 插件日志收口（RFC-23）。装配层把同一个实例同时赋给 <c>PluginLog.Sink</c> 与本属性，
+    /// 于是诊断包读到的是**真实经过收口的条数**，而不是另起一份计数。
+    /// </summary>
+    public HostPluginLog? PluginLog { get; set; }
 
     /// <summary>采集一次读数。全部取自现成读数，不引入新的测量链。</summary>
     public DiagnosticReadings CollectReadings()
@@ -277,7 +284,13 @@ internal sealed class DiagnosticService
             ThrottleTier: FrameLoop is null ? string.Empty : TierToken(FrameLoop.Tier),
             ThrottleTicks: FrameLoop?.Ticks ?? 0,
             ThrottleSubmitted: FrameLoop?.Submitted ?? 0,
-            ThrottleSkipped: FrameLoop?.Skipped ?? 0);
+            ThrottleSkipped: FrameLoop?.Skipped ?? 0,
+            PluginLogSummary: PluginLog is null
+                ? DiagnosticPluginLog.Empty
+                : new DiagnosticPluginLog(
+                    PluginLog.Written,
+                    PluginLog.TrailRows,
+                    PluginLog.ErrorCounts()));
     }
 
     /// <summary>

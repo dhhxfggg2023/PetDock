@@ -56,7 +56,12 @@ public sealed partial class PetInstance
             return still;
         }
 
-        Frame frame = View.QueryFrame(nowMs);
+        Frame frame;
+        // RFC-23 §3.3 第 2 点：取帧是调用进插件代码，归属作用域包住它。
+        using (PluginLog.Scope(PluginId))
+        {
+            frame = View.QueryFrame(nowMs);
+        }
         CheckFrame(frame);
         Swap(frame.BitmapHandle.Bitmap, frame);
         Frames++;

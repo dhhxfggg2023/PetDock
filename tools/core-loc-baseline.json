@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 18627,
+  "budget": 19042,
   "history": [
     {
       "date": "2026-10-18",
@@ -543,6 +543,49 @@
           "slice": "RFC-22 D 判据专用事件入口（从生产路径同一个委托抬 core.window.moved）",
           "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"],
           "lines": 12
+        }
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "measured": 18995,
+      "budget": 19042,
+      "note": "RFC-23「插件日志面」（docs/20 §1 的 `@petdock/sdk/log`，此前全仓零实现：JS 侧 `__bind` 无人调用、C# 侧连类型都没有）。形态是一层**静态门面 + AsyncLocal 归属作用域 + 单一收口**：插件写 `PluginLog.Info(...)`，宿主在每次「即将进入插件代码」的时刻开作用域把这段日志记到那个插件头上；作用域外写的记 `(unattributed)`，**绝不猜**归属（记错比不记更坏）。路由：info 只进通用日志；warn/error 另记进审计流水（新增 `kind=log`，warn/error 是「需要人看见的决定」，info 不是）；debug 接受调用但不落盘、只计数（docs/20:50 承诺的「仅开发模式落盘」没有宿主开关承接，登记为 §8 冲突）；收口自身抛异常一律吞掉并计数（一次日志失败不能带走插件的一帧）。同片把 `PetInstance` 的两处插件调用（brain init/tick）挪进新 partial `PetInstance.Brain.cs` 以获得作用域包围，`PetInstance.cs` 因此净减 43 行。按 D-03a 只申报 src 面增量，test/SelfCheck 的判据体（`PetDriveTest.Log.cs` 173 行）不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-23 A 插件日志门面（级别/作用域/计数器/故障隔离，无 Win32 依赖）",
+          "files": ["packages/core/PetDock.Core/src/PetRuntime/PluginLog.cs"],
+          "lines": 162
+        },
+        {
+          "slice": "RFC-23 B 宿主收口（路由 info→通用日志、warn/error→审计流水、按插件错误计数）",
+          "files": ["packages/core/PetDock.Core/src/Host/HostPluginLog.cs"],
+          "lines": 149
+        },
+        {
+          "slice": "RFC-23 C 归属接线（brain 调用挪进新 partial + 视图/行为两颗插件 id 分开记 + 装载期传 brain id）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.Brain.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.Frames.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": 49
+        },
+        {
+          "slice": "RFC-23 D 诊断包读数（summary.txt 的插件日志行 + 按插件错误数）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DiagnosticReadings.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticSections.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs"
+          ],
+          "lines": 55
+        },
+        {
+          "slice": "RFC-23 E 自检形态也接上收口（每个门禁都真的走一遍「插件→门面→收口」，不再只有桩件）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 8
         }
       ]
     }

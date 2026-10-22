@@ -165,7 +165,10 @@ public sealed class PetSurfaceRoster
             view = FreshView(view);
         }
 
-        return new PetInstance($"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots);
+        // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
+        string? brainPluginId = Find<IBrain>()?.PluginId;
+        return new PetInstance(
+            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId);
     }
 
     /// <summary>

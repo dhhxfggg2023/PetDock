@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Core.PetRuntime;
 using PetDock.Core.Ui;
 using PetDock.Hosting;
 
@@ -38,6 +39,14 @@ internal static partial class Program
         bool uiTest = args.Any(a => string.Equals(a, "--uitest", StringComparison.Ordinal));
         int goldenIdx = Array.FindIndex(args, a => string.Equals(a, "--golden-baseline", StringComparison.Ordinal));
         bool goldenTest = goldenIdx >= 0;
+
+        // 自检形态也装上插件日志收口（RFC-23）：没有审计流水（trail 传 null），
+        // 但「插件 → SDK 转发的门面 → 内核静态门面 → 收口」这条链因此每次门禁都真的被走一遍，
+        // 而不是只靠 --drivetest 里的桩件。常驻形态的接法见 RunResident（那里有流水）。
+        if (selfTest || hostTest || animTest || driveTest || eventTest || perfTest || uiTest || goldenTest)
+        {
+            PluginLog.Sink = new HostPluginLog(trail: null);
+        }
 
         // 等价于 ApplicationConfiguration.Initialize()：不调用生成版本，
         // 以免它内部的默认 DPI 模式覆盖上面刚设置的 Per-Monitor V2
@@ -137,7 +146,13 @@ internal static partial class Program
         KernelLog.Sink = residentLog;
         KernelLog.Write("resident-log-started");
 
+        // 插件日志面（RFC-23 / docs/20 §3）：装上收口，于是插件写 PluginLog.* 有地方去。
+        // 必须在窗口装好内容之后、任何插件代码跑起来之前装（init 阶段就打日志的插件要留得下痕）。
+        var pluginLog = new HostPluginLog(auditTrail);
+        PluginLog.Sink = pluginLog;
+
         var diagnostics = new DiagnosticService(dataStore, pluginHost, pet, residentLog);
+        diagnostics.PluginLog = pluginLog;
 
         // 诊断包的审计一节读跨进程流水（RFC-20 §3.4）。流水不可用时诊断包自己回退
         // 到环形缓冲，并在摘要里写明「不是全量」。

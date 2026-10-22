@@ -38,7 +38,8 @@ public sealed partial class PetInstance : IDisposable
         IPetState? stateLayer,
         string pluginId,
         string sourceKind,
-        IReadOnlyList<string>? assetRoots = null)
+        IReadOnlyList<string>? assetRoots = null,
+        string? brainPluginId = null)
     {
         Id = instanceId;
         View = view;
@@ -46,6 +47,7 @@ public sealed partial class PetInstance : IDisposable
         Surfaces = surfaces;
         StateLayer = stateLayer;
         PluginId = pluginId;
+        BrainPluginId = string.IsNullOrEmpty(brainPluginId) ? pluginId : brainPluginId!;
         SourceKind = sourceKind;
         AssetRoots = assetRoots ?? Array.Empty<string>();
         Display = new DegradationChain();
@@ -60,6 +62,13 @@ public sealed partial class PetInstance : IDisposable
 
     /// <summary>提供本实例视图面的插件 id（宿主侧记账用；ABI 里没有这个概念）。</summary>
     public string PluginId { get; }
+
+    /// <summary>
+    /// 提供本实例行为层的插件 id（RFC-23 §3.3：日志归属用）。视图与行为可以是两个不同的插件，
+    /// 所以归属不能只记一个 id —— 记错了比不记更坏（那种「日志归错人」事后无法从行里看出来）。
+    /// 未装配独立行为层时与 <see cref="PluginId"/> 相同。
+    /// </summary>
+    public string BrainPluginId { get; }
 
     /// <summary>视图面是怎么来的：声明式 dll 探测（"dll"）或宿主内注册的桩件（"stub"）。</summary>
     public string SourceKind { get; }
@@ -186,9 +195,13 @@ public sealed partial class PetInstance : IDisposable
             Description?.Assets ?? Array.Empty<string>(),
             budget,
             AssetRoots);
-        View.InitAsync(ctx).GetAwaiter().GetResult();
-        Description = View.Describe();
-        View.Attach(Target);
+        // RFC-23 §3.3 第 1 点：init/describe/attach 算插件代码的一段，整段一个归属作用域。
+        using (PluginLog.Scope(PluginId))
+        {
+            View.InitAsync(ctx).GetAwaiter().GetResult();
+            Description = View.Describe();
+            View.Attach(Target);
+        }
         Bitmaps.ReleaseAll(); // init 之前的任何句柄都不该留在 registry 里
         InitBrain(budget);
 
@@ -201,64 +214,8 @@ public sealed partial class PetInstance : IDisposable
     /// <summary>docs/11 §10：discovered → imported（manifest 已读且校验通过）。</summary>
     public void MarkImported(string reason, long atMs = 0) => Move(InstanceState.Imported, reason, atMs);
 
-    /// <summary>
-    /// 行为层的初始化（docs/11 §4 的 init(ctx)）。**M4 修复前这条链上是空的**：
-    /// core 只调了视图面的 InitAsync，行为层从构造到销毁一次都没被初始化过，
-    /// 于是插件自己写在 init 里的可见日志永远不出现（M4-VERIFY-r2.md 的 E 号缺口）。
-    /// 失败按 docs/11 §9 处理：记 degraded、不抛 —— 一只坏 brain 不该让整只宠物起不来。
-    /// </summary>
-    private void InitBrain(ResourceBudget budget)
-    {
-        if (Brain is null)
-        {
-            return;
-        }
-
-        try
-        {
-            Brain.InitAsync(new BrainContext(Id, StateLayer, budget)).GetAwaiter().GetResult();
-        }
-        catch (Exception error)
-        {
-            BrainFaults++;
-            BrainDegraded = true;
-            LastFailure = $"brain-init-failed {error.GetType().Name}: {error.Message}";
-            KernelLog.Write($"brain-init-failed instance={Id} {error.GetType().Name}: {error.Message}");
-        }
-    }
-
     /// <summary>docs/11 §10：instantiated → running（帧循环 + tick + 事件投递）。</summary>
     public void Start(long atMs = 0) => Move(InstanceState.Running, "frame loop started", atMs);
-
-    /// <summary>
-    /// docs/11 §4 / §9：一次 brain tick。抛异常 → 本 tick 的指令全部作废 + 标记 degraded。
-    /// dt 由调用方给出（可累加、可被零化），零化规则见 <see cref="NextDeltaMs"/>。
-    /// </summary>
-    public void TickBrain(int dtMs, WorldSnapshot world)
-    {
-        Ticks++;
-        if (Brain is null)
-        {
-            return;
-        }
-
-        IReadOnlyList<BrainDirective> directives;
-        try
-        {
-            directives = Brain.Tick(dtMs, world);
-        }
-        catch (Exception error)
-        {
-            BrainFaults++;
-            BrainDegraded = true;
-            LastFailure = $"brain-tick-failed {error.GetType().Name}: {error.Message}";
-            Display.Advance(DisplayTier.ReducedRate, "brain tick failed", 0);
-            return; // 指令全部作废：一条都不落地（docs/11:259）
-        }
-
-        BrainDegraded = false;
-        Arbiter.Apply(directives);
-    }
 
     /// <summary>
     /// 帧间 dt（docs/11:134「须可被累加、可被零化（挂起时）」）。

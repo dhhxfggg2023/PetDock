@@ -57,6 +57,31 @@ internal static class DiagnosticSections
             sb.Append("节流档位: (未接帧循环)").Append(Environment.NewLine);
         }
 
+        // RFC-23 §3.2：插件日志的规模。没接收口时写「未接」——
+        // 「没接上」与「插件一条都没打」在数字上都是 0，在结论上完全不同。
+        DiagnosticPluginLog? log = readings.PluginLogSummary;
+        if (log is null || !log.Connected)
+        {
+            sb.Append("插件日志: (未接收口)").Append(Environment.NewLine);
+        }
+        else
+        {
+            sb.Append("插件日志: written=").Append(log.Written.ToString(CultureInfo.InvariantCulture))
+                .Append(" trail=").Append(log.TrailRows.ToString(CultureInfo.InvariantCulture));
+            if (log.Errors.Count > 0)
+            {
+                var parts = new List<string>();
+                foreach (KeyValuePair<string, int> pair in log.Errors)
+                {
+                    parts.Add(pair.Key + "=" + pair.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                sb.Append(" errors=").Append(string.Join(",", parts));
+            }
+
+            sb.Append(Environment.NewLine);
+        }
+
         sb.Append("插件 (").Append(readings.Plugins.Count.ToString(CultureInfo.InvariantCulture)).Append("):").Append(Environment.NewLine);
         if (readings.RosterUnavailable)
         {

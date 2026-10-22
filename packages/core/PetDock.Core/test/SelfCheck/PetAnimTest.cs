@@ -40,10 +40,19 @@ internal static class PetAnimTest
         // 绝不让未捕获异常逃出 Main 崩进程（旧路径 0xE0434352）。
         PetDescription description;
         RenderTarget target;
+        // 自检在这里扮演宿主：插件日志要有归属（RFC-23）。插件的 id 从名册里那个视图记录取，
+        // 不是从命令行、也不是猜的 —— 名册是唯一发现路径，它说的才是这个实现属于哪个插件。
+        string viewPluginId = roster.Records
+            .Where(r => r.Interface == typeof(IPetView))
+            .Select(r => r.PluginId)
+            .FirstOrDefault() ?? string.Empty;
         try
         {
-            view.InitAsync(new PetViewContext("animtest", Array.Empty<string>(), BudgetFor(128, 128)))
-                .GetAwaiter().GetResult();
+            using (PluginLog.Scope(viewPluginId))
+            {
+                view.InitAsync(new PetViewContext("animtest", Array.Empty<string>(), BudgetFor(128, 128)))
+                    .GetAwaiter().GetResult();
+            }
             description = view.Describe();
             Console.WriteLine($"CHECK-DISPLAY animtest-describe {description}");
             // 画板按实现方声明的自然尺寸给：给错尺寸会让它交付与自己声明不符的帧（判据自身的错）。

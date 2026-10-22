@@ -67,6 +67,22 @@ internal sealed record DiagnosticTrailSummary(
         Note: "(审计流水不可用)");
 }
 
+/// <summary>
+/// 插件日志的读数（RFC-23 / docs/20 §3）：写了多少条、其中多少条进了审计流水、
+/// 以及**按插件**的错误条数。计数来自唯一的收口实例（<see cref="HostPluginLog"/>），
+/// 诊断包不另起一份计数 —— 两份计数迟早会不一致，而不一致时没人知道信哪一份。
+/// </summary>
+internal sealed record DiagnosticPluginLog(
+    int Written,
+    int TrailRows,
+    IReadOnlyList<KeyValuePair<string, int>> Errors,
+    bool Connected = true)
+{
+    /// <summary>没接收口时的诚实形态（写「未接」，绝不写 0 —— 0 会被读成「测过是 0」）。</summary>
+    public static DiagnosticPluginLog Empty { get; } =
+        new(0, 0, new List<KeyValuePair<string, int>>(), Connected: false);
+}
+
 /// <summary>一次导出要收的全部读数。</summary>
 internal sealed record DiagnosticReadings(
     string ProgramVersion,
@@ -91,7 +107,8 @@ internal sealed record DiagnosticReadings(
     string ThrottleTier = "",
     long ThrottleTicks = 0,
     long ThrottleSubmitted = 0,
-    long ThrottleSkipped = 0)
+    long ThrottleSkipped = 0,
+    DiagnosticPluginLog? PluginLogSummary = null)
 {
     /// <summary>
     /// RFC-21 §3.4 / docs/12 §4：当前档位是否是「真的读过」。

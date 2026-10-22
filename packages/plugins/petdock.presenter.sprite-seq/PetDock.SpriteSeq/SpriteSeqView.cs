@@ -64,6 +64,12 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
         }
 
         _pack = pack;
+        // RFC-23 / docs/20 §3：插件侧的日志面。以前这里只能写 stderr —— 内核的日志出口是
+        // internal，插件够不着（见下面那段的由来）。现在走 PluginLog：宿主按作用域把这一行
+        // 记到本插件头上，常驻形态下落进诊断日志，warn/error 还会进审计流水。
+        PluginLog.Info(
+            $"sprite-seq ready clips={pack.Clips.Count}"
+            + $" size={pack.NaturalSize.W:0.#}x{pack.NaturalSize.H:0.#}");
         // 素材来源写进 stderr：插件调不到内核的 KernelLog（internal），而 resident 相位没有
         // 附加控制台，所以自检面（--animtest/--hosttest/--drivetest）里这一行就是
         // 「桌面上是哪一只」的可指名证据。t8 验收 2/3 读它。
