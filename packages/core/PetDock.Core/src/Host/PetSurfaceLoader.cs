@@ -30,7 +30,7 @@ public sealed record SurfaceRejection(string PluginId, string Reason)
 
 /// <summary>已装配的视图面名册：视图插件的实现，与它旁边可能存在的 M0 内容源工厂。
 /// 宿主启动时采一次的只读快照（热重载后重建，见 PluginHost 的 reload 钩子）。</summary>
-public sealed class PetSurfaceRoster
+public sealed partial class PetSurfaceRoster
 {
     private readonly List<SurfaceRecord> _records = new();
     private readonly List<SurfaceRejection> _rejected = new();
@@ -167,8 +167,10 @@ public sealed class PetSurfaceRoster
 
         // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
         string? brainPluginId = Find<IBrain>()?.PluginId;
-        return new PetInstance(
+        PetInstance instance = new(
             $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId);
+        AttachStateStore(instance, assetRoots);
+        return instance;
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 19042,
+  "budget": 19950,
   "history": [
     {
       "date": "2026-10-18",
@@ -586,6 +586,63 @@
           "slice": "RFC-23 E 自检形态也接上收口（每个门禁都真的走一遍「插件→门面→收口」，不再只有桩件）",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 8
+        }
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "measured": 19884,
+      "budget": 19950,
+      "note": "RFC-24：宠物状态层落盘（docs/17 的「快照 + schemaVersion + 宿主侧缓冲区」，此前 IPetState 的实现只有空壳）。形态：<数据区>/state/<实例 id>.json（一实例一文件，不跨宠物共享）、宿主侧缓冲区 + 唯一提交点、单键 8 KiB 拒绝、schema 只许 v1→vN 向前迁移（磁盘更新时只读运行、绝不覆盖）、FileShare.None 锁。同一片把窗口位置的事实源从 settings.json 搬进状态层保留键 position（RFC-22 §7 第 1 条「两者只能留一个」），旧键只在升级时搬一次然后消失。实测增量 +889：本片 src 净增 +782，另 +107 是上一条 measured（18995）与 RFC-23 提交后树实际的差 —— 上一条取的是提交前的一次读数，按 RFC-11 的纪律在这里显式归属，不吞进本片。判据面（test/SelfCheck/StateChecks.cs 289 行、SettingsChecks.cs 的两条新增、PetDriveTest.cs 1 行）按 D-03a 不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-24 A 状态文件本体（形状、两阶段提交、按 key 的单文件定位、8 KiB 拒绝、锁）",
+          "files": ["packages/core/PetDock.Core/src/Host/StateStore.cs"],
+          "lines": 260
+        },
+        {
+          "slice": "RFC-24 B 宿主侧缓冲区与层叠（写-读-提交-迁移-只读阻断，Plugins 的迁移策略在这里被调用）",
+          "files": ["packages/core/PetDock.Core/src/Host/PersistentPetState.cs"],
+          "lines": 266
+        },
+        {
+          "slice": "RFC-24 C 纯内存替身（没有状态插件时的默认实现，同时也是判据里的 inner 层）",
+          "files": ["packages/core/PetDock.Core/src/Host/MemoryPetState.cs"],
+          "lines": 45
+        },
+        {
+          "slice": "RFC-24 D 实例侧的三个入口（装配期换层、宿主写保留键、边界提交）拆进新 partial",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.State.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+          ],
+          "lines": 59
+        },
+        {
+          "slice": "RFC-24 E 名册的落盘配置（StateDir 唯一来源 + 实例接层）拆进新 partial",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.State.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs"
+          ],
+          "lines": 35
+        },
+        {
+          "slice": "RFC-24 F 位置落点改道（读状态层 → 一次性迁移旧键 → 写入状态层并当场提交）",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Position.cs"],
+          "lines": 108
+        },
+        {
+          "slice": "RFC-24 G 数据区解析（state 子目录的唯一定义）与帧合成里的状态出口",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs",
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+          ],
+          "lines": 9
+        },
+        {
+          "slice": "RFC-23 提交后的基线漂移（上一条 measured 取的是提交前读数，与 HEAD 树差 107 行）",
+          "files": ["packages/core/PetDock.Core/src/Host/PetInstance.cs"],
+          "lines": 107
         }
       ]
     }

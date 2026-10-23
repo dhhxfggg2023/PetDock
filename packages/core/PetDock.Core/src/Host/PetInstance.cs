@@ -14,6 +14,7 @@
 // 名字对照表在 docs/handoff/M2-name-map.md（core 之外）。
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 
@@ -103,8 +104,9 @@ public sealed partial class PetInstance : IDisposable
     /// <summary>docs/11 §5 的交互层（0..n，可叠加）。</summary>
     public IReadOnlyList<IPointerSurface> Surfaces { get; }
 
-    /// <summary>docs/11 §6 的状态层（可为 null）。</summary>
-    public IPetState? StateLayer { get; }
+    /// <summary>docs/11 §6 的状态层（可为 null）。
+    /// 装配期可能被 <see cref="InstallStateLayer"/> 换成落盘层（RFC-24），此后只读。</summary>
+    public IPetState? StateLayer { get; private set; }
 
     /// <summary>docs/11 §9 的降级链（只许向前）。</summary>
     public DegradationChain Display { get; }
@@ -245,6 +247,9 @@ public sealed partial class PetInstance : IDisposable
         Move(InstanceState.Suspended, reason, atMs);
         _lastNowMs = null;
         KernelLog.Write($"instance-suspended instance={Id} reason={reason}");
+
+        // RFC-24 §6.3 的提交点之一：挂起是「这一轮到此为止」的边界，缓冲不该跨边界漂着。
+        CommitState();
         Suspended?.Invoke(this, reason);
         return true;
     }
@@ -271,6 +276,10 @@ public sealed partial class PetInstance : IDisposable
         }
 
         _disposed = true;
+
+        // RFC-24 §6.3 的提交点：释放前把缓冲落盘（位置这类宿主键最后一次更新的地方就在这附近）。
+        // 放在 detach 之前：detach 失败也要落盘，否则「客户端崩了」与「正常退出」的状态不一样。
+        CommitState();
         try
         {
             View.Detach();

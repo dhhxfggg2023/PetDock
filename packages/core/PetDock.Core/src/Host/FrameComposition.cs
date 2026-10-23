@@ -57,6 +57,9 @@ internal static class FrameComposition
         KernelLog.Write($"surface-roster phase={phase} {roster.Describe()}");
         roster.BrainSelector = BrainSelectorFromEnvironment();
 
+        // RFC-24 §6.3：装载期给出状态目录，之后每只实例的落盘都落在它下面。
+        roster.StateDir = PetDataStore.Resolve().StateDir;
+
         if (roster.View is not null)
         {
             PetInstance? instance = roster.BuildInstance(phase);

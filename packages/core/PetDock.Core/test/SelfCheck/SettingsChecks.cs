@@ -18,8 +18,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Text.Json.Nodes;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
+using PetDock.Core.PetRuntime;
 using PetDock.Core.Ui;
 using PetDock.Hosting;
 
@@ -35,6 +37,10 @@ internal static class SettingsChecks
 
     /// <summary>自检用的阈值（合法的区间内，80ms = 12.5fps）。</summary>
     private const double ProbePeriodMs = 80.0;
+
+    /// <summary>位置判据用的实例 id：与 PetDriveTest.MakeInstance 造出来的那台一致，
+    /// 状态文件名由它算出（StateStore.KeyFor）。</summary>
+    private const string ProbeInstanceId = "drive.instance";
 
     public static void Run(Check check)
     {
@@ -59,6 +65,8 @@ internal static class SettingsChecks
             check("ui-position-policy-visible", false, "exception");
             check("ui-position-save-on-move", false, "exception");
             check("ui-position-restore-applies", false, "exception");
+            check("ui-position-state-round-trip", false, "exception");
+            check("ui-position-migrates-legacy", false, "exception");
         }
         finally
         {
@@ -168,6 +176,90 @@ internal static class SettingsChecks
 
         // ⑬⑭ 要造真窗口与真宿主：放在最后，因为它们会在真桌面上摆出一台宠物窗。
         RunPositionIoChecks(check, store);
+
+        // ⑮⑯ 位置的事实源搬进状态层（RFC-24 §3.9）：也要真窗口与真宿主。
+        RunStatePositionChecks(check, store, root);
+    }
+
+    /// <summary>
+    /// 位置落点的两条判据（RFC-24 §3.9 / §4）：有状态层时位置只进状态文件，
+    /// `settings.json` 里的旧键只在升级时出现一次然后消失。
+    /// 这两条是「迁移没发生」和「旧位置被静默丢弃」两个症状的判据面。
+    /// </summary>
+    private static void RunStatePositionChecks(Check check, UserSettingsStore store, string root)
+    {
+        // ⑮ 落点是状态层：真宿主 + 真 store + 真状态文件；重开一个 store 读回同一坐标。
+        string stateDir = Path.Combine(root, "state-round-trip");
+        store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage));
+        using (var window = new LayeredFrameWindow())
+        {
+            PetInstance pet = PetDriveTest.MakeInstance(out _, out _);
+            try
+            {
+                pet.InstallStateLayer(PersistentPetState.Attach(
+                    ProbeInstanceId, new MemoryPetState(), stateDir, null, null));
+                using var host = new UiHost(window, pet, null, null, null, store);
+                host.SavePetPosition(320, 240);
+            }
+            finally
+            {
+                pet.Dispose();
+            }
+
+            Point? written = ReadPersistedPosition(stateDir);
+            UserSettings afterWrite = store.Load();
+            bool settingsClean = afterWrite.PetPosition is null && !SettingsFileHasPosition(root);
+            check("ui-position-state-round-trip",
+                written == new Point(320, 240) && settingsClean,
+                $"state={Describe(written)} settings-position={(afterWrite.PetPosition is null ? "(none)" : "present")}");
+        }
+
+        // ⑯ 一次性迁移：旧 `settings.json` 有坐标、状态文件没有 → 恢复时搬进状态层并删旧键。
+        string migrateDir = Path.Combine(root, "state-migrate");
+        store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, PetPosition: new Point(200, 180)));
+        using (var window = new LayeredFrameWindow())
+        {
+            PetInstance pet = PetDriveTest.MakeInstance(out _, out _);
+            try
+            {
+                pet.InstallStateLayer(PersistentPetState.Attach(
+                    ProbeInstanceId, new MemoryPetState(), migrateDir, null, null));
+                using var host = new UiHost(window, pet, null, null, null, store);
+                host.TryRestorePosition();
+                (int restoredX, int restoredY) = window.CurrentPosition;
+                Point? migrated = ReadPersistedPosition(migrateDir);
+                bool legacyGone = store.Load().PetPosition is null && !SettingsFileHasPosition(root);
+                check("ui-position-migrates-legacy",
+                    restoredX == 200 && restoredY == 180 && migrated == new Point(200, 180) && legacyGone,
+                    $"restored={restoredX},{restoredY} state={Describe(migrated)} legacyGone={legacyGone}");
+            }
+            finally
+            {
+                pet.Dispose();
+            }
+        }
+    }
+
+    /// <summary>重开一个 store 从磁盘读回保留键 `position`（不是复用宿主里那个对象）。</summary>
+    private static Point? ReadPersistedPosition(string stateDir)
+    {
+        PersistentPetState reopened = PersistentPetState.Attach(
+            ProbeInstanceId, new MemoryPetState(), stateDir, null, null);
+        return reopened.Read(PersistentPetState.PositionKey) is JsonObject node
+            && node["x"] is JsonValue x
+            && node["y"] is JsonValue y
+            ? new Point(x.GetValue<int>(), y.GetValue<int>())
+            : null;
+    }
+
+    private static string Describe(Point? point) => point is Point value ? $"{value.X},{value.Y}" : "(none)";
+
+    /// <summary>`settings.json` 里还有没有位置这一项（迁移完成后必须没有）。</summary>
+    private static bool SettingsFileHasPosition(string root)
+    {
+        string path = Path.Combine(root, UserSettingsStore.SettingsFile);
+        return File.Exists(path)
+            && File.ReadAllText(path).Contains("petPosition", StringComparison.Ordinal);
     }
 
     /// <summary>窗口/宿主级的两个位置判据（⑬⑭）。</summary>

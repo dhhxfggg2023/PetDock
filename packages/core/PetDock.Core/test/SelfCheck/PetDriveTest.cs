@@ -30,6 +30,7 @@ internal static partial class PetDriveTest
         failures += Pointer();
         failures += Hitmap();
         failures += StateSemantics();
+        failures += StateChecks.Run();
         failures += PluginLogChecks();
         Console.WriteLine(failures == 0 ? "DRIVE-OK" : "DRIVE-FAIL");
         return failures == 0 ? 0 : 1;

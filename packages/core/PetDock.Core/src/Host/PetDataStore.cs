@@ -32,6 +32,9 @@ internal sealed class PetDataStore
     /// <summary>素材包子目录名（刻意不含任何格式词，见 RFC-15 §3.6）。</summary>
     public const string PacksFolder = "packs";
 
+    /// <summary>状态文件子目录名（RFC-24 §6.1）。目录归本类所有，<see cref="Host.StateStore"/> 只管文件。</summary>
+    public const string StateFolder = "state";
+
     /// <summary>清单文件名（记录导入过什么、当前选中哪个）。</summary>
     public const string CatalogFile = "pets.json";
 
@@ -51,6 +54,9 @@ internal sealed class PetDataStore
 
     /// <summary>素材包目录（<root>/packs）。</summary>
     public string PacksDir => Path.Combine(Root, PacksFolder);
+
+    /// <summary>状态文件目录（<root>/state）。</summary>
+    public string StateDir => Path.Combine(Root, StateFolder);
 
     /// <summary>清单文件路径。</summary>
     public string CatalogPath => Path.Combine(Root, CatalogFile);
