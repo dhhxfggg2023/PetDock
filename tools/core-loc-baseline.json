@@ -839,6 +839,29 @@
           "lines": -10
         }
       ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21506,
+      "budget": 21650,
+      "note": "RFC-34：宿主消费会话（禁用 = 暂停 tier-2 客体、内容源与头脑在非 Running 会话上不发 RPC）。实测增量 +24（21482 → 21506），未抬 budget：余量仍有 144 行。判据（tests/m7 的 2 条 m7-tier2-host-*）不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-34 A PluginHost.Lifecycle.cs DisableCore：tier-2 句柄暂停会话并落审计行",
+          "files": ["packages/core/PetDock.Core/src/Host/PluginHost.Lifecycle.cs"],
+          "lines": 9
+        },
+        {
+          "slice": "RFC-34 B Tier2FrameContent.GetFrameContent：会话非 Running 直接返回 null（不发 RPC）",
+          "files": ["packages/core/PetDock.Core/src/Host/Tier2FrameContent.cs"],
+          "lines": 8
+        },
+        {
+          "slice": "RFC-34 C Tier2BrainBridge.Tick：会话非 Running 计一次 dropped 并返回空列表",
+          "files": ["packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"],
+          "lines": 7
+        }
+      ]
     }
   ]
 }

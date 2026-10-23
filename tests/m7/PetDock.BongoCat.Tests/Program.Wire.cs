@@ -241,6 +241,82 @@ internal static partial class Program
         }
     }
 
+    /// <summary>RFC-34：宿主「禁用」要真的停掉 tier-2 客体 —— 停的判据是「不再有帧交付」，
+    /// 而不是只看一个状态字段（状态字段自己就能被写对）。</summary>
+    private static void Tier2HostSession()
+    {
+        string exe = Path.Combine(AppContext.BaseDirectory, "PetDock.BongoCat.Tests.exe");
+        if (!File.Exists(exe))
+        {
+            Check("tier2-host-disable-pauses", false, $"guest-exe-missing {exe}");
+            return;
+        }
+
+        string root = Path.Combine(AppContext.BaseDirectory, "tier2-session-host-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string pluginDir = Path.Combine(root, "com.petdock.tier2.guest");
+            CreateDirRobust(pluginDir);
+            WriteTextRobust(Path.Combine(pluginDir, "petdock-plugin.json"), Tier2GuestManifest(exe));
+            Environment.SetEnvironmentVariable("PETDOCK_TIER2_GUEST", "wire");
+
+            var host = new PluginHost(root, 1000, autoLoad: false);
+            host.Start();
+            var validated = host.ValidateManifest(pluginDir);
+            if (!validated.IsOk)
+            {
+                Check("tier2-host-disable-pauses", false,
+                    "manifest-rejected: " + string.Join(";", validated.Error!.Select(e => $"{e.Field}={e.Message}")));
+                host.Dispose();
+                return;
+            }
+
+            IPluginHandle handle = host.Load(validated.Ok!, CancellationToken.None).GetAwaiter().GetResult();
+            IFrameContentSource? content = host.CreateFrameContent(handle);
+            IBrain? brain = host.CreateBrain(handle);
+            var world = new WorldSnapshot(new PetPoint(10, 10), new PetRect(0, 0, 128, 128), "code", 600, false);
+
+            // ① 禁用前：真交付一帧（否则「禁用后没有帧」可能是它本来就交付不出来）。
+            using Bitmap? before = content?.GetFrameContent(new Size(8, 8));
+            IReadOnlyList<BrainDirective> beforeTick = brain?.Tick(16, world) ?? Array.Empty<BrainDirective>();
+
+            // ② 产品入口禁用它。
+            host.Disable(handle).GetAwaiter().GetResult();
+
+            // ③ 禁用后：内容源不再给帧、头脑不再下指令，且都不抛。
+            using Bitmap? after = content?.GetFrameContent(new Size(8, 8));
+            IReadOnlyList<BrainDirective> afterTick = brain?.Tick(16, world) ?? Array.Empty<BrainDirective>();
+            bool paused = handle.State == PluginLifecycleState.Suspended
+                && before is not null && after is null
+                && beforeTick.Count == 2 && afterTick.Count == 0;
+            Check("tier2-host-disable-pauses", paused,
+                $"state={handle.State} before={before is not null} after={after is null}"
+                + $" ticks={beforeTick.Count}->{afterTick.Count}");
+
+            // ④ 暂停期间 repeatedly 取帧都是 null（不是「第一次 null、第二次又活了」）。
+            bool staysNull = true;
+            for (int i = 0; i < 3; i++)
+            {
+                using Bitmap? again = content?.GetFrameContent(new Size(8, 8));
+                staysNull &= again is null;
+            }
+            Check("tier2-host-pause-stays-null", staysNull, $"staysNull={staysNull}");
+
+            content?.Dispose();
+            host.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Check("tier2-host-disable-pauses", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PETDOCK_TIER2_GUEST", null);
+            try { Directory.Delete(root, recursive: true); }
+            catch { /* 子进程句柄延迟释放时容忍 */ }
+        }
+    }
+
     // ---------- 客体角色（mode=wire） ----------
 
     /// <summary>mode=wire 的客体状态：帧号、脚本开关、状态层、收到的通知。</summary>

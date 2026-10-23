@@ -48,6 +48,13 @@ internal sealed class Tier2FrameContent :
 
     public Bitmap? GetFrameContent(Size frameSize)
     {
+        // RFC-34 §3.2：会话不在 Running 时不发 RPC —— 暂停/崩溃的客体没有帧可给，
+        // 而每次 TryQueryFrame 都是一次往返（还会推进它的 frameId）。返回 null 即退回兜底帧。
+        if (_sandbox.Session != Tier2SessionState.Running)
+        {
+            return null;
+        }
+
         int nowMs = (int)Math.Min(int.MaxValue, Environment.TickCount64 - _startedAt);
         if (!_sandbox.TryQueryFrame(nowMs, out Tier2Frame? frame, out _) || frame is null)
         {

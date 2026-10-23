@@ -51,6 +51,7 @@ internal static partial class Program
         Tier2ProcessBoundary();
         Tier2WireContract();
         Tier2HostConsumption();
+        Tier2HostSession();
         Tier2Composition();
         Tier2SessionLifecycle();
 

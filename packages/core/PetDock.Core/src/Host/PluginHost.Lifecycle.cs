@@ -199,6 +199,15 @@ public sealed partial class PluginHost
         }
         // 3) 状态保留（docs/13 §3）：不卸载 —— 沙箱、计数、manifest 全部保留，仅 Suspended
         handle.State = PluginLifecycleState.Suspended;
+
+        // 4) RFC-34 §3.1：tier-2 禁用 = 暂停会话。进程留着（再启用不必重握手），但不再为
+        //    看不见的帧干活；不暂停的话「已禁用」的客体仍会被帧源每帧叫一次。
+        if (handle.Tier2 is not null)
+        {
+            handle.Tier2.Pause();
+            KernelLog.Write($"tier2-pause plugin={handle.Manifest.Id} session={handle.Tier2.Session}");
+        }
+
         Publish("pluginSuspend", handle.Manifest.Id);
     }
 

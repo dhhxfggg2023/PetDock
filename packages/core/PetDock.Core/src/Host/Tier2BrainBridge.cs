@@ -39,6 +39,14 @@ internal sealed class Tier2BrainBridge : IBrain
 
     public IReadOnlyList<BrainDirective> Tick(int dtMs, WorldSnapshot world)
     {
+        // RFC-34 §3.3：会话没在跑就不发 RPC —— 暂停/崩溃的客体给不出这个 tick 的指令，
+        // 而每次 TryTickBrain 都是一次往返。空列表 = 本 tick 无指令（Brain.cs:182-184 的同一语义）。
+        if (_sandbox.Session != Tier2SessionState.Running)
+        {
+            TicksDropped++;
+            return Array.Empty<BrainDirective>();
+        }
+
         if (_sandbox.TryTickBrain(dtMs, world, out IReadOnlyList<BrainDirective>? directives, out _)
             && directives is not null)
         {
