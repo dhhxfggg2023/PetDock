@@ -161,6 +161,8 @@ public sealed partial class Tier2Sandbox : IDisposable
                 ("pid", process.Id),
                 ("rpc", HandshakeMethod),
                 ("hello", Hello?.Id ?? "<none>"));
+            _session = Tier2SessionState.Running;
+            _restartWindowStartMs = Environment.TickCount64;
             return true;
         }
         catch (Exception ex)
@@ -171,23 +173,8 @@ public sealed partial class Tier2Sandbox : IDisposable
         }
     }
 
-    /// <summary>驱动一帧；返回子进程是否仍在服务。</summary>
-    public bool Tick(int dtMs)
-    {
-        if (!IsLoaded)
-        {
-            return false;
-        }
-
-        Tier2Reply reply = Call("tick", new JsonObject { ["dt"] = dtMs }, _frameBudgetMs);
-        if (!reply.Ok)
-        {
-            Emit(SandboxEventKind.BudgetExceeded, ("stage", "tick"), ("err", reply.Error ?? "<none>"));
-            return false;
-        }
-
-        return IsLoaded;
-    }
+    // Tick 在 Tier2Sandbox.Session.cs（RFC-33）：它是「会话还活着吗、还要不要驱动」的一部分，
+    // 与 Pause/Resume/TryRecover 放在一起才不会出现两处各自判断进程状态。
 
     /// <summary>一次 JSON-RPC 往返：写一行 JSON，读一行 JSON，带超时。</summary>
     public Tier2Reply Call(string method, JsonObject parameters, int? timeoutMs = null)
@@ -222,6 +209,7 @@ public sealed partial class Tier2Sandbox : IDisposable
         {
             Crashes++;
             Emit(SandboxEventKind.GuestFault, ("stage", "write"), ("method", method), ("err", ex.GetType().Name));
+            NoteCrash("write");
             return new Tier2Reply(false, null, $"write-failed: {ex.GetType().Name}");
         }
 
@@ -244,6 +232,7 @@ public sealed partial class Tier2Sandbox : IDisposable
                 Crashes++;
                 Emit(SandboxEventKind.GuestFault, ("stage", "eof"), ("method", method), ("stderr", Tail()));
                 StopProcess();
+                NoteCrash("eof");
                 return new Tier2Reply(false, null, "stdout-closed");
             }
 
@@ -259,6 +248,7 @@ public sealed partial class Tier2Sandbox : IDisposable
             Crashes++;
             Emit(SandboxEventKind.GuestFault, ("stage", "read"), ("method", method), ("err", ex.GetType().Name));
             StopProcess();
+            NoteCrash("read");
             return new Tier2Reply(false, null, $"read-failed: {ex.GetType().Name}");
         }
     }

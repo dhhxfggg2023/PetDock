@@ -387,6 +387,64 @@ internal static partial class Program
         return result;
     }
 
+    // ---------- ⑥ 会话生命周期（RFC-33 §4）----------
+
+    private static void Tier2SessionLifecycle()
+    {
+        string command = Tier2GuestCommand();
+        var sink = new CollectingSink();
+        var gate = new CapabilityGate(new[] { "ipc.tier2:petdock-test-shim" }, null, sink);
+
+        // 暂停：进程留着，但不再下发 RPC（Requests 不动）；恢复后继续下发。
+        var live = new Tier2Sandbox(gate, sink, command, Tier2GuestArgs("normal"), requestTimeoutMs: 2000, frameBudgetMs: 2000);
+        bool up = live.Start();
+        live.Tick(16);
+        long driven = live.Requests;
+        live.Pause();
+        bool pausedTick = live.Tick(16);
+        long afterPause = live.Requests;
+        live.Resume();
+        bool resumedTick = live.Tick(16);
+        long afterResume = live.Requests;
+        Check("tier2-session-pause", up && pausedTick && afterPause == driven && afterResume > afterPause
+            && live.Session == Tier2SessionState.Running,
+            $"up={up} returned={pausedTick} driven={driven} afterPause={afterPause} afterResume={afterResume} session={live.Session}");
+        live.Dispose();
+
+        // 崩溃 → 检出（会话转 Crashed，不是 Faulted：配额还没用）。
+        var crash = new Tier2Sandbox(gate, sink, command, Tier2GuestArgs("crash"), requestTimeoutMs: 2000);
+        bool crashUp = crash.Start();
+        Tier2Reply first = crash.Call("probe", new JsonObject());
+        Tier2Reply second = crash.Call("probe", new JsonObject());
+        int pidBefore = crash.Pid;
+        Check("tier2-session-crash", crashUp && first.Ok && !second.Ok
+            && crash.Session == Tier2SessionState.Crashed && !crash.IsLoaded,
+            $"up={crashUp} first={first.Ok} err={second.Error} session={crash.Session}");
+
+        // 救一次：配额内重 spawn + 重握手，Pid 换新。
+        bool recovered = crash.TryRecover();
+        bool aliveAgain = recovered && crash.Call("probe", new JsonObject()).Ok;
+        Check("tier2-session-recover", recovered && aliveAgain && crash.Session == Tier2SessionState.Running
+            && crash.Restarts == 1 && crash.Pid != pidBefore,
+            $"recovered={recovered} alive={aliveAgain} restarts={crash.Restarts} pid={pidBefore}->{crash.Pid} session={crash.Session}");
+
+        // 配额：连续崩到用完（MaxRestarts=2），之后转 Faulted 且不再救。
+        bool exhausted = false;
+        for (int round = 0; round < 5 && !exhausted; round++)
+        {
+            crash.Call("probe", new JsonObject());
+            crash.Call("probe", new JsonObject());
+            if (crash.Session == Tier2SessionState.Crashed && !crash.TryRecover())
+            {
+                exhausted = true;
+            }
+        }
+
+        Check("tier2-session-quota", exhausted && crash.Session == Tier2SessionState.Faulted && crash.Restarts >= 2,
+            $"exhausted={exhausted} session={crash.Session} restarts={crash.Restarts} crashes={crash.Crashes}");
+        crash.Dispose();
+    }
+
     private static void Tier2ChildResult(string id, JsonNode? result) =>
         Console.Out.WriteLine(new JsonObject
         {

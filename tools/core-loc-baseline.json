@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 21420,
+  "budget": 21650,
   "history": [
     {
       "date": "2026-10-18",
@@ -819,6 +819,24 @@
           "slice": "RFC-32 用户形态抢锁的分派点（诊断旗标不抢锁，+17）",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 17
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21482,
+      "budget": 21650,
+      "note": "RFC-33：tier-2 会话生命周期（Pause/Resume/TryRecover/崩溃检出/重启配额）。实测增量 +169（21313 → 21482），按 RFC-11 抬 budget 到 21650：余量 168 行，口径同 history[23]。判据（tests/m7 的 5 条 m7-tier2-session-*）不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-33 A Tier2Sandbox.Session.cs 新 partial：五态会话机、暂停/恢复、重启配额、崩溃检出、ProcessExited",
+          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Session.cs"],
+          "lines": 179
+        },
+        {
+          "slice": "RFC-33 B Tier2Sandbox.cs：Start 置 Running、三处进程已死分支调 NoteCrash、Tick 移进 Session partial（净 -10）",
+          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"],
+          "lines": -10
         }
       ]
     }

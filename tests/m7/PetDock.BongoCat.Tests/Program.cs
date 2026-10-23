@@ -52,6 +52,7 @@ internal static partial class Program
         Tier2WireContract();
         Tier2HostConsumption();
         Tier2Composition();
+        Tier2SessionLifecycle();
 
         Console.WriteLine(_failures == 0 ? "M7-OK" : $"M7-FAIL n={_failures}");
         return _failures == 0 ? 0 : 1;
