@@ -16,6 +16,9 @@
     "lint:fingerprint": "node tools/asset-fingerprint.mjs",
     "release": "node tools/release.mjs",
     "release:dry": "node tools/release.mjs --dry-run",
+    "pack": "node tools/pack.mjs",
+    "dist": "node tools/release.mjs && node tools/pack.mjs",
+    "dist:selftest": "node tools/portable-selftest.mjs",
     "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/check-dyberpet-coverage.mjs"
   },
   "dependencies": {

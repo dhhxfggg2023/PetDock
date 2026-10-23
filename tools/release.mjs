@@ -90,6 +90,12 @@ function plan(version) {
       kind: 'file',
       why: '装完之后用户看的第一份说明',
     },
+    {
+      from: path.join('packaging', 'INSTALL.md'),
+      to: 'INSTALL.md',
+      kind: 'file',
+      why: 'RFC-25 §3.2：解压即用 / 数据在 data\\ / 删目录即卸载，三句话的唯一说明（README 面向开发者）',
+    },
   ];
 }
 
@@ -143,6 +149,51 @@ function walkFiles(dir, out = []) {
 
 function sha256(file) {
   return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+/**
+ * 只留 win-x64 的 RID 资源。
+ *
+ * 为什么必须剪：`dotnet publish` 默认把**所有** RID 的 runtimes/ 都拖进来（linux-x64 /
+ * linux-arm64 / osx-x64 / osx-arm64 / win-arm64 / win-x64，每个 wasmtime 十几到二十 MB），
+ * 而 7 个插件各自 publish 一份 —— 实测未剪时发布树 711 MB / 164 文件，zip 242 MB。
+ * 桌宠发一个 242 MB 的包没有正当理由，而且那些 .so/.dylib 在 Windows 上永远不会被加载。
+ *
+ * 只剪 `runtimes/<rid>`（rid ≠ win-x64）这一个形状：不碰程序集，也不碰插件自己的资源。
+ */
+function pruneForeignRids(root) {
+  let removed = 0;
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const abs = path.join(dir, entry.name);
+      if (entry.name === 'runtimes') {
+        for (const rid of fs.readdirSync(abs, { withFileTypes: true })) {
+          if (!rid.isDirectory() || rid.name === 'win-x64') {
+            continue;
+          }
+          fs.rmSync(path.join(abs, rid.name), { recursive: true, force: true });
+          removed += 1;
+        }
+        continue;
+      }
+      walk(abs);
+    }
+  };
+  walk(root);
+  return removed;
+}
+
+function totalBytes(dir) {
+  return walkFiles(dir).reduce((sum, file) => sum + fs.statSync(file).size, 0);
 }
 
 /**
@@ -222,7 +273,25 @@ function auditOutput(outDir, version) {
     fail('发布物缺 assets/sample-pet/petdock-sample.json（引导要放置的示例宠物）');
   }
 
-  console.log(`STAT release version=${version} plugins=${manifestCount} files=${walkFiles(outDir).length}`);
+  // ⑧ 便携件必须在（RFC-25 §3.2）：用户拿到的 zip 里必须有便携标记与 INSTALL.md。
+  //    标记缺失 = 数据区跑回 %LOCALAPPDATA%，「一个文件夹」就不成立了；这条守的就是这个退化。
+  for (const name of ['petdock.portable', 'INSTALL.md']) {
+    if (!fs.existsSync(path.join(outDir, name))) {
+      fail(`发布物缺 ${name}（便携标记/说明未随包，文件夹不自包含）`);
+    }
+  }
+
+  // ⑨ 发布物里不许有非 win-x64 的 RID 资源：它们永远不会被加载，却把包撑到 242 MB
+  //    （RFC-25 §2）。剪枝在 §pruneForeignRids，这条守「剪漏了」。
+  for (const file of walkFiles(outDir)) {
+    const rel = path.relative(outDir, file).replaceAll('\\', '/');
+    const rid = rel.match(/(?:^|\/)runtimes\/([^/]+)\//);
+    if (rid && rid[1] !== 'win-x64') {
+      fail(`发布物含非 win-x64 的 RID 资源 ${rel}`);
+    }
+  }
+
+  console.log(`STAT release version=${version} plugins=${manifestCount} files=${walkFiles(outDir).length} mb=${(totalBytes(outDir) / 1048576).toFixed(1)}`);
   return failures;
 }
 
@@ -399,6 +468,15 @@ function main() {
       console.log(`COPIED ${item.from} → ${item.to} (${n} files)`);
     }
   }
+
+  // ②.5 剪掉非 win-x64 的 RID 资源（§pruneForeignRids：体积 + 永远不会被加载）
+  const prunedRids = pruneForeignRids(target);
+  console.log(`PRUNED runtimes non-win-x64=${prunedRids}`);
+
+  // ②.6 写便携标记（RFC-25 §3.3）：core 的 PetDataStore.Resolve 见到它就把数据区落在
+  //      <程序目录>\data，整个文件夹因此自包含 —— 复制到哪都能跑，删掉目录就是卸载干净。
+  fs.writeFileSync(path.join(target, 'petdock.portable'), `${version}\n`, 'utf8');
+  console.log('PORTABLE marker=petdock.portable');
 
   // ③ 出口合规检查
   if (!fs.existsSync(target)) {

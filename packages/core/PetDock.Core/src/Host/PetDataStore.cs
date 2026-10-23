@@ -1,8 +1,9 @@
 // 用户数据区（RFC-15 §3）：导入的素材与清单落在这里。
 //
-// 落点取舍：%LOCALAPPDATA%\PetDock —— 用户可写（Program Files 是只读的，写导入素材会失败）、
-// 随用户漫游、不需要管理员权限、无人值守也能稳定找到。仓库内不放：那里是源码，
-// 用户自己的东西不该混进源码树。测试与开发用 PETDOCK_DATA_ROOT 显式覆盖。
+// 落点取舍（RFC-25 §3.3 修订）：默认 %LOCALAPPDATA%\PetDock —— 用户可写（Program Files 是只读的，
+// 写导入素材会失败）、随用户漫游、不需要管理员权限、无人值守也能稳定找到。发布物里带便携标记
+// （petdock.portable）时改落程序目录的 data\，让「一个文件夹」自包含、删目录即卸载。
+// 仓库内不放：那里是源码，用户自己的东西不该混进源码树。测试与开发用 PETDOCK_DATA_ROOT 显式覆盖。
 //
 // 为什么不按内容寻址存（docs/15 §2 的那一套）：内容寻址要配套 CAS 引用与引用反查表，
 // 而引用方（视图实现）今天只认路径。v1 用「复制进用户数据区 + 按路径引用」近似，
@@ -28,6 +29,16 @@ internal sealed class PetDataStore
 
     /// <summary>数据区在用户目录下的文件夹名。</summary>
     public const string FolderName = "PetDock";
+
+    /// <summary>
+    /// 便携标记文件名（RFC-25 §3.3）：出现在程序目录里即表示「这是个自包含的便携文件夹」，
+    /// 数据区随之落在程序目录的 <see cref="PortableDataFolder"/> 下，整个目录可整体搬走/删掉。
+    /// 发布物由 tools/release.mjs 写入此文件；开发时仓库里没有它，所以仍走 %LOCALAPPDATA%。
+    /// </summary>
+    public const string PortableMarker = "petdock.portable";
+
+    /// <summary>便携部署时数据区在程序目录下的子目录名。</summary>
+    public const string PortableDataFolder = "data";
 
     /// <summary>素材包子目录名（刻意不含任何格式词，见 RFC-15 §3.6）。</summary>
     public const string PacksFolder = "packs";
@@ -64,7 +75,11 @@ internal sealed class PetDataStore
     /// <summary>当前选中的导入物（实例 id + 素材根目录）；没有则 null。</summary>
     public sealed record ActivePack(string InstanceId, string Path);
 
-    /// <summary>定位数据区。显式覆盖优先，其次 %LOCALAPPDATA%，再次程序目录（退化路径）。</summary>
+    /// <summary>
+    /// 定位数据区。优先级：显式覆盖 → 程序目录旁的便携标记 → %LOCALAPPDATA% → 程序目录（退化）。
+    /// 便携标记排在前面，是为了让「解压出来的一大坨文件夹」自包含：数据写在程序目录里，
+    /// 用户把整个文件夹删掉就是卸载干净（RFC-25 §3.4）。
+    /// </summary>
     public static PetDataStore Resolve()
     {
         string? custom = Environment.GetEnvironmentVariable(RootEnv);
@@ -73,10 +88,16 @@ internal sealed class PetDataStore
             return new PetDataStore(Path.GetFullPath(custom));
         }
 
+        string beside = AppContext.BaseDirectory;
+        if (File.Exists(Path.Combine(beside, PortableMarker)))
+        {
+            return new PetDataStore(Path.Combine(beside, PortableDataFolder));
+        }
+
         string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(local))
         {
-            local = AppContext.BaseDirectory;
+            local = beside;
         }
 
         return new PetDataStore(Path.Combine(local, FolderName));

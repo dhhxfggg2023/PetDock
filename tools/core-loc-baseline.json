@@ -645,6 +645,19 @@
           "lines": 107
         }
       ]
+    },
+    {
+      "date": "2026-10-23",
+      "measured": 19905,
+      "budget": 19950,
+      "note": "RFC-25 §3.3：数据区解析增加「程序目录旁的便携标记」分支与两个常量（PetDataStore.Resolve 优先序变成 env → 便携标记 → %LOCALAPPDATA% → 程序目录）。+21 落在上一条预算余额之内，因此本次不抬 budget，只把实测钉进来；判据面（tools/portable-selftest.mjs）不在 core 里，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "RFC-25 §3.3 便携数据区分支与标记常量",
+          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.cs"],
+          "lines": 21
+        }
+      ]
     }
   ]
 }
