@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 19993,
+  "budget": 20760,
   "history": [
     {
       "date": "2026-10-18",
@@ -684,6 +684,34 @@
           "slice": "RFC-26 D 探针出口（ExitForProbe：门禁里没有能点托盘确认框的人）",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
           "lines": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "measured": 20718,
+      "budget": 20760,
+      "note": "RFC-27：tier-2 跨进程 wire 契约（docs/50 M7 的未交付项：docs/11 四个 ABI 接口里帧/命中图、事件包、状态三者的跨进程包形状，外加 docs/14 第 5 节缺失的会话 wire 字节配额）。宿主侧三个新文件 + Tier2Sandbox 边界骨架改造；判据面（tests/m7 的 Program.Wire.cs 与 Program.cs 改造）在 tests/ 下，按 D-03a 不计入本预算。实测增量 +770，上一片余量（19993）远不够，故按 RFC-11 抬 budget 到 20760：余量 42 行，沿 history[20] 的口径（RFC-11 第 6 节把「余量一次留大」列为否决项，所以不取整到 21,000）。",
+      "attribution": [
+        {
+          "slice": "RFC-27 A 帧/命中图/meta 的编解码（abi.hello、abi.frame、Tier2Frame.Hits 的命中图优先仲裁）",
+          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Wire.cs"],
+          "lines": 313
+        },
+        {
+          "slice": "RFC-27 B 世界快照/六种指令/事件包的编解码（未知 kind 令整包作废）",
+          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Wire.Brain.cs"],
+          "lines": 133
+        },
+        {
+          "slice": "RFC-27 C wire 方法面与会话 quota 记账（TryQueryFrame/TryTickBrain/SendEvent/TryStateGet/Set/Notify/ChargeWire）",
+          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Wire.cs"],
+          "lines": 264
+        },
+        {
+          "slice": "RFC-27 D 边界骨架上的 quota 字段/构造参数/往返记账/Dispose 审计行 + abi.hello 握手（+68/-8）",
+          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"],
+          "lines": 60
         }
       ]
     }

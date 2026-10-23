@@ -1,9 +1,11 @@
 // RFC-10 §2：Tier-2 进程外沙箱（docs/14 §1：独立进程 + stdio JSON-RPC + 会话 quota/timeout）。
 // 与 PluginSandbox 同形：new → Start → 任意次 Tick → Dispose。
 //
-// 范围：只把**进程边界**做对 —— spawn、行分隔 JSON-RPC、每请求超时、崩溃检测、有序关闭。
-// docs/11 的四个 ABI 接口要跨进程实现还需要帧/命中图/事件包的序列化契约，那是独立里程碑的量，
-// 这里不假装已经做到。判据见 tests/m7 的 Tier-2 段。
+// 范围：进程边界 + wire 契约。前者是 spawn、行分隔 JSON-RPC、每请求超时、崩溃检测、有序关闭
+// （RFC-10）；后者是帧/命中图/事件包/状态四个 ABI 接口的包形状与会话 quota（RFC-27，见
+// Tier2Wire.cs 与 Tier2Sandbox.Wire.cs）。
+//
+// 本文件只留边界的骨架（spawn / 往返 / 关闭）与 quota 记账；wire 方法在同族的 partial 里。
 //
 // P-05（docs/01 §5）：公共方法一律不外抛，失败只落成沙箱事件。
 using System.Diagnostics;
@@ -18,10 +20,13 @@ namespace PetDock.Core.Sandbox;
 public readonly record struct Tier2Reply(bool Ok, JsonNode? Result, string? Error);
 
 /// <summary>单客体进程外沙箱。单线程同步：一帧一次往返，不并发。</summary>
-public sealed class Tier2Sandbox : IDisposable
+public sealed partial class Tier2Sandbox : IDisposable
 {
     /// <summary>握手方法名；不回它就装载失败。</summary>
     public const string HandshakeMethod = "ping";
+
+    /// <summary>docs/14 §5 的会话 wire 字节预算默认值（RFC-27 §3.5）。</summary>
+    public const long DefaultSessionBytes = 32L * 1024 * 1024;
 
     private readonly ISandboxEventSink _sink;
     private readonly string _command;
@@ -29,6 +34,8 @@ public sealed class Tier2Sandbox : IDisposable
     private readonly string _workingDir;
     private readonly int _requestTimeoutMs;
     private readonly int _frameBudgetMs;
+    private readonly long _sessionByteBudget;
+    private readonly int _maxFrameBytes;
     private readonly StringBuilder _stderrTail = new();
 
     private Process? _process;
@@ -44,7 +51,9 @@ public sealed class Tier2Sandbox : IDisposable
         string arguments = "",
         string workingDir = "",
         int requestTimeoutMs = 2000,
-        int frameBudgetMs = 8)
+        int frameBudgetMs = 8,
+        long sessionByteBudget = DefaultSessionBytes,
+        int maxFrameBytes = Tier2Wire.MaxFrameBytes)
     {
         Gate = gate ?? throw new ArgumentNullException(nameof(gate));
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
@@ -53,6 +62,8 @@ public sealed class Tier2Sandbox : IDisposable
         _workingDir = workingDir;
         _requestTimeoutMs = requestTimeoutMs > 0 ? requestTimeoutMs : 2000;
         _frameBudgetMs = frameBudgetMs > 0 ? frameBudgetMs : 8;
+        _sessionByteBudget = sessionByteBudget > 0 ? sessionByteBudget : DefaultSessionBytes;
+        _maxFrameBytes = maxFrameBytes > 0 ? maxFrameBytes : Tier2Wire.MaxFrameBytes;
     }
 
     public CapabilityGate Gate { get; }
@@ -64,6 +75,24 @@ public sealed class Tier2Sandbox : IDisposable
     public long Timeouts { get; private set; }
 
     public long Crashes { get; private set; }
+
+    /// <summary>宿主→客体的请求行字节（RFC-27 §3.5）。</summary>
+    public long WireInBytes { get; private set; }
+
+    /// <summary>客体→宿主的应答行字节（RFC-27 §3.5）。</summary>
+    public long WireOutBytes { get; private set; }
+
+    /// <summary>通知条数（`abi.event`，不应答所以不占 <see cref="Requests"/>）。</summary>
+    public long Notifications { get; private set; }
+
+    /// <summary>会话预算被用尽的次数（docs/14 §5 的越限）。</summary>
+    public long QuotaExceeded { get; private set; }
+
+    /// <summary>最近一次成功解码的帧号（RFC-27 §3.2 的严格递增要求）。</summary>
+    public long LastFrameId { get; private set; }
+
+    /// <summary>`abi.hello` 的结果；未握手成功时为 null。</summary>
+    public Tier2Hello? Hello { get; private set; }
 
     public int Pid => _process?.Id ?? 0;
 
@@ -118,7 +147,20 @@ public sealed class Tier2Sandbox : IDisposable
                 return false;
             }
 
-            Emit(SandboxEventKind.Audit, ("tier2", "started"), ("pid", process.Id), ("rpc", HandshakeMethod));
+            // RFC-27 §3.1：握手之后立刻取一次 meta。拿不到 meta 的 tier-2 客体不该装载——
+            // 宿主连它要不要命中图都不知道，之后的每一帧都只能靠猜。
+            if (!NegotiateHello())
+            {
+                StopProcess();
+                return false;
+            }
+
+            Emit(
+                SandboxEventKind.Audit,
+                ("tier2", "started"),
+                ("pid", process.Id),
+                ("rpc", HandshakeMethod),
+                ("hello", Hello?.Id ?? "<none>"));
             return true;
         }
         catch (Exception ex)
@@ -168,8 +210,13 @@ public sealed class Tier2Sandbox : IDisposable
 
         try
         {
-            _stdin.WriteLine(request.ToJsonString());
+            string line = request.ToJsonString();
+            _stdin.WriteLine(line);
             _stdin.Flush();
+            if (!ChargeWire(Encoding.UTF8.GetByteCount(line) + 1, "in"))
+            {
+                return new Tier2Reply(false, null, "quota-session-bytes");
+            }
         }
         catch (Exception ex)
         {
@@ -198,6 +245,11 @@ public sealed class Tier2Sandbox : IDisposable
                 Emit(SandboxEventKind.GuestFault, ("stage", "eof"), ("method", method), ("stderr", Tail()));
                 StopProcess();
                 return new Tier2Reply(false, null, "stdout-closed");
+            }
+
+            if (!ChargeWire(Encoding.UTF8.GetByteCount(line) + 1, "out"))
+            {
+                return new Tier2Reply(false, null, "quota-session-bytes");
             }
 
             return ParseReply(line, requestId);
@@ -328,6 +380,14 @@ public sealed class Tier2Sandbox : IDisposable
             // 句柄可能已被 Kill 收走，Dispose 再抛一次；吞掉。
         }
         _process = null;
-        Emit(SandboxEventKind.Audit, ("tier2", "disposed"), ("requests", Requests), ("timeouts", Timeouts), ("crashes", Crashes));
+        Emit(
+            SandboxEventKind.Audit,
+            ("tier2", "disposed"),
+            ("requests", Requests),
+            ("timeouts", Timeouts),
+            ("crashes", Crashes),
+            ("wireIn", WireInBytes),
+            ("wireOut", WireOutBytes),
+            ("quota", QuotaExceeded));
     }
 }

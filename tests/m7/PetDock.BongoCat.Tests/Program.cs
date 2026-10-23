@@ -20,7 +20,7 @@ using PetDock.Plugins.BongoCat;
 
 namespace PetDock.BongoCat.Tests;
 
-internal static class Program
+internal static partial class Program
 {
     private static int _failures;
 
@@ -49,6 +49,7 @@ internal static class Program
         TierZeroOverrunIsVisible();
         PackAssetsExist();
         Tier2ProcessBoundary();
+        Tier2WireContract();
 
         Console.WriteLine(_failures == 0 ? "M7-OK" : $"M7-FAIL n={_failures}");
         return _failures == 0 ? 0 : 1;
@@ -388,6 +389,7 @@ internal static class Program
         using var stdin = new StreamReader(Console.OpenStandardInput());
         string? line;
         bool garbageDone = false;
+        var ws = new WireState();
         while ((line = stdin.ReadLineAsync().GetAwaiter().GetResult()) is not null)
         {
             JsonObject? req;
@@ -399,7 +401,8 @@ internal static class Program
                 continue;
             }
 
-            string id = req["id"]?.GetValue<string>() ?? "0";
+            string? rawId = req["id"] is JsonNode idNode ? idNode.GetValue<string>() : null;
+            string id = rawId ?? "0";
             string method = req["method"]?.GetValue<string>() ?? string.Empty;
             Console.Error.WriteLine($"[tier2-child] recv id={id} method={method}");
             if (method == "shutdown")
@@ -413,15 +416,35 @@ internal static class Program
                 continue; // 永不回应（含握手）→ 宿主超时杀
             }
 
+            // RFC-27 §3.4：通知没有 id，只记账不应答（判据用 probe.events 回读顺序）。
+            if (rawId is null)
+            {
+                if (method == "abi.event")
+                {
+                    ws.Events.Add(req["params"]?["type"]?.GetValue<string>() ?? string.Empty);
+                }
+
+                continue;
+            }
+
             if (method == "ping")
             {
                 Tier2ChildReply(id, "pong");
+            }
+            else if (method == "abi.hello")
+            {
+                // RFC-27 §3.1：装载的第二个往返，通道正常的模式都必须答对它。
+                Tier2ChildResult(id, WireHello());
+            }
+            else if (mode == "wire")
+            {
+                Tier2ChildResult(id, WireMethod(method, req["params"] as JsonObject, ws));
             }
             else if (mode == "badid")
             {
                 Tier2ChildReply("wrong", "pong");
             }
-            else if (mode == "garbage" && !garbageDone)
+            else if (mode == "garbage" && !garbageDone && method == "probe")
             {
                 Console.Out.WriteLine("this line is not json");
                 garbageDone = true;
