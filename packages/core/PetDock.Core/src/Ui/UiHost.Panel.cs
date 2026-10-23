@@ -26,7 +26,7 @@ internal sealed partial class UiHost
             return;
         }
 
-        _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled);
+        _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled, FrameReadings);
         _panel.SetImportCommand(RunImportFromPanel);
         _panel.SetSettingsCommand(ApplySettings);
         _panel.SetDiagnosticCommand(RunDiagnosticOp);
@@ -42,6 +42,18 @@ internal sealed partial class UiHost
     /// <summary>取一次快照（面板每次重绘都调用它，不缓存）。</summary>
     public UiSnapshot Snapshot() =>
         UiRoster.Build(_pet, _host, _perf, SettingsView());
+
+    /// <summary>
+    /// 帧泵的逐宠物读数（RFC-30 §3.2）。没有帧循环就没有可归属的读数 → null，
+    /// 面板据此写「—」而不是 0（0 会被读成「测过是 0」）。
+    /// </summary>
+    private PetFrameReadings? FrameReadings()
+    {
+        ResidentFrameLoop? loop = _loop;
+        return loop is null
+            ? null
+            : new PetFrameReadings(loop.AvgFrameMs, loop.MaxFrameMs, loop.TargetFrameMs, loop.OverBudgetFrames);
+    }
 
     /// <summary>
     /// 设置页的当前状态（读数来源：设置文件 + 注册表）。

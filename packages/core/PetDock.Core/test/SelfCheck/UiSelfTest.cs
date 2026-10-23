@@ -37,6 +37,8 @@ internal static class UiSelfTest
             ConsentUiChecks.Run(Emit, Check);
             PerfEmptyHonest();
             PerfPageSample();
+            // RFC-30 §4：逐宠物行、归属规则、超限计数是否真的会动。
+            PerfChecks.Run(Check);
             KeyboardHookContract();
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
@@ -210,7 +212,12 @@ internal static class UiSelfTest
         return failures;
     }
 
-    /// <summary>§2.4：有数据时行数与摘要如实反映快照。</summary>
+    /// <summary>
+    /// §2.4：有数据时行数与摘要如实反映快照。
+    /// RFC-30 §3.4 之前这一条断的是「降级 1」——那个 1 是判据自己塞进 PerfSummary 的，
+    /// 面板当时**没有任何接收口**能拿到降级数，所以那条断言其实在给「编造的数字」盖章。
+    /// 现在降级/隔离区没有接收口就写「未接」，本判据改成断这一条。
+    /// </summary>
     private static int PerfPageSample()
     {
         int failures = 0;
@@ -220,7 +227,7 @@ internal static class UiSelfTest
             new("sample-pet", "0.05 %", "12.0 MB", "1.2 ms", 3),
         };
         page.Bind(new PerfSummary("60.0s", 1, 0, rows));
-        Check("ui-perf-rows", page.RowCount == 1 && page.SummaryText.Contains("降级 1", StringComparison.Ordinal),
+        Check("ui-perf-rows", page.RowCount == 1 && page.SummaryText.Contains("未接", StringComparison.Ordinal),
             $"rows={page.RowCount} summary={page.SummaryText}");
         return failures;
     }

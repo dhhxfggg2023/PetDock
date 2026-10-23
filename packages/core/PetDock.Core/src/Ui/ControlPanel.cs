@@ -59,7 +59,8 @@ internal sealed partial class ControlPanel : Form
         Func<UiSnapshot> snapshot,
         bool showWindow,
         PluginCommand? authorize = null,
-        PluginCommand? toggleDisabled = null)
+        PluginCommand? toggleDisabled = null,
+        Func<PetFrameReadings?>? frames = null)
     {
         _snapshot = snapshot ?? (() => UiSnapshot.Empty);
         _authorize = authorize;
@@ -129,7 +130,7 @@ internal sealed partial class ControlPanel : Form
             Text = "(尚未刷新)",
         };
 
-        _perfPage = new PerfPage(_snapshot);
+        _perfPage = new PerfPage(_snapshot, frames);
 
         // 插件页有自己的列表与操作栏（partial 的另一半建），所以它不进共享的 BindListOn。
         InitPluginPage();

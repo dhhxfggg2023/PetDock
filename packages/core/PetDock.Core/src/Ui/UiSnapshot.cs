@@ -38,7 +38,8 @@ internal sealed record PerfSummary(
     string Window,
     int Degraded,
     int Isolated,
-    IReadOnlyList<PerfLine> Rows)
+    IReadOnlyList<PerfLine> Rows,
+    bool CountersWired = false)
 {
     /// <summary>没有任何宠物时的诚实摘要（docs/18 §2.4：不编造数字）。</summary>
     public static PerfSummary Empty { get; } = new(
@@ -46,6 +47,17 @@ internal sealed record PerfSummary(
 
     public bool IsEmpty => Rows.Count == 0;
 }
+
+/// <summary>
+/// 帧泵的逐宠物读数（RFC-30 §3.2）。**唯一来源是帧泵**：常驻形态一个泵只服务一只宠物，
+/// 所以「多只宠物共用一次采样」是事实而不是近似 —— 面板不得把泵读数摊给多只宠物
+/// （docs/18 §2.4 的「不得编造数字」）。
+/// </summary>
+internal sealed record PetFrameReadings(
+    double AvgFrameMs,
+    double MaxFrameMs,
+    double TargetFrameMs,
+    long OverBudget);
 
 /// <summary>
 /// 设置页的当前状态（docs/18 §2.3）。面板读它来摆放控件，宿主改它来生效。

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 21160,
+  "budget": 21260,
   "history": [
     {
       "date": "2026-10-18",
@@ -763,6 +763,34 @@
           "slice": "RFC-29 C Program.cs 旗标接线与宿主透传（+13/-2）",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 11
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21159,
+      "budget": 21260,
+      "note": "RFC-30：性能页的逐宠物形态（docs/50 M8 的多宠物聚合仪表盘）。实测增量 +91（21068 → 21159），按 RFC-11 抬 budget 到 21260：余量 101 行，口径同 history[23]。判据（tests 下 PerfChecks.cs 的 5 条 ui-perf-*，走 --uitest）按 D-03a 不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-30 A 性能页重写：逐宠物行、归属规则、NotAttributed/ProcessShared 常量、Summary 静态化、RowText 自检接口（+87/-21）",
+          "files": ["packages/core/PetDock.Core/src/Ui/PerfPage.cs"],
+          "lines": 66
+        },
+        {
+          "slice": "RFC-30 B PetFrameReadings 记录与 PerfSummary.CountersWired",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"],
+          "lines": 12
+        },
+        {
+          "slice": "RFC-30 C UiHost.FrameReadings 取常驻泵读数并透传",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"],
+          "lines": 12
+        },
+        {
+          "slice": "RFC-30 D ControlPanel 构造参数透传（+3/-2）",
+          "files": ["packages/core/PetDock.Core/src/Ui/ControlPanel.cs"],
+          "lines": 1
         }
       ]
     }
