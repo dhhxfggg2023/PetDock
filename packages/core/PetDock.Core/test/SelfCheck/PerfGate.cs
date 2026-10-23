@@ -261,7 +261,7 @@ internal static partial class PerfGate
         }
     }
 
-    private static string RepoRoot()
+    internal static string RepoRoot()
     {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null)
@@ -277,7 +277,7 @@ internal static partial class PerfGate
         return Environment.CurrentDirectory;
     }
 
-    private static string CpuModel()
+    internal static string CpuModel()
     {
         try
         {
@@ -293,7 +293,7 @@ internal static partial class PerfGate
     }
 
     /// <summary>私有工作集（docs/41:123 的字面量）。Process 类没有这个读数，走 psapi EX2。</summary>
-    private static long PrivateWorkingSetBytes(Process p)
+    internal static long PrivateWorkingSetBytes(Process p)
     {
         var counters = new PROCESS_MEMORY_COUNTERS_EX2();
         counters.cb = Marshal.SizeOf<PROCESS_MEMORY_COUNTERS_EX2>();

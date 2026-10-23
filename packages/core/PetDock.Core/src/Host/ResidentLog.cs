@@ -258,6 +258,11 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
             }
 
             Commit();
+
+            // 同 AuditTrail.Loop：ManualResetEventSlim 只 Set 不 Reset 时，
+            // 第一次 Set 之后 Wait(CommitIntervalMs) 永远立即返回，本循环退化成满速自旋。
+            // 必须在本轮 Commit 之后清，才不会吞掉 Commit 期间来的 Set。
+            _signal.Reset();
         }
     }
 

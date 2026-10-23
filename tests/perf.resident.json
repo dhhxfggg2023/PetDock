@@ -1,0 +1,26 @@
+{
+  "note": "\u5E38\u9A7B\u5F62\u6001 D-14 \u57FA\u7EBF\u9996\u6B21\u9489\u6B7B\uFF08RFC-26\uFF09\uFF1A\u82B1\u540D\u518C=artifacts/_probe/plugroot \u7684 5 \u4E2A\u63D2\u4EF6\uFF08\u542B petdock.bongocat\uFF0C\u7ECF PETDOCK_PLUGINS_ROOT \u8986\u76D6\uFF09\uFF0CDebug \u6784\u5EFA\uFF0C--seconds 10 --warmup 4000\uFF1B\u53D6\u81EA\u4FEE\u6389 petdock-audit-writer \u7A7A\u8F6C\uFF08AuditTrail \u7684 _signal \u53EA Set \u4E0D Reset\uFF09\u4E4B\u540E",
+  "captured_at": "2026-10-23 18:30:00",
+  "env": {
+    "os": "Microsoft Windows NT 10.0.26100.0",
+    "cpu": "13th Gen Intel(R) Core(TM) i9-13900HX",
+    "cores": 32
+  },
+  "m-02": {
+    "cpu_idle_pct": 0.054,
+    "limit": 0.5
+  },
+  "m-04": {
+    "private_ws_mb": 19.637,
+    "limit": 150
+  },
+  "d-14d": {
+    "seconds": 10.0004224,
+    "ticks": 303,
+    "composed": 303,
+    "handles": 395,
+    "gdi": 41,
+    "user": 48
+  },
+  "unit": "docs/41 D-14a/b/d \u7684**\u5E38\u9A7B\u5F62\u6001**\u8BFB\u6570\uFF08--residenttest\uFF09\uFF1B--write-baseline \u6BCF\u6B21\u5FC5\u987B\u5E26 note"
+}

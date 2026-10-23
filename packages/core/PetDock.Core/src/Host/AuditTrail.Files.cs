@@ -43,6 +43,11 @@ internal sealed partial class AuditTrail
                     break;
                 }
             }
+
+            // 必须在本轮 Flush 之后再清信号，否则 Flush 期间来的 Set 会被吞掉。
+            // 这是 ManualResetEventSlim：只 Set 不 Reset 时，第一次 Set 之后
+            // Wait(200) 永远立即返回，本循环退化成满速自旋。
+            _signal.Reset();
         }
 
         Flush();

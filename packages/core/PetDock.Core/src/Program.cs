@@ -37,6 +37,7 @@ internal static partial class Program
         bool eventTest = args.Any(a => string.Equals(a, "--eventtest", StringComparison.Ordinal));
         bool perfTest = args.Any(a => string.Equals(a, "--perftest", StringComparison.Ordinal));
         bool uiTest = args.Any(a => string.Equals(a, "--uitest", StringComparison.Ordinal));
+        bool residentTest = args.Any(a => string.Equals(a, "--residenttest", StringComparison.Ordinal));
         int goldenIdx = Array.FindIndex(args, a => string.Equals(a, "--golden-baseline", StringComparison.Ordinal));
         bool goldenTest = goldenIdx >= 0;
 
@@ -61,23 +62,40 @@ internal static partial class Program
             : perfTest ? RunPerfTest(args)
             : uiTest ? RunUiTest(args)
             : goldenTest ? RunGoldenBaseline(args, goldenIdx)
-            : RunResident();
+            : RunResident(ResidentPerfProbe.Parse(args));
     }
 
     /// <summary>常驻：内容链与 --selftest 完全相同（唯一装配入口），但消息循环的宿主是 UiHost
     /// —— 宠物窗口只是众多窗口之一，用窗体当 Application.Run 的宿主会让「关主控面板=退程序」，
     /// docs/18 §2.5 明确禁止。托盘与面板的生命周期由此统一管理。</summary>
-    private static int RunResident()
+    /// <param name="probe">--residenttest 的探针参数（null = 正常常驻，见 ResidentPerfProbe）。</param>
+    private static int RunResident(ResidentPerfProbe.Options? probe = null)
     {
+        // 探针模式要往控制台打判据行（WinExe 默认没有控制台）：只接控制台，**不**打开
+        // KernelLog.ConsoleAttached —— 那个开关会让每一条内核日志都同步写到控制台，
+        // 实测同一段常驻跑 3.03% 单核（真实常驻走的是文件里的 ResidentLog，见 RFC-26 §3 差异③）。
+        // 门禁绝不能给它测的东西加成本：加了就等于在测「带调试输出的那个进程」。
+        if (probe is not null)
+        {
+            AttachConsole();
+        }
+
         // 常驻也起插件宿主（docs/13 §3：内核宿主插件是常驻行为的一部分）：
         // 根目录探测失败 → 空根空转，不影响窗口；1Hz tick 对常驻 CPU 的影响可忽略。
         // 授权端口先建：装载期要弹窗，而弹窗只能开在 UI 线程上（RFC-13 §2.4）。
         var port = new UiConsentPort();
+        // 探针模式换掉插件侧的授权端口（RFC-26 §3 差异①）：弹窗要人点，而门禁里没有人。
+        // UiHost 的 consented 端口仍是真端口 —— 面板那侧的行为不变，探针不打开面板。
+        ICapabilityConsentPort pluginPort = probe is null
+            ? port
+            : probe.DenyAll
+                ? new RecordingConsentPort(_ => ConsentAnswer.Reject)
+                : new RecordingConsentPort(r => new ConsentAnswer(ConsentScope.Session, r.AskableIds));
         using PluginHost pluginHost = new(
             PluginHost.ProbePluginsRoot() ?? string.Empty,
             PluginHost.ResidentTickMs,
             autoLoad: true,
-            consent: port);
+            consent: pluginPort);
 
         // 跨进程授权记忆（RFC-19 §2.3 第 1 点）：把上次进程记住的授予灌进会话记忆，
         // 于是「允许（记住这个决定）」过的插件这次启动不再被问。
@@ -162,6 +180,14 @@ internal static partial class Program
 
         // 帧循环是 UiHost 建的，诊断服务比它先存在 —— 帧读数只能事后回填（RFC-17 §3.2）。
         diagnostics.FrameLoop = host.Loop;
+
+        // 探针要在 Application.Run 之前挂上：它靠 UI 定时器判「采样完了没有」，
+        // 泵一停它自己也会停（那时靠采样线程的墙钟，所以另有看门狗判红，见 ResidentPerfProbe）。
+        if (probe is not null)
+        {
+            ResidentPerfProbe.Start(host, probe);
+        }
+
         using (host)
         {
             Application.Run(host);
@@ -177,7 +203,8 @@ internal static partial class Program
         auditTrail.Complete();
         auditTrail.Dispose();
 
-        return ExitOk;
+        // 探针模式的退出码由判据决定（RESIDENT-PERF-OK / FAIL）；正常常驻仍是 0。
+        return probe is null || !ResidentPerfProbe.Failed ? ExitOk : ExitFail;
     }
 
     /// <summary>插件宿主自检入口（--hosttest [expectedPluginId]）：

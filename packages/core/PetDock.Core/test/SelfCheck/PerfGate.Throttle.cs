@@ -34,7 +34,7 @@ internal static partial class PerfGate
     /// 一次 LoopReadings 快照。**必须打全**：只打档位看不出速率，只打速率看不出是不是靠 Idle 档
     /// 跳过提交（那种「更低的提交数」会让「提交被压低」恒真）。
     /// </summary>
-    private readonly record struct LoopReadings(
+    internal readonly record struct LoopReadings(
         FrameTier Tier, double TargetMs, long Ticks, long Composed, long Submitted, long Skipped, long Changes)
     {
         internal static LoopReadings Of(ResidentFrameLoop loop) => new(

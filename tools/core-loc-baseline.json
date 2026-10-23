@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 19950,
+  "budget": 19993,
   "history": [
     {
       "date": "2026-10-18",
@@ -656,6 +656,34 @@
           "slice": "RFC-25 §3.3 便携数据区分支与标记常量",
           "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.cs"],
           "lines": 21
+        }
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "measured": 19948,
+      "budget": 19993,
+      "note": "RFC-26：常驻形态 D-14 重钉（docs/50 M8 的未闭合点「D-14 基线未针对常驻形态重测」，此前所有读数都来自 --perftest 的开关型自检）。新增探针 --residenttest 原样跑 Program.RunResident，只在旁边挂采样线程；出口判据 5 条（resident-loop-running / -cpu-idle / -private-ws / -handles-stable / -regression），基线钉在 tests/perf.resident.json。判据面（test/SelfCheck/ResidentPerfProbe.cs 363 行 + ResidentThreadCensus.cs 364 行 + PerfGate*.cs 三处可见性放宽）按 D-03a 不计入本预算。定位过程中查出的是**产品的真缺陷**：AuditTrail 的 ManualResetEventSlim 只 Set 从不 Reset，第一次 Set 之后消费循环的 Wait(200) 永远立即返回，退化成满速自旋 —— 常驻空闲因此烧掉约 1 个核（实测 3.1% 整机 = 每 10s 单线程 9672ms），而同帧读数的 --perftest 只有 0.06%。触发条件是「插件声明了任一 capability」（授权入队即 Set），与是否声明 events 无关，这解释了 --deny-capabilities 为何无效。两处同型点各补一次 Reset（放在本轮 Flush/Commit 之后，否则会吞掉期间的 Set）后，同一花名册常驻空闲降到 0.04%~0.06%，帧读数一字未变。实测增量 +43，落在上一片预算余额（19950）内仍差 2 行，故按 RFC-11 抬 budget 到 19993：余量保持 45 行不取整到 20,000（RFC-11 §6 把「余量一次留大」列为否决项）。",
+      "attribution": [
+        {
+          "slice": "RFC-26 A --residenttest 入口分派（开关解析、探针启动、退出码）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 27
+        },
+        {
+          "slice": "RFC-26 B 审计流水消费循环的满速自旋修复（Set 之后从未 Reset）",
+          "files": ["packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs"],
+          "lines": 5
+        },
+        {
+          "slice": "RFC-26 C 同型点：常驻日志消费循环的同一处修复（潜伏，未独立观测到触发）",
+          "files": ["packages/core/PetDock.Core/src/Host/ResidentLog.cs"],
+          "lines": 5
+        },
+        {
+          "slice": "RFC-26 D 探针出口（ExitForProbe：门禁里没有能点托盘确认框的人）",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "lines": 6
         }
       ]
     }

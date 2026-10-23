@@ -142,6 +142,12 @@ internal sealed partial class UiHost : ApplicationContext
     public ResidentFrameLoop Loop => _loop;
 
     /// <summary>
+    /// 探针用的无确认退出（--residenttest，RFC-26 §3 差异②）：托盘那条「退出」会弹一次确认框
+    /// （docs/18 §1 要求有人确认），而门禁里没有人会点那个按钮。只对探针开放，托盘路径不变。
+    /// </summary>
+    internal void ExitForProbe() => ExitThread();
+
+    /// <summary>
     /// 滴答（UI 线程）：五件事，顺序就是它们的依赖顺序。
     /// ① 首次滴答才启动宿主 —— 装载必须在消息泵起来之后，否则授权弹窗无处可开（RFC-13 §2.4）；
     /// ② 首次滴答才把宠物窗口显示出来并起帧泵 —— 构造期还没有消息泵，

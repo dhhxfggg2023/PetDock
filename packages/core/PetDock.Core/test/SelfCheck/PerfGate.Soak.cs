@@ -68,7 +68,7 @@ internal static partial class PerfGate
     /// 毛工作集因此仍带 GC 提交段的噪声（同一命令 13.7~23.5MB），故 D-14d 判 retained-heap +
     /// GDI/USER（PerfGate.cs），基线比对也改看 retained（PerfGate.Regression）。
     /// </summary>
-    private static long RetainedWorkingSetBytes(Process p)
+    internal static long RetainedWorkingSetBytes(Process p)
     {
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();
@@ -77,7 +77,7 @@ internal static partial class PerfGate
     }
 
     /// <summary>GDI/USER 对象数（0 = GDI，1 = USER）。读不到时返回 -1，**不编 0**。</summary>
-    private static (int Gdi, int User) GuiResources(Process p)
+    internal static (int Gdi, int User) GuiResources(Process p)
     {
         try
         {
