@@ -4,8 +4,14 @@
 // 判据要验的是**包形状与记账**，不是某一帧画得好不好看（RFC-27 §9 第 1 条）。
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Threading;
+using PetDock.Core;
+using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Sandbox;
 using PetDock.Hosting;
@@ -144,6 +150,93 @@ internal static partial class Program
         foreach (JsonNode? item in array)
         {
             yield return item?.GetValue<string>() ?? string.Empty;
+        }
+    }
+
+    // ---------- RFC-28：宿主把 tier-2 句柄交成产品类型 ----------
+
+    private static void Tier2HostConsumption()
+    {
+        string exe = Path.Combine(AppContext.BaseDirectory, "PetDock.BongoCat.Tests.exe");
+        if (!File.Exists(exe))
+        {
+            Check("tier2-host-content-source", false, $"guest-exe-missing {exe}");
+            return;
+        }
+
+        string root = Path.Combine(AppContext.BaseDirectory, "tier2-consume-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string pluginDir = Path.Combine(root, "com.petdock.tier2.guest");
+            CreateDirRobust(pluginDir);
+            WriteTextRobust(Path.Combine(pluginDir, "petdock-plugin.json"), Tier2GuestManifest(exe));
+            Environment.SetEnvironmentVariable("PETDOCK_TIER2_GUEST", "wire");
+
+            var host = new PluginHost(root, 1000, autoLoad: false);
+            host.Start();
+            var validated = host.ValidateManifest(pluginDir);
+            if (!validated.IsOk)
+            {
+                Check("tier2-host-content-source", false,
+                    "manifest-rejected: " + string.Join(";", validated.Error!.Select(e => $"{e.Field}={e.Message}")));
+                host.Dispose();
+                return;
+            }
+
+            IPluginHandle handle = host.Load(validated.Ok!, CancellationToken.None).GetAwaiter().GetResult();
+
+            // ① 句柄 → 内容源（经由真实的产品入口，不是直接 new 适配层）。
+            IFrameContentSource? content = host.CreateFrameContent(handle);
+            // 适配层是 internal 的（宿主私有），判据只看公开面：交付类型名与它自述的帧统计。
+            string note = content is null ? "(none)" : content.GetType().Name;
+            Check("tier2-host-content-source", content is not null && note.Contains("Tier2", StringComparison.Ordinal),
+                $"content={content is not null} type={note}");
+
+            // ② 像素：8×8 帧缓冲，wire 夹具是 4×4 全白不透明 → 左上角白、其余透明。
+            using Bitmap? bitmap = content?.GetFrameContent(new Size(8, 8));
+            Color topLeft = bitmap is null ? Color.Transparent : bitmap.GetPixel(0, 0);
+            int farAlpha = bitmap is null ? -1 : bitmap.GetPixel(7, 7).A;
+            Check("tier2-host-frame-pixels", bitmap is not null && bitmap.Width == 8 && bitmap.Height == 8
+                && topLeft.A == 255 && topLeft.R == 255 && topLeft.G == 255 && topLeft.B == 255 && farAlpha == 0,
+                $"size={bitmap?.Width}x{bitmap?.Height} topLeft=#{topLeft.A:X2}{topLeft.R:X2}{topLeft.G:X2}{topLeft.B:X2} farAlpha={farAlpha}");
+
+            // ③ 可选诊断面：交付过一帧 + 自述是真内容 + 没复用过位图对象。
+            bool stats = content is IFrameSourceStats served && served.FramesServed == 1
+                && content is IFrameContentInspector inspector && inspector.DeliversRealContent
+                && content is IFrameReuseInspector reuse && !reuse.LastFrameReused;
+            Check("tier2-host-frame-stats", stats, $"served={(content as IFrameSourceStats)?.FramesServed} real={(content as IFrameContentInspector)?.DeliversRealContent} reused={(content as IFrameReuseInspector)?.LastFrameReused}");
+
+            // ④ 命中图优先：夹具位图 alpha 全 255，命中图只亮 (0,0)。
+            bool hits = content is IFrameHitSurface hitSurface && hitSurface.Hits(0, 0) && !hitSurface.Hits(1, 1);
+            Check("tier2-host-hitmap", hits, $"hit(0,0)={(content as IFrameHitSurface)?.Hits(0, 0)} hit(1,1)={(content as IFrameHitSurface)?.Hits(1, 1)}");
+
+            // ⑤ 句柄 → 头脑：身份取自 abi.hello，tick 回读成内核的 BrainDirective。
+            IBrain? brain = host.CreateBrain(handle);
+            var world = new WorldSnapshot(new PetPoint(42, 43), new PetRect(1000, 500, 128, 128), "code", 615, false);
+            IReadOnlyList<BrainDirective> list = brain?.Tick(16, world) ?? Array.Empty<BrainDirective>();
+            bool brainOk = brain is not null && brain.Meta.Id == "petdock.wire.guest"
+                && list.Count == 2 && list[0].Kind == DirectiveKind.SetAnimation && list[0].Clip == "look_left"
+                && list[1].Kind == DirectiveKind.MoveTo && list[1].At is PetPoint at
+                && Math.Abs(at.X - 1) < 0.001 && Math.Abs(at.Y - 2) < 0.001;
+            Check("tier2-host-brain-tick", brainOk,
+                $"brain={brain is not null} meta={brain?.Meta.Id} directives={list.Count} first={list.FirstOrDefault()?.Clip}");
+
+            // ⑥ 防御面：null 句柄不会把宿主拖进 null deref（两个工厂都返回 null）。
+            bool nullSafe = host.CreateFrameContent(null!) is null && host.CreateBrain(null!) is null;
+            Check("tier2-host-null-safe", nullSafe, $"frame={host.CreateFrameContent(null!) is null} brain={host.CreateBrain(null!) is null}");
+
+            content?.Dispose();
+            host.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Check("tier2-host-content-source", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PETDOCK_TIER2_GUEST", null);
+            try { Directory.Delete(root, recursive: true); }
+            catch { /* 子进程句柄延迟释放时容忍 */ }
         }
     }
 

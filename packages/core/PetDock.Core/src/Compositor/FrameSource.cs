@@ -58,3 +58,14 @@ public interface IFrameReuseInspector
     /// <summary>最近交付的帧是否复用了上一次的位图对象。</summary>
     bool LastFrameReused { get; }
 }
+
+/// <summary>
+/// 内容源的**可选**命中面（RFC-28 §3.3）：某些内容源自带命中图，命中不该由位图 alpha 反推
+/// （影子不该被点到、挂件该被点到 —— `docs/11 §2.2`）。坐标是帧缓冲坐标。
+/// 不实现本接口的内容源仍走「alpha 判定」，既有实现行为不变。
+/// </summary>
+public interface IFrameHitSurface
+{
+    /// <summary>这一点是否命中；没有可用帧时返回 false（fail-closed：宁可点不到，也不许误点）。</summary>
+    bool Hits(int x, int y);
+}

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 20760,
+  "budget": 20970,
   "history": [
     {
       "date": "2026-10-18",
@@ -712,6 +712,34 @@
           "slice": "RFC-27 D 边界骨架上的 quota 字段/构造参数/往返记账/Dispose 审计行 + abi.hello 握手（+68/-8）",
           "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"],
           "lines": 60
+        }
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "measured": 20924,
+      "budget": 20970,
+      "note": "RFC-28：宿主把 tier-2 句柄交成产品类型（docs/50 M7 的未交付项：Wire 契约写完了但产品路径上没人用它；RFC-27 §7.7 的欠账）。核心是两件事：帧内容源（IFrameContentSource 适配层，按帧缓冲出图、逐像素预乘还原、命中图优先）与头脑桥（IBrain 适配层）。判定面（tests/m7 的 Program.Wire.cs 追加 6 条判据）在 tests/ 下，按 D-03a 不计入本预算。实测增量 +206（20718 → 20924），按 RFC-11 抬 budget 到 20970：余量 46 行，口径同 history[21]。",
+      "attribution": [
+        {
+          "slice": "RFC-28 A 帧内容源适配层（GetFrameContent/Blit 预乘还原/IFrameSourceStats 等四个可选诊断面/Note）",
+          "files": ["packages/core/PetDock.Core/src/Host/Tier2FrameContent.cs"],
+          "lines": 122
+        },
+        {
+          "slice": "RFC-28 B 头脑桥（IBrain 适配：Meta 取自 abi.hello、Tick 失败返回空列表、OnEvent 转 abi.event）",
+          "files": ["packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"],
+          "lines": 54
+        },
+        {
+          "slice": "RFC-28 C 公开面增加 IFrameHitSurface（命中图优先，未实现者行为不变）",
+          "files": ["packages/core/PetDock.Core/src/Compositor/FrameSource.cs"],
+          "lines": 11
+        },
+        {
+          "slice": "RFC-28 D 宿主工厂方法 CreateFrameContent/CreateBrain 与句柄解析（+24/-5）",
+          "files": ["packages/core/PetDock.Core/src/Host/PluginHost.Tier2.cs"],
+          "lines": 19
         }
       ]
     }
