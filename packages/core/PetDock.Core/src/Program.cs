@@ -55,6 +55,23 @@ internal static partial class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
+        // 单实例（RFC-32 §3）：只在用户形态抢锁。诊断旗标（--uitest/--selftest/--hosttest/…）
+        // 不抢，否则一条卡住的常驻实例会让下一条判据命令静默变成「已有实例，退出 0」，
+        // 门禁就从此测不到东西了 —— 那不是约束，那是给门禁造假。
+        bool userMode = !(selfTest || hostTest || animTest || driveTest || eventTest || perfTest
+            || uiTest || composeTest || goldenTest || residentTest);
+        if (userMode)
+        {
+            using var instance = new SingleInstance();
+            if (!instance.IsFirst)
+            {
+                KernelLog.Write($"single-instance-refused name={instance.Name} — 已有实例在跑，本次不再打开第二只");
+                return 0;
+            }
+
+            return RunResident(null);
+        }
+
         return selfTest ? RunSelfTest()
             : hostTest ? RunHostTest(args)
             : animTest ? RunAnimTest(args)

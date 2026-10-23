@@ -15,6 +15,12 @@ internal sealed partial class LayeredFrameWindow
 {
     protected override void WndProc(ref Message m)
     {
+        // 命中图优先（RFC-31 §3.2）：只有内容源声明了命中图时才给答案，其余交回 OS 读 alpha。
+        if (TryHitTestPixel(ref m))
+        {
+            return;
+        }
+
         if (m.Msg == Win32.WM_DPICHANGED)
         {
             HandleDpiChanged(ref m);

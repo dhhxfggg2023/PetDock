@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 21260,
+  "budget": 21420,
   "history": [
     {
       "date": "2026-10-18",
@@ -791,6 +791,34 @@
           "slice": "RFC-30 D ControlPanel 构造参数透传（+3/-2）",
           "files": ["packages/core/PetDock.Core/src/Ui/ControlPanel.cs"],
           "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21313,
+      "budget": 21420,
+      "note": "RFC-31/32：命中图裁决 WM_NCHITTEST（命中图接进穿透）+ 单实例锁。实测增量 +154（21159 → 21313），按 RFC-11 抬 budget 到 21420：余量 107 行，口径同 history[23]。判据（test 下 HitMapChecks.cs / InstanceChecks.cs 的 6 条 ui-hitmap-*/ui-single-instance-*，走 --uitest）不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-31 A 命中图裁决：LayeredFrameWindow.HitTest.cs 新 partial（WM_NCHITTEST 的像素换算与答案）",
+          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.HitTest.cs"],
+          "lines": 69
+        },
+        {
+          "slice": "RFC-31 B WndProc 接入 TryHitTestPixel 分支（+6）",
+          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"],
+          "lines": 6
+        },
+        {
+          "slice": "RFC-31 C 单实例锁 SingleInstance（命名互斥体，抢不到即退出 0）",
+          "files": ["packages/core/PetDock.Core/src/Host/SingleInstance.cs"],
+          "lines": 62
+        },
+        {
+          "slice": "RFC-32 用户形态抢锁的分派点（诊断旗标不抢锁，+17）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 17
         }
       ]
     }
