@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 20970,
+  "budget": 21160,
   "history": [
     {
       "date": "2026-10-18",
@@ -740,6 +740,29 @@
           "slice": "RFC-28 D 宿主工厂方法 CreateFrameContent/CreateBrain 与句柄解析（+24/-5）",
           "files": ["packages/core/PetDock.Core/src/Host/PluginHost.Tier2.cs"],
           "lines": 19
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21068,
+      "budget": 21160,
+      "note": "RFC-29：装配顺序接上 tier-2 客体（docs/50 M7 最后一条未交付项「宿主侧未消费」的落地形态）。实测增量 +144（20924 → 21068），按 RFC-11 抬 budget 到 21160：余量 92 行，口径同 history[22]。判据（tests/m7 的 tier2-compose-source / tier2-compose-fail-closed，走 --composetest 探针跑产品那条 Compose）在 tests/ 下，按 D-03a 不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-29 A 装配点插入 tier-2 分支与选中规则（Compose 加 host 参数、Tier2Content）",
+          "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
+          "lines": 61
+        },
+        {
+          "slice": "RFC-29 B 判据入口 --composetest（ComposeProbe：Start + 轮询装载、COMPOSE-OK/FAIL）",
+          "files": ["packages/core/PetDock.Core/src/Host/ComposeProbe.cs"],
+          "lines": 72
+        },
+        {
+          "slice": "RFC-29 C Program.cs 旗标接线与宿主透传（+13/-2）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 11
         }
       ]
     }

@@ -38,13 +38,14 @@ internal static partial class Program
         bool perfTest = args.Any(a => string.Equals(a, "--perftest", StringComparison.Ordinal));
         bool uiTest = args.Any(a => string.Equals(a, "--uitest", StringComparison.Ordinal));
         bool residentTest = args.Any(a => string.Equals(a, "--residenttest", StringComparison.Ordinal));
+        bool composeTest = args.Any(a => string.Equals(a, "--composetest", StringComparison.Ordinal));
         int goldenIdx = Array.FindIndex(args, a => string.Equals(a, "--golden-baseline", StringComparison.Ordinal));
         bool goldenTest = goldenIdx >= 0;
 
         // 自检形态也装上插件日志收口（RFC-23）：没有审计流水（trail 传 null），
         // 但「插件 → SDK 转发的门面 → 内核静态门面 → 收口」这条链因此每次门禁都真的被走一遍，
         // 而不是只靠 --drivetest 里的桩件。常驻形态的接法见 RunResident（那里有流水）。
-        if (selfTest || hostTest || animTest || driveTest || eventTest || perfTest || uiTest || goldenTest)
+        if (selfTest || hostTest || animTest || driveTest || eventTest || perfTest || uiTest || composeTest || goldenTest)
         {
             PluginLog.Sink = new HostPluginLog(trail: null);
         }
@@ -61,6 +62,7 @@ internal static partial class Program
             : eventTest ? RunEventTest(args)
             : perfTest ? RunPerfTest(args)
             : uiTest ? RunUiTest(args)
+            : composeTest ? RunComposeTest(args)
             : goldenTest ? RunGoldenBaseline(args, goldenIdx)
             : RunResident(ResidentPerfProbe.Parse(args));
     }
@@ -251,6 +253,15 @@ internal static partial class Program
         return PerfGate.Run(args.Where(a => !string.Equals(a, "--perftest", StringComparison.Ordinal)).ToArray());
     }
 
+    /// <summary>装配顺序探针入口（--composetest [pluginsRoot]，RFC-29 §3.6）：
+    /// 打 `COMPOSE …` 与 `COMPOSE-OK|FAIL`，退出码 0/1。判据体在 Host/ComposeProbe.cs。</summary>
+    private static int RunComposeTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return ComposeProbe.Run(args.Where(a => !string.Equals(a, "--composetest", StringComparison.Ordinal)).ToArray());
+    }
+
     /// <summary>UI 母体自检入口（--uitest，RFC-12 §3）：判据行 `CHECK ui-<name> PASS|FAIL`，
     /// 末行 UI-OK / UI-FAIL n=&lt;k&gt;。判据体在 test/SelfCheck/UiSelfTest.cs（不计入 D-03a 预算）。</summary>
     private static int RunUiTest(string[] args)
@@ -282,7 +293,7 @@ internal static partial class Program
     /// </summary>
     private static LayeredFrameWindow ComposeWindow(string phase, PluginHost? host = null)
     {
-        ComposeOutcome outcome = FrameComposition.Compose(phase, attachInstance: true);
+        ComposeOutcome outcome = FrameComposition.Compose(phase, attachInstance: true, host);
         if (outcome.Instance is not null && host is not null)
         {
             outcome.Instance.SuspendPort = FrameComposition.SuspendPortFor(host);

@@ -51,6 +51,7 @@ internal static partial class Program
         Tier2ProcessBoundary();
         Tier2WireContract();
         Tier2HostConsumption();
+        Tier2Composition();
 
         Console.WriteLine(_failures == 0 ? "M7-OK" : $"M7-FAIL n={_failures}");
         return _failures == 0 ? 0 : 1;

@@ -51,7 +51,7 @@ internal static class FrameComposition
     /// 装配内容源。任何一步失败都只是「上层没提供内容」，绝不抛 ——
     /// 窗口必须仍然可见、仍然可命中；判据的非 0 由自检给，不由本方法给。
     /// </summary>
-    public static ComposeOutcome Compose(string phase, bool attachInstance)
+    public static ComposeOutcome Compose(string phase, bool attachInstance, PluginHost? host = null)
     {
         PetSurfaceRoster roster = PetSurfaceRoster.Discover(PluginHost.ProbePluginsRoot());
         KernelLog.Write($"surface-roster phase={phase} {roster.Describe()}");
@@ -85,6 +85,14 @@ internal static class FrameComposition
             }
         }
 
+        // RFC-29 §3.2：进程内视图之后、M0 内容源工厂之前 —— tier-2 客体是「一只宠物自己的
+        // 实现」，而 IFrameContentProvider 是过渡装配面（见本文件头 §4.2）。只交内容源，不交头脑：
+        // 头脑的所有者是 PetInstance（§3.4），外部客体没有实例，硬接就是第二个所有者。
+        if (host is not null && Tier2Content(host) is { } tier2)
+        {
+            return new ComposeOutcome(tier2.Content, tier2.Id, tier2.Note, null, roster);
+        }
+
         IFrameContentProvider? provider = roster.ContentProvider;
         if (provider is not null)
         {
@@ -105,6 +113,59 @@ internal static class FrameComposition
         }
 
         return new ComposeOutcome(null, string.Empty, NoteNoSurface, null, roster);
+    }
+
+    /// <summary>
+    /// tier-2 客体（RFC-29 §3.3）：已装载、且应答过 `abi.hello` 的句柄里选一个 ——
+    /// `PETDOCK_BRAIN` 命中谁就取谁，否则按 manifest id 的 Ordinal 序取首。
+    /// 与名册「取首」同一规则，且不特判任何插件 id（docs/01 P-02 第 4 条）。
+    /// </summary>
+    private static (string Id, IFrameContentSource Content, string Note)? Tier2Content(PluginHost host)
+    {
+        string? preferred = BrainSelectorFromEnvironment();
+        PluginHandle? picked = null;
+        foreach (PluginHandle row in host.HandlesSnapshot())
+        {
+            if (row.Tier2 is not { IsLoaded: true, Hello: not null })
+            {
+                continue;
+            }
+
+            if (picked is null)
+            {
+                picked = row;
+                continue;
+            }
+
+            string current = picked.Manifest.Id;
+            string candidate = row.Manifest.Id;
+            if (string.Equals(candidate, preferred, StringComparison.Ordinal))
+            {
+                picked = row;
+            }
+            else if (string.Equals(current, preferred, StringComparison.Ordinal))
+            {
+                // 已命中选择器，保持。
+            }
+            else if (string.CompareOrdinal(candidate, current) < 0)
+            {
+                picked = row;
+            }
+        }
+
+        if (picked is null)
+        {
+            return null;
+        }
+
+        IFrameContentSource? content = host.CreateFrameContent(picked);
+        if (content is null)
+        {
+            return null;
+        }
+
+        int pid = picked.Tier2?.Pid ?? 0;
+        return (picked.Manifest.Id, content, $"via=tier2 plugin={picked.Manifest.Id} pid={pid}");
     }
 
     /// <summary>挂起转发口：有真实插件宿主就转到 PluginHost.Disable，没有就用空实现。</summary>

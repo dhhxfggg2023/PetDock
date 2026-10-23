@@ -4,6 +4,7 @@
 // 判据要验的是**包形状与记账**，不是某一帧画得好不好看（RFC-27 §9 第 1 条）。
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -393,4 +394,108 @@ internal static partial class Program
             ["id"] = id,
             ["result"] = result,
         }.ToJsonString());
+
+    // ---------- RFC-29：装配顺序接上 tier-2（--composetest 探针） ----------
+
+    private static void Tier2Composition()
+    {
+        string exe = Path.Combine(AppContext.BaseDirectory, "PetDock.BongoCat.Tests.exe");
+        string core = Path.Combine(RepoRoot(), "packages", "core", "PetDock.Core", "bin",
+            BuildConfiguration(), "net8.0-windows", "PetDock.Core.dll");
+        if (!File.Exists(exe) || !File.Exists(core))
+        {
+            Check("tier2-compose-source", false, $"missing guest-exe={File.Exists(exe)} core-dll={File.Exists(core)}");
+            return;
+        }
+
+        string root = Path.Combine(AppContext.BaseDirectory, "tier2-compose-" + Guid.NewGuid().ToString("N"));
+        string empty = Path.Combine(AppContext.BaseDirectory, "tier2-compose-empty-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            CreateDirRobust(Path.Combine(root, "com.petdock.tier2.guest"));
+            WriteTextRobust(Path.Combine(root, "com.petdock.tier2.guest", "petdock-plugin.json"), Tier2GuestManifest(exe));
+            CreateDirRobust(empty);
+
+            // 正向：只装 tier-2 客体的目录 —— 装配点必须把已装载的客体交成内容源。
+            (int code, string output) = RunComposeProbe(core, root);
+            Check("tier2-compose-source",
+                code == 0
+                    && output.Contains("COMPOSE source=com.petdock.tier2.guest", StringComparison.Ordinal)
+                    && output.Contains("via=tier2", StringComparison.Ordinal)
+                    && output.Contains("COMPOSE-OK", StringComparison.Ordinal),
+                $"exit={code} {Summarize(output)}");
+
+            // 反向：空目录 —— 没有内容时必须如实报失败，不许假装装上了。
+            (int emptyCode, string emptyOutput) = RunComposeProbe(core, empty);
+            Check("tier2-compose-fail-closed",
+                emptyCode != 0 && emptyOutput.Contains("COMPOSE-FAIL", StringComparison.Ordinal),
+                $"exit={emptyCode} {Summarize(emptyOutput)}");
+        }
+        catch (Exception ex)
+        {
+            Check("tier2-compose-source", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(root, recursive: true);
+                Directory.Delete(empty, recursive: true);
+            }
+            catch { /* 子进程句柄延迟释放时容忍 */ }
+        }
+    }
+
+    /// <summary>跑一次 `dotnet exec PetDock.Core.dll --composetest &lt;pluginsRoot&gt;`，返回退出码与合流输出。</summary>
+    private static (int Code, string Output) RunComposeProbe(string coreDll, string pluginsRoot)
+    {
+        var info = new ProcessStartInfo("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        info.ArgumentList.Add("exec");
+        info.ArgumentList.Add(coreDll);
+        info.ArgumentList.Add("--composetest");
+        info.ArgumentList.Add(pluginsRoot);
+        info.Environment["PETDOCK_TIER2_GUEST"] = "wire";
+        // 名册自己从 PETDOCK_PLUGINS_ROOT 取根（FrameComposition:56 调 ProbePluginsRoot），
+        // 与探针建宿主用的根必须是同一个 —— 否则名册看到的是仓库里的插件，判据就测了个假象。
+        info.Environment["PETDOCK_PLUGINS_ROOT"] = pluginsRoot;
+
+        using Process process = Process.Start(info)!;
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        if (!process.WaitForExit(60000))
+        {
+            try { process.Kill(entireProcessTree: true); } catch { /* 已退出 */ }
+            return (-1, stdout + stderr + "\n(probe-timeout)");
+        }
+
+        return (process.ExitCode, stdout + stderr);
+    }
+
+    /// <summary>装配探针的输出合流后只留判据要看的行（失败时给人看的那一行）。</summary>
+    private static string Summarize(string output)
+    {
+        string[] lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (string line in lines)
+        {
+            if (line.StartsWith("COMPOSE", StringComparison.Ordinal))
+            {
+                return line;
+            }
+        }
+
+        return lines.Length > 0 ? lines[^1] : "(no output)";
+    }
+
+    /// <summary>本工程当前的构建配置名（bin\&lt;Debug|Release&gt;\net8.0-windows\）。</summary>
+    private static string BuildConfiguration()
+    {
+        DirectoryInfo? tfm = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
+        return tfm.Parent?.Name ?? "Debug";
+    }
 }
