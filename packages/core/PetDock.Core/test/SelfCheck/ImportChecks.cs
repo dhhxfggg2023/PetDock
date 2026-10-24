@@ -54,6 +54,8 @@ internal static class ImportChecks
             check("ui-import-error-bar-visible", false, "exception");
             check("ui-import-no-modal-error", false, "exception");
             check("ui-import-old-instance-released", false, "exception");
+            check("ui-import-append-pet", false, "exception");
+            check("ui-import-append-falls-back", false, "exception");
         }
         finally
         {
@@ -128,6 +130,61 @@ internal static class ImportChecks
         check("ui-import-old-instance-released", second.Ok && first is not null
                 && first.State == InstanceState.Disposed,
             $"second={second.Ok} first-state={first?.State.ToString() ?? "(none)"}");
+
+        // ⑧ 片 2（RFC-37 §3.5）：装了集合之后，「导入」= 往桌上加一只，主窗那只不动。
+        //    判据要的是三件事同时成立：新来的被采纳（AdoptExtra 被问到且说行）、主窗没被换
+        //    （帧源与 current 都还是原来那只、旧实例没被释放）、清单多了一条而 active 没被篡改。
+        string source2 = Path.Combine(dataRoot, "source2", PackDirName + "-2");
+        MakeSourcePack(source2);
+        PetInstance? mainBefore = current;
+        PetFrameSource? liveBefore = frames.Current as PetFrameSource;
+        PetDataStore.ActivePack? activeBefore = store.ReadActive();
+        int beforeCount = store.ReadPets().Count;
+
+        int adopted = 0;
+        string adoptedPath = string.Empty;
+        service.AdoptExtra = (instance, path) =>
+        {
+            adopted++;
+            adoptedPath = path;
+            return true;
+        };
+
+        ImportResult added = service.Import(source2);
+        PetDataStore.ActivePack? activeAfter = store.ReadActive();
+        int afterCount = store.ReadPets().Count;
+        bool appended = added.Ok
+            && string.Equals(added.Message, "已添加到桌面", StringComparison.Ordinal)
+            && adopted == 1
+            && ReferenceEquals(current, mainBefore)
+            && ReferenceEquals(frames.Current, liveBefore)
+            && mainBefore is not null && mainBefore.State != InstanceState.Disposed
+            && afterCount == beforeCount + 1
+            && string.Equals(activeAfter?.InstanceId, activeBefore?.InstanceId, StringComparison.Ordinal);
+        check("ui-import-append-pet", appended,
+            $"ok={added.Ok} message={added.Message} adopted={adopted} pets={beforeCount}->{afterCount}"
+            + $" active={activeAfter?.InstanceId ?? "(none)"} main={mainBefore?.State.ToString() ?? "(none)"}"
+            + $" adoptedPath={adoptedPath}");
+
+        // ⑨ 摆不进去（没有集合层：单窗装配、自检）时退回 RFC-15 的替换语义 ——
+        //    这时旧行为必须原样成立，否则「多宠物」会把单窗场景弄坏。
+        PetInstance? mainNow = current;
+        int adoptTries = 0;
+        service.AdoptExtra = (instance, path) =>
+        {
+            adoptTries++;
+            return false;
+        };
+
+        ImportResult replaced = service.Import(source);
+        bool fallsBack = replaced.Ok
+            && string.Equals(replaced.Message, "导入完成", StringComparison.Ordinal)
+            && adoptTries == 1
+            && !ReferenceEquals(current, mainNow)
+            && mainNow is not null && mainNow.State == InstanceState.Disposed;
+        check("ui-import-append-falls-back", fallsBack,
+            $"ok={replaced.Ok} message={replaced.Message} tries={adoptTries}"
+            + $" main={(mainNow?.State.ToString() ?? "(none)")}");
     }
 
     /// <summary>造一个最小的素材包目录：几个文件 + 一个子目录（递归复制要真的走通）。</summary>

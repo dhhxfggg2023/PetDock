@@ -191,11 +191,30 @@ internal sealed class PetDataStore
 
         catalog["pets"] = pets;
         catalog["active"] = instanceId;
+        SaveCatalog(catalog);
+    }
 
+    /// <summary>
+    /// 只改「当前选中」这一项，不登记、不复制（RFC-37 §3.5 片 2）。
+    /// 为什么需要它：追加进桌面的新宠物**不该篡改主窗的选择** —— 登记已经把 active 指过去了，
+    /// 这里把它指回来，重启之后仍然是「主窗那只 = active」这条不变式。
+    /// </summary>
+    public void SetActive(string? instanceId)
+    {
+        JsonObject catalog = ReadCatalog();
+        catalog["active"] = instanceId ?? string.Empty;
+        catalog["agent_id"] = "host";
+        catalog["timestamp"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+        SaveCatalog(catalog);
+    }
+
+    /// <summary>
+    /// 落盘清单：两阶段提交（docs/17 §3 的形状）—— 先写临时文件，再整文件替换。
+    /// 清单写到一半断电的话，旧清单还在，不会留下半个文件。
+    /// </summary>
+    private void SaveCatalog(JsonObject catalog)
+    {
         Directory.CreateDirectory(Root);
-
-        // 两阶段提交（docs/17 §3 的形状）：先写临时文件，再整文件替换 ——
-        // 清单写到一半断电的话，旧清单还在，不会留下半个文件。
         string temp = CatalogPath + ".tmp";
         File.WriteAllText(
             temp,

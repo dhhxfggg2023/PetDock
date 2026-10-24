@@ -155,6 +155,59 @@ internal sealed class PetWindowSet : IDisposable
     }
 
     /// <summary>
+    /// 把一只**已经活着的**实例摆上桌（RFC-37 §3.5 片 2：导入即追加）。
+    /// 与 <see cref="Create"/> 的区别只有一处：实例由调用方建好并初始化过（导入编排里那一步
+    /// 决定了失败能否回滚），这里只补窗口、帧源句柄、鼠标接线与帧循环。
+    /// 失败返回 false 且不留残骸 —— 调用方据此退回替换语义，桌面上原来那几只不受影响。
+    /// </summary>
+    public bool TryAdd(PetInstance instance, string packPath)
+    {
+        if (_disposed || instance is null)
+        {
+            return false;
+        }
+
+        LayeredFrameWindow? window = null;
+        PetFrameSource? source = null;
+        try
+        {
+            source = new PetFrameSource(instance);
+            window = new LayeredFrameWindow(source);
+            source.WindowHandle = window.WindowHandle;
+
+            // 第二只点了必须有反应：与主窗同一条指针接线（RFC-35 §3.2）。
+            FrameComposition.WirePointer(window, instance);
+
+            var slot = new Slot(instance, packPath, window, source, new ResidentFrameLoop(window));
+            _slots.Add(slot);
+
+            if (_started)
+            {
+                (int x, int y) = _primary.CurrentPosition;
+                window.MoveTo(x - (SpacingX * _slots.Count), y);
+                slot.Loop.Start();
+            }
+
+            KernelLog.Write($"pet-set-add pack={packPath} {Describe()}");
+            return true;
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"pet-set-add-failed pack={packPath} {error.GetType().Name}: {error.Message}");
+            try
+            {
+                window?.Dispose();
+            }
+            catch (Exception disposeError)
+            {
+                KernelLog.Write($"pet-set-add-window-dispose-failed {disposeError.GetType().Name}");
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
     /// 把其余几只摆上桌：按主窗**当前**位置向左挨着排（右数第二只、第三只……），再起各自的泵。
     /// 位置取主窗的实时位置而不是写死的坐标 —— 用户拖过主窗之后，隐藏再显示仍然挨着它。
     /// 幂等：已经在跑的那几只 <see cref="ResidentFrameLoop.Start"/> 会直接返回。

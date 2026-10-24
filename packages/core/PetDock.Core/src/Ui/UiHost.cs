@@ -92,6 +92,19 @@ internal sealed partial class UiHost : ApplicationContext
                 frames.Roster,
                 () => _pet,
                 next => _pet = next);
+
+            // RFC-37 §3.5 片 2：装了集合就追加，摆不进去就退回替换（单窗装配、自检）。
+            // 只数的同步也在这里：托盘那行提示文字写的是「N 只宠物运行中」。
+            _import.AdoptExtra = (instance, path) =>
+            {
+                if (_petSet is null || !_petSet.TryAdd(instance, path))
+                {
+                    return false;
+                }
+
+                _tray?.SetPetCount(_petSet.Count);
+                return true;
+            };
         }
 
         _tray = new TrayHost(

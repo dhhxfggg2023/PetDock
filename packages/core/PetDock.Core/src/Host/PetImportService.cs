@@ -20,6 +20,13 @@ namespace PetDock.Hosting;
 /// </summary>
 internal delegate void PetReplacedNotify(PetInstance? instance);
 
+/// <summary>
+/// 「这只新宠物摆到桌面上」的尝试（RFC-37 §3.5 片 2）。返回 false 表示桌面上放不下
+/// （没有集合层、或那一只装不起来）—— 调用方据此退回 RFC-15 的替换语义。
+/// 自声明理由同上。
+/// </summary>
+internal delegate bool PetAdoptNotify(PetInstance instance, string packPath);
+
 /// <summary>一次导入的结果。失败时 <see cref="Error"/> 有值，桌面上的旧宠物原样不动。</summary>
 internal sealed record ImportResult(bool Ok, string Message, string? InstanceId = null)
 {
@@ -56,16 +63,28 @@ internal sealed class PetImportService
     }
 
     /// <summary>
-    /// 导入一个用户选中的目录，替换当前宠物。
+    /// 「把这只摆上桌」的尝试（RFC-37 §3.5 片 2）。空 = 没有集合层（自检、单窗装配），
+    /// 那时导入就是 RFC-15 的替换语义。由 UiHost 在构造之后接上（集合是后来才挂上去的）。
+    /// </summary>
+    public PetAdoptNotify? AdoptExtra { get; set; }
+
+    /// <summary>
+    /// 导入一个用户选中的目录。
     /// 顺序（RFC-15 §3.3，不可换）：
     ///   ① 复制到数据区 → ② 登记清单 → ③ 用新素材根重建实例并初始化 → ④ 换内容源 → ⑤ 释放旧实例。
     /// 任何一步失败都**不换源**：旧宠物继续在桌面上，错误信息交给界面（内联错误条）。
+    ///
+    /// **片 2 的例外（RFC-37 §3.5）**：装了窗口集合时，第 ④ 步换成「把新的那只摆上桌」——
+    /// 用户导入第二只宠物是想要两只，不是想要换掉第一只。摆不进去（没有集合层）才退回替换。
     /// </summary>
     public ImportResult Import(string sourceDir)
     {
         string stagedPath = string.Empty;
+        PetDataStore.ActivePack? previousActive = null;
         try
         {
+            // 追加时必须把「当前选中」指回来（登记会把它指向新来的那只），所以先记下原值。
+            previousActive = _store.ReadActive();
             (string instanceId, string folder, string path) = _store.StagePack(sourceDir);
             stagedPath = path;
 
@@ -83,6 +102,15 @@ internal sealed class PetImportService
             // 异常会在换源**之前**抛出 —— 旧宠物因此毫发无损（RFC-15 §3.5 倒数第二行）。
             next.AttachAndStart(128, 128, 1.0);
             next.Start();
+
+            // ④ 片 2：桌面上已经有位置就摆上去，主窗那只不动（active 也指回原来那只）。
+            if (AdoptExtra is not null && AdoptExtra(next, path))
+            {
+                _store.SetActive(previousActive?.InstanceId);
+                KernelLog.Write($"import-added instance={next.Id} folder={folder}"
+                    + $" main={previousActive?.InstanceId ?? "(none)"}");
+                return new ImportResult(true, "已添加到桌面", next.Id);
+            }
 
             // ④ 换源：代理切到新宠物。下一帧生效（代理不缓存帧）。
             PetInstance? previous = _currentPet();
