@@ -200,6 +200,18 @@ internal static partial class Program
         // 帧循环是 UiHost 建的，诊断服务比它先存在 —— 帧读数只能事后回填（RFC-17 §3.2）。
         diagnostics.FrameLoop = host.Loop;
 
+        // RFC-37 §3.2（片 1b）：清单里其余几只也上桌。主窗仍是上面那只（归 UiHost 管可见性与位置），
+        // 其余每一只各一套窗口 + 帧源 + 帧循环，装进 PetWindowSet，在首滴答随主窗一起摆出来。
+        // 摆位取主窗的**实时**位置，所以必须等 UiHost 建好（位置在首滴答才恢复）。
+        PetWindowSet petSet = PetWindowSet.FromCatalog(
+            frames?.Roster,
+            pet,
+            dataStore.ReadActive()?.InstanceId,
+            dataStore,
+            window,
+            host.Loop);
+        host.AttachPetSet(petSet);
+
         // 探针要在 Application.Run 之前挂上：它靠 UI 定时器判「采样完了没有」，
         // 泵一停它自己也会停（那时靠采样线程的墙钟，所以另有看门狗判红，见 ResidentPerfProbe）。
         if (probe is not null)

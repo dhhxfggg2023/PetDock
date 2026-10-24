@@ -15,6 +15,14 @@ internal sealed partial class UiHost
     /// </summary>
     private void ToggleAll()
     {
+        // RFC-37 §3.2：桌上有几只就切几只。可见性以主窗为准 —— 两套状态会让「切换全部」
+        // 只切一半（用户点一次，第二只不动）。
+        if (_petSet is not null)
+        {
+            _petSet.ToggleAll();
+            return;
+        }
+
         _loop.Toggle();
     }
 
@@ -39,7 +47,11 @@ internal sealed partial class UiHost
     }
 
     /// <summary>隐藏宠物窗口（窗口仍在，只是不可见；帧泵一并停掉）。</summary>
-    private void HidePet() => _loop.Hide();
+    private void HidePet()
+    {
+        _loop.Hide();
+        _petSet?.HideAll();
+    }
 
     /// <summary>
     /// 移除宠物。真正释放实例由进程退出负责（实例持有 CAS 引用）——

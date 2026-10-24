@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 21770,
+  "budget": 22070,
   "history": [
     {
       "date": "2026-10-18",
@@ -924,6 +924,34 @@
           "slice": "RFC-37 FrameComposition：surface-catalog registered=<N> shown=1 日志行",
           "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
           "lines": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 22051,
+      "budget": 22070,
+      "note": "RFC-37 片 1b：窗口层承载集合（桌上真的有两只）。实测 21734 → 22051（+317）：新文件 PetWindowSet.cs 是主体（268），其余是装配接线与托盘命令（Program +12 / UiHost +25 / UiHost.Tray +12）。预算抬到 22070（余量 19）——这一片是新能力而不是还债，页数没法靠「先减代码」吞掉；主体单独成文件，避开了 D-03c 的单文件上限。判据 PetWindowChecks.cs 在 test/ 下，按口径不计入本预算。判据：--uitest 的 3 条 ui-set-plan-* 与 3 条 ui-set-*。",
+      "attribution": [
+        {
+          "slice": "RFC-37 PetWindowSet：槽位集合 = 窗口 + 帧源 + 帧循环，摆位/切换全部/收起/释放",
+          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "lines": 268
+        },
+        {
+          "slice": "RFC-37 Program：常驻装配后按清单把其余几只装进集合并挂到 UiHost",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 12
+        },
+        {
+          "slice": "RFC-37 UiHost：PetSet 字段 + AttachPetSet + 首滴答 StartAll + 释放",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "lines": 25
+        },
+        {
+          "slice": "RFC-37 UiHost.Tray：切换全部/隐藏宠物 管到每一只",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"],
+          "lines": 12
         }
       ]
     }

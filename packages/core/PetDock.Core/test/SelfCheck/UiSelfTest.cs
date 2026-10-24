@@ -52,6 +52,8 @@ internal static class UiSelfTest
             HostComposeChecks.Run(Check);
             // RFC-37 §4：清单里的宠物是集合（ui-catalog-*）—— 多宠物的实例层。
             PetSetChecks.Run(Check);
+            // RFC-37 §4（片 1b）：屏幕上真的摆了几只（ui-set-*）—— 多宠物的窗口层。
+            PetWindowChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

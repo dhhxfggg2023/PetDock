@@ -34,6 +34,9 @@ internal sealed partial class UiHost : ApplicationContext
     private readonly UiConsentPort? _consent;
     private readonly ResidentFrameLoop _loop;
 
+    /// <summary>主窗之外的那几只（RFC-37 §3.2）。可空：单只宠物时根本不存在这个集合。</summary>
+    private PetWindowSet? _petSet;
+
     /// <summary>设置存储（可空：没有数据区就没有设置页的持久化；自检形态常常是 null）。</summary>
     private readonly UserSettingsStore? _settings;
 
@@ -141,6 +144,20 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>常驻帧循环（自检用；判据要能读到真实的生产对象，而不是自己造一份）。</summary>
     public ResidentFrameLoop Loop => _loop;
 
+    /// <summary>其余的几只（RFC-37 §3.2；单只宠物时为 null）。判据读它证明「真的摆了两只」。</summary>
+    internal PetWindowSet? PetSet => _petSet;
+
+    /// <summary>
+    /// 挂上「其余几只」的集合。必须在首滴答之前挂：滴答里要把它们连同主窗一并摆上桌，
+    /// 挂晚了它们就永远只在内存里而不在屏幕上。
+    /// </summary>
+    internal void AttachPetSet(PetWindowSet set)
+    {
+        _petSet = set;
+        _tray.SetPetCount(set.Count);
+        KernelLog.Write($"pet-set-attached {set.Describe()}");
+    }
+
     /// <summary>
     /// 探针用的无确认退出（--residenttest，RFC-26 §3 差异②）：托盘那条「退出」会弹一次确认框
     /// （docs/18 §1 要求有人确认），而门禁里没有人会点那个按钮。只对探针开放，托盘路径不变。
@@ -183,6 +200,10 @@ internal sealed partial class UiHost : ApplicationContext
             // 窗口刚显示出来：把保存的位置摆回去（RFC-22 §3.3）。放在 Show 之后、第一帧之前，
             // 窗口就不会在屏幕上先闪一下右下角再跳走。
             TryRestorePosition();
+
+            // RFC-37 §3.2：其余的几只按主窗**恢复后**的位置挨着摆上桌。
+            // 放在 TryRestorePosition 之后是必须的 —— 先摆的话它们会按右下角算，主窗一跳走就错位。
+            _petSet?.StartAll();
         }
 
         // RFC-21 §3.4：全屏档把泵停了，没有泵 tick 就没有人重新判定 ——
@@ -212,6 +233,10 @@ internal sealed partial class UiHost : ApplicationContext
             _timer.Dispose();
             _consent?.Close();
             _loop.Dispose();
+
+            // 其余几只的窗口、实例、泵（主窗归本宿主，集合只释放它自己那几条）。
+            _petSet?.Dispose();
+            _petSet = null;
             _keyHook?.Dispose();
             _keyHook = null;
             _panel?.Dispose();
