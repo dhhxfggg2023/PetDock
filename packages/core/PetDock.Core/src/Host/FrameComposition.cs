@@ -168,6 +168,22 @@ internal static class FrameComposition
         return (picked.Manifest.Id, content, $"via=tier2 plugin={picked.Manifest.Id} pid={pid}");
     }
 
+    /// <summary>
+    /// RFC-35 §3.2：把窗口的鼠标消息接到实例的交互会话上（docs/11 §5）。
+    /// 生产入口与自检共用这一处 —— 接之前 PetInstance.PointerDown/Move/Up 在全仓零调用方，
+    /// 仲裁/优先级/10 秒预算写好了却一次也没在真实链路上跑过。
+    /// </summary>
+    internal static void WirePointer(LayeredFrameWindow window, PetInstance instance)
+    {
+        // 时钟必须与帧源同一个（PetFrameSource.ClockMs）：预算判定在帧源里做，
+        // 而会话开始时刻在这里记 —— 两个时钟混用会让「刚按下」被判成「已超时」。
+        window.PointerDownHook = (x, y, button) =>
+            instance.PointerDown(x, y, button, PetFrameSource.ClockMs());
+        window.PointerMoveHook = (x, y) => instance.PointerMove(x, y);
+        window.PointerUpHook = (x, y) => instance.PointerUp(x, y);
+        window.PointerCancelHook = why => instance.CancelSession(why);
+    }
+
     /// <summary>挂起转发口：有真实插件宿主就转到 PluginHost.Disable，没有就用空实现。</summary>
     internal static IInstanceSuspendPort SuspendPortFor(PluginHost? host) =>
         host is null ? new NoopSuspendPort() : new HostSuspendPort(host);

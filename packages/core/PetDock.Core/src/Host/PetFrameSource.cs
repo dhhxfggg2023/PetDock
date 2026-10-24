@@ -131,6 +131,9 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFr
             PublishPointerMove(_probe.LastScreenCursor);
 
             _instance.TickBrain(frameDt, world);
+            // RFC-35 §3.3：docs/11:260 的 10 秒会话预算要有人每帧问一次 —— 此前 EnforceSessionBudget
+            // 在全仓零调用方，卡住的会话永远不会被宿主取消。
+            _instance.EnforceSessionBudget(nowMs);
             Frame frame = _instance.QueryFrame(nowMs);
             _lastSize = new PetSize(frame.BitmapHandle.PixelWidth, frame.BitmapHandle.PixelHeight);
             _served++;
@@ -306,4 +309,11 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFr
 
     /// <summary>传给 QueryFrame 的 now：实例自己的毫秒时钟（单调；不用墙钟日期，免得时间调整改帧号）。</summary>
     private static int NowMs() => (int)(Math.Abs(Environment.TickCount64) % int.MaxValue);
+
+    /// <summary>
+    /// 帧时钟的对外形态（int 域）。**交互会话的开始时刻与 10 秒预算判定必须用同一个时钟**：
+    /// `(int)Environment.TickCount64` 在机器空转超过 24.8 天后会与 `NowMs()` 相差
+    /// int.MaxValue 的整数倍，两个时钟混用会让「刚按下去」被判成「已经超时」，会话当场被强制取消。
+    /// </summary>
+    internal static int ClockMs() => NowMs();
 }

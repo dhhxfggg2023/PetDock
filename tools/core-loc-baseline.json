@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 21650,
+  "budget": 21770,
   "history": [
     {
       "date": "2026-10-18",
@@ -860,6 +860,39 @@
           "slice": "RFC-34 C Tier2BrainBridge.Tick：会话非 Running 计一次 dropped 并返回空列表",
           "files": ["packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"],
           "lines": 7
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21695,
+      "budget": 21770,
+      "note": "RFC-35：窗口鼠标消息接进交互会话（docs/11 §5）+ 每帧 10 秒会话预算。实测 21506 → 21695（+189）：新 partial 196 行里 42 行是从 LayeredFrameWindow.cs 搬过来的（那个文件因此 −42，回到 357 行，离开 D-03c 的 400 行边）。判据 PointerWiringChecks.cs（151 行）在 test/ 下，按 lint-core 口径不计入本预算。budget 抬到 21770（余量 75）。判据：--uitest 的 6 条 ui-pointer-*。",
+      "attribution": [
+        {
+          "slice": "RFC-35 A LayeredFrameWindow.Pointer.cs（新 partial）：四个钩子 + 会话期鼠标捕获 + 失焦/关窗取消 + 三个鼠标消息处理函数迁入",
+          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs"],
+          "lines": 196
+        },
+        {
+          "slice": "RFC-35 B LayeredFrameWindow.cs：三个鼠标处理函数迁出（-42），按住先问交互层",
+          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"],
+          "lines": -42
+        },
+        {
+          "slice": "RFC-35 C FrameComposition.WirePointer：接线唯一所有者（生产与自检共用），时钟与帧源同一个",
+          "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
+          "lines": 17
+        },
+        {
+          "slice": "RFC-35 D PetFrameSource：每帧 EnforceSessionBudget(nowMs) + 对外暴露 ClockMs()",
+          "files": ["packages/core/PetDock.Core/src/Host/PetFrameSource.cs"],
+          "lines": 10
+        },
+        {
+          "slice": "RFC-35 E Program.ComposeWindow：装配后调 WirePointer + pointer-wiring 日志",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 8
         }
       ]
     }

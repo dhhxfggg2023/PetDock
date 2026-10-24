@@ -43,6 +43,8 @@ internal static class UiSelfTest
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
             SettingsChecks.Run(Check);
+            // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
+            PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*）；RFC-32 §4：单实例锁（ui-single-instance-*）。
             HitMapChecks.Run(Check);
             InstanceChecks.Run(Check);

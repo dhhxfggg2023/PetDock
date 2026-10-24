@@ -334,6 +334,14 @@ internal static partial class Program
             KernelLog.Write($"frame-source-bound window=0x{window.WindowHandle.ToInt64():X}");
         }
 
+        // RFC-35 §3.2：窗口鼠标消息 → 实例的交互会话（docs/11 §5）。接线只在 FrameComposition
+        // 一处（自检也调它），免得「生产接上了、判据测的是另一份接线」。
+        if (outcome.Instance is PetInstance pet)
+        {
+            FrameComposition.WirePointer(window, pet);
+            KernelLog.Write($"pointer-wiring instance={pet.Id} surfaces={pet.SurfacesByPriority.Count}");
+        }
+
         return window;
     }
 

@@ -338,48 +338,6 @@ internal sealed partial class LayeredFrameWindow : Form
     /// <summary>窗口事件委托：Compositor 不能引用 PetDock.Hosting 的类型，宿主侧适配。</summary>
     internal delegate void WindowEventDelegate(string type, System.Text.Json.Nodes.JsonObject? payload);
 
-    private void OnMouseDown(object? sender, MouseEventArgs e)
-    {
-        if (e.Button != MouseButtons.Left)
-        {
-            return;
-        }
-
-        _dragging = true;
-        Capture = true;
-        _dragOffset = new Point(e.X, e.Y);
-    }
-
-    private void OnMouseMove(object? sender, MouseEventArgs e)
-    {
-        if (!_dragging)
-        {
-            return;
-        }
-
-        Point cursor = Cursor.Position;
-        SetWindowPosition(cursor.X - _dragOffset.X, cursor.Y - _dragOffset.Y);
-    }
-
-    private void OnMouseUp(object? sender, MouseEventArgs e)
-    {
-        if (!_dragging)
-        {
-            return;
-        }
-
-        _dragging = false;
-        Capture = false;
-
-        // 拖拽落地 = 真实移窗完成：这里就是 core.window.moved 的原生生产点（契约 §2）。
-        (int X, int Y) pos = CurrentPosition;
-        RaiseWindowEvent(EventCatalog.WindowMoved, new System.Text.Json.Nodes.JsonObject
-        {
-            ["windowId"] = $"hwnd-{Handle.ToInt64():X}",
-            ["position"] = new System.Text.Json.Nodes.JsonArray(pos.X, pos.Y),
-        });
-    }
-
     protected override void Dispose(bool disposing)
     {
         if (disposing)
