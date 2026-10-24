@@ -1,19 +1,54 @@
-# tools/ — 仓库机器门禁（docs/40 D-01 ~ D-04b）
+# tools/ — 仓库机器门禁（docs/40 D-01 ~ D-04b，D-16 见 verify.mjs）
 
-三条 Node 脚本把 `docs/40-development-paradigm.md` 的机器可执行规则落成可执行命令。
+这批 Node 脚本把 `docs/40-development-paradigm.md` 的机器可执行规则落成可执行命令。
 零 npm 依赖（只用 Node 内置模块），ESM（`.mjs`），要求 Node >= 20（见根 `package.json` 的 `engines`）。
 
 ## 总入口
 
 ```powershell
-npm run lint        # 依次跑 depscan -> lint:core -> lint:docs，任一红即停
+npm run verify      # D-16 验证门禁：默认三层 static + build + contract（秒级）
+npm run verify:all  # 七层全跑（会闪桌面、跑 publish，分钟级）
+npm run lint        # 只跑静态门：depscan -> lint:core -> lint:docs，任一红即停
 npm run depscan     # 只跑依赖方向门
 npm run lint:core   # 只跑内核规模 / 概念门
 npm run lint:docs   # 只跑文档引用门
 ```
 
-单文件直跑：`node tools/depscan.mjs`、`node tools/lint-core.mjs`、`node tools/doclink.mjs`。
+单文件直跑：`node tools/verify.mjs`、`node tools/depscan.mjs`、`node tools/lint-core.mjs`、`node tools/doclink.mjs`。
 pwsh 不支持 `&&`，串联命令用 `;`。
+
+## verify.mjs — D-16 本地验证门（七层一条命令）
+
+`docs/40` §5.3 的 D-16 条文落成的入口：七层，每层具名、可单独复现，每层声明**证明什么 / 不证明什么**，
+每步直接写 `.out`/`.err` 文件（不接管道，避开「合并管道把成功报成 1」），marker 缺失即红。
+
+| 层 | 内容 | 判绿的 marker |
+| --- | --- | --- |
+| `static` (L0) | 七道静态门逐条跑 | 各门自己的 PASS |
+| `build` (L1) | `dotnet build PetDock.sln -c Debug` | 只判退出码（dotnet 结论行随区域设置漂） |
+| `contract` (L2) | `--hosttest` / `--drivetest` / `--eventtest` / `--animtest idle walk hover` | HOST-OK / DRIVE-OK / EVENT-OK / ANIM-OK |
+| `window` (L3) | `--uitest --log <证据>/uitest.log` | UI-OK |
+| `perf` (L4) | `--perftest` / `--residenttest` | PERF-OK / RESIDENT-PERF-OK |
+| `m7` (L5) | `dotnet run --project tests/m7/PetDock.BongoCat.Tests -c Release` | M7-OK |
+| `dist` (L6) | release → pack → zip sha256 → portable-selftest | RELEASE-OK / PACK-OK / PORTABLE-OK |
+
+```powershell
+node tools/verify.mjs --list                 # 只打印层表与每层的证明 / 不证明
+node tools/verify.mjs --only window          # 只跑一层
+node tools/verify.mjs --only static:depscan  # 只跑一层里的一步
+node tools/verify.mjs --keep-going           # 一层红也继续跑后面的层
+```
+
+判绿看末行 `VERIFY-OK layers=n/7 steps=n evidence=artifacts/verify/<stamp>/`；失败是
+`VERIFY-FAIL layer=<名> step=<名> exit=<n> marker=missing`，并打印该步 `.out` 的末 20 行。
+证据目录里是每步的 `.out`/`.err`、`verify.json`，以及自动生成的 `README.md`（逐层「证明什么 /
+不证明什么」+ 本轮没跑的层 + 全局不证明项）。
+
+末行之后还会打印 `NOT RUN:` —— **默认三层不是全验**：窗口观感、穿透手感、两只以上排布、
+托盘「移除」真点、多屏/混合 DPI 这些从来不是机器判据能证明的事，别把绿当成人眼验收。
+
+`contract` 层把 `TEMP`/`TMP` 指进本次证据目录（沙箱拒绝在 `%TEMP%` 根下建目录），
+`window` 层**故意不指**——`ui-audit-trail-not-in-repo` 会因临时目录进仓库而红。
 
 ## depscan.mjs — D-01a / D-01b / D-02a / D-02b / D-02c / D-02d
 
