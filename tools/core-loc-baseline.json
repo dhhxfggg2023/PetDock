@@ -895,6 +895,19 @@
           "lines": 8
         }
       ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21701,
+      "budget": 21770,
+      "note": "RFC-36：宿主调度线程没在跑时的一致性读取直接读（不再干等 SchedulerStallMs 再抛）。实测 21695 → 21701（+6）：一个 _threadStarted 字段、Start() 里一句置位、Snapshot 的守卫多一个条件与两行注释。budget 不动（余量 69）。判据：--uitest 的 ui-compose-read-before-start。",
+      "attribution": [
+        {
+          "slice": "RFC-36 PluginHost：_threadStarted + Start() 置位 + Snapshot 未运行时直接读",
+          "files": ["packages/core/PetDock.Core/src/Host/PluginHost.cs"],
+          "lines": 6
+        }
+      ]
     }
   ]
 }

@@ -48,6 +48,8 @@ internal static class UiSelfTest
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*）；RFC-32 §4：单实例锁（ui-single-instance-*）。
             HitMapChecks.Run(Check);
             InstanceChecks.Run(Check);
+            // RFC-36 §4：宿主 Start 之前的一致性读取不许干等调度器（ui-compose-read-before-start）。
+            HostComposeChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

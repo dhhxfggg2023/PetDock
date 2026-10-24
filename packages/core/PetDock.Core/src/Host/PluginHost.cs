@@ -34,6 +34,9 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
     private readonly List<FileSystemWatcher> _watchers = new();
     private volatile bool _stopping;
 
+    /// <summary>调度线程是否已经 Start()。Start 之前 / 线程退出之后，任何一致性读取都**直接读**。</summary>
+    private volatile bool _threadStarted;
+
     /// <summary>调度线程命令（D-03b：系统自带泛型委托名含黑名单子串，自声明代替）。</summary>
     private delegate void HostCommand();
 
@@ -70,6 +73,7 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
     /// <summary>启动调度线程；autoLoad 时装载根目录下全部合法插件（校验不过 → 逐条日志拒载）。</summary>
     public void Start()
     {
+        _threadStarted = true;
         _thread.Start();
         if (_autoLoad)
         {
@@ -362,10 +366,12 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
         return tcs.Task;
     }
 
-    /// <summary>一致性读取（自检用）：在调度线程上取值，避免对可变状态的撕裂读。</summary>
+    /// <summary>一致性读取（自检用）：在调度线程上取值，避免对可变状态的撕裂读。
+    /// **调度线程没在跑时直接读**：那时没有并发写者，而 post 进一个没人抽的队列只会干等
+    /// SchedulerStallMs 再抛 TimeoutException（RFC-36 §1 的启动崩溃就是这么来的）。</summary>
     internal T Snapshot<T>(Func<T> read)
     {
-        if (Thread.CurrentThread == _thread)
+        if (!_threadStarted || !_thread.IsAlive || Thread.CurrentThread == _thread)
         {
             return read();
         }
