@@ -71,6 +71,64 @@ internal static partial class PerfGate
     }
 
     /// <summary>
+    /// 整机负载的一次快照（RFC-40 §3.2.1）：<c>GetSystemTimes</c> 的 idle / kernel / user 三个累计值。
+    /// 用法是**同一次运行内两快照相减**：<c>SystemAmbient.Of().BusyPct(start)</c> →
+    /// <c>1 − idleΔ / (kernelΔ + userΔ)</c>，与 <c>\Processor(_Total)</c> 同口径。
+    ///
+    /// 为什么不用 <c>System.Diagnostics.PerformanceCounter</c>：它要额外的 NuGet 包与一次计数器注册，
+    /// 而同一个数 GetSystemTimes 就能给（RFC-40 §3.2.1 已否决）。
+    /// 为什么 kernelΔ 已经含 idle：GetSystemTimes 的 kernel 时间是「内核态全部时间」，idle 是它的子集，
+    /// 所以分母 = kernelΔ + userΔ 就是「总时间」，不减 idle（减了就重复扣，读数会偏高）。
+    /// </summary>
+    internal readonly struct SystemAmbient
+    {
+        private readonly ulong _idle;
+        private readonly ulong _kernel;
+        private readonly ulong _user;
+
+        private SystemAmbient(ulong idle, ulong kernel, ulong user)
+        {
+            _idle = idle;
+            _kernel = kernel;
+            _user = user;
+        }
+
+        internal static SystemAmbient Of()
+        {
+            return GetSystemTimes(out FILETIME idle, out FILETIME kernel, out FILETIME user)
+                ? new SystemAmbient(ToUlong(idle), ToUlong(kernel), ToUlong(user))
+                : default;
+        }
+
+        /// <summary>相对 <paramref name="earlier"/> 这一段的「整机忙」百分比（0~100）。取不到 → 0。</summary>
+        internal double BusyPct(SystemAmbient earlier)
+        {
+            ulong idleDelta = _idle - earlier._idle;
+            ulong totalDelta = (_kernel - earlier._kernel) + (_user - earlier._user);
+            if (totalDelta == 0)
+            {
+                return 0;
+            }
+
+            double busy = (1.0 - (double)idleDelta / totalDelta) * 100.0;
+            // 计时器回绕或跨 CPU 热插拔时这个比会跑出 [0,100]；钳制而不是报一个不可能是真的数。
+            return Math.Clamp(busy, 0.0, 100.0);
+        }
+
+        private static ulong ToUlong(FILETIME t) => ((ulong)t.dwHighDateTime << 32) | t.dwLowDateTime;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FILETIME
+    {
+        public uint dwLowDateTime;
+        public uint dwHighDateTime;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetSystemTimes(out FILETIME idleTime, out FILETIME kernelTime, out FILETIME userTime);
+
+    /// <summary>
     /// PROCESS_MEMORY_COUNTERS_EX2。`PrivateWorkingSetSize` 只在 EX2 里存在——早先按
     /// PROCESS_MEMORY_COUNTERS_EX 声明却多写了一个同名字段，API 按 EX 的 cb 填充，
     /// 那个字段永远读到 0，于是 D-14b 的读数恒为 0.00MB、判据退化成恒真（本机实录已修正）。

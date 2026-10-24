@@ -1,26 +1,36 @@
 {
-  "note": "D-14d \u6539\u53E3\u5F84\uFF1A\u5224\u51C6\u4ECE\u6BDB\u5DE5\u4F5C\u96C6\u6362\u6210\u300C\u5F3A\u5236\u56DE\u6536\u540E\u4ECD\u9A7B\u7559\u7684\u6258\u7BA1\u5806 0.5MB \u002B GDI/USER/\u53E5\u67C4\u4E0D\u589E\u300D\uFF0CD-14e \u57FA\u7EBF\u6BD4\u5BF9\u540C\u6539 retained_heap_mb\uFF1Bws \u8BFB\u6570\u4FDD\u7559\u4E3A\u5C55\u793A\uFF08GC \u63D0\u4EA4\u6BB5\u566A\u58F0 13.7~23.5MB\uFF0C2026-10-22 \u5B9E\u6D4B\uFF09",
-  "captured_at": "2026-10-22 09:49:54",
+  "note": "RFC-40 first re-pin after landing (captain approved 2026-10-25, section 3.3 case 1): (a) premise fields are new - this writes the premise object that did not exist; (b) the old baseline is physically unreachable - it was pinned at a quiet moment cpu 0.058% (2026-10-22) and this machine today is far busier. Re-pinned at today conditions, premise records idle_total_pct honestly. Criteria semantics now absolute-hard / relative-diagnostic / premise-gated.",
+  "captured_at": "2026-10-25 01:41:28",
   "env": {
     "os": "Microsoft Windows NT 10.0.26100.0",
     "cpu": "13th Gen Intel(R) Core(TM) i9-13900HX",
     "cores": 32
   },
+  "premise": {
+    "schema": 1,
+    "machine": "13th Gen Intel(R) Core(TM) i9-13900HX|32|Microsoft Windows NT 10.0.26100.0",
+    "idle_total_pct": 5.388,
+    "ambient_band_pp": 3,
+    "fps_tier": "33.3ms",
+    "roster": "packages/plugins:8",
+    "seconds": 10,
+    "warmup_ms": 1500
+  },
   "m-02": {
-    "cpu_idle_pct": 0.058,
+    "cpu_idle_pct": 0.039,
     "limit": 0.5
   },
   "m-04": {
-    "private_ws_mb": 15.422,
+    "private_ws_mb": 9.691,
     "limit": 150
   },
   "m-03": {
-    "first_frame_ms": 297.524,
+    "first_frame_ms": 521.73,
     "limit": 1500
   },
   "d-14d": {
-    "retained_heap_mb": -0.031,
+    "retained_heap_mb": -0.007,
     "limit_mb": 0.5
   },
-  "unit": "docs/41 D-14a/b/c/d\uFF1B--write-baseline \u6BCF\u6539\u4E00\u6B21\u5FC5\u987B\u5E26 note"
+  "unit": "RFC-40\uFF1A\u7EDD\u5BF9\u95E8\u9650\u786C\u3001\u76F8\u5BF9\u8BCA\u65AD\u8F6F\u3001\u524D\u63D0\u5168\u7B49\u65F6\u76F8\u5BF9\u624D\u786C\uFF1B--write-baseline \u6BCF\u6B21\u5FC5\u987B\u5E26 note"
 }

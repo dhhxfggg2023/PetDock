@@ -11,12 +11,13 @@
 //   ③ 进程会写自己的数据区日志/审计（那正是产品行为，不规避）。
 //
 // 判据（docs/41 §6 D-14a/b/d 的常驻读数；D-14c 是启动到首帧，perftest 已覆盖，此处不重测）：
-//   CHECK resident-loop-running     ticks>0 且 composed>=ticks（没在出帧的 CPU 读数不可信）
-//   CHECK resident-cpu-idle         ≤0.5% 单核（M-02）
-//   CHECK resident-private-ws       ≤150MB（M-04）
-//   CHECK resident-handles-stable   GDI/USER/句柄不增（D-14d 的非托管半边）
-//   CHECK resident-regression       与 tests/perf.resident.json 比：CPU 相对 +5%（噪声地板 0.05pp）
-//                                   或私有工作集 +5%（地板 1MB）即红；--write-baseline --note 重钉
+//   CHECK resident-loop-running       ticks>0 且 composed>=ticks（没在出帧的 CPU 读数不可信）
+//   CHECK resident-cpu-idle           ≤0.5% 单核（M-02）
+//   CHECK resident-private-ws         ≤150MB（M-04）
+//   CHECK resident-handles-stable     GDI/USER/句柄不增（D-14d 的非托管半边）
+//   CHECK resident-baseline-shape     基线文件 + premise + 必需数值字段（硬；RFC-40 §3.1 第 3 条）
+//   CHECK-DISPLAY resident-relative-diagnostic  与 tests/perf.resident.json 的差（永不进 failures）
+//   CHECK resident-relative-gated     仅前提全等时发射（那时是硬门：CPU +5% 且过 0.05pp，或 ws 超 max(1MB,+5%)）
 // 末行 RESIDENT-PERF-OK / RESIDENT-PERF-FAIL，退出码 0/1。
 using System;
 using System.Diagnostics;
@@ -37,6 +38,8 @@ internal static partial class ResidentPerfProbe
 {
     private const double CpuIdleMax = 0.5;
     private const double PrivateWsMaxMb = 150;
+    // 以下两条是**诊断阈值**（RFC-40 §3.1 第 2 条）：值不变（5 / 0.05），
+    // 只有「红了算不算失败」变了 —— 前提全等时进 resident-relative-gated，否则只进诊断行。
     private const double RegressionMaxPct = 5;
     // 与 PerfGate 同一条噪声地板理由：空闲读数在 0.03~0.07% 抖，5% 相对阈值小于分辨率。
     private const double CpuNoiseFloorPct = 0.05;
@@ -156,9 +159,12 @@ internal static partial class ResidentPerfProbe
 
             self.Refresh();
             TimeSpan cpu0 = self.TotalProcessorTime;
+            // 整机负载与进程 CPU **同一窗**取差（RFC-40 §3.2.1）：两个快照把 Thread.Sleep 夹在中间。
+            PerfGate.SystemAmbient ambient0 = PerfGate.SystemAmbient.Of();
             var wall = Stopwatch.StartNew();
             Thread.Sleep(options.Seconds * 1000);
             wall.Stop();
+            double idleTotalPct = PerfGate.SystemAmbient.Of().BusyPct(ambient0);
 
             self.Refresh();
             double cpuMs = (self.TotalProcessorTime - cpu0).TotalMilliseconds;
@@ -172,12 +178,12 @@ internal static partial class ResidentPerfProbe
             _reading = new Reading(
                 wsStart, wsEnd, handles0, handles1, gdi0, gdi1, user0, user1,
                 cpuPct, wall.Elapsed.TotalSeconds, PerfGate.LoopReadings.Of(host.Loop).Minus(loop0),
-                TopThreads(threads0, ThreadCpu(self)), null);
+                TopThreads(threads0, ThreadCpu(self)), null, idleTotalPct);
         }
         catch (Exception ex)
         {
             _reading = new Reading(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, default, string.Empty,
-                ex.GetType().Name + ": " + ex.Message);
+                ex.GetType().Name + ": " + ex.Message, 0);
         }
     }
 
@@ -198,7 +204,8 @@ internal static partial class ResidentPerfProbe
         int handleDelta = r.Handles1 - r.Handles0;
 
         Emit($"CHECK-DISPLAY resident-env os={Environment.OSVersion} cpu={PerfGate.CpuModel()}"
-            + $" cores={Environment.ProcessorCount} pid={Environment.ProcessId}");
+            + $" cores={Environment.ProcessorCount} pid={Environment.ProcessId}"
+            + $" ambient={Fmt(r.IdleTotalPct)}%");
         Emit($"CHECK-DISPLAY resident-raw cpu={Fmt(r.CpuPct)}% over={Fmt(r.Seconds)}s"
             + $" ws={Fmt(r.WsStart / (1024.0 * 1024.0))}->{Fmt(wsMb)}MB"
             + $" handles={r.Handles0}->{r.Handles1}"
@@ -232,87 +239,16 @@ internal static partial class ResidentPerfProbe
             $"{Fmt(wsMb)}MB <= {Fmt(PrivateWsMaxMb)}MB (M-04)");
         failures += Check("resident-handles-stable", gdiDelta <= 0 && userDelta <= 0 && handleDelta <= 0,
             $"gdi={gdiDelta:+0;-0;0} user={userDelta:+0;-0;0} handles={handleDelta:+0;-0;0} (D-14d 非托管半边)");
-        failures += Baseline(r, wsMb, options);
+        failures += Baseline(r, wsMb, options, r.IdleTotalPct);
 
         Failed = failures > 0;
         Emit(Failed ? $"RESIDENT-PERF-FAIL n={failures}" : "RESIDENT-PERF-OK");
-    }
-
-    /// <summary>D-14e 的常驻半边：与 tests/perf.resident.json 比；--write-baseline 时重钉。</summary>
-    private static int Baseline(Reading r, double wsMb, Options options)
-    {
-        string path = BaselinePath;
-        if (options.WriteBaseline)
-        {
-            if (string.IsNullOrWhiteSpace(options.Note))
-            {
-                Emit("CHECK resident-regression FAIL usage: --write-baseline 必须带 --note \"为什么基线变了\"");
-                return 1;
-            }
-
-            var root = new JsonObject
-            {
-                ["note"] = options.Note,
-                ["captured_at"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-                ["env"] = new JsonObject
-                {
-                    ["os"] = Environment.OSVersion.ToString(),
-                    ["cpu"] = PerfGate.CpuModel(),
-                    ["cores"] = Environment.ProcessorCount,
-                },
-                ["m-02"] = new JsonObject { ["cpu_idle_pct"] = Round(r.CpuPct), ["limit"] = CpuIdleMax },
-                ["m-04"] = new JsonObject { ["private_ws_mb"] = Round(wsMb), ["limit"] = PrivateWsMaxMb },
-                ["d-14d"] = new JsonObject
-                {
-                    ["seconds"] = r.Seconds,
-                    ["ticks"] = r.Delta.Ticks,
-                    ["composed"] = r.Delta.Composed,
-                    ["handles"] = r.Handles1,
-                    ["gdi"] = r.Gdi1,
-                    ["user"] = r.User1,
-                },
-                ["unit"] = "docs/41 D-14a/b/d 的**常驻形态**读数（--residenttest）；--write-baseline 每次必须带 note",
-            };
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-            Emit($"CHECK resident-baseline-written PASS {path} note={options.Note}");
-            return 0;
-        }
-
-        if (!File.Exists(path))
-        {
-            Emit($"CHECK resident-regression FAIL baseline-missing {path} (先跑 --write-baseline --note \"…\")");
-            return 1;
-        }
-
-        JsonObject? b = JsonNode.Parse(File.ReadAllText(path)) as JsonObject;
-        string bCpuName = b?["env"]?["cpu"]?.GetValue<string>() ?? "?";
-        double bCpu = Num(b, "m-02", "cpu_idle_pct");
-        double bWs = Num(b, "m-04", "private_ws_mb");
-        bool sameEnv = bCpuName == PerfGate.CpuModel();
-
-        double cpuDeltaPct = bCpu > 0 ? (r.CpuPct - bCpu) * 100 / bCpu : 0;
-        bool cpuRegressed = cpuDeltaPct > RegressionMaxPct && r.CpuPct - bCpu > CpuNoiseFloorPct;
-        bool wsRegressed = wsMb - bWs > Math.Max(WsNoiseFloorMb, bWs * RegressionMaxPct / 100);
-        bool regressed = sameEnv && (cpuRegressed || wsRegressed);
-
-        return Check("resident-regression", !regressed,
-            $"cpu {Fmt(bCpu)}->{Fmt(r.CpuPct)} ws {Fmt(bWs)}->{Fmt(wsMb)}MB"
-            + $" (cpu-noise-floor {Fmt(CpuNoiseFloorPct)}pp, ws-floor {Fmt(WsNoiseFloorMb)}MB)"
-            + $" baseline-cpu={bCpuName}"
-            + (sameEnv ? string.Empty : " (env-changed: 重钉基线)"));
     }
 
     private static int Check(string name, bool ok, string detail)
     {
         Emit($"CHECK {name} {(ok ? "PASS" : "FAIL")} {detail}");
         return ok ? 0 : 1;
-    }
-
-    private static double Num(JsonObject? root, string section, string field)
-    {
-        JsonNode? node = root?[section]?[field];
-        return node is JsonValue v && v.TryGetValue(out double d) ? d : 0;
     }
 
     private static string Fmt(double v) => v.ToString("0.00", CultureInfo.InvariantCulture);
@@ -354,7 +290,8 @@ internal static partial class ResidentPerfProbe
         int Gdi0, int Gdi1,
         int User0, int User1,
         double CpuPct, double Seconds,
-        PerfGate.LoopReadings Delta, string Threads, string? Error)
+        PerfGate.LoopReadings Delta, string Threads, string? Error,
+        double IdleTotalPct)
     {
         public int ThreadCount => Threads.Length == 0 ? 0 : Threads.Split(',').Length;
     }

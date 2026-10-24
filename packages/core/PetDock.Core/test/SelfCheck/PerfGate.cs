@@ -4,14 +4,16 @@
 //   D-14b 常驻内存 ≤150MB 私有工作集（M-04） → CHECK perf-private-ws
 //   D-14c 唤醒首帧 ≤1.5s（M-03）             → CHECK perf-first-frame
 //   D-14d 8h 泄漏 ≤5%（M-09）                → --soak 长跑模式 + 句柄计数
-//   D-14e 相对基线恶化 >5% 即失败            → CHECK perf-regression
-//   D-14f 基线钉死 tests/perf.baseline.json   → --write-baseline --note "<为什么变了>"
+//   D-14e 相对基线（RFC-40 改语义）           → perf-relative-diagnostic（永远打印、永不失败）
+//                                              + perf-relative-gated（仅前提全等时是硬门）
+//   D-14f 基线钉死 tests/perf.baseline.json   → --write-baseline --note "<为什么变了>"，连同 premise
 //
 // 与 docs/50:93「仪表盘读数与 D-14 门禁命令一致」的关系：**本文件就是那个「门禁命令」**。
 // M8 的内置性能面板（docs/18 未定义，需先走 RFC）今后的读数必须由同一套采样函数产出，
 // 而不是各算各的——所以采样逻辑集中在这里，面板只做展示。
 //
-// 单机单环境（docs/41:129）：基线里记 CPU 型号与系统版本，换了机器就重新采基线并说明。
+// 单机单环境（docs/41:129）：基线里记 premise（机器三段 + 整机负载 + 帧率档 + 花名册 + 采样窗），
+// 换了机器**或**换了安静程度/花名册/采样窗，相对比较就不可比 —— 那时只打印，不判红（RFC-40 §3.2）。
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -33,11 +35,21 @@ internal static partial class PerfGate
     private const double PrivateWsMaxMb = 150;    // D-14b
     private const double FirstFrameMaxMs = 1500;  // D-14c
     private const double RetainedGrowthMaxMb = 0.5;  // D-14d 短形态（回收后仍驻留的增量）
-    private const double RegressionMaxPct = 5;
 
-    // D-14e 的 CPU 噪声地板（百分点）：空闲基线在 0.03~0.07% 抖，0.01pp 就是 16%，
-    // 5% 相对阈值小于读数分辨率 —— 见 perf-regression 判据处注释。
-    private const double CpuNoiseFloorPct = 0.05;    // D-14e
+    // 以下两条是**诊断阈值**，不是硬门（RFC-40 §3.1 第 2 条）：值一个没改（5.0 / 0.05），
+    // 只有「红了算不算失败」变了 —— 前提全等时它们进 perf-relative-gated（那时是硬门），
+    // 前提不等时它们只出现在 perf-relative-diagnostic 那一行里。
+    private const double RegressionMaxPct = 5;
+    // CPU 噪声地板（百分点）：0.01pp 在 0.05% 的基线上就是 20%，5% 的相对阈值小于读数分辨率
+    // （本机 32 核一窗 10s，一个调度时间片折 0.0049pp）。地板取 M-02 上限 0.50% 的 1/10。
+    private const double CpuNoiseFloorPct = 0.05;
+
+    /// <summary>
+    /// 整机负载允许的上浮幅度（百分点，RFC-40 §3.2 的 ambient_band_pp）。
+    /// 它是判据的阈值而不是采集参数：写基线时由代码填进 premise，读基线时按它判「此刻是否可比」。
+    /// 3.0 是初值（RFC-40 §6.2 明说没有分布依据）；重钉时若本机常态变了，改这里一处。
+    /// </summary>
+    private const double AmbientBandPp = 3.0;
     private const int WarmupMs = 1500;            // 预热窗口：JIT/首次分配不算进 D-14d 基线
     private const int StabilityWindowMs = 5000;   // D-14d 短形态的第二个采样窗（稳态增长）
 
@@ -85,8 +97,12 @@ internal static partial class PerfGate
         // 为什么必须有它：驱动面换成 ResidentFrameLoop 之后，CPU 低可能是「在静止档跳过提交」，
         // 也可能是「泵根本没跑」—— 只有 tick 计数能把这两件事分开（RFC-21 t15）。
         LoopReadings idleStart = LoopReadings.Of(loop);
+        // 整机负载与进程 CPU **同一窗**取差（RFC-40 §3.2.1）：两个快照把 cpu.Sample 夹在中间，
+        // 于是 ambient 与 cpuPct 覆盖的是同一段时间。分开取会得到两个不可比的数（窗错位时差可达数 pp）。
+        SystemAmbient ambientStart = SystemAmbient.Of();
         TimeSpan cpuSpan;
         double cpuPct = cpu.Sample(seconds * 1000, out cpuSpan);
+        double idleTotalPct = SystemAmbient.Of().BusyPct(ambientStart);
         LoopReadings idle = LoopReadings.Of(loop).Minus(idleStart);
         double idleRate = cpuSpan.TotalSeconds > 0 ? idle.Ticks / cpuSpan.TotalSeconds : 0;
 
@@ -134,7 +150,8 @@ internal static partial class PerfGate
         double wsMb = wsEnd / (1024.0 * 1024.0);
         double leakPct = stabilityPct;
 
-        Emit($"CHECK-DISPLAY perf-env os={Environment.OSVersion} cpu={CpuModel()} cores={Environment.ProcessorCount}");
+        Emit($"CHECK-DISPLAY perf-env os={Environment.OSVersion} cpu={CpuModel()} cores={Environment.ProcessorCount}"
+            + $" ambient={Fmt(idleTotalPct)}%");
         Emit($"CHECK-DISPLAY perf-raw cpu={Fmt(cpuPct)}% over={cpuSpan.TotalSeconds:0.0}s"
             + $" ws-start={Mb(wsStart)} ws-mid={Mb(wsMid)} ws-end={Mb(wsEnd)} first-frame={Fmt(firstFrameMs)}ms"
             + $" handles={handlesStart}->{handlesMid}->{handlesEnd}");
@@ -170,76 +187,15 @@ internal static partial class PerfGate
             $"retained {Fmt(retainedMb)}MB <= {Fmt(RetainedGrowthMaxMb)}MB"
             + $" gdi={gdiDelta:+0;-0;0} user={userDelta:+0;-0;0} handles={handleDelta:+0;-0;0}"
             + $" (毛工作集 {Fmt(leakPct)}% 只作展示：见 INFO perf-soak)");
-        failures += Regression(failures: 0, cpuPct, wsMb, firstFrameMs, retainedMb, writeBaseline, note);
+        // RFC-40 §4.3：调用参数从六个减为七个里的「五个」——retainedMb 不再进硬门（它的「与基线比」
+        // 那一半随相对比较一并移出，留在 perf-relative-diagnostic）。ws/first 保留：诊断行要打印它们。
+        // 同一趟的 idleTotalPct 与 idle 档位也带过去：它们是前提（ambient / fps_tier）的来源。
+        failures += Regression(cpuPct, wsMb, firstFrameMs, retainedMb, idleTotalPct, idle,
+            (int)Math.Round(cpuSpan.TotalSeconds), writeBaseline, note);
         JudgeOccluded(occluded, ref failures);
 
         Emit(failures == 0 ? "PERF-OK" : "PERF-FAIL");
         return failures == 0 ? 0 : 1;
-    }
-
-    /// <summary>D-14e/D-14f：与 tests/perf.baseline.json 比对；--write-baseline 时重钉基线。</summary>
-    private static int Regression(int failures, double cpuPct, double wsMb, double firstFrameMs,
-        double retainedMb, bool writeBaseline, string note)
-    {
-        string path = BaselinePath;
-        if (writeBaseline)
-        {
-            var root = new JsonObject
-            {
-                ["note"] = note,
-                ["captured_at"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-                ["env"] = new JsonObject
-                {
-                    ["os"] = Environment.OSVersion.ToString(),
-                    ["cpu"] = CpuModel(),
-                    ["cores"] = Environment.ProcessorCount,
-                },
-                ["m-02"] = new JsonObject { ["cpu_idle_pct"] = Round(cpuPct), ["limit"] = CpuIdleMax },
-                ["m-04"] = new JsonObject { ["private_ws_mb"] = Round(wsMb), ["limit"] = PrivateWsMaxMb },
-                ["m-03"] = new JsonObject { ["first_frame_ms"] = Round(firstFrameMs), ["limit"] = FirstFrameMaxMs },
-                ["d-14d"] = new JsonObject { ["retained_heap_mb"] = Round(retainedMb), ["limit_mb"] = RetainedGrowthMaxMb },
-                ["unit"] = "docs/41 D-14a/b/c/d；--write-baseline 每改一次必须带 note",
-            };
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-            Emit($"CHECK perf-baseline-written {path} note={note}");
-            return failures;
-        }
-
-        if (!File.Exists(path))
-        {
-            // 没有基线时**不能**算通过：D-14e 是「相对基线别变肥」，没有基线就没有判据。
-            Emit($"CHECK perf-regression FAIL baseline-missing {path} (先跑 --write-baseline --note \"…\")");
-            return failures + 1;
-        }
-
-        JsonObject? b = JsonNode.Parse(File.ReadAllText(path)) as JsonObject;
-        string bEnv = b?["env"]?["cpu"]?.GetValue<string>() ?? "?";
-        double bCpu = Num(b, "m-02", "cpu_idle_pct");
-        double bWs = Num(b, "m-04", "private_ws_mb");
-        double bFirst = Num(b, "m-03", "first_frame_ms");
-        double bRetained = Num(b, "d-14d", "retained_heap_mb");
-
-        string detail = $"cpu {Fmt(bCpu)}->{Fmt(cpuPct)} ws {Fmt(bWs)}->{Fmt(wsMb)}"
-            + $" first {Fmt(bFirst)}->{Fmt(firstFrameMs)} retained {Fmt(bRetained)}->{Fmt(retainedMb)}MB"
-            + $" (cpu-noise-floor {Fmt(CpuNoiseFloorPct)}pp)"
-            + $" baseline-cpu={bEnv}";
-        // 环境不同时**不算回归失败**（跨硬件比较没有意义，docs/41:129 单机单环境），但必须显式提示。
-        bool sameEnv = bEnv == CpuModel();
-        double cpuDelta = bCpu > 0 ? (cpuPct - bCpu) * 100 / bCpu : 0;
-        // CPU 一侧保留 D-14e 的**相对**语义（docs/41:130），但要套一个噪声地板：
-        // 空闲基线实测在 0.03~0.07% 之间抖（0.01 个百分点就是 16%），5% 的相对阈值在这个量级上
-        // 小于读数分辨率 —— 一条恒红或者恒绿的门禁都不是门禁（2026-10-20/10-22 两次实测踩到）。
-        // 地板取 0.05 个百分点 = M-02 上限 0.50% 的 1/10：只有跨过它，相对恶化才值得判红。
-        bool cpuRegressed = cpuDelta > RegressionMaxPct && cpuPct - bCpu > CpuNoiseFloorPct;
-        // 内存一侧比的是 retained-heap（2026-10-22 改）：毛工作集的差值里全是 GC 提交段噪声
-        // （同一命令 13.7~23.5MB），拿它比基线只会得到随机红绿；retained 才是「变肥了没有」。
-        // 阈值用**绝对量**而非百分比：retained 的基线本身就贴着 0（实测 -0.03~+0.00MB），
-        // 拿 0 附近的两个数算百分比，每次都会算出几十个百分点 —— 噪声地板就是 RetainedGrowthMaxMb。
-        bool regressed = sameEnv
-            && (cpuRegressed || retainedMb - bRetained > RetainedGrowthMaxMb);
-        Check(ref failures, "perf-regression", !regressed, detail + (sameEnv ? "" : " (env-changed: 重钉基线)"));
-        return failures;
     }
 
     private static LayeredFrameWindow Compose()
@@ -358,18 +314,6 @@ internal static partial class PerfGate
         => int.TryParse(ArgValue(args, flag), NumberStyles.Integer, CultureInfo.InvariantCulture, out int v)
             ? v
             : fallback;
-
-    private static double Num(JsonObject? node, string section, string field)
-    {
-        try
-        {
-            return node?[section]?[field]?.GetValue<double>() ?? 0;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
 
     private static string Mb(long bytes) => Fmt(bytes / (1024.0 * 1024.0));
     private static double Round(double v) => Math.Round(v, 3);

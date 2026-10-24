@@ -8,6 +8,7 @@
 //   2. `TotalPublished` 数的是**全部**落地事件（窗口满了也要接着数）；
 //   3. `CountOf` 覆盖全部落地事件（否则窗口一满，判据会把「还在发」误读成「不再发了」）。
 using System;
+using System.Text.Json.Nodes;
 using PetDock.Core.PetRuntime;
 
 namespace PetDock.Hosting;
@@ -63,6 +64,29 @@ internal static partial class EventSelfTest
         Check(ref failures, "log-outside-catalog-not-kept",
             log.Log.Count == before && log.TotalPublished == over && log.OutsideCatalog == 1,
             $"kept={log.Log.Count} published={log.TotalPublished} outside={log.OutsideCatalog}");
+
+        // 记账口存的是**引用**，不是载荷的副本 —— 这条不是缺陷，是把「按 dt 缓存 payload」否决掉的
+        // 那条事实（欠账「core.clock.tick 每帧一次分配」的取证结论，2026-10-25）。
+        //
+        // 链条：PetEvent.Payload 是 JsonObject（可变）→ 同一个对象经 IBrain.OnEvent 交到第三方 DLL 手里
+        // （docs/11 §4 的 onEvent 契约只规定顺序，没有任何「只读」条款）→ 同时也是 Log 窗口里那一条。
+        // 若 tick 按 dt 复用同一个 JsonObject，观察者对最新一条的写入就会改写整段历史。
+        // 2026-10-25 实测（artifacts/_probe/tickalloc 的 ShareHazardProbe）：缓存版一次写入改写 3/3 条，
+        // 每帧分配版只改被写那 1 条。
+        //
+        // 所以本判据把「不深拷贝」这个前提钉住：将来若有人在 Publish 里加 DeepClone，缓存方案就**可能**
+        // 重新成立 —— 那时这条判据会红，正好是该重新评估的信号，而不是让一个旧结论继续当护身符。
+        var payload = new JsonObject { ["dt"] = 33 };
+        var referencing = new HostEventDispatch();
+        var evt = new PetEvent(EventCatalog.ClockTick, 100, payload);
+        referencing.Publish(evt);
+        payload["dt"] = -1; // 调用方在 Publish 之后改自己手里那份
+        int seenByLog = referencing.Log.Count > 0 ? referencing.Log[0].Payload?["dt"]?.GetValue<int>() ?? int.MinValue : int.MinValue;
+
+        Check(ref failures, "log-keeps-payload-reference",
+            seenByLog == -1 && ReferenceEquals(referencing.Log[0].Payload, payload),
+            $"log-sees={seenByLog} shared-reference={Flag(referencing.Log.Count > 0 && ReferenceEquals(referencing.Log[0].Payload, payload))}"
+                + " (存引用 = tick 载荷不许跨帧复用；见本段注释的取证结论)");
         return failures;
     }
 }
