@@ -10,7 +10,8 @@
 //   node tools/verify.mjs                  # 默认三层 static / build / contract
 //   node tools/verify.mjs --all            # 全部七层（会建窗口、跑性能、打包）
 //   node tools/verify.mjs --only window    # 只跑一层；--only contract:hosttest 只跑一层里的一步
-//   node tools/verify.mjs --list           # 只打印层表
+//   node tools/verify.mjs --list           # 只打印层表（含当前 config）
+//   node tools/verify.mjs --config release # 换配置（默认 debug）：dll 路径与 build 层的 -c 一起换
 // 退出码：0 = 全过；1 = 有层失败（末行 VERIFY-FAIL 点名 layer/step）。
 
 import { spawnSync } from 'node:child_process';
@@ -21,18 +22,33 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const NODE = process.execPath;
-const DEBUG_DLL = 'packages/core/PetDock.Core/bin/Debug/net8.0-windows/PetDock.Core.dll';
 const STEP_TIMEOUT_MS = 20 * 60 * 1000;
+
+// --config 的两侧取值：命令行的名字（小写）→ dotnet 的配置名（bin 子目录同名）。
+// 为什么不是只换 dll 路径：Debug 的 dll 配 Release 的 build 会得到「验的是旧字节」这种最难发现的假绿，
+// 所以选中的配置必须同时决定 dll 路径、build 层的 -c，以及证据里记下来的那个字段。
+const CONFIG_DIRS = { debug: 'Debug', release: 'Release' };
+const DEFAULT_CONFIG = 'debug';
+
+let CONFIG = DEFAULT_CONFIG;
+let LAYERS = [];
+
+function coreDll(config) {
+  return `packages/core/PetDock.Core/bin/${CONFIG_DIRS[config]}/net8.0-windows/PetDock.Core.dll`;
+}
 
 function node(script) {
   return { cmd: NODE, args: [script] };
 }
 
-function selftest(flag, extraArgs = [], marker = null) {
-  return { cmd: 'dotnet', args: ['exec', DEBUG_DLL, flag, ...extraArgs], marker };
+function selftest(config, flag, extraArgs = [], marker = null) {
+  return { cmd: 'dotnet', args: ['exec', coreDll(config), flag, ...extraArgs], marker };
 }
 
-const LAYERS = [
+// 层表按配置生成：调用一次得到一份，层/步 id 与 marker 不随配置变（换配置不该换判据）。
+function layersFor(config) {
+  const cfg = CONFIG_DIRS[config];
+  return [
   {
     name: 'static',
     title: 'L0 离线纯逻辑：七道静态门禁，逐条单独跑',
@@ -50,14 +66,16 @@ const LAYERS = [
   },
   {
     name: 'build',
-    title: 'L1 构建：Debug 装配（后面三层都跑这份产物）',
+    title: `L1 构建：${cfg} 装配（后面三层都跑这份产物）`,
     proves: '整个解决方案能编译，且下面 contract/window 层跑的就是这一份 dll。',
-    notProven: 'Release 配置没编译过（那归 dist 层）；编译通过不代表任何一条运行时判据成立。',
+    notProven: cfg === 'Release'
+      ? '只证明这一份 Release 装配能编译；编译通过不代表任何一条运行时判据成立。'
+      : 'Release 配置没编译过（--config release 才会跑它）；编译通过不代表任何一条运行时判据成立。',
     steps: [
       {
         id: 'dotnet-build',
         cmd: 'dotnet',
-        args: ['build', 'PetDock.sln', '-c', 'Debug', '--nologo', '-v', 'm'],
+        args: ['build', 'PetDock.sln', '-c', cfg, '--nologo', '-v', 'm'],
         // marker: null —— `dotnet build` 的结论行随区域设置漂（Build succeeded / 已成功生成），只判退出码。
         marker: null,
         timeoutMs: 10 * 60 * 1000,
@@ -67,12 +85,12 @@ const LAYERS = [
   {
     name: 'contract',
     title: 'L2 进程内契约：真实装配 + 真实插件，无桌面交互',
-    proves: '插件宿主全生命周期、帧驱动与降级链、事件总线、动画循环各自的可判定判据。',
+    proves: `插件宿主全生命周期、帧驱动与降级链、事件总线、动画循环各自的可判定判据（跑的是 ${cfg} 那份 dll）。`,
     notProven: '不证明窗口真的显示在桌面上、不证明鼠标消息能穿透——那归 window 层；也不证明功耗。',
     steps: [
       {
         id: 'hosttest',
-        ...selftest('--hosttest', [], 'HOST-OK'),
+        ...selftest(config, '--hosttest', [], 'HOST-OK'),
         // 记录在案的约束：--hosttest 会在 %TEMP% 下造夹具，沙箱拒绝，必须把 TEMP/TMP 指到证据目录内。
         env: (dir) => {
           const tmp = path.join(dir, 'tmp-hosttest');
@@ -80,9 +98,9 @@ const LAYERS = [
           return { ...process.env, TEMP: tmp, TMP: tmp };
         },
       },
-      { id: 'drivetest', ...selftest('--drivetest', [], 'DRIVE-OK') },
-      { id: 'eventtest', ...selftest('--eventtest', [], 'EVENT-OK') },
-      { id: 'animtest', ...selftest('--animtest', ['idle', 'walk', 'hover'], 'ANIM-OK') },
+      { id: 'drivetest', ...selftest(config, '--drivetest', [], 'DRIVE-OK') },
+      { id: 'eventtest', ...selftest(config, '--eventtest', [], 'EVENT-OK') },
+      { id: 'animtest', ...selftest(config, '--animtest', ['idle', 'walk', 'hover'], 'ANIM-OK') },
     ],
   },
   {
@@ -90,15 +108,21 @@ const LAYERS = [
     title: 'L3 真实窗口：--uitest（149 条 CHECK，会闪桌面）',
     proves: '分层窗真的建起来、托盘与面板真的能操作、导入/设置/位置/命中图/单实例这些 UI 母体判据成立。',
     notProven: '不证明「好不好看」「手感如何」：宠物在桌面上长什么样、点击穿透的手感、两只以上宠物的排布，都没有判据，只有人眼（docs/98 §3.2）。',
-    steps: [{ id: 'uitest', ...selftest('--uitest', ['--log', 'REPLACED'], 'UI-OK') }],
+    steps: [{ id: 'uitest', ...selftest(config, '--uitest', ['--log', 'REPLACED'], 'UI-OK') }],
   },
   {
     name: 'perf',
     title: 'L4 真实功耗读数：--perftest / --residenttest',
-    proves: 'D-14a~f 的绝对门限与相对回归，以及常驻形态（真实的 Program/UiHost 路径）的同一组读数。',
-    notProven: '读数只覆盖本机这一种硬件与窗口管理；8 小时浸泡（--soak）不在这里，且从未跑过（RFC-36 §7.2）。',
+    proves: 'D-14a~f 的绝对门限与相对回归，以及常驻形态（真实的 Program/UiHost 路径）的同一组读数。'
+      + ' RFC-40 之后相对回归分三层：`*-baseline-shape` 判仓库状态（基线文件在不在、premise 在不在且 schema 对、'
+      + '必需字段全不全），是硬门且与机器负载无关；`*-relative-diagnostic` 永远打印差值与'
+      + '「若按旧语义会不会判红」，但不进失败数；`*-relative-gated` 只在基线 premise 的前提字段与本次运行'
+      + '全等时发射，发射时才是硬门。',
+    notProven: '读数只覆盖本机这一种硬件与窗口管理；前提（机器三段 / 空载水平+允许上浮 / fps 档 / 花名册 / '
+      + '采样参数）不符时相对判据只诊断、不拦截，所以「本层没红」不等于「与基线一样快」——差值在 '
+      + '`*-relative-diagnostic` 行里，要人读；8 小时浸泡（--soak 28800）不在这里，且从未跑过（RFC-36 §7.2）。',
     steps: [
-      { id: 'perftest', ...selftest('--perftest', [], 'PERF-OK') },
+      { id: 'perftest', ...selftest(config, '--perftest', [], 'PERF-OK') },
       {
         id: 'residenttest',
         // 基线 tests/perf.resident.json 的 note 钉死了它自己的采集条件：`--seconds 10 --warmup 4000`，
@@ -107,7 +131,7 @@ const LAYERS = [
         // 装配去比这份基线——2026-10-24 首次全跑就是这样把 ws 判红（基线 19.64MB，裸跑 23.7→30.6MB）；
         // 同条件重跑后 ws 回到 19.5~19.8MB，证明红的机制是条件不可比，不是内存变胖。
         // 花名册不存在时（另一台机器上 artifacts/ 是 gitignore 的）退回默认根，不硬造。
-        ...selftest('--residenttest', ['--seconds', '10', '--warmup', '4000'], 'RESIDENT-PERF-OK'),
+        ...selftest(config, '--residenttest', ['--seconds', '10', '--warmup', '4000'], 'RESIDENT-PERF-OK'),
         env: () => {
           const roster = path.join(REPO_ROOT, 'artifacts', '_probe', 'plugroot');
           return fs.existsSync(roster)
@@ -144,7 +168,8 @@ const LAYERS = [
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
     ],
   },
-];
+  ];
+}
 
 const DEFAULT_LAYERS = ['static', 'build', 'contract'];
 
@@ -163,13 +188,19 @@ function stamp() {
 }
 
 function parseArgs(argv) {
-  const opts = { layers: null, keepGoing: false, list: false };
+  const opts = { layers: null, all: false, keepGoing: false, list: false, config: DEFAULT_CONFIG };
   const wanted = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '--all') opts.layers = LAYERS.map((layer) => layer.name);
+    if (arg === '--all') opts.all = true;
     else if (arg === '--keep-going') opts.keepGoing = true;
     else if (arg === '--list') opts.list = true;
+    else if (arg === '--config') {
+      const value = argv[i + 1];
+      if (!value) fail(`--config 需要参数：${Object.keys(CONFIG_DIRS).join(' | ')}`);
+      opts.config = value;
+      i += 1;
+    } else if (arg.startsWith('--config=')) opts.config = arg.slice('--config='.length);
     else if (arg === '--only') {
       const value = argv[i + 1];
       if (!value) fail('--only 需要参数，如 --only contract 或 --only contract:hosttest');
@@ -270,8 +301,9 @@ function zipDigest() {
   };
 }
 
-function printList() {
+function printList(config) {
   console.log(`验证层表（D-16 / RFC-38）：默认跑 ${DEFAULT_LAYERS.join(' → ')}，--all 跑全部`);
+  console.log(`config=${config}（--config debug|release 换配置；它同时决定 dll 路径与 build 层的 -c）`);
   for (const layer of LAYERS) {
     const marks = layer.steps.map((step) => (step.marker ? `${step.id}→${step.marker}` : `${step.id}→exit-only`));
     console.log(`  ${layer.name.padEnd(9)} ${layer.title}`);
@@ -284,6 +316,7 @@ function writeEvidence(dir, runs, executed) {
   const lines = [];
   lines.push(`# 验证证据 ${path.basename(dir)}`, '');
   lines.push(`命令：\`node tools/verify.mjs ${executed.label}\` on ${new Date().toISOString()}`, '');
+  lines.push(`配置：\`${executed.config}\`（dll = \`${coreDll(executed.config)}\`）`, '');
   const failed = runs.filter((run) => run.code !== 0 || !run.markerOk);
   lines.push(`结论：${failed.length === 0 ? 'VERIFY-OK' : `VERIFY-FAIL ${failed[0].layer}/${failed[0].id}`}`, '');
   lines.push('| 层 | 步 | exit | marker | 耗时 | 证据 |', '|---|---|---|---|---|---|');
@@ -308,13 +341,19 @@ function writeEvidence(dir, runs, executed) {
   fs.writeFileSync(path.join(dir, 'README.md'), lines.join('\n'), 'utf8');
   fs.writeFileSync(
     path.join(dir, 'verify.json'),
-    `${JSON.stringify({ at: new Date().toISOString(), layers: executed.layers.map((l) => l.name), runs: runs.map(({ out, err, ...rest }) => ({ ...rest, out: path.basename(out), err: path.basename(err) })) }, null, 2)}\n`,
+    `${JSON.stringify({ at: new Date().toISOString(), config: executed.config, dll: coreDll(executed.config), layers: executed.layers.map((l) => l.name), runs: runs.map(({ out, err, ...rest }) => ({ ...rest, out: path.basename(out), err: path.basename(err) })) }, null, 2)}\n`,
     'utf8',
   );
 }
 
 function main() {
   const opts = parseArgs(process.argv.slice(2));
+  const requested = String(opts.config).toLowerCase();
+  if (!CONFIG_DIRS[requested]) fail(`没有叫 ${opts.config} 的配置（可选 ${Object.keys(CONFIG_DIRS).join(' | ')}）`);
+
+  // 配置在这里定下来，层表随后按它生成：dll 路径、build 层的 -c、证据里的 config 字段同源。
+  CONFIG = requested;
+  LAYERS = layersFor(CONFIG);
 
   // 判据 §6.5：notProven 是必填字段 —— 证据目录里那句「不证明什么」由表生成，不能靠人记得写。
   for (const layer of LAYERS) {
@@ -323,14 +362,24 @@ function main() {
   }
 
   if (opts.list) {
-    printList();
+    printList(CONFIG);
     return;
   }
 
-  const layers = selectLayers(opts.layers);
+  const layers = opts.layers
+    ? selectLayers(opts.layers)
+    : selectLayers(opts.all ? LAYERS.map((layer) => layer.name) : DEFAULT_LAYERS);
   const dir = path.join(REPO_ROOT, 'artifacts', 'verify', stamp());
   fs.mkdirSync(dir, { recursive: true });
-  const executed = { layers, label: opts.layers ? opts.layers.join(',') : '（默认三层）' };
+  const executed = {
+    layers,
+    config: CONFIG,
+    label: (opts.layers
+      ? opts.layers.join(',')
+      : opts.all ? LAYERS.map((layer) => layer.name).join(',') : '（默认三层）')
+      // 证据里的「命令」要能照着复现：非默认配置就把它写进去（默认 debug 时一字不加，保持原有文案）。
+      + (CONFIG === DEFAULT_CONFIG ? '' : ` --config ${CONFIG}`),
+  };
   const runs = [];
   let failedLayer = null;
 
