@@ -908,6 +908,24 @@
           "lines": 6
         }
       ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 21734,
+      "budget": 21770,
+      "note": "RFC-37 片 1a：清单即集合。实测 21701 → 21734（+33）：ReadPets() 新增、ReadActive() 改为在集合里挑（两处解析合成一处，净 +27），装配期一行 surface-catalog 日志（+6）。判据 PetSetChecks.cs 在 test/ 下，按 lint-core 口径不计入本预算。budget 不动（余量 36）。判据：--uitest 的 4 条 ui-catalog-*。",
+      "attribution": [
+        {
+          "slice": "RFC-37 PetDataStore：ReadPets() 新增 + ReadActive() 改为基于集合（一个解析者，两个答案）",
+          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.cs"],
+          "lines": 27
+        },
+        {
+          "slice": "RFC-37 FrameComposition：surface-catalog registered=<N> shown=1 日志行",
+          "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
+          "lines": 6
+        }
+      ]
     }
   ]
 }

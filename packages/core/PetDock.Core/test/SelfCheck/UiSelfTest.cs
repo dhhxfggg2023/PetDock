@@ -50,6 +50,8 @@ internal static class UiSelfTest
             InstanceChecks.Run(Check);
             // RFC-36 §4：宿主 Start 之前的一致性读取不许干等调度器（ui-compose-read-before-start）。
             HostComposeChecks.Run(Check);
+            // RFC-37 §4：清单里的宠物是集合（ui-catalog-*）—— 多宠物的实例层。
+            PetSetChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

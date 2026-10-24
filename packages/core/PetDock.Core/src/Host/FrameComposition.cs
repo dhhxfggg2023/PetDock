@@ -60,6 +60,12 @@ internal static class FrameComposition
         // RFC-24 §6.3：装载期给出状态目录，之后每只实例的落盘都落在它下面。
         roster.StateDir = PetDataStore.Resolve().StateDir;
 
+        // RFC-37 §3.1：清单里有几只，与现在显示哪一只，是两个问题。前者今天已经是集合
+        // （导入按 RegisterActive 追加，见 PetDataStore.ReadPets），后者仍是 1 —— 窗口层未落地。
+        // 这一行让「明明导入了两只却只看到一只」在日志里可查，而不是靠猜。
+        KernelLog.Write(
+            $"surface-catalog registered={PetDataStore.Resolve().ReadPets().Count} shown=1 reason=v1-single-window");
+
         if (roster.View is not null)
         {
             PetInstance? instance = roster.BuildInstance(phase);

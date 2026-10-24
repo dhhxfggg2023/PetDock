@@ -9,6 +9,7 @@
 // 而引用方（视图实现）今天只认路径。v1 用「复制进用户数据区 + 按路径引用」近似，
 // 代价与欠账记在 RFC-15 §7，不假装已经合规。
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -203,32 +204,58 @@ internal sealed class PetDataStore
         File.Move(temp, CatalogPath, overwrite: true);
     }
 
+    /// <summary>
+    /// 清单里的**全部**素材包（按清单顺序；目录已不存在的跳过）。
+    /// 「清单里有几只」与「现在显示哪一只」是两个问题：前者是集合（RFC-37 §3.1），
+    /// 后者仍由 <see cref="ReadActive"/> 单独回答 —— 本类只解析一次清单，两个答案都从这一份读出来。
+    /// </summary>
+    public IReadOnlyList<ActivePack> ReadPets()
+    {
+        var list = new List<ActivePack>();
+        if (ReadCatalog()["pets"] is not JsonArray pets)
+        {
+            return list;
+        }
+
+        foreach (JsonNode? item in pets)
+        {
+            if (item is not JsonObject entry)
+            {
+                continue;
+            }
+
+            string? id = (string?)entry["id"];
+            string? folder = (string?)entry["folder"];
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(folder))
+            {
+                continue;
+            }
+
+            string path = Path.Combine(PacksDir, folder);
+            if (Directory.Exists(path))
+            {
+                list.Add(new ActivePack(id, path));
+            }
+        }
+
+        return list;
+    }
+
     /// <summary>读当前选中的导入物；清单不存在或已失效时返回 null。</summary>
     public ActivePack? ReadActive()
     {
-        JsonObject catalog = ReadCatalog();
-        string? active = (string?)catalog["active"];
+        string? active = (string?)ReadCatalog()["active"];
         if (string.IsNullOrWhiteSpace(active))
         {
             return null;
         }
 
-        JsonArray pets = catalog["pets"] as JsonArray ?? new JsonArray();
-        foreach (JsonNode? item in pets)
+        foreach (ActivePack pack in ReadPets())
         {
-            if (item is not JsonObject entry || !string.Equals((string?)entry["id"], active, StringComparison.Ordinal))
+            if (string.Equals(pack.InstanceId, active, StringComparison.Ordinal))
             {
-                continue;
+                return pack;
             }
-
-            string? folder = (string?)entry["folder"];
-            if (string.IsNullOrWhiteSpace(folder))
-            {
-                return null;
-            }
-
-            string path = Path.Combine(PacksDir, folder);
-            return Directory.Exists(path) ? new ActivePack(active, path) : null;
         }
 
         return null;
