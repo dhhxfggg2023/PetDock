@@ -1,6 +1,10 @@
-// 托盘命令的实现（docs/18 §1 的五项固定入口）。
+// 托盘命令的实现（docs/18 §1 的五项固定入口 + 每宠物一条子菜单）。
 // 为什么单独一个文件：这些命令是「用户的一次点击」到「内核的一次动作」的映射，
 // 与授权链路无关，混在一起会让人读授权代码时读到托盘逻辑。
+//
+// RFC-37 §3.6（片 3）：每条子菜单带着一只宠物的 id 下来，命令按 id 路由 ——
+// 不能再用「当前宠物」这种隐式指代，否则桌上有三只时「隐藏」永远只藏主窗那只。
+using System.Collections.Generic;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
@@ -9,26 +13,69 @@ namespace PetDock.Core.Ui;
 
 internal sealed partial class UiHost
 {
+    /// <summary>主窗那只的菜单 id。它可能没有实例（内核纯色兜底），所以要一个不会撞车的名字。</summary>
+    private const string PrimaryPetId = "primary";
+
     /// <summary>
-    /// 显示/隐藏宠物窗口。走 <see cref="ResidentFrameLoop"/>：显示就起泵、隐藏就停泵。
-    /// 直接摸窗口的 Show/Hide 会绕过「隐藏即停泵」——宠物看不见了，CPU 却还在烧（RFC-14 §2.2）。
+    /// 托盘上现在该有哪几条「宠物：<名称>」：主窗那只 + 集合里的每一只。
+    /// 顺序与桌面上从左到右的顺序一致（集合的槽位顺序就是摆位顺序），用户点哪条指哪只。
     /// </summary>
-    private void ToggleAll()
+    private IReadOnlyList<PetMenuItem> BuildPetMenu()
     {
-        // RFC-37 §3.2：桌上有几只就切几只。可见性以主窗为准 —— 两套状态会让「切换全部」
-        // 只切一半（用户点一次，第二只不动）。
+        var items = new List<PetMenuItem>();
+
+        if (!_primaryRemoved)
+        {
+            string primaryId = _pet?.Id ?? PrimaryPetId;
+            items.Add(new PetMenuItem(
+                _pet is null ? "(内核兜底)" : primaryId,
+                () => MovePetById(primaryId),
+                () => PausePetById(primaryId),
+                () => HidePetById(primaryId),
+                () => RemovePetById(primaryId)));
+        }
+
         if (_petSet is not null)
         {
-            _petSet.ToggleAll();
+            foreach (PetWindowSet.Entry entry in _petSet.Entries())
+            {
+                string id = entry.Id;
+                items.Add(new PetMenuItem(
+                    entry.Title,
+                    () => MovePetById(id),
+                    () => PausePetById(id),
+                    () => HidePetById(id),
+                    () => RemovePetById(id)));
+            }
+        }
+
+        return items;
+    }
+
+    /// <summary>桌面上还剩几只（主窗那只被移除后不算）。</summary>
+    private int LivePetCount() => (_primaryRemoved ? 0 : 1) + (_petSet?.Slots.Count ?? 0);
+
+    /// <summary>把这一只挪回屏幕正中。</summary>
+    private void MovePetById(string id)
+    {
+        if (IsPrimary(id))
+        {
+            _window.MoveToCenter();
             return;
         }
 
-        _loop.Toggle();
+        _petSet?.MoveToCenter(id);
     }
 
-    /// <summary>暂停/恢复宠物实例。</summary>
-    private void PausePet()
+    /// <summary>暂停/恢复这一只（主窗那只走 UiHost 持有的实例）。</summary>
+    private void PausePetById(string id)
     {
+        if (!IsPrimary(id))
+        {
+            _petSet?.TogglePause(id);
+            return;
+        }
+
         if (_pet is null)
         {
             return;
@@ -46,20 +93,70 @@ internal sealed partial class UiHost
         }
     }
 
-    /// <summary>隐藏宠物窗口（窗口仍在，只是不可见；帧泵一并停掉）。</summary>
-    private void HidePet()
+    /// <summary>藏起这一只（只藏它，不动别的）。</summary>
+    private void HidePetById(string id)
     {
-        _loop.Hide();
-        _petSet?.HideAll();
+        if (IsPrimary(id))
+        {
+            _loop.Hide();
+            return;
+        }
+
+        _petSet?.Hide(id);
     }
 
     /// <summary>
-    /// 移除宠物。真正释放实例由进程退出负责（实例持有 CAS 引用）——
-    /// 所以这里只是让窗口从界面消失，不去碰实例的生命周期。
+    /// 把这一只从桌上和清单里移除。
+    /// 主窗那只的**实例**归 Program / CAS（RFC-15 §3.2），本片不在这里释放它 ——
+    /// 只把它从清单与托盘里拿掉并藏起窗口，真正的卸载在重启时发生
+    /// （`pet-remove-primary deferred=restart` 这行日志是它的取证）。
     /// </summary>
-    private void RemovePet()
+    private void RemovePetById(string id)
     {
-        _loop.Hide();
+        if (IsPrimary(id))
+        {
+            _primaryRemoved = true;
+            _loop.Hide();
+            _store?.RemoveFromCatalog(_pet?.Id ?? string.Empty);
+            KernelLog.Write($"pet-remove-primary id={_pet?.Id ?? "(none)"} deferred=restart");
+            RefreshTrayPets();
+            return;
+        }
+
+        if (_petSet?.Remove(id, out string packPath) == true)
+        {
+            _store?.RemoveFromCatalog(id);
+            KernelLog.Write($"pet-remove-extra id={id} pack={packPath}");
+        }
+
+        RefreshTrayPets();
+    }
+
+    /// <summary>托盘与提示文字同步到「现在桌上有几只」。</summary>
+    private void RefreshTrayPets()
+    {
+        _tray.SetPets(BuildPetMenu());
+        _tray.SetPetCount(LivePetCount());
+    }
+
+    private bool IsPrimary(string id) =>
+        !_primaryRemoved && string.Equals(id, _pet?.Id ?? PrimaryPetId, System.StringComparison.Ordinal);
+
+    /// <summary>
+    /// 显示/隐藏宠物窗口。走 <see cref="ResidentFrameLoop"/>：显示就起泵、隐藏就停泵。
+    /// 直接摸窗口的 Show/Hide 会绕过「隐藏即停泵」——宠物看不见了，CPU 却还在烧（RFC-14 §2.2）。
+    /// </summary>
+    private void ToggleAll()
+    {
+        // RFC-37 §3.2：桌上有几只就切几只。可见性以主窗为准 —— 两套状态会让「切换全部」
+        // 只切一半（用户点一次，第二只不动）。
+        if (_petSet is not null)
+        {
+            _petSet.ToggleAll();
+            return;
+        }
+
+        _loop.Toggle();
     }
 
     /// <summary>

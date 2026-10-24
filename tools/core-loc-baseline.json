@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 22184,
+  "budget": 22610,
   "history": [
     {
       "date": "2026-10-18",
@@ -980,6 +980,38 @@
           "slice": "RFC-37 UiHost：把集合的 TryAdd 接到导入服务，并同步托盘只数",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
           "lines": 13
+        }
+      ]
+    },
+    {
+      "measured": 22587,
+      "budget": 22610,
+      "note": "RFC-37 片 3：托盘每宠物一条子菜单 + 移除。为什么必须在 core 里：命令按 id 路由（PetWindowSet.Commands）与托盘重建（TrayHost）都是 UI 母体内部结构，没有插件面能承载；清单删除与主文件同属一个写者。PetDataStore 主文件已到 421 行，删除那块按 D-03c 拆成 partial。",
+      "attribution": [
+        {
+          "slice": "RFC-37 PetWindowSet.Commands：槽位查找 / 逐只暂停·隐藏·居中·移除",
+          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.Commands.cs"],
+          "lines": 157
+        },
+        {
+          "slice": "RFC-37 TrayHost：每宠物一条子菜单（pet-1..N）、重建入口与可点的子项",
+          "files": ["packages/core/PetDock.Core/src/Ui/TrayHost.cs"],
+          "lines": 100
+        },
+        {
+          "slice": "RFC-37 UiHost.Tray：命令按 id 路由、移除后同步托盘与只数",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"],
+          "lines": 97
+        },
+        {
+          "slice": "RFC-37 PetDataStore.Catalog：清单删除 + active 交接（按 D-03c 从主文件拆出）",
+          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.Catalog.cs"],
+          "lines": 65
+        },
+        {
+          "slice": "RFC-37 UiHost：_store 字段与 _primaryRemoved 标记",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "lines": 4
         }
       ]
     }

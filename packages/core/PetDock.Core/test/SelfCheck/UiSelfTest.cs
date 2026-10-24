@@ -54,6 +54,7 @@ internal static class UiSelfTest
             PetSetChecks.Run(Check);
             // RFC-37 §4（片 1b）：屏幕上真的摆了几只（ui-set-*）—— 多宠物的窗口层。
             PetWindowChecks.Run(Check);
+            TrayPetChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);
@@ -108,18 +109,19 @@ internal static class UiSelfTest
 
     private static int _failed;
 
-    /// <summary>§1：五项、顺序固定、id 稳定。</summary>
+    /// <summary>§1：五项、顺序固定、id 稳定（宠物项 = pet-1，只数由桌面决定）。</summary>
     private static int TrayItems()
     {
         int failures = 0;
         UiCommand noop = Noop;
         using var tray = new TrayHost(
-            "sample-pet", noop, noop, noop, noop, noop, noop, noop, noop);
+            new[] { new PetMenuItem("sample-pet", noop, noop, noop, noop) },
+            noop, noop, noop, noop);
         IReadOnlyList<string> order = tray.ItemOrder;
         bool expected = order.Count == 5
             && order[0] == "toggle-all"
             && order[1] == "panel"
-            && order[2] == "pet"
+            && order[2] == "pet-1"
             && order[3] == "pause-hooks"
             && order[4] == "exit";
         Check("ui-tray-items", expected, "items=" + string.Join(",", order));
@@ -132,7 +134,8 @@ internal static class UiSelfTest
         int failures = 0;
         UiCommand noop = Noop;
         using var tray = new TrayHost(
-            "sample-pet", noop, noop, noop, noop, noop, noop, noop, noop);
+            new[] { new PetMenuItem("sample-pet", noop, noop, noop, noop) },
+            noop, noop, noop, noop);
         Check("ui-tray-hook-item-sticky", tray.HookItemVisible, $"visible={tray.HookItemVisible}");
         return failures;
     }

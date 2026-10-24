@@ -23,7 +23,7 @@ namespace PetDock.Hosting;
 /// 用户数据区（docs/17 §1 的数据形态落点）。
 /// 只管三件事：素材包目录、清单文件、当前选中项。
 /// </summary>
-internal sealed class PetDataStore
+internal sealed partial class PetDataStore
 {
     /// <summary>显式覆盖数据区根目录的环境变量名（测试与开发用；未设置时用系统默认位置）。</summary>
     public const string RootEnv = "PETDOCK_DATA_ROOT";

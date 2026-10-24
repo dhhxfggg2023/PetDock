@@ -19,7 +19,7 @@ using PetDock.Hosting;
 
 namespace PetDock.Core.Ui;
 
-internal sealed class PetWindowSet : IDisposable
+internal sealed partial class PetWindowSet : IDisposable
 {
     /// <summary>相邻两只的水平间距（物理像素）：128 的帧宽 + 12 的空隙，看得出是两只。</summary>
     private const int SpacingX = 140;

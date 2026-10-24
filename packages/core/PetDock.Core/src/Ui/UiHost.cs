@@ -40,6 +40,9 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>设置存储（可空：没有数据区就没有设置页的持久化；自检形态常常是 null）。</summary>
     private readonly UserSettingsStore? _settings;
 
+    /// <summary>宠物清单（RFC-37 §3.6：托盘的「移除」要能把它从清单里删掉）。</summary>
+    private readonly PetDataStore? _store;
+
     /// <summary>当前宠物（导入会换它，所以不是 readonly）。</summary>
     private PetInstance? _pet;
 
@@ -53,6 +56,9 @@ internal sealed partial class UiHost : ApplicationContext
     private PerfSummary _perf = PerfSummary.Empty;
     private bool _hooksPaused;
     private bool _hostStarted;
+
+    /// <summary>主窗那只已经从清单里移除（RFC-37 §3.6）：它的实例归 Program，卸载要重启。</summary>
+    private bool _primaryRemoved;
     private bool _petShown;
     private bool _disposed;
 
@@ -102,21 +108,19 @@ internal sealed partial class UiHost : ApplicationContext
                     return false;
                 }
 
-                _tray?.SetPetCount(_petSet.Count);
+                _tray?.SetPets(BuildPetMenu());
                 return true;
             };
         }
 
+        _store = PetDataStore.Resolve();
+
         _tray = new TrayHost(
-            petName: pet?.Id ?? "(无)",
-            toggleAll: ToggleAll,
-            openPanel: OpenPanel,
-            movePet: () => _window.MoveToCenter(),
-            pausePet: PausePet,
-            hidePet: HidePet,
-            removePet: RemovePet,
-            pauseHooks: PauseHooks,
-            exit: ExitApp);
+            BuildPetMenu(),
+            ToggleAll,
+            OpenPanel,
+            PauseHooks,
+            ExitApp);
 
         _tray.SetPetCount(pet is null ? 0 : 1);
 
@@ -167,7 +171,7 @@ internal sealed partial class UiHost : ApplicationContext
     internal void AttachPetSet(PetWindowSet set)
     {
         _petSet = set;
-        _tray.SetPetCount(set.Count);
+        RefreshTrayPets();
         KernelLog.Write($"pet-set-attached {set.Describe()}");
     }
 
