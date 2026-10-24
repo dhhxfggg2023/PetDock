@@ -60,7 +60,7 @@ internal sealed partial class ControlPanel : Form
         bool showWindow,
         PluginCommand? authorize = null,
         PluginCommand? toggleDisabled = null,
-        Func<PetFrameReadings?>? frames = null)
+        Func<string, PetFrameReadings?>? frames = null)
     {
         _snapshot = snapshot ?? (() => UiSnapshot.Empty);
         _authorize = authorize;

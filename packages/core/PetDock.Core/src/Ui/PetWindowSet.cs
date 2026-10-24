@@ -38,14 +38,19 @@ internal sealed partial class PetWindowSet : IDisposable
 
     private readonly LayeredFrameWindow _primary;
     private readonly ResidentFrameLoop? _primaryLoop;
+    private readonly PetInstance? _primaryInstance;
     private readonly List<Slot> _slots = new();
     private bool _started;
     private bool _disposed;
 
-    public PetWindowSet(LayeredFrameWindow primary, ResidentFrameLoop? primaryLoop = null)
+    public PetWindowSet(
+        LayeredFrameWindow primary,
+        ResidentFrameLoop? primaryLoop = null,
+        PetInstance? primaryInstance = null)
     {
         _primary = primary ?? throw new ArgumentNullException(nameof(primary));
         _primaryLoop = primaryLoop;
+        _primaryInstance = primaryInstance;
     }
 
     /// <summary>桌上的只数（含主窗）。主窗恒算一只：它可能没有实例（内核纯色兜底）。</summary>
@@ -132,7 +137,7 @@ internal sealed partial class PetWindowSet : IDisposable
         LayeredFrameWindow primary,
         ResidentFrameLoop? primaryLoop = null)
     {
-        var set = new PetWindowSet(primary, primaryLoop);
+        var set = new PetWindowSet(primary, primaryLoop, shown);
         IReadOnlyList<PetDataStore.ActivePack> catalog = store.ReadPets();
         IReadOnlyList<PetDataStore.ActivePack> rest = Plan(shown is null ? null : shownPackId, catalog);
         foreach (PetDataStore.ActivePack pack in rest)
@@ -153,6 +158,43 @@ internal sealed partial class PetWindowSet : IDisposable
     {
         _slots.Add(slot);
     }
+
+    /// <summary>
+    /// 桌上每只的即时读数（RFC-37 片 4）：主窗一行 + 每条槽位一行，按**归因键**（实例 id）索引。
+    /// 这是性能页逐宠物那一列的唯一来源 —— 每只都有自己的泵（片 1b），所以帧耗时/超限计数
+    /// 可以归属到它自己，而不是像单泵形态那样只能写「(进程共享)」。
+    /// 主窗没有循环（或没有实例）时照样给一行，Frames 为 null，页面写「—」。
+    /// </summary>
+    public IReadOnlyList<PetReading> Readings()
+    {
+        var rows = new List<PetReading>(_slots.Count + 1)
+        {
+            new(
+                Id: _primaryInstance?.Id ?? PrimaryId,
+                Visible: _primary.Visible,
+                Pumping: _primaryLoop?.Pumping ?? false,
+                Frames: FramesOf(_primaryLoop)),
+        };
+
+        foreach (Slot slot in _slots)
+        {
+            rows.Add(new PetReading(
+                Id: slot.Instance?.Id ?? "(slot-" + (rows.Count).ToString(System.Globalization.CultureInfo.InvariantCulture) + ")",
+                Visible: slot.Window.Visible,
+                Pumping: slot.Loop.Pumping,
+                Frames: FramesOf(slot.Loop)));
+        }
+
+        return rows;
+    }
+
+    /// <summary>没有实例可归因时用的键（主窗兜底纯色、或自检造的空槽位）。</summary>
+    private string PrimaryId => _primaryInstance?.Id ?? "(primary)";
+
+    private static PetFrameReadings? FramesOf(ResidentFrameLoop? loop) =>
+        loop is null
+            ? null
+            : new PetFrameReadings(loop.AvgFrameMs, loop.MaxFrameMs, loop.TargetFrameMs, loop.OverBudgetFrames);
 
     /// <summary>
     /// 把一只**已经活着的**实例摆上桌（RFC-37 §3.5 片 2：导入即追加）。

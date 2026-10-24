@@ -21,6 +21,7 @@ internal static class UiRoster
         if (pet is not null)
         {
             pets.Add(new PetLine(
+                Id: pet.Id,
                 Name: pet.Id,
                 Source: string.IsNullOrEmpty(pet.SourceKind) ? "(内核兜底)" : pet.SourceKind,
                 State: PluginHost.DescribeInstanceState(pet.State)

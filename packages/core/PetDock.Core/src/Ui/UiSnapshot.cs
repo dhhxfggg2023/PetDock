@@ -8,8 +8,10 @@ namespace PetDock.Core.Ui;
 internal delegate void UiCommand();
 
 /// <summary>宠物页一行。Memory 是**进程级**读数（宠物与内核同进程，docs/10 §3），
-/// 所以文案里必须写明「进程」，不能让读者以为这是单只宠物的独占内存。</summary>
+/// 所以文案里必须写明「进程」，不能让读者以为这是单只宠物的独占内存。
+/// Id 是**归因键**：性能页要按宠物取它自己那份帧读数（RFC-37 片 4），没有 id 就只能摊。</summary>
 internal sealed record PetLine(
+    string Id,
     string Name,
     string Source,
     string State,
@@ -25,13 +27,14 @@ internal sealed record PluginLine(
     string State,
     int Granted);
 
-/// <summary>性能页一行。Overruns 是 FrameBudget 超限计数（docs/41 D-14 的观测面）。</summary>
+/// <summary>性能页一行。Overruns 是 FrameBudget 超限计数（docs/41 D-14 的观测面）。
+/// 可空：`null` = 这只宠物的帧读数**不可归属**（没有自己的泵），页面写「—」而不是 0。</summary>
 internal sealed record PerfLine(
     string Name,
     string Cpu,
     string Memory,
     string FrameMs,
-    long Overruns);
+    long? Overruns);
 
 /// <summary>性能页顶部汇总 + 逐宠物明细。</summary>
 internal sealed record PerfSummary(
@@ -58,6 +61,18 @@ internal sealed record PetFrameReadings(
     double MaxFrameMs,
     double TargetFrameMs,
     long OverBudget);
+
+/// <summary>
+/// 桌上**某一只**的即时状态（RFC-37 片 4）。Id 是归因键，与 <see cref="PetLine.Id"/> 同一命名空间；
+/// Frames 可空 = 这一只没有自己的泵（主窗还没建循环、或它不在集合里），页面据此写「—」。
+/// 「可见」与「在出帧」分开报：隐藏的宠物窗口仍然存在，泵停着 —— 把两者并成一个布尔
+/// 会让「收起但没停泵」这种真缺陷消失。
+/// </summary>
+internal sealed record PetReading(
+    string Id,
+    bool Visible,
+    bool Pumping,
+    PetFrameReadings? Frames);
 
 /// <summary>
 /// 设置页的当前状态（docs/18 §2.3）。面板读它来摆放控件，宿主改它来生效。

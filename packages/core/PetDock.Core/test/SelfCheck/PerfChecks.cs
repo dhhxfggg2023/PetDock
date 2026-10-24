@@ -49,7 +49,7 @@ internal static class PerfChecks
     {
         UiSnapshot snapshot = Snapshot("solo");
         var readings = new PetFrameReadings(4.2, 9.0, 33.3, 7);
-        PerfSummary perf = PerfSampler.Measure(WindowMs, snapshot, () => readings);
+        PerfSummary perf = PerfSampler.Measure(WindowMs, snapshot, _ => readings);
 
         PerfLine pet = perf.Rows[1];
         bool frameOk = pet.FrameMs.Contains("avg 4.2", StringComparison.Ordinal)
@@ -63,11 +63,14 @@ internal static class PerfChecks
     {
         UiSnapshot snapshot = Snapshot("one", "two");
         var readings = new PetFrameReadings(4.2, 9.0, 33.3, 7);
-        PerfSummary perf = PerfSampler.Measure(WindowMs, snapshot, () => readings);
+        PerfSummary perf = PerfSampler.Measure(
+            WindowMs,
+            snapshot,
+            id => id == "one" ? readings : null);
 
-        bool framesPlaceholder = perf.Rows[1].FrameMs == PerfPage.NotAttributed
-            && perf.Rows[2].FrameMs == PerfPage.NotAttributed;
-        bool overrunsNotSpread = perf.Rows[1].Overruns == 0 && perf.Rows[2].Overruns == 0;
+        bool framesPlaceholder = perf.Rows[2].FrameMs == PerfPage.NotAttributed
+            && perf.Rows[1].FrameMs != PerfPage.NotAttributed;
+        bool overrunsNotSpread = perf.Rows[2].Overruns is null && perf.Rows[1].Overruns == 7;
         check("ui-perf-not-shared", framesPlaceholder && overrunsNotSpread,
             $"f1={perf.Rows[1].FrameMs} o1={perf.Rows[1].Overruns} f2={perf.Rows[2].FrameMs} o2={perf.Rows[2].Overruns}");
     }
@@ -107,7 +110,7 @@ internal static class PerfChecks
         var pets = new List<PetLine>(names.Length);
         foreach (string name in names)
         {
-            pets.Add(new PetLine(name, "sample-pet", "running", "(进程共享)"));
+            pets.Add(new PetLine(name, name, "sample-pet", "running", "(进程共享)"));
         }
 
         return new UiSnapshot(pets, Array.Empty<PluginLine>(), PerfSummary.Empty);

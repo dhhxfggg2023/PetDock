@@ -23,15 +23,15 @@ internal sealed class PerfPage : UserControl
     public const string ProcessShared = "(进程共享)";
 
     private readonly Func<UiSnapshot> _snapshot;
-    private readonly Func<PetFrameReadings?>? _frames;
+    private readonly Func<string, PetFrameReadings?>? _framesFor;
     private readonly Label _summary;
     private readonly ListView _rows;
     private readonly Button _sample;
 
-    public PerfPage(Func<UiSnapshot> snapshot, Func<PetFrameReadings?>? frames = null)
+    public PerfPage(Func<UiSnapshot> snapshot, Func<string, PetFrameReadings?>? frames = null)
     {
         _snapshot = snapshot ?? (() => UiSnapshot.Empty);
-        _frames = frames;
+        _framesFor = frames;
         Name = "perf-page";
 
         _summary = new Label
@@ -82,7 +82,8 @@ internal sealed class PerfPage : UserControl
 
         foreach (PerfLine line in perf.Rows)
         {
-            _rows.Items.Add(new ListViewItem(new[] { line.Name, line.Cpu, line.Memory, line.FrameMs, line.Overruns.ToString(CultureInfo.InvariantCulture) }));
+            string overruns = line.Overruns?.ToString(CultureInfo.InvariantCulture) ?? NotAttributed;
+            _rows.Items.Add(new ListViewItem(new[] { line.Name, line.Cpu, line.Memory, line.FrameMs, overruns }));
         }
 
         _summary.Text = Summary(perf);
@@ -116,7 +117,7 @@ internal sealed class PerfPage : UserControl
         Application.DoEvents();
         try
         {
-            PerfSummary measured = PerfSampler.Measure(60_000, snapshot, _frames);
+            PerfSummary measured = PerfSampler.Measure(60_000, snapshot, _framesFor);
             Bind(measured);
         }
         catch (Exception ex)
@@ -160,14 +161,15 @@ internal sealed class PerfPage : UserControl
 /// <summary>
 /// 面板侧采样器：只在**页面真实打开**时才跑，避免常驻路径平白多出一个 60s 循环。
 /// 读数口径与 PerfGate（--perftest）一致：TotalProcessorTime 增量 / 墙钟 / 核数，私有工作集。
-/// 逐宠物行只具备「归属」能力，不具备「分摊」能力（RFC-30 §3.3）。
+/// 帧耗时按**宠物 id** 逐只取（RFC-37 片 4：每只一个泵）；取不到的那只写「—」，不摊给别的宠物。
+/// CPU / 私有工作集在 in-process 里没有逐宠物读数，仍写「(进程共享)」——分摊不是测量。
 /// </summary>
 internal static class PerfSampler
 {
     public static PerfSummary Measure(
         int windowMs,
         UiSnapshot snapshot,
-        Func<PetFrameReadings?>? frames = null)
+        Func<string, PetFrameReadings?>? framesFor = null)
     {
         IReadOnlyList<PetLine> pets = snapshot.Pets;
         if (pets.Count == 0)
@@ -191,29 +193,38 @@ internal static class PerfSampler
             / wall.Elapsed.TotalMilliseconds / Environment.ProcessorCount * 100.0;
         double wsMb = self.WorkingSet64 / (1024.0 * 1024.0);
 
-        PetFrameReadings? readings = frames?.Invoke();
-        bool attributed = pets.Count == 1 && readings is not null;
-        string frame = attributed ? FrameText(readings!) : PerfPage.NotAttributed;
-        long overruns = attributed ? readings!.OverBudget : 0;
+        // 进程合计行：只有一个泵时可归属给「这一只」，多个泵时进程级帧耗时没有定义 → 「—」。
+        PetFrameReadings? sole = null;
+        int attributed = 0;
+        foreach (PetLine pet in pets)
+        {
+            if (framesFor?.Invoke(pet.Id) is PetFrameReadings reading)
+            {
+                sole = attributed == 0 ? reading : null;
+                attributed++;
+            }
+        }
 
+        bool processFrameAttributed = attributed == 1 && sole is not null;
         var rows = new List<PerfLine>(pets.Count + 1)
         {
             new(
                 Name: "(进程合计)",
                 Cpu: Fmt(cpuPct) + " %",
                 Memory: Fmt(wsMb) + " MB",
-                FrameMs: frame,
-                Overruns: overruns),
+                FrameMs: processFrameAttributed ? FrameText(sole!) : PerfPage.NotAttributed,
+                Overruns: processFrameAttributed ? sole!.OverBudget : null),
         };
 
         foreach (PetLine pet in pets)
         {
+            PetFrameReadings? own = framesFor?.Invoke(pet.Id);
             rows.Add(new PerfLine(
                 Name: pet.Name,
                 Cpu: PerfPage.ProcessShared,
                 Memory: PerfPage.ProcessShared,
-                FrameMs: frame,
-                Overruns: overruns));
+                FrameMs: own is null ? PerfPage.NotAttributed : FrameText(own),
+                Overruns: own?.OverBudget));
         }
 
         return new PerfSummary(

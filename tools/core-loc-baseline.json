@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 22610,
+  "budget": 22695,
   "history": [
     {
       "date": "2026-10-18",
@@ -1012,6 +1012,38 @@
           "slice": "RFC-37 UiHost：_store 字段与 _primaryRemoved 标记",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
           "lines": 4
+        }
+      ]
+    },
+    {
+      "measured": 22671,
+      "budget": 22695,
+      "note": "RFC-37 片 4：性能页的帧读数按宠物归属。为什么必须在 core 里：读数的来源是每只宠物自己的帧循环（PetWindowSet.Readings），而面板与宿主同进程、同 UI 母体；把「哪只宠物在烧 CPU」变成可读的，也只能在母体里做。CPU/内存仍写「(进程共享)」——in-process 里没有逐宠物读数，分摊不是测量。",
+      "attribution": [
+        {
+          "slice": "RFC-37 PerfPage：PerfSampler 按宠物 id 取读数、进程合计行只在单泵时可归属、超限计数可空",
+          "files": ["packages/core/PetDock.Core/src/Ui/PerfPage.cs"],
+          "lines": 11
+        },
+        {
+          "slice": "RFC-37 PetWindowSet：Readings() 逐只给出可见/在出帧/帧读数",
+          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "lines": 42
+        },
+        {
+          "slice": "RFC-37 UiHost.Panel：FrameReadingsFor(petId) 先问集合再回落到主窗循环",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"],
+          "lines": 15
+        },
+        {
+          "slice": "RFC-37 UiSnapshot：PetLine 增加归因键 Id、PerfLine.Overruns 可空、新增 PetReading",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"],
+          "lines": 15
+        },
+        {
+          "slice": "RFC-37 UiRoster：快照里的宠物行带上 Id",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiRoster.cs"],
+          "lines": 1
         }
       ]
     }

@@ -26,7 +26,7 @@ internal sealed partial class UiHost
             return;
         }
 
-        _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled, FrameReadings);
+        _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled, FrameReadingsFor);
         _panel.SetImportCommand(RunImportFromPanel);
         _panel.SetSettingsCommand(ApplySettings);
         _panel.SetDiagnosticCommand(RunDiagnosticOp);
@@ -44,15 +44,30 @@ internal sealed partial class UiHost
         UiRoster.Build(_pet, _host, _perf, SettingsView());
 
     /// <summary>
-    /// 帧泵的逐宠物读数（RFC-30 §3.2）。没有帧循环就没有可归属的读数 → null，
+    /// 帧泵的逐宠物读数（RFC-30 §3.2 / RFC-37 片 4）：按**宠物 id**取，桌上有几只就有几份读数。
+    /// 先问集合（每只一个泵），集合里没有这一只才落到主窗循环；都没有 → null，
     /// 面板据此写「—」而不是 0（0 会被读成「测过是 0」）。
     /// </summary>
-    private PetFrameReadings? FrameReadings()
+    private PetFrameReadings? FrameReadingsFor(string petId)
     {
+        if (_petSet is not null)
+        {
+            foreach (PetReading reading in _petSet.Readings())
+            {
+                if (string.Equals(reading.Id, petId, StringComparison.Ordinal))
+                {
+                    return reading.Frames;
+                }
+            }
+        }
+
         ResidentFrameLoop? loop = _loop;
-        return loop is null
-            ? null
-            : new PetFrameReadings(loop.AvgFrameMs, loop.MaxFrameMs, loop.TargetFrameMs, loop.OverBudgetFrames);
+        if (loop is null || _pet is null || !string.Equals(_pet.Id, petId, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new PetFrameReadings(loop.AvgFrameMs, loop.MaxFrameMs, loop.TargetFrameMs, loop.OverBudgetFrames);
     }
 
     /// <summary>
