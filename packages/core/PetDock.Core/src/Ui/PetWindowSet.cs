@@ -34,12 +34,17 @@ internal sealed partial class PetWindowSet : IDisposable
         string PackPath,
         LayeredFrameWindow Window,
         PetFrameSource? Source,
-        ResidentFrameLoop Loop);
+        ResidentFrameLoop Loop,
+        string? PetId = null);
 
     private readonly LayeredFrameWindow _primary;
     private readonly ResidentFrameLoop? _primaryLoop;
     private readonly PetInstance? _primaryInstance;
     private readonly List<Slot> _slots = new();
+
+    /// <summary>清单（位置按清单 id 存；槽位没带 id 时用它反查）。可空 = 自检形态。</summary>
+    private PetDataStore? _store;
+
     private bool _started;
     private bool _disposed;
 
@@ -114,7 +119,7 @@ internal sealed partial class PetWindowSet : IDisposable
 
             // 鼠标消息进交互会话：与主窗同一条接线（RFC-35 §3.2）。不接就是「第二只点了没反应」。
             FrameComposition.WirePointer(window, instance);
-            return new Slot(instance, pack.Path, window, source, new ResidentFrameLoop(window));
+            return new Slot(instance, pack.Path, window, source, new ResidentFrameLoop(window), pack.InstanceId);
         }
         catch (Exception error)
         {
@@ -135,9 +140,12 @@ internal sealed partial class PetWindowSet : IDisposable
         string? shownPackId,
         PetDataStore store,
         LayeredFrameWindow primary,
-        ResidentFrameLoop? primaryLoop = null)
+        ResidentFrameLoop? primaryLoop = null,
+        UserSettingsStore? settings = null)
     {
         var set = new PetWindowSet(primary, primaryLoop, shown);
+        set.Settings = settings;
+        set._store = store;
         IReadOnlyList<PetDataStore.ActivePack> catalog = store.ReadPets();
         IReadOnlyList<PetDataStore.ActivePack> rest = Plan(shown is null ? null : shownPackId, catalog);
         foreach (PetDataStore.ActivePack pack in rest)
@@ -153,9 +161,14 @@ internal sealed partial class PetWindowSet : IDisposable
         return set;
     }
 
-    /// <summary>登记一条槽位（自检也用它；生产路径见 <see cref="FromCatalog"/>）。</summary>
+    /// <summary>
+    /// 登记一条槽位（自检也用它；生产路径见 <see cref="FromCatalog"/>）。
+    /// 「拖拽落地 → 按宠物记位置」的订阅在这里做一次、只做一次：无论槽位是装配期建出来的
+    /// 还是运行期追加进来的，落盘那条链都是同一条（两个入口各接一次就会漏掉一边）。
+    /// </summary>
     public void Add(Slot slot)
     {
+        slot.Window.WindowEvent += (type, payload) => OnSlotMoved(slot, type, payload);
         _slots.Add(slot);
     }
 
@@ -220,13 +233,12 @@ internal sealed partial class PetWindowSet : IDisposable
             // 第二只点了必须有反应：与主窗同一条指针接线（RFC-35 §3.2）。
             FrameComposition.WirePointer(window, instance);
 
-            var slot = new Slot(instance, packPath, window, source, new ResidentFrameLoop(window));
-            _slots.Add(slot);
+            var slot = new Slot(instance, packPath, window, source, new ResidentFrameLoop(window), CatalogIdOf(packPath));
+            Add(slot);
 
             if (_started)
             {
-                (int x, int y) = _primary.CurrentPosition;
-                window.MoveTo(x - (SpacingX * _slots.Count), y);
+                PlaceAtStart(slot, _slots.Count);
                 slot.Loop.Start();
             }
 
@@ -250,7 +262,8 @@ internal sealed partial class PetWindowSet : IDisposable
     }
 
     /// <summary>
-    /// 把其余几只摆上桌：按主窗**当前**位置向左挨着排（右数第二只、第三只……），再起各自的泵。
+    /// 把其余几只摆上桌：每只**先回到自己存过的位置**，没存过就按主窗当前位置向左挨着排
+    /// （右数第二只、第三只……），再起各自的泵。
     /// 位置取主窗的实时位置而不是写死的坐标 —— 用户拖过主窗之后，隐藏再显示仍然挨着它。
     /// 幂等：已经在跑的那几只 <see cref="ResidentFrameLoop.Start"/> 会直接返回。
     /// </summary>
@@ -262,12 +275,10 @@ internal sealed partial class PetWindowSet : IDisposable
         }
 
         _started = true;
-        (int x, int y) = _primary.CurrentPosition;
         for (int i = 0; i < _slots.Count; i++)
         {
-            Slot slot = _slots[i];
-            slot.Window.MoveTo(x - (SpacingX * (i + 1)), y);
-            slot.Loop.Start();
+            PlaceAtStart(_slots[i], i + 1);
+            _slots[i].Loop.Start();
         }
 
         _primaryLoop?.Start();

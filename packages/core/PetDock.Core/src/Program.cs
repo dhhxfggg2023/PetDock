@@ -209,7 +209,8 @@ internal static partial class Program
             dataStore.ReadActive()?.InstanceId,
             dataStore,
             window,
-            host.Loop);
+            host.Loop,
+            settingsStore);
         host.AttachPetSet(petSet);
 
         // 探针要在 Application.Run 之前挂上：它靠 UI 定时器判「采样完了没有」，

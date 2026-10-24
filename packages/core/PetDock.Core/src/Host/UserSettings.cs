@@ -5,6 +5,7 @@
 // 同一个事实存两处（文件 + 注册表）必然漂移——设置页显示的勾选状态一律从注册表读，
 // 文件里不重复保存这一项。
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 
@@ -22,7 +23,8 @@ internal sealed record UserSettings(
     double IdleFrameBudgetMs,
     string Language,
     int? OnboardingCompletedVersion = null,
-    Point? PetPosition = null)
+    Point? PetPosition = null,
+    IReadOnlyDictionary<string, Point>? PetPositions = null)
 {
     /// <summary>清单版本（docs/17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
@@ -73,6 +75,7 @@ internal sealed record UserSettings(
         + $" language={Language}"
         + $" onboarding={(OnboardingCompletedVersion?.ToString(CultureInfo.InvariantCulture) ?? "(none)")}"
         + $" position={DescribePosition()}"
+        + $" pet-positions={(PetPositions is null ? 0 : PetPositions.Count)}"
         + $" start-with-windows=(见注册表)";
 
     /// <summary>位置的读数写法；没存过就叫 none（不是 0,0 —— 两者语义不同，RFC-22 §4）。</summary>

@@ -54,6 +54,8 @@ internal static class UiSelfTest
             PetSetChecks.Run(Check);
             // RFC-37 §4（片 1b）：屏幕上真的摆了几只（ui-set-*）—— 多宠物的窗口层。
             PetWindowChecks.Run(Check);
+            // RFC-37 §7 第 4 条：位置按宠物持久化（ui-pet-position-persist-*）。
+            PetPositionChecks.Run(Check);
             // RFC-37 §4（片 4）：性能页的帧读数按宠物归属（ui-perf-*-per-pet / per-pet-frames）。
             PerfPetChecks.Run(Check);
             TrayPetChecks.Run(Check);

@@ -118,7 +118,40 @@ internal sealed class UserSettingsStore
                 KernelLog.Write($"settings-field-unreadable field=petPosition reason=not-an-object type={notObject.GetType().Name}");
             }
 
-            return new UserSettings(period, language, onboarding, petPosition).Clamped();
+            // 逐宠物位置（RFC-37 §7 第 4 条）：键是清单 id。缺键 / 不是对象 ⇒ 空表（「一只都没存过」）；
+            // 单条坏掉只跳过那一条 —— 一个手滑改坏的坐标不该把别的宠物的位置一起丢掉。
+            IReadOnlyDictionary<string, Point>? petPositions = null;
+            if (obj["petPositions"] is JsonObject positions)
+            {
+                var table = new Dictionary<string, Point>(StringComparer.Ordinal);
+                foreach (KeyValuePair<string, JsonNode?> pair in positions)
+                {
+                    if (pair.Key.Length == 0 || pair.Value is not JsonObject entry)
+                    {
+                        KernelLog.Write($"settings-field-unreadable field=petPositions key={pair.Key} reason=not-an-object");
+                        continue;
+                    }
+
+                    try
+                    {
+                        table[pair.Key] = new Point(
+                            entry["x"]!.GetValue<int>(),
+                            entry["y"]!.GetValue<int>());
+                    }
+                    catch (Exception error)
+                    {
+                        KernelLog.Write($"settings-field-unreadable field=petPositions key={pair.Key} {error.GetType().Name}");
+                    }
+                }
+
+                petPositions = table;
+            }
+            else if (obj["petPositions"] is JsonNode notObject)
+            {
+                KernelLog.Write($"settings-field-unreadable field=petPositions reason=not-an-object type={notObject.GetType().Name}");
+            }
+
+            return new UserSettings(period, language, onboarding, petPosition, petPositions).Clamped();
         }
         catch (Exception error)
         {
@@ -163,6 +196,22 @@ internal sealed class UserSettingsStore
                 ["x"] = position.X,
                 ["y"] = position.Y,
             };
+        }
+
+        // 逐宠物位置（RFC-37 §7 第 4 条）：键是清单 id。空表 / null 就不写这个键（与引导标记同一条纪律）。
+        // 按 key 的 Ordinal 序写：同一份数据每次落盘的字节序一致，diff 里不会出现无意义的重排。
+        if (value.PetPositions is { Count: > 0 } positions)
+        {
+            var keys = new List<string>(positions.Keys);
+            keys.Sort(StringComparer.Ordinal);
+            var positionDoc = new JsonObject();
+            foreach (string key in keys)
+            {
+                Point entry = positions[key];
+                positionDoc[key] = new JsonObject { ["x"] = entry.X, ["y"] = entry.Y };
+            }
+
+            doc["petPositions"] = positionDoc;
         }
 
         string? dir = System.IO.Path.GetDirectoryName(_path);

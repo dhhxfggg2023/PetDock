@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 22695,
+  "budget": 22965,
   "history": [
     {
       "date": "2026-10-18",
@@ -984,6 +984,7 @@
       ]
     },
     {
+      "date": "2026-10-24",
       "measured": 22587,
       "budget": 22610,
       "note": "RFC-37 片 3：托盘每宠物一条子菜单 + 移除。为什么必须在 core 里：命令按 id 路由（PetWindowSet.Commands）与托盘重建（TrayHost）都是 UI 母体内部结构，没有插件面能承载；清单删除与主文件同属一个写者。PetDataStore 主文件已到 421 行，删除那块按 D-03c 拆成 partial。",
@@ -1016,6 +1017,7 @@
       ]
     },
     {
+      "date": "2026-10-24",
       "measured": 22671,
       "budget": 22695,
       "note": "RFC-37 片 4：性能页的帧读数按宠物归属。为什么必须在 core 里：读数的来源是每只宠物自己的帧循环（PetWindowSet.Readings），而面板与宿主同进程、同 UI 母体；把「哪只宠物在烧 CPU」变成可读的，也只能在母体里做。CPU/内存仍写「(进程共享)」——in-process 里没有逐宠物读数，分摊不是测量。",
@@ -1043,6 +1045,37 @@
         {
           "slice": "RFC-37 UiRoster：快照里的宠物行带上 Id",
           "files": ["packages/core/PetDock.Core/src/Ui/UiRoster.cs"],
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "measured": 22921,
+      "budget": 22965,
+      "note": "RFC-37 §7 第 4 条：多宠物位置按**宠物**持久化（欠账「位置按宠物持久化」的落地）。实测 22671 → 22921（+250），与 lint-core 同口径（`s.replace(/\\r?\\n$/,'').split(/\\r?\\n/).length`）逐文件对 HEAD 测出，逐切片之和 = 250，正好等于相邻 measured 之差。预算抬到 22965（余量 44）——这一片是把「排第几」换成「这只在哪」，属于新能力而不是还债。落点是 `settings.json` 的逐宠物表 `petPositions`（键 = 清单 id，不是实例 id：同一前缀造出的实例 id 会撞）；主窗那只仍由状态层保留键 `position` 拥有，两处各有各的主人，不重复存同一事实。判据 PetPositionChecks.cs（3 条 `ui-pet-position-persist-*`）在 test/ 下，按 D-03a 口径不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-37 PetWindowSet.Positions 新 partial：逐宠物位置表、位置键、ResolveStart 纯函数、拖动落地落盘",
+          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.Positions.cs"],
+          "lines": 186
+        },
+        {
+          "slice": "RFC-37 设置形态与读写：petPositions 可空表 + 单条坏值只跳过那一条 + 按 key 排序落盘 + Describe 读数",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs"
+          ],
+          "lines": 52
+        },
+        {
+          "slice": "RFC-37 PetWindowSet 主文件：Slot 带清单 id、Add 统一订阅落盘、TryAdd/StartAll 走 PlaceAtStart、FromCatalog 收设置存储",
+          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "lines": 11
+        },
+        {
+          "slice": "RFC-37 装配接线：FromCatalog 传入 settingsStore",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 1
         }
       ]
