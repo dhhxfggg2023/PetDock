@@ -1,0 +1,11 @@
+{
+  "ui.diag.unavailable": "Diagnostics are unavailable: the host has not taken over diagnostic actions.",
+  "ui.diag.unknown": "Unknown diagnostic action: {0}",
+  "ui.diag.failed": "Diagnostic action failed: {0} {1}",
+  "ui.panel.settingsSaveFailed": "Settings could not be saved: {0}",
+  "ui.panel.importUnavailable": "Import is unavailable: no content source is available.",
+  "ui.panel.problemSeparator": "; ",
+  "ui.tray.kernelFallback": "(kernel fallback)",
+  "ui.tray.exitConfirm": "Quit PetDock? Your pets will disappear from the desktop.",
+  "ui.tray.exitConfirmTitle": "PetDock — Confirm quit"
+}

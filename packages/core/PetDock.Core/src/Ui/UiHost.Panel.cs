@@ -120,14 +120,14 @@ internal sealed partial class UiHost
         }
         catch (Exception error)
         {
-            problems.Add($"设置未能保存：{error.Message}");
+            problems.Add(I18n.Get("ui.panel.settingsSaveFailed", error.Message));
         }
 
         // ③ 立即推给帧泵（不用重启）。这一步不会失败：越界值在 FramePump 里被拉回合法区间。
         _loop.SetTargetFrameMs(idleFrameBudgetMs);
         KernelLog.Write($"settings-applied idle={updated.IdleFrameBudgetMs:0.0}ms startup={startWithWindows}");
 
-        return problems.Count == 0 ? null : string.Join("；", problems);
+        return problems.Count == 0 ? null : string.Join(I18n.Get("ui.panel.problemSeparator"), problems);
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ internal sealed partial class UiHost
         PetImportService? import = _import;
         if (import is null)
         {
-            message = "导入功能不可用：没有可用的内容源。";
+            message = I18n.Get("ui.panel.importUnavailable");
             return false;
         }
 

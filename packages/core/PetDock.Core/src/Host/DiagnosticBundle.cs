@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -82,7 +83,7 @@ internal sealed class DiagnosticBundle
         }
         catch (Exception error)
         {
-            return DiagnosticExportResult.Fail("诊断包导出失败：无法准备输出目录：" + error.Message);
+            return DiagnosticExportResult.Fail(I18n.Get("host.diag.export.failed.prepare", error.Message));
         }
 
         var entries = new List<(string Path, byte[] Bytes)>();
@@ -96,7 +97,7 @@ internal sealed class DiagnosticBundle
         }
         catch (Exception error)
         {
-            return DiagnosticExportResult.Fail("诊断包导出失败：无法组装包内容：" + error.Message);
+            return DiagnosticExportResult.Fail(I18n.Get("host.diag.export.failed.assemble", error.Message));
         }
 
         // 日志副本（含未完成的 .part，标注为未完成）。
@@ -108,7 +109,7 @@ internal sealed class DiagnosticBundle
         }
         catch (Exception error)
         {
-            return DiagnosticExportResult.Fail("诊断包导出失败：无法读取日志目录：" + error.Message);
+            return DiagnosticExportResult.Fail(I18n.Get("host.diag.export.failed.logs", error.Message));
         }
 
         // 清单（逐文件 sha256）。
@@ -119,7 +120,7 @@ internal sealed class DiagnosticBundle
         }
         catch (Exception error)
         {
-            return DiagnosticExportResult.Fail("诊断包导出失败：无法生成包清单：" + error.Message);
+            return DiagnosticExportResult.Fail(I18n.Get("host.diag.export.failed.manifest", error.Message));
         }
 
         try
@@ -156,13 +157,13 @@ internal sealed class DiagnosticBundle
                 // 清理失败就留着 .part：它不会被当成完整的包。
             }
 
-            return DiagnosticExportResult.Fail("诊断包导出失败：" + error.Message);
+            return DiagnosticExportResult.Fail(I18n.Get("host.diag.export.failed", error.Message));
         }
 
-        string message = "诊断包已导出：" + Path.GetFileName(finalPath);
+        string message = I18n.Get("host.diag.export.ok", Path.GetFileName(finalPath));
         if (incomplete > 0)
         {
-            message += $"（含 {incomplete} 个未完成日志文件）";
+            message += I18n.Get("host.diag.export.incomplete", incomplete);
         }
 
         return new DiagnosticExportResult(true, message, finalPath);

@@ -9,6 +9,7 @@
 //   帧耗时取自帧泵的**累计值**（累计平均），不是性能页那次 60 秒采样；
 //   没有宠物时实例一节就是空的，不填任何占位数字。
 using System.Collections.Generic;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -64,7 +65,7 @@ internal sealed record DiagnosticTrailSummary(
         Files: 0,
         Incomplete: 0,
         Dropped: 0,
-        Note: "(审计流水不可用)");
+        Note: I18n.Get("host.diag.trail.unavailable"));
 }
 
 /// <summary>
@@ -120,14 +121,14 @@ internal sealed record DiagnosticReadings(
     public static DiagnosticReadings Empty { get; } = new(
         ProgramVersion: "(unknown)",
         UptimeMs: 0,
-        ProcessMemory: "(进程级读数不可用)",
+        ProcessMemory: I18n.Get("host.diag.memory.unavailable"),
         FrameCount: 0,
         AvgFrameMs: 0,
         MaxFrameMs: 0,
         OverBudgetFrames: 0,
         FrameElapsedMs: 0,
         TargetFrameMs: 0,
-        FrameBudgetLine: "(帧预算读数不可用)",
+        FrameBudgetLine: I18n.Get("host.diag.framebudget.unavailable"),
         RosterUnavailable: false,
         Plugins: new List<DiagnosticPluginRow>(),
         Instances: new List<DiagnosticInstanceRow>(),

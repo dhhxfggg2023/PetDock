@@ -9,6 +9,7 @@ using System.Linq;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Sandbox;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -81,12 +82,12 @@ public sealed partial class PluginHost
     /// <summary>宠物实例状态的中性表述（UI 显示用）。InstanceState 的枚举名对用户不友好。</summary>
     public static string DescribeInstanceState(InstanceState state) => state switch
     {
-        InstanceState.Discovered => "发现",
-        InstanceState.Imported => "已导入",
-        InstanceState.Instantiated => "已装配",
-        InstanceState.Running => "运行中",
-        InstanceState.Suspended => "暂停",
-        InstanceState.Disposed => "已释放",
+        InstanceState.Discovered => I18n.Get("host.roster.state.discovered"),
+        InstanceState.Imported => I18n.Get("host.roster.state.imported"),
+        InstanceState.Instantiated => I18n.Get("host.roster.state.instantiated"),
+        InstanceState.Running => I18n.Get("host.roster.state.running"),
+        InstanceState.Suspended => I18n.Get("host.roster.state.suspended"),
+        InstanceState.Disposed => I18n.Get("host.roster.state.disposed"),
         _ => state.ToString(),
     };
 

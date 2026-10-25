@@ -16,7 +16,7 @@ internal sealed partial class ControlPanel
     /// <summary>「导入素材包」入口（宠物页专属，不进插件页的操作栏）。</summary>
     private readonly Button _importButton = new()
     {
-        Text = "导入素材包…",
+        Text = I18n.Get("cp.pets.import"),
         Name = "import-pack",
         Width = 130,
         Height = 28,
@@ -121,13 +121,13 @@ internal sealed partial class ControlPanel
     {
         if (_importCommand is null)
         {
-            ShowImportError("导入功能不可用：没有可用的内容源。");
+            ShowImportError(I18n.Get("cp.pets.unavailable"));
             return;
         }
 
         using var picker = new FolderBrowserDialog
         {
-            Description = "选择一个素材包目录（里面是图片与动画描述文件）",
+            Description = I18n.Get("cp.pets.pickFolder"),
             UseDescriptionForTitle = true,
             ShowNewFolderButton = false,
         };
@@ -139,7 +139,7 @@ internal sealed partial class ControlPanel
         }
         catch (Exception error)
         {
-            ShowImportError($"无法打开目录选择器：{error.Message}");
+            ShowImportError(I18n.Get("cp.pets.pickerFailed") + error.Message);
             return;
         }
 
@@ -160,7 +160,7 @@ internal sealed partial class ControlPanel
     {
         if (_importCommand is null)
         {
-            ShowImportError("导入功能不可用：没有可用的内容源。");
+            ShowImportError(I18n.Get("cp.pets.unavailable"));
             return false;
         }
 

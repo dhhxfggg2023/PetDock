@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
 using PetDock.Core.Compositor;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -57,7 +58,7 @@ internal static class StartupRegistration
         string? exe = CurrentExecutable();
         if (exe is null)
         {
-            return "找不到当前程序的路径，未能设置开机自启。";
+            return I18n.Get("host.startup.err.no-exe");
         }
 
         try
@@ -70,7 +71,7 @@ internal static class StartupRegistration
         catch (Exception error)
         {
             KernelLog.Write($"startup-enable-failed {error.GetType().Name}: {error.Message}");
-            return $"写入开机启动项失败：{error.Message}";
+            return I18n.Get("host.startup.err.write-failed", error.Message);
         }
     }
 
@@ -94,7 +95,7 @@ internal static class StartupRegistration
         catch (Exception error)
         {
             KernelLog.Write($"startup-disable-failed {error.GetType().Name}: {error.Message}");
-            return $"移除开机启动项失败：{error.Message}";
+            return I18n.Get("host.startup.err.remove-failed", error.Message);
         }
     }
 

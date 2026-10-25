@@ -51,9 +51,9 @@ function layersFor(config) {
   return [
   {
     name: 'static',
-    title: 'L0 离线纯逻辑：七道静态门禁，逐条单独跑',
-    proves: '源码依赖方向、内核黑名单与体积、文档引用与 ID 登记、插件清单、素材摆放与指纹、格式覆盖——七份互不相同的静态事实互相一致。',
-    notProven: '没有任何一行代码被执行：编译失败、插件装载失败、窗口画不出来，这一层照样全绿。',
+    title: 'L0 离线纯逻辑：九道静态门禁，逐条单独跑',
+    proves: '源码依赖方向、内核黑名单与体积、文档引用与 ID 登记、插件清单、素材摆放与指纹、格式覆盖，以及「界面文案不许留字面量」「两门语言的键与占位符形状一致」——九份互不相同的静态事实互相一致。',
+    notProven: '没有任何一行代码被执行：编译失败、插件装载失败、窗口画不出来，这一层照样全绿。文案表本身能被读进内存、能在 en-US 下画出来，也不是这一层证明的。',
     steps: [
       { id: 'depscan', ...node('tools/depscan.mjs'), marker: 'DEPSCAN-PASS' },
       { id: 'lint-core', ...node('tools/lint-core.mjs'), marker: 'LINT-CORE-PASS' },
@@ -62,6 +62,8 @@ function layersFor(config) {
       { id: 'assets', ...node('tools/asset-manifest.mjs'), marker: 'ASSET-MANIFEST-PASS' },
       { id: 'fingerprint', ...node('tools/asset-fingerprint.mjs'), marker: 'FINGERPRINT-PASS' },
       { id: 'coverage', ...node('tools/check-dyberpet-coverage.mjs'), marker: 'COVERAGE-PASS' },
+      { id: 'i18n', ...node('tools/i18n-lint.mjs'), marker: 'I18N-LINT-PASS' },
+      { id: 'i18n-parity', ...node('tools/i18n-parity.mjs'), marker: 'I18N-PARITY-PASS' },
     ],
   },
   {

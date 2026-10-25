@@ -26,10 +26,10 @@ internal static class PanelPages
 
     public static string Title(string id) => id switch
     {
-        Pets => "宠物",
-        Plugins => "插件",
-        Perf => "性能",
-        Settings => "设置",
+        Pets => I18n.Get("cp.tab.pets"),
+        Plugins => I18n.Get("cp.tab.plugins"),
+        Perf => I18n.Get("cp.tab.perf"),
+        Settings => I18n.Get("cp.tab.settings"),
         _ => id,
     };
 }
@@ -66,7 +66,7 @@ internal sealed partial class ControlPanel : Form
         _authorize = authorize;
         _toggleDisabled = toggleDisabled;
 
-        Text = "PetDock — 主控面板";
+        Text = I18n.Get("cp.title");
         StartPosition = FormStartPosition.CenterScreen;
         Width = 900;
         Height = 560;
@@ -127,7 +127,7 @@ internal sealed partial class ControlPanel : Form
             Height = 26,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(8, 0, 8, 0),
-            Text = "(尚未刷新)",
+            Text = I18n.Get("cp.status.notRefreshed"),
         };
 
         _perfPage = new PerfPage(_snapshot, frames);
@@ -152,7 +152,7 @@ internal sealed partial class ControlPanel : Form
 
         var refresh = new Button
         {
-            Text = "刷新",
+            Text = I18n.Get("cp.button.refresh"),
             Dock = DockStyle.Top,
             Height = 30,
             Name = "refresh",
@@ -236,10 +236,10 @@ internal sealed partial class ControlPanel : Form
     {
         _list.Items.Clear();
         _list.Columns.Clear();
-        _list.Columns.Add("宠物名", 180);
-        _list.Columns.Add("来源生态", 160);
-        _list.Columns.Add("状态", 120);
-        _list.Columns.Add("内存", 160);
+        _list.Columns.Add(I18n.Get("cp.pets.col.name"), 180);
+        _list.Columns.Add(I18n.Get("cp.pets.col.source"), 160);
+        _list.Columns.Add(I18n.Get("cp.pets.col.state"), 120);
+        _list.Columns.Add(I18n.Get("cp.pets.col.memory"), 160);
 
         foreach (PetLine line in snapshot.Pets)
         {
@@ -248,25 +248,25 @@ internal sealed partial class ControlPanel : Form
 
         BindListOn(_pages.TabPages[0]);
         _status.Text = snapshot.Pets.Count == 0
-            ? "尚无宠物运行。可点「导入素材包…」选一个素材包目录（docs/18 §2.1）。"
-            : $"共 {snapshot.Pets.Count} 只宠物。内存为进程级读数。";
+            ? I18n.Get("cp.pets.empty")
+            : I18n.Get("cp.pets.count", snapshot.Pets.Count);
     }
 
     private void BindSettings(UiSnapshot snapshot)
     {
         _list.Items.Clear();
         _list.Columns.Clear();
-        _list.Columns.Add("项目", 200);
-        _list.Columns.Add("值", 300);
-        _list.Columns.Add("说明", 300);
+        _list.Columns.Add(I18n.Get("cp.settings.col.item"), 200);
+        _list.Columns.Add(I18n.Get("cp.settings.col.value"), 300);
+        _list.Columns.Add(I18n.Get("cp.settings.col.note"), 300);
 
         SettingsView view = snapshot.Settings ?? SettingsView.Default;
-        AddSetting("开机自启", view.StartupEnabled ? "开" : "关", "默认关（docs/18 §2.3）；事实源是注册表");
-        AddSetting("语言", view.Language, "zh-CN / en-US（文案未本地化：只持久化选择）");
-        AddSetting("空闲降帧阈值", view.IdleFrameBudgetMs.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ms", "帧周期；改完立即生效");
-        AddSetting("宠物数", snapshot.Pets.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), "当前实例");
-        AddSetting(DiagnosticLogsRow, "「打开日志目录」", "常驻形态的运行期日志目录（脱敏后落盘）");
-        AddSetting(DiagnosticBundleRow, "「导出诊断包（脱敏后）」", "docs/18 §2.3；导出一份 zip 供排查");
+        AddSetting(I18n.Get("cp.settings.startup"), view.StartupEnabled ? I18n.Get("cp.settings.on") : I18n.Get("cp.settings.off"), I18n.Get("cp.settings.startup.note"));
+        AddSetting(I18n.Get("cp.settings.language"), view.Language, I18n.Get("cp.settings.language.hint"));
+        AddSetting(I18n.Get("cp.settings.idleFrame"), view.IdleFrameBudgetMs.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ms", I18n.Get("cp.settings.idleFrame.note"));
+        AddSetting(I18n.Get("cp.settings.petCount"), snapshot.Pets.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), I18n.Get("cp.settings.petCount.note"));
+        AddSetting(I18n.Get(DiagnosticLogsRow), I18n.Get("cp.settings.row.diagnosticLogs.value"), I18n.Get("cp.settings.logDir.note"));
+        AddSetting(I18n.Get(DiagnosticBundleRow), I18n.Get("cp.settings.row.diagnosticBundle.value"), I18n.Get("cp.settings.bundle.note"));
 
         TabPage? settingsPage = FindPage(PanelPages.Settings);
         if (settingsPage is null)
@@ -276,7 +276,7 @@ internal sealed partial class ControlPanel : Form
 
         BindListOn(settingsPage);
         BindSettingsValues(snapshot.Settings);
-        _status.Text = "设置项可改：勾选与阈值在下方操作栏，改完点「应用」。";
+        _status.Text = I18n.Get("cp.settings.hint");
     }
 
     private void AddSetting(string name, string value, string note) =>

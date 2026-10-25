@@ -18,6 +18,7 @@ using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Sandbox;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -166,7 +167,7 @@ public sealed class HostArbiter
             case DirectiveKind.SetAnimation:
                 if (directive.Clip is null)
                 {
-                    LastRefusal = "setAnimation 缺 clip";
+                    LastRefusal = I18n.Get("host.arbiter.refusal.no-clip");
                     EmitDirectiveLine("DIRECTIVE setAnimation clip= restart=false result=refused:no-clip");
                     return false;
                 }
@@ -188,7 +189,7 @@ public sealed class HostArbiter
             case DirectiveKind.MoveTo:
                 if (directive.At is not PetPoint at)
                 {
-                    LastRefusal = "moveTo 缺目标点";
+                    LastRefusal = I18n.Get("host.arbiter.refusal.no-target");
                     EmitDirectiveLine("DIRECTIVE moveTo x=0 y=0 moved=false event=none");
                     return false;
                 }
@@ -225,7 +226,7 @@ public sealed class HostArbiter
             case DirectiveKind.Emit:
                 if (directive.Event is not PetEvent evt)
                 {
-                    LastRefusal = "emit 缺事件包";
+                    LastRefusal = I18n.Get("host.arbiter.refusal.no-event");
                     EmitDirectiveLine("DIRECTIVE emit type= payload-fields=0");
                     return false;
                 }
@@ -237,7 +238,7 @@ public sealed class HostArbiter
             case DirectiveKind.RequestCapability:
                 if (directive.Capability is null)
                 {
-                    LastRefusal = "requestCapability 缺能力 id";
+                    LastRefusal = I18n.Get("host.arbiter.refusal.no-capability");
                     EmitDirectiveLine("DIRECTIVE requestCapability cap= verdict=refused latency=0 reason=no-capability");
                     return false;
                 }

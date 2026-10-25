@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using PetDock.Hosting;
@@ -52,7 +53,7 @@ internal sealed class AuthorizationDialog : Form
     /// 否则四参数调用会绑到「只有 ID 列表」那个重载上，编译期报不出意图。</summary>
     public AuthorizationDialog(string pluginName, string source, int tier, IReadOnlyList<ConsentItem> items, bool isReview = false)
     {
-        Text = "PetDock — 能力授权";
+        Text = I18n.Get("ui.auth.title");
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -63,7 +64,7 @@ internal sealed class AuthorizationDialog : Form
 
         var title = new Label
         {
-            Text = isReview ? $"{pluginName}（{source}）（复核）" : $"{pluginName}（{source}）",
+            Text = string.Format(CultureInfo.InvariantCulture, I18n.Get(isReview ? "ui.auth.header.review" : "ui.auth.header"), pluginName, source),
             AutoSize = false,
             Height = 24,
             Dock = DockStyle.Top,
@@ -73,7 +74,7 @@ internal sealed class AuthorizationDialog : Form
 
         var intro = new Label
         {
-            Text = "这个插件请求以下能力。你可以拒绝其中的任何一项；被拒绝的能力它不会再申请一次。",
+            Text = I18n.Get("ui.auth.intro"),
             AutoSize = false,
             Height = 40,
             Dock = DockStyle.Top,
@@ -89,7 +90,7 @@ internal sealed class AuthorizationDialog : Form
             FullRowSelect = true,
             GridLines = true,
         };
-        _list.Columns.Add("能力", 470);
+        _list.Columns.Add(I18n.Get("ui.auth.col.capability"), 470);
         // ItemCheck 是事前事件：e.NewValue 可以改 —— 改成 Unchecked 就不勾。
         _list.ItemCheck += OnItemCheck;
         // 事后事件兜底：万一事前事件被绕过去了（例如外部代码直接改控件状态），这里补回来。
@@ -125,14 +126,14 @@ internal sealed class AuthorizationDialog : Form
         if (_list.Items.Count == 0)
         {
             _list.CheckBoxes = false;
-            _list.Items.Add(new ListViewItem("（这个插件没有请求任何能力）"));
+            _list.Items.Add(new ListViewItem(I18n.Get("ui.auth.empty")));
         }
 
-        _allow = new RadioButton { Text = "允许（记住这个决定）", AutoSize = true, Checked = true, Name = "Allow" };
-        _deny = new RadioButton { Text = "拒绝", AutoSize = true, Name = "Deny" };
+        _allow = new RadioButton { Text = I18n.Get("ui.auth.allow"), AutoSize = true, Checked = true, Name = "Allow" };
+        _deny = new RadioButton { Text = I18n.Get("ui.auth.deny"), AutoSize = true, Name = "Deny" };
         _once = new RadioButton
         {
-            Text = tier >= 2 ? "仅本次（Tier 2 不支持：进程外插件按会话授权）" : "仅本次",
+            Text = tier >= 2 ? I18n.Get("ui.auth.once.tier2") : I18n.Get("ui.auth.once"),
             // 「仅本次」仅对 Tier 1 会话有效（docs/18 §3 规则）——不可选的选项要看起来不可选。
             Enabled = tier < 2,
             AutoSize = true,
@@ -151,8 +152,8 @@ internal sealed class AuthorizationDialog : Form
         choices.Controls.Add(_deny);
         choices.Controls.Add(_once);
 
-        _ok = new Button { Text = "确定", DialogResult = DialogResult.OK, Width = 88 };
-        var cancel = new Button { Text = "取消", DialogResult = DialogResult.Cancel, Width = 88 };
+        _ok = new Button { Text = I18n.Get("ui.auth.ok"), DialogResult = DialogResult.OK, Width = 88 };
+        var cancel = new Button { Text = I18n.Get("ui.auth.cancel"), DialogResult = DialogResult.Cancel, Width = 88 };
         var buttons = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
@@ -165,7 +166,7 @@ internal sealed class AuthorizationDialog : Form
 
         var footer = new Label
         {
-            Text = "素材与第三方组件的合规说明见 docs/52-legal-licensing.md。",
+            Text = I18n.Get("ui.auth.footer"),
             AutoSize = false,
             Height = 22,
             Dock = DockStyle.Bottom,
@@ -257,20 +258,19 @@ internal sealed class AuthorizationDialog : Form
     /// 猜一个友好的说法比显示原始 ID 更危险：用户会以为他知道自己授权了什么。</summary>
     public static string PlainTalk(string capabilityId) => capabilityId switch
     {
-        "input.mousePosition" => "读取全局鼠标位置（input.mousePosition）",
-        "input.moveWindow" => "把这扇窗移到屏幕上任意位置（input.moveWindow）",
-        "input.clickThrough" => "点击穿透：透明区域让下面的程序收到点击（input.clickThrough）",
-        "input.keyboardHook" => "安装全局键盘/鼠标钩子，能看到你在任何程序里的按键（input.keyboardHook）",
-        "assets.read:cas" => "读取宠物素材库中的文件（assets.read:cas）",
-        "assets.write:cas" => "往宠物素材库里写文件（assets.write:cas）",
-        "audio.play" => "播放声音（audio.play）",
-        "persist.write:self" => "保存它自己的状态（persist.write:self）",
-        "persist.read:self" => "读回它自己的状态（persist.read:self）",
-        "screen.changeDpi" => "跟随显示器缩放变化（screen.changeDpi）",
+        "input.mousePosition" => I18n.Get("ui.auth.cap.input.mousePosition"),
+        "input.moveWindow" => I18n.Get("ui.auth.cap.input.moveWindow"),
+        "input.clickThrough" => I18n.Get("ui.auth.cap.input.clickThrough"),
+        "input.keyboardHook" => I18n.Get("ui.auth.cap.input.keyboardHook"),
+        "assets.read:cas" => I18n.Get("ui.auth.cap.assets.read"),
+        "assets.write:cas" => I18n.Get("ui.auth.cap.assets.write"),
+        "audio.play" => I18n.Get("ui.auth.cap.audio.play"),
+        "persist.write:self" => I18n.Get("ui.auth.cap.persist.write"),
+        "persist.read:self" => I18n.Get("ui.auth.cap.persist.read"),
+        "screen.changeDpi" => I18n.Get("ui.auth.cap.screen.changeDpi"),
         _ when capabilityId.StartsWith("network.fetch:", StringComparison.Ordinal) =>
-            "访问网络：" + capabilityId["network.fetch:".Length..] + "（" + capabilityId + "）",
-        _ when capabilityId.StartsWith("ipc.tier2:", StringComparison.Ordinal) =>
-            "与它自己的独立进程通信（" + capabilityId + "）",
+            string.Format(CultureInfo.InvariantCulture, I18n.Get("ui.auth.cap.networkFetch"), capabilityId["network.fetch:".Length..], capabilityId),
+        _ when capabilityId.StartsWith("ipc.tier2:", StringComparison.Ordinal) => I18n.Get("ui.auth.cap.ipcTier2", capabilityId),
         _ => capabilityId,
     };
 
@@ -289,8 +289,8 @@ internal sealed class AuthorizationDialog : Form
     /// <summary>一行显示文字：人话描述 + 既往状态后缀。</summary>
     private static string RowText(ConsentItem entry) =>
         PlainTalk(entry.CapabilityId)
-        + (entry.PreGranted ? "（此前已授予）" : string.Empty)
-        + (entry.Denied ? "（此前已拒绝）" : string.Empty);
+        + (entry.PreGranted ? I18n.Get("ui.auth.row.preGranted") : string.Empty)
+        + (entry.Denied ? I18n.Get("ui.auth.row.denied") : string.Empty);
 
     /// <summary>事前事件：勾选状态要变之前先问一次。
     /// 被拒绝的项在这里把 e.NewValue 改成 Unchecked —— 勾选就不会发生（docs/18 §3：

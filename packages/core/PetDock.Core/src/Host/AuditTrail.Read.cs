@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json.Nodes;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -46,7 +47,7 @@ internal sealed partial class AuditTrail
 
         if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
         {
-            return new AuditTrailRead(rows, 0, 0, true, "(尚无审计流水记录)");
+            return new AuditTrailRead(rows, 0, 0, true, I18n.Get("host.diag.trail.none"));
         }
 
         string[] paths;
@@ -57,7 +58,7 @@ internal sealed partial class AuditTrail
         }
         catch (Exception error)
         {
-            return new AuditTrailRead(rows, 0, 0, false, "(审计流水不可读：" + error.Message + ")");
+            return new AuditTrailRead(rows, 0, 0, false, I18n.Get("host.diag.trail.unreadable", error.Message));
         }
 
         foreach (string path in paths)
@@ -92,7 +93,7 @@ internal sealed partial class AuditTrail
             }
         }
 
-        return new AuditTrailRead(rows, files, incomplete, true, "(共 " + rows.Count + " 条)");
+        return new AuditTrailRead(rows, files, incomplete, true, I18n.Get("host.diag.trail.count", rows.Count));
     }
 
     /// <summary>一行 → 流水行。解析不了就返回 null（坏行不冒充好行）。</summary>

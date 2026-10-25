@@ -1,0 +1,11 @@
+{
+  "ui.diag.unavailable": "诊断功能不可用：宿主未接管诊断动作。",
+  "ui.diag.unknown": "未知的诊断动作：{0}",
+  "ui.diag.failed": "诊断动作失败：{0} {1}",
+  "ui.panel.settingsSaveFailed": "设置未能保存：{0}",
+  "ui.panel.importUnavailable": "导入功能不可用：没有可用的内容源。",
+  "ui.panel.problemSeparator": "；",
+  "ui.tray.kernelFallback": "(内核兜底)",
+  "ui.tray.exitConfirm": "确定退出 PetDock？宠物会从桌面消失。",
+  "ui.tray.exitConfirmTitle": "PetDock — 退出确认"
+}

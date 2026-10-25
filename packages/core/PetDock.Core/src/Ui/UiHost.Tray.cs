@@ -28,7 +28,7 @@ internal sealed partial class UiHost
         {
             string primaryId = _pet?.Id ?? PrimaryPetId;
             items.Add(new PetMenuItem(
-                _pet is null ? "(内核兜底)" : primaryId,
+                _pet is null ? I18n.Get("ui.tray.kernelFallback") : primaryId,
                 () => MovePetById(primaryId),
                 () => PausePetById(primaryId),
                 () => HidePetById(primaryId),
@@ -179,8 +179,8 @@ internal sealed partial class UiHost
     private void ExitApp()
     {
         DialogResult answer = MessageBox.Show(
-            "确定退出 PetDock？宠物会从桌面消失。",
-            "PetDock — 退出确认",
+            I18n.Get("ui.tray.exitConfirm"),
+            I18n.Get("ui.tray.exitConfirmTitle"),
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question,
             MessageBoxDefaultButton.Button2);

@@ -339,10 +339,19 @@ internal static partial class EventSelfTest
             $"TimeOfDayMinutes={real.TimeOfDayMinutes} wall={expected}");
 
         // 鼠标：真读一次 GetCursorPos（窗口句柄 0 = 不裁到窗口内，直接给屏幕坐标）。
-        bool cursorRead = Win32.GetCursorPos(out POINT point);
+        // 判据形状（2026-10-25 改）：`光标在动` 是**常态**，不是失败——原来「快照 + 一次 GetCursorPos，
+        // 两值差 <2px」在所有者移动鼠标时必然红（实测 cursor=(2293,526) vs (2295,523)）。
+        // 现在夹两次硬件读数：快照必须落在「读之前」与「读之后」两个位置之间（各放 2px 容差），
+        // 那正是「某一瞬间真实的光标位置」这句话的全部含义；鼠标不动时三次读数相同，条件仍然最紧。
+        bool beforeOk = Win32.GetCursorPos(out POINT before);
+        WorldSnapshot real2 = wall.Sample(IntPtr.Zero);
+        bool afterOk = Win32.GetCursorPos(out POINT after);
+        bool inBand = real2.Cursor is PetPoint band
+            && band.X >= Math.Min(before.X, after.X) - 2 && band.X <= Math.Max(before.X, after.X) + 2
+            && band.Y >= Math.Min(before.Y, after.Y) - 2 && band.Y <= Math.Max(before.Y, after.Y) + 2;
         Check(ref failures, "world-cursor",
-            cursorRead && real.Cursor is PetPoint c && Math.Abs(c.X - point.X) < 2 && Math.Abs(c.Y - point.Y) < 2,
-            $"cursor={real.Cursor} getcursorpos={point.X},{point.Y} samples={wall.SampleCount}");
+            beforeOk && afterOk && inBand,
+            $"cursor={real2.Cursor} before={before.X},{before.Y} after={after.X},{after.Y} samples={wall.SampleCount}");
 
         // 前台窗口：真读一次（本自检进程自己几乎不会是前台窗，取不到就 null，不许编）。
         bool pidOk = false;

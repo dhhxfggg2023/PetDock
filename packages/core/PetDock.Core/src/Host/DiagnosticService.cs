@@ -71,7 +71,7 @@ internal sealed class DiagnosticService
         }
         catch (Exception error)
         {
-            return (false, "无法打开日志目录：" + error.Message + "。目录位置：" + _rules.Text(LogsDirectory));
+            return (false, I18n.Get("host.diag.open-logs.failed", error.Message) + I18n.Get("host.diag.open-logs.location") + _rules.Text(LogsDirectory));
         }
 
         try
@@ -81,10 +81,10 @@ internal sealed class DiagnosticService
             Process.Start(new ProcessStartInfo("explorer.exe", "\"" + LogsDirectory + "\""));
         }        catch (Exception error)
         {
-            return (false, "无法打开日志目录：" + error.Message + "。目录位置：" + _rules.Text(LogsDirectory));
+            return (false, I18n.Get("host.diag.open-logs.failed", error.Message) + I18n.Get("host.diag.open-logs.location") + _rules.Text(LogsDirectory));
         }
 
-        return (true, "日志目录已打开：" + _rules.Text(LogsDirectory));
+        return (true, I18n.Get("host.diag.open-logs.ok") + _rules.Text(LogsDirectory));
     }
 
     /// <summary>导出诊断包。返回成败与一句话（成功路径带目录，失败是原因）。</summary>
@@ -95,7 +95,7 @@ internal sealed class DiagnosticService
         DiagnosticReadings readings = CollectReadings();
         DiagnosticExportResult result = _bundle.Export(readings);
         return (result.Ok, result.Ok
-            ? result.Message + "（目录：" + _rules.Text(DiagnosticsDirectory) + "）"
+            ? result.Message + I18n.Get("host.diag.export.dir-suffix", _rules.Text(DiagnosticsDirectory))
             : result.Message);
     }
 
@@ -217,7 +217,7 @@ internal sealed class DiagnosticService
                 Files: 0,
                 Incomplete: 0,
                 Dropped: 0,
-                Note: "(本次未接审计流水，审计一节为环形缓冲最近事件)");
+                Note: I18n.Get("host.diag.trail.no-stream"));
         }
 
         var instances = new List<DiagnosticInstanceRow>();
@@ -303,11 +303,11 @@ internal sealed class DiagnosticService
             + " idle=" + FrameBudgetGuard.IdleFrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture) + "ms"
             + " global=" + FrameBudgetGuard.GlobalFrameBudgetMs.ToString("0.0", CultureInfo.InvariantCulture) + "ms"
             + " limit=" + FrameBudgetGuard.ConsecutiveTimeoutLimit.ToString(CultureInfo.InvariantCulture)
-            + " skips=(未在生产路径采集) consecutive=(未在生产路径采集)"
-            + " dropped=(未在生产路径采集) global-over=(未在生产路径采集)";
+            + I18n.Get("host.diag.framebudget.skips")
+            + I18n.Get("host.diag.framebudget.dropped");
         ResidentFrameLoop? loop = FrameLoop;
         return loop is null
-            ? core + " throttle=(未接帧循环)"
+            ? core + I18n.Get("host.diag.framebudget.throttle.none")
             : core + " throttle(" + loop.Describe() + ")";
     }
 
@@ -337,11 +337,11 @@ internal sealed class DiagnosticService
         {
             using Process self = Process.GetCurrentProcess();
             double mb = self.WorkingSet64 / (1024.0 * 1024.0);
-            return mb.ToString("0.0", CultureInfo.InvariantCulture) + " MB (进程)";
+            return mb.ToString("0.0", CultureInfo.InvariantCulture) + I18n.Get("host.diag.memory.unit");
         }
         catch (Exception)
         {
-            return "(进程级读数不可用)";
+            return I18n.Get("host.diag.memory.unavailable");
         }
     }
 }

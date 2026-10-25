@@ -215,8 +215,8 @@ internal static class DiagnosticBundleChecks
         bool wired = controlNames.Count == 2
             && controlNames.Contains("diag-open-logs")
             && controlNames.Contains("diag-export-bundle")
-            && rows.Any(row => row.Contains(ControlPanel.DiagnosticLogsRow, StringComparison.Ordinal))
-            && rows.Any(row => row.Contains(ControlPanel.DiagnosticBundleRow, StringComparison.Ordinal))
+            && rows.Any(row => row.Contains(I18n.Get(ControlPanel.DiagnosticLogsRow), StringComparison.Ordinal))
+            && rows.Any(row => row.Contains(I18n.Get(ControlPanel.DiagnosticBundleRow), StringComparison.Ordinal))
             && !rows.Any(row => row.Contains("(未接线)", StringComparison.Ordinal));
         Done("ui-diag-panel-entries-wired", wired,
             "controls=" + string.Join(",", controlNames) + " rows=" + rows.Count);

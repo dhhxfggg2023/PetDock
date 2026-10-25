@@ -155,7 +155,7 @@ internal sealed partial class UiHost
         var hook = new KeyboardHook(stroke => source.PublishKeyStroke(stroke.VKey, stroke.Modifiers, stroke.Down));
         if (!hook.Install())
         {
-            KernelLog.Write("key-hook-install-failed (docs/14:110 的固定项仍在，用户可随时停止)");
+            KernelLog.Write("key-hook-install-failed docs/14:110-pinned-item-still-present");
             hook.Dispose();
             return false;
         }

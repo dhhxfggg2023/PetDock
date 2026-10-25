@@ -41,7 +41,7 @@ internal static class PerfPetChecks
             && summary.Rows[2].FrameMs.Contains("avg 4.0", StringComparison.Ordinal)
             && summary.Rows[2].Overruns == 7
             && summary.Rows[0].FrameMs == PerfPage.NotAttributed
-            && summary.Rows[1].Cpu == PerfPage.ProcessShared;
+            && summary.Rows[1].Cpu == I18n.Get(PerfPage.ProcessShared);
 
         check("ui-perf-per-pet-frames", ok,
             $"rows={summary.Rows.Count} a=\"{summary.Rows[1].FrameMs}\"/{summary.Rows[1].Overruns}"

@@ -154,7 +154,7 @@ internal static class ImportChecks
         PetDataStore.ActivePack? activeAfter = store.ReadActive();
         int afterCount = store.ReadPets().Count;
         bool appended = added.Ok
-            && string.Equals(added.Message, "已添加到桌面", StringComparison.Ordinal)
+            && string.Equals(added.MessageKey, ImportResult.AddedKey, StringComparison.Ordinal)
             && adopted == 1
             && ReferenceEquals(current, mainBefore)
             && ReferenceEquals(frames.Current, liveBefore)
@@ -178,7 +178,7 @@ internal static class ImportChecks
 
         ImportResult replaced = service.Import(source);
         bool fallsBack = replaced.Ok
-            && string.Equals(replaced.Message, "导入完成", StringComparison.Ordinal)
+            && string.Equals(replaced.MessageKey, ImportResult.ReplacedKey, StringComparison.Ordinal)
             && adoptTries == 1
             && !ReferenceEquals(current, mainNow)
             && mainNow is not null && mainNow.State == InstanceState.Disposed;

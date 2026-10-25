@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -28,8 +29,11 @@ internal delegate void PetReplacedNotify(PetInstance? instance);
 internal delegate bool PetAdoptNotify(PetInstance instance, string packPath);
 
 /// <summary>一次导入的结果。失败时 <see cref="Error"/> 有值，桌面上的旧宠物原样不动。</summary>
-internal sealed record ImportResult(bool Ok, string Message, string? InstanceId = null)
+internal sealed record ImportResult(bool Ok, string Message, string? InstanceId = null, string? MessageKey = null)
 {
+    internal const string AddedKey = "host.import.added";
+    internal const string ReplacedKey = "host.import.replaced";
+
     /// <summary>用户主动取消目录选择：不是失败，不显示错误条（RFC-15 §3.5 第一行）。</summary>
     public static ImportResult Cancelled { get; } = new(true, "cancelled");
 
@@ -95,7 +99,7 @@ internal sealed class PetImportService
             PetInstance? next = _roster.BuildInstance("import", new[] { path }, freshView: true);
             if (next is null)
             {
-                throw new InvalidOperationException("没有可用的视图实现来承载这个素材包");
+                throw new InvalidOperationException(I18n.Get("host.import.err.no-view"));
             }
 
             // 初始化在这里做（init/describe/attach）：视图实现不接受这个素材包时，
@@ -109,7 +113,7 @@ internal sealed class PetImportService
                 _store.SetActive(previousActive?.InstanceId);
                 KernelLog.Write($"import-added instance={next.Id} folder={folder}"
                     + $" main={previousActive?.InstanceId ?? "(none)"}");
-                return new ImportResult(true, "已添加到桌面", next.Id);
+                return new ImportResult(true, I18n.Get(ImportResult.AddedKey), next.Id, ImportResult.AddedKey);
             }
 
             // ④ 换源：代理切到新宠物。下一帧生效（代理不缓存帧）。
@@ -121,7 +125,7 @@ internal sealed class PetImportService
             ReleaseOld(previous, next);
 
             KernelLog.Write($"import-ok instance={next.Id} folder={folder}");
-            return new ImportResult(true, "导入完成", next.Id);
+            return new ImportResult(true, I18n.Get(ImportResult.ReplacedKey), next.Id, ImportResult.ReplacedKey);
         }
         catch (Exception error)
         {
@@ -229,10 +233,10 @@ internal sealed class PetImportService
     /// </summary>
     private static string Describe(Exception error) => error switch
     {
-        DirectoryNotFoundException => $"无法读取所选目录，请确认路径仍然存在（{error.Message}）",
-        FileNotFoundException => $"无法读取所选目录，请确认路径仍然存在（{error.Message}）",
-        IOException => $"复制素材失败：{error.Message}",
-        UnauthorizedAccessException => $"复制素材失败：没有写入用户数据区的权限（{error.Message}）",
-        _ => $"导入失败：{error.Message}",
+        DirectoryNotFoundException => I18n.Get("host.import.err.dir-missing", error.Message),
+        FileNotFoundException => I18n.Get("host.import.err.dir-missing", error.Message),
+        IOException => I18n.Get("host.import.err.copy-failed", error.Message),
+        UnauthorizedAccessException => I18n.Get("host.import.err.copy-denied", error.Message),
+        _ => I18n.Get("host.import.err.failed", error.Message),
     };
 }

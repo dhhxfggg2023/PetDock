@@ -30,6 +30,10 @@ internal static class UiSelfTest
 
         try
         {
+            // 文案表在**任何界面对象构造之前**加载（RFC-42 §3.2）：--uitest 直接 new 界面对象，
+            // 不走 UiHost 的构造路径（那里只在有设置存储时才 Load），不先加载就会让每条界面文案
+            // 都显示键名本身 —— 断键的判据于是两侧都是键名，绿得毫无内容。
+            I18n.Load(I18n.DefaultLanguage);
             TrayItems();
             TrayHookSticky();
             PanelPagesCheck();
@@ -230,7 +234,7 @@ internal static class UiSelfTest
         using var page = new PerfPage(() => UiSnapshot.Empty);
         page.Bind(PerfSummary.Empty);
         Check("ui-perf-empty-honest",
-            page.RowCount == 0 && page.SummaryText.Contains(PerfPage.NoPetRunning, StringComparison.Ordinal),
+            page.RowCount == 0 && page.SummaryText.Contains(I18n.Get(PerfPage.NoPetRunning), StringComparison.Ordinal),
             $"rows={page.RowCount} summary={page.SummaryText}");
         return failures;
     }
@@ -251,7 +255,7 @@ internal static class UiSelfTest
         };
         page.Bind(new PerfSummary("60.0s", 1, 0, rows));
         Check("ui-perf-rows", page.RowCount == 1
-            && page.SummaryText.Contains(PerfPage.NotWired, StringComparison.Ordinal),
+            && page.SummaryText.Contains(I18n.Get(PerfPage.NotWired), StringComparison.Ordinal),
             $"rows={page.RowCount} summary={page.SummaryText}");
         return failures;
     }

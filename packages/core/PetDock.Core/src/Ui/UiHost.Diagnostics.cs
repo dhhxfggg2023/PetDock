@@ -24,7 +24,7 @@ internal sealed partial class UiHost
     {
         if (_diagnostics is null)
         {
-            return (false, "诊断功能不可用：宿主未接管诊断动作。");
+            return (false, I18n.Get("ui.diag.unavailable"));
         }
 
         try
@@ -39,12 +39,12 @@ internal sealed partial class UiHost
                 return _diagnostics.ExportBundle();
             }
 
-            return (false, "未知的诊断动作：" + op);
+            return (false, I18n.Get("ui.diag.unknown", op));
         }
         catch (Exception error)
         {
             KernelLog.Write($"diagnostic-failed op={op} {error.GetType().Name}: {error.Message}");
-            return (false, "诊断动作失败：" + error.GetType().Name + " " + error.Message);
+            return (false, I18n.Get("ui.diag.failed", error.GetType().Name, error.Message));
         }
     }
 }

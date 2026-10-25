@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -19,34 +20,34 @@ internal static class DiagnosticSections
     public static string BuildSummary(DiagnosticReadings readings, RedactRules rules)
     {
         var sb = new StringBuilder();
-        sb.Append("PetDock 诊断摘要").Append(Environment.NewLine);
-        sb.Append("程序版本: ").Append(readings.ProgramVersion).Append(Environment.NewLine);
-        sb.Append("导出时刻: ").Append(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)).Append(Environment.NewLine);
-        sb.Append("运行时长: ").Append(FormatMs(readings.UptimeMs)).Append(Environment.NewLine);
-        sb.Append("内存: ").Append(readings.ProcessMemory).Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.title")).Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.programVersion")).Append(readings.ProgramVersion).Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.exportedAt")).Append(DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)).Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.uptime")).Append(FormatMs(readings.UptimeMs)).Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.memory")).Append(readings.ProcessMemory).Append(Environment.NewLine);
         if (readings.Instances.Count == 0)
         {
             // 空态不写数字：没有宠物就没有帧读数，写 0 会被读成「测过是 0」。
-            sb.Append("帧泵: (当前没有宠物实例，无帧读数)").Append(Environment.NewLine);
+            sb.Append(I18n.Get("host.diag.summary.framePump.none")).Append(Environment.NewLine);
         }
         else
         {
-            sb.Append("帧泵: frames=").Append(readings.FrameCount.ToString(CultureInfo.InvariantCulture))
+            sb.Append(I18n.Get("host.diag.summary.framePump")).Append(readings.FrameCount.ToString(CultureInfo.InvariantCulture))
                 .Append(" avg=").Append(readings.AvgFrameMs.ToString("0.0", CultureInfo.InvariantCulture)).Append("ms")
-                .Append(" (累计平均，非 60 秒采样窗口)")
+                .Append(I18n.Get("host.diag.summary.framePump.cumulativeNote"))
                 .Append(" max=").Append(readings.MaxFrameMs.ToString("0.0", CultureInfo.InvariantCulture)).Append("ms")
                 .Append(" over-budget=").Append(readings.OverBudgetFrames.ToString(CultureInfo.InvariantCulture))
                 .Append(" target=").Append(readings.TargetFrameMs.ToString("0.0", CultureInfo.InvariantCulture)).Append("ms")
                 .Append(Environment.NewLine);
         }
 
-        sb.Append("帧预算自检: ").Append(readings.FrameBudgetLine).Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.frameBudget")).Append(readings.FrameBudgetLine).Append(Environment.NewLine);
 
         // RFC-21 §3.4：档位与提交计数。没接帧循环时明说「未接」，不写 0 ——
         // 「没接上」与「一帧都没提交」在数字上看起来一样，在结论上完全不同。
         if (readings.HasThrottle)
         {
-            sb.Append("节流档位: tier=").Append(readings.ThrottleTier)
+            sb.Append(I18n.Get("host.diag.summary.throttle")).Append(readings.ThrottleTier)
                 .Append(" ticks=").Append(readings.ThrottleTicks.ToString(CultureInfo.InvariantCulture))
                 .Append(" submitted=").Append(readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture))
                 .Append(" skipped=").Append(readings.ThrottleSkipped.ToString(CultureInfo.InvariantCulture))
@@ -54,7 +55,7 @@ internal static class DiagnosticSections
         }
         else
         {
-            sb.Append("节流档位: (未接帧循环)").Append(Environment.NewLine);
+            sb.Append(I18n.Get("host.diag.summary.throttle.none")).Append(Environment.NewLine);
         }
 
         // RFC-23 §3.2：插件日志的规模。没接收口时写「未接」——
@@ -62,11 +63,11 @@ internal static class DiagnosticSections
         DiagnosticPluginLog? log = readings.PluginLogSummary;
         if (log is null || !log.Connected)
         {
-            sb.Append("插件日志: (未接收口)").Append(Environment.NewLine);
+            sb.Append(I18n.Get("host.diag.summary.pluginLog.none")).Append(Environment.NewLine);
         }
         else
         {
-            sb.Append("插件日志: written=").Append(log.Written.ToString(CultureInfo.InvariantCulture))
+            sb.Append(I18n.Get("host.diag.summary.pluginLog")).Append(log.Written.ToString(CultureInfo.InvariantCulture))
                 .Append(" trail=").Append(log.TrailRows.ToString(CultureInfo.InvariantCulture));
             if (log.Errors.Count > 0)
             {
@@ -82,14 +83,14 @@ internal static class DiagnosticSections
             sb.Append(Environment.NewLine);
         }
 
-        sb.Append("插件 (").Append(readings.Plugins.Count.ToString(CultureInfo.InvariantCulture)).Append("):").Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.plugins")).Append(readings.Plugins.Count.ToString(CultureInfo.InvariantCulture)).Append("):").Append(Environment.NewLine);
         if (readings.RosterUnavailable)
         {
-            sb.Append("  (插件花名册暂不可用（宿主未响应），包内该节为空)").Append(Environment.NewLine);
+            sb.Append(I18n.Get("host.diag.summary.plugins.rosterUnavailable")).Append(Environment.NewLine);
         }
         else if (readings.Plugins.Count == 0)
         {
-            sb.Append("  (无插件)").Append(Environment.NewLine);
+            sb.Append(I18n.Get("host.diag.summary.plugins.none")).Append(Environment.NewLine);
         }
         else
         {
@@ -103,10 +104,10 @@ internal static class DiagnosticSections
             }
         }
 
-        sb.Append("宠物实例 (").Append(readings.Instances.Count.ToString(CultureInfo.InvariantCulture)).Append("):").Append(Environment.NewLine);
+        sb.Append(I18n.Get("host.diag.summary.instances")).Append(readings.Instances.Count.ToString(CultureInfo.InvariantCulture)).Append("):").Append(Environment.NewLine);
         if (readings.Instances.Count == 0)
         {
-            sb.Append("  (当前没有可显示的宠物 —— 不填任何占位数字)").Append(Environment.NewLine);
+            sb.Append(I18n.Get("host.diag.summary.instances.none")).Append(Environment.NewLine);
         }
         else
         {
@@ -119,7 +120,7 @@ internal static class DiagnosticSections
             }
         }
 
-        sb.Append("沙箱事件（本次会话内计数）: audit=")
+        sb.Append(I18n.Get("host.diag.summary.sandbox"))
             .Append(readings.AuditCount.ToString(CultureInfo.InvariantCulture))
             .Append(" denied=").Append(readings.DeniedCount.ToString(CultureInfo.InvariantCulture))
             .Append(" budget=").Append(readings.BudgetCount.ToString(CultureInfo.InvariantCulture))
@@ -129,11 +130,11 @@ internal static class DiagnosticSections
         // 审计流水（RFC-20 §3.4）：两组数字并排 —— 上面是「本次会话」，这里是「跨进程总量」。
         // 读者不该把会话计数误读成历史总量，所以两个口径必须同时在场。
         DiagnosticTrailSummary trail = readings.Trail ?? DiagnosticTrailSummary.Unavailable;
-        sb.Append("审计流水（跨进程）: ");
+        sb.Append(I18n.Get("host.diag.summary.trail"));
         if (!trail.Available)
         {
-            sb.Append("(不可用) ").Append(trail.Note)
-                .Append(" —— 审计一节回退为环形缓冲最近事件（非全量）")
+            sb.Append(I18n.Get("host.diag.summary.trail.unavailable")).Append(trail.Note)
+                .Append(I18n.Get("host.diag.summary.trail.fallback"))
                 .Append(Environment.NewLine);
         }
         else
@@ -144,7 +145,7 @@ internal static class DiagnosticSections
                 .Append(" dropped=").Append(trail.Dropped.ToString(CultureInfo.InvariantCulture));
             if (trail.Incomplete > 0)
             {
-                sb.Append(" (含未完成文件：上次进程被强杀)");
+                sb.Append(I18n.Get("host.diag.summary.trail.incomplete"));
             }
 
             sb.Append(Environment.NewLine);
@@ -168,7 +169,7 @@ internal static class DiagnosticSections
             ["frameCount"] = readings.FrameCount,
             ["avgFrameMs"] = Math.Round(readings.AvgFrameMs, 3),
             ["maxFrameMs"] = Math.Round(readings.MaxFrameMs, 3),
-            ["frameTimingNote"] = "累计平均，不是 60 秒采样窗口的平均",
+            ["frameTimingNote"] = I18n.Get("host.diag.runtime.frameTimingNote"),
             ["overBudgetFrames"] = readings.OverBudgetFrames,
             ["frameElapsedMs"] = readings.FrameElapsedMs,
             ["targetFrameMs"] = Math.Round(readings.TargetFrameMs, 3),
@@ -296,7 +297,7 @@ internal static class DiagnosticSections
             ["timestamp"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
             ["programVersion"] = readings.ProgramVersion,
             ["incompleteLogFiles"] = incompleteLogCount,
-            ["note"] = "sha256 用于发现传输损坏，不是签名，不防篡改",
+            ["note"] = I18n.Get("host.diag.manifest.hashNote"),
             ["files"] = files,
         };
         return rules.Text(doc.ToJsonString(Indented));

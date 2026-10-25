@@ -16,6 +16,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -115,13 +116,13 @@ internal sealed partial class PetDataStore
     {
         if (string.IsNullOrWhiteSpace(sourceDir))
         {
-            throw new DirectoryNotFoundException("没有选择目录");
+            throw new DirectoryNotFoundException(I18n.Get("host.import.err.no-directory"));
         }
 
         string full = Path.GetFullPath(sourceDir);
         if (!Directory.Exists(full))
         {
-            throw new DirectoryNotFoundException($"目录不存在：{full}");
+            throw new DirectoryNotFoundException(I18n.Get("host.import.err.dir-not-exist", full));
         }
 
         Directory.CreateDirectory(PacksDir);
@@ -339,18 +340,18 @@ internal sealed partial class PetDataStore
             FileInfo info = new(file);
             if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
             {
-                throw new IOException($"不支持的文件（重解析点）：{file}");
+                throw new IOException(I18n.Get("host.import.err.reparse-file", file));
             }
 
             if (info.Length > MaxFileBytes)
             {
-                throw new IOException($"文件超出大小上限（{MaxFileBytes} 字节）：{file}");
+                throw new IOException(I18n.Get("host.import.err.file-too-large", MaxFileBytes) + file);
             }
 
             total += info.Length;
             if (total > MaxPackBytes)
             {
-                throw new IOException($"所选目录总量超出上限（{MaxPackBytes} 字节）");
+                throw new IOException(I18n.Get("host.import.err.pack-too-large", MaxPackBytes));
             }
 
             File.Copy(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
@@ -361,7 +362,7 @@ internal sealed partial class PetDataStore
             DirectoryInfo info = new(dir);
             if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
             {
-                throw new IOException($"不支持的目录（重解析点）：{dir}");
+                throw new IOException(I18n.Get("host.import.err.reparse-dir", dir));
             }
 
             CopyInto(dir, Path.Combine(to, Path.GetFileName(dir)), ref total);

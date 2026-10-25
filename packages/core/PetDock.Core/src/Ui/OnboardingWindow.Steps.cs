@@ -15,14 +15,14 @@ internal sealed partial class OnboardingWindow
         var step = new Panel { Name = "onboarding-step-language" };
         var title = new Label
         {
-            Text = "选择界面语言",
+            Text = I18n.Get("ui.onboarding.language.title"),
             Dock = DockStyle.Top,
             Height = 28,
             Font = new Font(Font, FontStyle.Bold),
         };
         var note = new Label
         {
-            Text = "这一步只保存你的选择。当前版本的界面文案仍是中文，尚未本地化。",
+            Text = I18n.Get("ui.onboarding.language.note"),
             Dock = DockStyle.Top,
             Height = 44,
             ForeColor = Color.FromArgb(0xFF, 0x66, 0x66, 0x66),
@@ -47,14 +47,14 @@ internal sealed partial class OnboardingWindow
         var step = new Panel { Name = "onboarding-step-sample" };
         var title = new Label
         {
-            Text = "放置一只示例宠物",
+            Text = I18n.Get("ui.onboarding.sample.title"),
             Dock = DockStyle.Top,
             Height = 28,
             Font = new Font(Font, FontStyle.Bold),
         };
         var note = new Label
         {
-            Text = "示例宠物会复制到你的数据区，之后你可以用面板里的「导入素材包…」换成自己的。",
+            Text = I18n.Get("ui.onboarding.sample.note"),
             Dock = DockStyle.Top,
             Height = 44,
         };
@@ -87,7 +87,7 @@ internal sealed partial class OnboardingWindow
         var step = new Panel { Name = "onboarding-step-through" };
         var title = new Label
         {
-            Text = "透明区域可以点穿",
+            Text = I18n.Get("ui.onboarding.through.title"),
             Dock = DockStyle.Top,
             Height = 28,
             Font = new Font(Font, FontStyle.Bold),
@@ -100,7 +100,7 @@ internal sealed partial class OnboardingWindow
         };
         var tip = new Label
         {
-            Text = "试着点一下宠物边角上什么都没有的地方 —— 下面那个窗口会接到你的点击。",
+            Text = I18n.Get("ui.onboarding.through.tip"),
             Dock = DockStyle.Top,
             Height = 28,
         };

@@ -78,28 +78,84 @@ internal static class I18n
     internal static string Get(string key, object arg0) =>
         string.Format(CultureInfo.InvariantCulture, Get(key), arg0);
 
+    /// <summary>带两个占位符的文案（例：`{0} {1}`——异常类型 + 消息）。</summary>
+    internal static string Get(string key, object arg0, object arg1) =>
+        string.Format(CultureInfo.InvariantCulture, Get(key), arg0, arg1);
+
     internal static bool Has(string key) => _table.ContainsKey(key) || _fallback.ContainsKey(key);
 
     /// <summary>判据用：把缺键计数归零，跑完再问「这趟缺了几个」。</summary>
     internal static void ResetMissingCount() => MissingCount = 0;
 
+    /// <summary>
+    /// 读一门语言：`i18n/&lt;lang&gt;.json`，外加 `i18n/&lt;lang&gt;/*.json` 的**分片**（按文件名字典序合并）。
+    /// 分片是为了让多个人/多个子代理同时迁文案时**不撞同一个文件**：各写各的分片，键名各自带前缀。
+    /// 同一个键出现在两处时**先读到的赢**并计一次冲突（静默覆盖会让两个人以为自己的文案生效了）。
+    /// </summary>
     private static bool TryRead(string dir, string language, out Dictionary<string, string>? table, out string reason)
     {
         table = null;
         reason = "missing";
-        string path = Path.Combine(dir, language + ".json");
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        int conflicts = 0;
+        foreach (string path in TableFiles(dir, language))
+        {
+            if (!TryReadFile(path, map, ref conflicts, out reason))
+            {
+                return false;
+            }
+        }
+
+        if (map.Count == 0)
+        {
+            return false;
+        }
+
+        if (conflicts > 0)
+        {
+            KernelLog.Write($"i18n-duplicate-keys n={conflicts} first-wins");
+        }
+
+        table = map;
+        reason = "ok";
+        return true;
+    }
+
+    private static IEnumerable<string> TableFiles(string dir, string language)
+    {
+        string single = Path.Combine(dir, language + ".json");
+        if (File.Exists(single))
+        {
+            yield return single;
+        }
+
+        string shardDir = Path.Combine(dir, language);
+        if (!Directory.Exists(shardDir))
+        {
+            yield break;
+        }
+
+        string[] shards = Directory.GetFiles(shardDir, "*.json");
+        Array.Sort(shards, StringComparer.Ordinal);
+        foreach (string shard in shards)
+        {
+            yield return shard;
+        }
+    }
+
+    private static bool TryReadFile(string path, Dictionary<string, string> map, ref int conflicts, out string reason)
+    {
+        reason = "ok";
         try
         {
-            if (!File.Exists(path)) return false;
             using var stream = File.OpenRead(path);
             using var document = JsonDocument.Parse(stream);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
-                reason = "not-an-object";
+                reason = "not-an-object " + Path.GetFileName(path);
                 return false;
             }
 
-            var map = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (JsonProperty property in document.RootElement.EnumerateObject())
             {
                 if (property.Value.ValueKind != JsonValueKind.String)
@@ -114,16 +170,20 @@ internal static class I18n
                     return false;
                 }
 
+                if (map.ContainsKey(property.Name))
+                {
+                    conflicts++;
+                    continue;
+                }
+
                 map[property.Name] = property.Value.GetString() ?? string.Empty;
             }
 
-            table = map;
-            reason = "ok";
             return true;
         }
         catch (Exception error)
         {
-            reason = error.GetType().Name + ": " + error.Message;
+            reason = Path.GetFileName(path) + " " + error.GetType().Name + ": " + error.Message;
             return false;
         }
     }

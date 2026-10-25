@@ -31,7 +31,7 @@ internal sealed partial class ControlPanel
     /// <summary>「授权选中插件」入口。</summary>
     private readonly Button _authorizeButton = new()
     {
-        Text = "授权选中插件",
+        Text = I18n.Get("cp.plugins.authorize"),
         Name = "authorize",
         Width = 130,
         Height = 28,
@@ -41,7 +41,7 @@ internal sealed partial class ControlPanel
     /// <summary>「禁用/启用选中插件」入口（文案随选中插件的状态变）。</summary>
     private readonly Button _disableButton = new()
     {
-        Text = "禁用选中插件",
+        Text = I18n.Get("cp.plugins.disable"),
         Name = "disable",
         Width = 130,
         Height = 28,
@@ -127,8 +127,8 @@ internal sealed partial class ControlPanel
     {
         BindPluginRows(snapshot);
         _status.Text = snapshot.Plugins.Count == 0
-            ? "尚无插件装载。"
-            : $"共 {snapshot.Plugins.Count} 个插件。授权按钮打开能力弹窗；禁用按钮只撤销事件订阅，不卸载插件。";
+            ? I18n.Get("cp.plugins.empty")
+            : I18n.Get("cp.plugins.count", snapshot.Plugins.Count);
     }
 
     /// <summary>填插件页的表。列就是规格里的五列，操作交给两个按钮，不加第六列。</summary>
@@ -139,11 +139,11 @@ internal sealed partial class ControlPanel
         _pluginRows.Clear();
         _pluginList.Items.Clear();
         _pluginList.Columns.Clear();
-        _pluginList.Columns.Add("插件名", 180);
-        _pluginList.Columns.Add("版本", 90);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.name"), 180);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.version"), 90);
         _pluginList.Columns.Add("Tier", 60);
-        _pluginList.Columns.Add("已授权能力数", 110);
-        _pluginList.Columns.Add("状态", 120);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.granted"), 110);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.state"), 120);
 
         foreach (PluginLine line in snapshot.Plugins)
         {
@@ -256,7 +256,7 @@ internal sealed partial class ControlPanel
 
         _authorizeButton.Enabled = has;
         _disableButton.Enabled = has;
-        _disableButton.Text = suspended ? "启用选中插件" : "禁用选中插件";
+        _disableButton.Text = suspended ? I18n.Get("cp.plugins.enable") : I18n.Get("cp.plugins.disable");
     }
 
     /// <summary>用户改选中时同步面板自己记的选中 id。</summary>

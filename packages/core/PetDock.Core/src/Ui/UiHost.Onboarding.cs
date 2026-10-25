@@ -144,7 +144,7 @@ internal sealed partial class UiHost
         UserSettingsStore? store = _settings;
         if (store is null)
         {
-            error = "没有设置存储";
+            error = I18n.Get("ui.onboarding.error.noSettings");
             return false;
         }
 
@@ -163,7 +163,7 @@ internal sealed partial class UiHost
         }
         catch (Exception ex)
         {
-            error = $"设置未能保存：{ex.Message}";
+            error = I18n.Get("ui.onboarding.error.settingsFailed", ex.Message);
             KernelLog.Write($"onboarding-settings-failed {ex.GetType().Name}: {ex.Message}");
             return false;
         }

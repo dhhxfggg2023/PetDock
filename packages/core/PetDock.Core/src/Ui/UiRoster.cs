@@ -23,9 +23,9 @@ internal static class UiRoster
             pets.Add(new PetLine(
                 Id: pet.Id,
                 Name: pet.Id,
-                Source: string.IsNullOrEmpty(pet.SourceKind) ? "(内核兜底)" : pet.SourceKind,
+                Source: string.IsNullOrEmpty(pet.SourceKind) ? I18n.Get("ui.roster.source.kernelFallback") : pet.SourceKind,
                 State: PluginHost.DescribeInstanceState(pet.State)
-                    + (pet.BrainDegraded ? " · 降级" : string.Empty),
+                    + (pet.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty),
                 Memory: ProcessMemoryMb()));
         }
 
@@ -55,7 +55,7 @@ internal static class UiRoster
     {
         using Process self = Process.GetCurrentProcess();
         double mb = self.WorkingSet64 / (1024.0 * 1024.0);
-        return mb.ToString("0.0", CultureInfo.InvariantCulture) + " MB (进程)";
+        return I18n.Get("ui.roster.memory.process", mb.ToString("0.0", CultureInfo.InvariantCulture));
     }
 
     /// <summary>降级数（面板顶部汇总用）：实例级降级标记为真的宠物个数。</summary>

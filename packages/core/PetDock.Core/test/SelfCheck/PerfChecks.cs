@@ -40,7 +40,7 @@ internal static class PerfChecks
 
         bool rowsOk = perf.Rows.Count == snapshot.Pets.Count + 1;
         string shared = perf.Rows[1].Cpu;
-        bool sharedOk = shared == PerfPage.ProcessShared && perf.Rows[1].Memory == PerfPage.ProcessShared;
+        bool sharedOk = shared == I18n.Get(PerfPage.ProcessShared) && perf.Rows[1].Memory == I18n.Get(PerfPage.ProcessShared);
         check("ui-perf-per-pet-rows", rowsOk && sharedOk,
             $"rows={perf.Rows.Count} pets={snapshot.Pets.Count} cpu1={shared} ws1={perf.Rows[1].Memory}");
     }
@@ -83,7 +83,7 @@ internal static class PerfChecks
         // RFC-42 §3.4：断的是「两格都写未接」这个结构化事实（以及计数器确实没接），不是中文原文；
         // 「不编造 0」由 !CountersWired 保证 —— 只有接上计数器时 Summary 才会写出数字。
         check("ui-perf-counters-unwired",
-            !perf.CountersWired && text.Contains(PerfPage.NotWired, StringComparison.Ordinal),
+            !perf.CountersWired && text.Contains(I18n.Get(PerfPage.NotWired), StringComparison.Ordinal),
             $"summary={text} counters-wired={perf.CountersWired}");
     }
 

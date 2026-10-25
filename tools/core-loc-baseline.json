@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 23260,
+  "budget": 23320,
   "history": [
     {
       "date": "2026-10-18",
@@ -1165,6 +1165,47 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": 37
+        }
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "measured": 23273,
+      "budget": 23320,
+      "note": "RFC-42 本地化落地的第一轮：界面文案迁出源码、进 assets/i18n，界面按语言取键。实测 23201 → 23273（+72），逐切片之和 = 72，等于相邻 measured 之差（与 lint-core 同口径逐文件 numstat 实测：Host 13 文件 +15、Ui/I18n.cs +56、Ui/PerfPage.cs +1，其余 24 个被改文件净 0——把中文字面量换成 I18n.Get 键名是等长替换）。抬到 23320（余量 47）的理由：片数多但每片净额小，余量压到 0 会让下一个人的无关改动红在 D-03a 上（见 2026-10-25「余量归零」那条）。新判据（i18n-lint 的字面量清单、parity 的键集比对）在 tools/ 与 test/ 下，按 D-03a 口径不计入本预算；六个分片 JSON 在 assets/ 下，同样不计。",
+      "attribution": [
+        {
+          "slice": "RFC-42 §3.2 资源表加载器：assets/i18n/<lang>.json 与 <lang>/*.json 分片合并（字典序、重复键先到先赢并留痕）、缺键返回键名本身并计 MissingCount、占位符按 InvariantCulture 格式化、资产根解析（PETDOCK_ASSETS 优先）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/I18n.cs"
+          ],
+          "lines": 56
+        },
+        {
+          "slice": "RFC-42 §3.4 宿主侧迁移：13 个 Host 文件的文案改为按键取值/键名产出（诊断摘要、诊断动作、导入结果、数据目录错误、名册状态、审计流水读数、仲裁拒绝、启动项注册、宠物守卫异常），净增只来自必须新增的键字段与常量",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/AuditTrail.Read.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticBundle.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticReadings.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticSections.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
+            "packages/core/PetDock.Core/src/Host/HostArbiter.cs",
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs",
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.Frames.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Roster.cs",
+            "packages/core/PetDock.Core/src/Host/StartupRegistration.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs"
+          ],
+          "lines": 15
+        },
+        {
+          "slice": "RFC-42 §3.4 界面侧迁移：控制面板/授权弹窗/性能页/引导窗/托盘与宿主入口的文案改为按键取值（净额来自性能页汇总改成带占位符的模板，其余为等长替换）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+          ],
+          "lines": 1
         }
       ]
     }

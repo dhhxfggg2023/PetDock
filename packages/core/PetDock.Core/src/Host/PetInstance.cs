@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -184,7 +185,7 @@ public sealed partial class PetInstance : IDisposable
 
         if (State is not (InstanceState.Imported or InstanceState.Instantiated))
         {
-            throw new InvalidOperationException($"attach 需要 Imported（当前 {State}）");
+            throw new InvalidOperationException(I18n.Get("host.pet.err.attach-needs-imported", State));
         }
 
         var budget = new ResourceBudget(

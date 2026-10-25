@@ -58,12 +58,12 @@ internal sealed partial class OnboardingWindow : Form
     private readonly Panel[] _steps;
     private readonly Label _error = new();
     private readonly Label _placed = new();
-    private readonly RadioButton _zh = new() { Text = "简体中文 (zh-CN)", Name = "onboarding-language-zh" };
+    private readonly RadioButton _zh = new() { Text = I18n.Get("ui.onboarding.language.zh"), Name = "onboarding-language-zh" };
     private readonly RadioButton _en = new() { Text = "English (en-US)", Name = "onboarding-language-en" };
     private readonly ThroughHintPanel _hint = new() { Name = "onboarding-animation" };
-    private readonly Button _next = new() { Text = "下一步", Name = "onboarding-next", Width = 96, Height = 30 };
-    private readonly Button _skip = new() { Text = "跳过引导", Name = "onboarding-skip", Width = 96, Height = 30 };
-    private readonly Button _place = new() { Text = "放置示例宠物", Name = "onboarding-place", Width = 120, Height = 30 };
+    private readonly Button _next = new() { Text = I18n.Get(NextKey), Name = "onboarding-next", Width = 96, Height = 30 };
+    private readonly Button _skip = new() { Text = I18n.Get("ui.onboarding.skip"), Name = "onboarding-skip", Width = 96, Height = 30 };
+    private readonly Button _place = new() { Text = I18n.Get("ui.onboarding.place"), Name = "onboarding-place", Width = 120, Height = 30 };
 
     private int _index;
     private bool _samplePlaced;
@@ -79,7 +79,7 @@ internal sealed partial class OnboardingWindow : Form
         _placeSample = placeSample;
         _writeSettings = writeSettings;
 
-        Text = "PetDock — 首次运行引导";
+        Text = I18n.Get("ui.onboarding.title");
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterScreen;
         MinimizeBox = false;
@@ -209,7 +209,7 @@ internal sealed partial class OnboardingWindow : Form
         }
         catch (Exception ex)
         {
-            error = $"放置示例宠物失败：{ex.Message}";
+            error = I18n.Get("ui.onboarding.placeFailed", ex.Message);
         }
 
         if (error is null)
@@ -252,7 +252,7 @@ internal sealed partial class OnboardingWindow : Form
         }
 
         _markerError = error;
-        ShowError($"{error}（语言选择未能保存）");
+        ShowError(I18n.Get("ui.onboarding.error.languageSave", error));
         return false;
     }
 
@@ -267,7 +267,7 @@ internal sealed partial class OnboardingWindow : Form
         {
             _markerError = error;
             _markerWritten = false;
-            ShowError($"{error}（引导完成状态未能保存，下次启动还会出现）");
+            ShowError(I18n.Get("ui.onboarding.error.completeSave", error));
             return;
         }
 

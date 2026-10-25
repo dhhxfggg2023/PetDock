@@ -10,6 +10,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -38,7 +39,7 @@ public sealed partial class PetInstance
     {
         if (State != InstanceState.Running)
         {
-            throw new InvalidOperationException($"queryFrame 需要 running（当前 {State}）");
+            throw new InvalidOperationException(I18n.Get("host.pet.err.query-needs-running", State));
         }
 
         if (Display.Tier >= DisplayTier.Placeholder)
@@ -123,15 +124,15 @@ public sealed partial class PetInstance
     {
         if (frame.BitmapHandle.PixelWidth <= 0 || frame.BitmapHandle.PixelHeight <= 0)
         {
-            throw new ArgumentException($"视图实现交付了空位图：{frame.BitmapHandle}");
+            throw new ArgumentException(I18n.Get("host.pet.err.empty-bitmap", frame.BitmapHandle));
         }
 
         if (Target is not null && (Target.PixelWidth != frame.BitmapHandle.PixelWidth
             || Target.PixelHeight != frame.BitmapHandle.PixelHeight))
         {
-            throw new ArgumentException(
-                $"frame {frame.BitmapHandle.PixelWidth}x{frame.BitmapHandle.PixelHeight}"
-                + $" 与画板 {Target.PixelWidth}x{Target.PixelHeight} 不一致");
+            string frameSize = $"{frame.BitmapHandle.PixelWidth}x{frame.BitmapHandle.PixelHeight}";
+            throw new ArgumentException(I18n.Get("host.pet.err.frame-size-mismatch", frameSize)
+                + $" {Target.PixelWidth}x{Target.PixelHeight}");
         }
     }
 }

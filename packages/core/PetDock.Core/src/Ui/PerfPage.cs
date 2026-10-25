@@ -19,14 +19,14 @@ internal sealed class PerfPage : UserControl
     /// <summary>「没有可用归属」时单元格里的占位符（不是 0：0 会被读成「测过是 0」）。</summary>
     public const string NotAttributed = "—";
 
-    /// <summary>进程级读数在逐宠物行里的标注（docs/10 §3）。</summary>
-    public const string ProcessShared = "(进程共享)";
+    /// <summary>进程级读数在逐宠物行里的标注（docs/10 §3）。值是键名，文案在 assets/i18n（RFC-42）。</summary>
+    public const string ProcessShared = "ui.perf.processShared";
 
     /// <summary>计数器没有接收口时两格都写它（不是 0：0 会被读成「测过是 0」，RFC-30 §3.4）。</summary>
-    public const string NotWired = "未接";
+    public const string NotWired = "ui.perf.notWired";
 
-    /// <summary>没有宠物时的摘要（不得编造数字，§2.4）。判据断言这个常量，不写中文原文。</summary>
-    public const string NoPetRunning = "尚无宠物运行。没有可测量的对象，因此不显示任何性能数字。";
+    /// <summary>没有宠物时的摘要（不得编造数字，§2.4）。判据断言这个键，不写中文原文。</summary>
+    public const string NoPetRunning = "ui.perf.noPetRunning";
 
     private readonly Func<UiSnapshot> _snapshot;
     private readonly Func<string, PetFrameReadings?>? _framesFor;
@@ -45,12 +45,12 @@ internal sealed class PerfPage : UserControl
             Dock = DockStyle.Top,
             Height = 48,
             Padding = new Padding(8, 6, 8, 0),
-            Text = "尚未采样。点「开始采样（60s）」取得与 D-14 门禁同一条测量链的读数。",
+            Text = I18n.Get("ui.perf.idle"),
         };
 
         _sample = new Button
         {
-            Text = "开始采样（60s）",
+            Text = I18n.Get("ui.perf.sample"),
             Dock = DockStyle.Top,
             Height = 32,
             Name = "sample",
@@ -65,11 +65,11 @@ internal sealed class PerfPage : UserControl
             GridLines = true,
             Name = "perf-rows",
         };
-        _rows.Columns.Add("宠物", 150);
-        _rows.Columns.Add("CPU", 110);
-        _rows.Columns.Add("私有工作集", 130);
-        _rows.Columns.Add("帧耗时", 110);
-        _rows.Columns.Add("超限计数", 100);
+        _rows.Columns.Add(I18n.Get("ui.perf.col.pet"), 150);
+        _rows.Columns.Add(I18n.Get("ui.perf.col.cpu"), 110);
+        _rows.Columns.Add(I18n.Get("ui.perf.col.workingSet"), 130);
+        _rows.Columns.Add(I18n.Get("ui.perf.col.frameMs"), 110);
+        _rows.Columns.Add(I18n.Get("ui.perf.col.overruns"), 100);
 
         Controls.Add(_rows);
         Controls.Add(_sample);
@@ -82,7 +82,7 @@ internal sealed class PerfPage : UserControl
         _rows.Items.Clear();
         if (perf.IsEmpty)
         {
-            _summary.Text = NoPetRunning;
+            _summary.Text = I18n.Get(NoPetRunning);
             return;
         }
 
@@ -98,10 +98,11 @@ internal sealed class PerfPage : UserControl
     /// <summary>汇总行的文案。降级/隔离区计数没有接收口时写「未接」（RFC-30 §3.4）。</summary>
     public static string Summary(PerfSummary perf)
     {
+        const string CountersKey = "ui.perf.summary.counters";
         string counters = perf.CountersWired
-            ? $"降级 {perf.Degraded} ｜ 隔离区 {perf.Isolated}"
-            : $"降级 {NotWired} ｜ 隔离区 {NotWired}";
-        return string.Create(CultureInfo.InvariantCulture, $"采样窗口 {perf.Window} ｜ {counters}");
+            ? string.Format(CultureInfo.InvariantCulture, I18n.Get(CountersKey), perf.Degraded, perf.Isolated)
+            : string.Format(CultureInfo.InvariantCulture, I18n.Get(CountersKey), I18n.Get(NotWired), I18n.Get(NotWired));
+        return string.Format(CultureInfo.InvariantCulture, I18n.Get("ui.perf.summary.window"), perf.Window, counters);
     }
 
     /// <summary>
@@ -119,7 +120,7 @@ internal sealed class PerfPage : UserControl
         }
 
         _sample.Enabled = false;
-        _summary.Text = "采样中…（60s，与 D-14 门禁同一测量链）";
+        _summary.Text = I18n.Get("ui.perf.sampling");
         Application.DoEvents();
         try
         {
@@ -128,7 +129,7 @@ internal sealed class PerfPage : UserControl
         }
         catch (Exception ex)
         {
-            _summary.Text = "采样失败：" + ex.GetType().Name + ": " + ex.Message;
+            _summary.Text = I18n.Get("ui.perf.sampleFailed", ex.GetType().Name + ": " + ex.Message);
         }
         finally
         {
@@ -215,7 +216,7 @@ internal static class PerfSampler
         var rows = new List<PerfLine>(pets.Count + 1)
         {
             new(
-                Name: "(进程合计)",
+                Name: I18n.Get("ui.perf.row.processTotal"),
                 Cpu: Fmt(cpuPct) + " %",
                 Memory: Fmt(wsMb) + " MB",
                 FrameMs: processFrameAttributed ? FrameText(sole!) : PerfPage.NotAttributed,
@@ -227,8 +228,8 @@ internal static class PerfSampler
             PetFrameReadings? own = framesFor?.Invoke(pet.Id);
             rows.Add(new PerfLine(
                 Name: pet.Name,
-                Cpu: PerfPage.ProcessShared,
-                Memory: PerfPage.ProcessShared,
+                Cpu: I18n.Get(PerfPage.ProcessShared),
+                Memory: I18n.Get(PerfPage.ProcessShared),
                 FrameMs: own is null ? PerfPage.NotAttributed : FrameText(own),
                 Overruns: own?.OverBudget));
         }
@@ -242,9 +243,9 @@ internal static class PerfSampler
     }
 
     /// <summary>帧耗时单元格：avg/max 与目标预算一起写，否则读者无法判断 max 是否超限。</summary>
-    public static string FrameText(PetFrameReadings readings) => string.Create(
+    public static string FrameText(PetFrameReadings readings) => string.Format(
         CultureInfo.InvariantCulture,
-        $"avg {Fmt(readings.AvgFrameMs)} / max {Fmt(readings.MaxFrameMs)} ms（目标 {Fmt(readings.TargetFrameMs)}ms）");
+        I18n.Get("ui.perf.frame"), Fmt(readings.AvgFrameMs), Fmt(readings.MaxFrameMs), Fmt(readings.TargetFrameMs));
 
     private static string Fmt(double value) => value.ToString("0.0", CultureInfo.InvariantCulture);
 }

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -76,7 +77,7 @@ internal sealed record UserSettings(
         + $" onboarding={(OnboardingCompletedVersion?.ToString(CultureInfo.InvariantCulture) ?? "(none)")}"
         + $" position={DescribePosition()}"
         + $" pet-positions={(PetPositions is null ? 0 : PetPositions.Count)}"
-        + $" start-with-windows=(见注册表)";
+        + " start-with-windows=" + I18n.Get("host.settings.start-with-windows");
 
     /// <summary>位置的读数写法；没存过就叫 none（不是 0,0 —— 两者语义不同，RFC-22 §4）。</summary>
     private string DescribePosition() =>

@@ -15,7 +15,7 @@ internal sealed partial class ControlPanel
     /// <summary>「打开日志目录」按钮。</summary>
     private readonly Button _openLogsButton = new()
     {
-        Text = "打开日志目录",
+        Text = I18n.Get("cp.diag.openLogs"),
         Name = "diag-open-logs",
         Width = 120,
         Height = 28,
@@ -24,7 +24,7 @@ internal sealed partial class ControlPanel
     /// <summary>「导出诊断包」按钮。</summary>
     private readonly Button _exportBundleButton = new()
     {
-        Text = "导出诊断包（脱敏后）",
+        Text = I18n.Get("cp.diag.exportBundle"),
         Name = "diag-export-bundle",
         Width = 150,
         Height = 28,
@@ -46,8 +46,8 @@ internal sealed partial class ControlPanel
     /// <summary>诊断动作名：导出诊断包。</summary>
     public const string DiagnosticOpExportBundle = "export-bundle";
 
-    /// <summary>设置页诊断两行的行名（判据断它，不断中文原文）。</summary>
-    public const string DiagnosticLogsRow = "诊断：日志目录", DiagnosticBundleRow = "诊断：导出诊断包";
+    /// <summary>设置页诊断两行的行名**键**（判据断键：文案在 assets/i18n，会跟着语言变）。</summary>
+    public const string DiagnosticLogsRow = "cp.settings.row.diagnosticLogs", DiagnosticBundleRow = "cp.settings.row.diagnosticBundle";
 
     /// <summary>给设置页装一个宿主侧的诊断回调（构造时传入）。</summary>
     public void SetDiagnosticCommand(DiagnosticCommand? command) => _diagnosticCommand = command;
@@ -118,7 +118,7 @@ internal sealed partial class ControlPanel
         (bool Ok, string Message) outcome;
         if (_diagnosticCommand is null)
         {
-            outcome = (false, "诊断功能不可用：宿主未接管诊断动作。");
+            outcome = (false, I18n.Get("cp.diag.unavailable"));
         }
         else
         {
@@ -128,7 +128,7 @@ internal sealed partial class ControlPanel
             }
             catch (Exception error)
             {
-                outcome = (false, "诊断动作失败：" + error.GetType().Name + " " + error.Message);
+                outcome = (false, I18n.Get("cp.diag.failed") + error.GetType().Name + " " + error.Message);
             }
         }
 

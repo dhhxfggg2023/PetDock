@@ -21,7 +21,7 @@ internal sealed partial class ControlPanel
     /// <summary>开机自启勾选框。</summary>
     private readonly CheckBox _startupBox = new()
     {
-        Text = "开机自启",
+        Text = I18n.Get("cp.settings.startup"),
         Name = "startup-box",
         AutoSize = true,
     };
@@ -39,7 +39,7 @@ internal sealed partial class ControlPanel
     /// <summary>「应用」按钮。</summary>
     private readonly Button _applyButton = new()
     {
-        Text = "应用",
+        Text = I18n.Get("cp.settings.apply"),
         Name = "apply-settings",
         Width = 90,
         Height = 28,
@@ -122,7 +122,7 @@ internal sealed partial class ControlPanel
             WrapContents = false,
         };
         bar.Controls.Add(_startupBox);
-        bar.Controls.Add(new Label { Text = "空闲降帧阈值(ms)", AutoSize = true, Padding = new Padding(8, 6, 0, 0) });
+        bar.Controls.Add(new Label { Text = I18n.Get("cp.settings.idleFrameLabel"), AutoSize = true, Padding = new Padding(8, 6, 0, 0) });
         bar.Controls.Add(_idleFrameBox);
         bar.Controls.Add(_applyButton);
 
@@ -160,13 +160,13 @@ internal sealed partial class ControlPanel
     {
         if (_settingsCommand is null)
         {
-            ShowSettingsStatus("设置功能不可用：宿主未接管设置动作。", ok: false);
+            ShowSettingsStatus(I18n.Get("cp.settings.unavailable"), ok: false);
             return;
         }
 
         string? problem = _settingsCommand((double)_idleFrameBox.Value, _startupBox.Checked);
         ShowSettingsStatus(
-            problem ?? "设置已保存。",
+            problem ?? I18n.Get("cp.settings.saved"),
             ok: problem is null);
     }
 
