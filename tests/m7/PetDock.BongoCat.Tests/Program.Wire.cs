@@ -390,6 +390,14 @@ internal static partial class Program
         string script = ws.FrameScript;
         ws.FrameScript = "good";
 
+        if (script == "slow")
+        {
+            // 慢客体（只给 --timing-probe 用）：20ms 才答一帧。宿主路径给的是默认
+            // frameBudgetMs=8（PluginHost.Tier2.cs:27 不传该参数），一帧 stdio 往返
+            // 超过 8ms 就会被 StopProcess 杀掉——这条不依赖机器负载，可判。
+            System.Threading.Thread.Sleep(20);
+        }
+
         int side = script == "huge" ? 64 : 4;
         int pixels = side * side;
         var bitmap = new byte[pixels * 4];

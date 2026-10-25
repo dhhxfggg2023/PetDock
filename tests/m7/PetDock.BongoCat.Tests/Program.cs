@@ -41,6 +41,13 @@ internal static partial class Program
             return RunTier2Child(args[1]);
         }
 
+        // 时序缺口探针（Program.TimingProbe.cs）：把两条只在负载下显形的时序问题变成
+        // 无负载也能复现的是非题，供生产侧修好后验（末行 M7-PROBE-OK / M7-PROBE-GAPS n=k）。
+        if (args.Length >= 1 && args[0] == "--timing-probe")
+        {
+            return RunTimingProbe();
+        }
+
         // 负载复现模式（Program.Stress.cs）：并发起 N 份整套判据，把「只在 --all 里红」
         // 变成一条可复跑的读数。不在门禁路径上——门禁照旧无参跑一遍。
         if (args.Length >= 1 && args[0] == "--stress")
