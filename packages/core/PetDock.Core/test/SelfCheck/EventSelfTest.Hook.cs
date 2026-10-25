@@ -6,8 +6,9 @@
 //
 // 现在的判据是：内核 src/ 里「真的调用 SetWindowsHookEx」的行必须恰好一处。
 // 多一处 = 有人绕过了 UiHost 的授权门（docs/16:56 要求设备钩子只在插件持权后激活）。
+// 遍历本身在 SourceScan.cs：同一次遍历现在服务两条静态面判据（这条与 EventSelfTest.Skip.cs
+// 的事件生产点扫描），少一个拥有者就少一处会漂的地方。
 using System;
-using System.IO;
 
 namespace PetDock.Hosting;
 
@@ -17,53 +18,10 @@ internal static partial class EventSelfTest
     /// 数一遍内核源码里真正调用 SetWindowsHookEx 的行数（排除声明与注释）。
     /// 找不到仓库根时返回 -1 —— 那意味着这条判据没检查任何东西，必须红，不能静默通过。
     /// </summary>
-    private static int CountHookInstallSites()
-    {
-        try
-        {
-            DirectoryInfo? dir = new(AppContext.BaseDirectory);
-            while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PetDock.sln")))
-            {
-                dir = dir.Parent;
-            }
-
-            if (dir is null)
-            {
-                return -1;
-            }
-
-            string src = Path.Combine(dir.FullName, "packages", "core", "PetDock.Core", "src");
-            if (!Directory.Exists(src))
-            {
-                return -1;
-            }
-
-            int sites = 0;
-            foreach (string file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories))
-            {
-                foreach (string raw in File.ReadLines(file))
-                {
-                    string line = raw.TrimStart();
-
-                    // 排除三类：P/Invoke 声明（extern）、注释行、以及 <summary> 里的说明。
-                    // 判据问的是「谁真的调用了它」——注释里提到这个名字不算安装点。
-                    if (line.StartsWith("//", StringComparison.Ordinal)
-                        || line.StartsWith("*", StringComparison.Ordinal)
-                        || !line.Contains("SetWindowsHookEx", StringComparison.Ordinal)
-                        || line.Contains("extern", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    sites++;
-                }
-            }
-
-            return sites;
-        }
-        catch (Exception)
-        {
-            return -1;
-        }
-    }
+    private static int CountHookInstallSites() =>
+        SourceScan.Count(SourceScan.CoreSourceDir, line =>
+            !line.StartsWith("//", StringComparison.Ordinal)
+            && !line.StartsWith("*", StringComparison.Ordinal)
+            && line.Contains("SetWindowsHookEx", StringComparison.Ordinal)
+            && !line.Contains("extern", StringComparison.Ordinal));
 }

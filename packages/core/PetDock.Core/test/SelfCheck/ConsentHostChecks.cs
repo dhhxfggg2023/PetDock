@@ -132,7 +132,7 @@ internal static class ConsentHostChecks
             .ToArray();
         if (granted.Count == 0)
         {
-            return Report(check, "consent-narrow-only-shrinks", true, "no-grants-to-narrow (skipped)");
+            return ReportSkip(check, "consent-narrow-only-shrinks", "no-grants-to-narrow");
         }
 
         string keep = granted[0];
@@ -151,4 +151,13 @@ internal static class ConsentHostChecks
         check(name, ok, detail);
         return ok ? 0 : 1;
     }
+
+    /// <summary>
+    /// 登记一次**跳过**（不是 PASS）：本机这次运行里没有可断言的对象，判据无从下手。
+    /// 2026-10-25 判据体检 S2 之前，这里是 `Report(…, true, "…(skipped)")` —— 跳过被塞进
+    /// ok=true 一起算绿（2026-10-20 已为这一条付过一次账）。现在标记由消费方自检的收尾账本
+    /// （SkipLedger）判成第三种结局：--hosttest 计入 `skipped=N` 并印在末行 marker 上。
+    /// </summary>
+    private static int ReportSkip(HostCheck check, string name, string reason) =>
+        Report(check, name, true, reason + " " + SkipLedger.SkippedMark);
 }

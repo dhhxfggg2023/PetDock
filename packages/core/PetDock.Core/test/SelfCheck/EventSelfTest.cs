@@ -1,9 +1,12 @@
 // --eventtest：M4（行为与事件）的可判定判据（docs/handoff/M4-contract-frozen.md §4/§5/§6/§7）。
-// 命令形态：`--eventtest`，每行 `CHECK <key> PASS|FAIL <detail>`，末行 EVENT-OK / EVENT-FAIL n=<k>，
-// 退出码 0 / n —— 与 --animtest / --drivetest 同构（契约 §7.5）。
-// 分工：本文件 = 入口 + 能力 + 仲裁 + 指令 + 钩子 + 世界采样；总线语义与目录守门在 EventSelfTest.Bus.cs。
+// 命令形态：`--eventtest`，每行 `CHECK <key> PASS|FAIL|SKIP <detail>`，统计行 `STAT eventtest …`，
+// 末行 `EVENT-OK skipped=<s>` / `EVENT-FAIL n=<fail+unowned> skipped=<s>`，退出码 0 / n
+// —— 与 --animtest / --drivetest 同构（契约 §7.5）。
+// 分工：本文件 = 入口 + 能力 + 仲裁 + 指令 + 钩子 + 世界采样；总线语义与目录守门在 EventSelfTest.Bus.cs；
+// 「跳过」那半边（第三种结局、事件生产点扫描、负例装置）在 EventSelfTest.Skip.cs，账本在 SkipLedger.cs。
 // 纪律三条：
-//   1. **SKIP 不是 PASS**（契约 §2.6）：没有生产触发源的事件必须打 SKIP 并计入「未计绿」，不许静默略过；
+//   1. **SKIP 不是 PASS**（契约 §2.6）：没有生产触发源的事件必须登记，不许静默略过；
+//      登记不许用硬编码常量 —— 2026-10-25（判据体检 S1）之前那三条常量不计绿也不计红，门禁永久失明；
 //   2. **不许抛未捕获异常**：任何一步失败都落成 FAIL 行 + 非零退出（G2：旧路径 0xE0434352 的教训）；
 //   3. **真实源必须真读**：时间/鼠标/前台窗口三类都由真 Win32 调用采样，并把原始值打在行里 ——
 //      注入时钟只用于确定性断言，不能替代「真的读到了」这条证据。
@@ -19,7 +22,6 @@ internal static partial class EventSelfTest
     public static int Run(string[] args)
     {
         int failures = 0;
-        var skipped = new List<string>();
         try
         {
             failures += DispatchModes();
@@ -29,7 +31,8 @@ internal static partial class EventSelfTest
             failures += Arbitration();
             failures += Directives();
             failures += HookGate();
-            failures += WorldSample(skipped);
+            failures += WorldSample();
+            failures += EventSources();
             failures += FrameOrder();
             failures += EventLogBounds();
         }
@@ -40,13 +43,8 @@ internal static partial class EventSelfTest
             failures++;
         }
 
-        foreach (string name in skipped)
-        {
-            Console.WriteLine($"SKIP-NOT-GREEN event-source {name}");
-        }
-
-        Console.WriteLine(failures == 0 ? "EVENT-OK" : $"EVENT-FAIL n={failures}");
-        return failures == 0 ? 0 : failures;
+        // 收尾（统计 + SKIP 通道 + marker）在 EventSelfTest.Skip.cs：SKIP 不再是一行只打印的字。
+        return Report(args, failures);
     }
 
     /// <summary>契约 §4.4：200ms 内应答、超时自动拒绝且与「用户拒绝」可区分、每次终态恰好一行审计。</summary>
@@ -323,7 +321,7 @@ internal static partial class EventSelfTest
     }
 
     /// <summary>契约 §7.1/§7.2：三个真实源各读一次，并把原始值打进行里。</summary>
-    private static int WorldSample(List<string> skipped)
+    private static int WorldSample()
     {
         int failures = 0;
         IntPtr hwnd = Win32.GetForegroundWindow();
@@ -358,10 +356,8 @@ internal static partial class EventSelfTest
             !pidOk || real.FocusedApp is null || real.FocusedApp.Length > 0,
             $"foreground-hwnd=0x{hwnd.ToInt64():X} pid={(pidOk ? pid.ToString() : "0")} FocusedApp={real.FocusedApp ?? "null"}");
 
-        // 契约 §2.6：无生产触发源的事件必须显式登记，不许静默略过。
-        skipped.Add("pet.state.migrated(no-producer)");
-        skipped.Add("input.key.down(capability-not-granted)");
-        skipped.Add("input.key.up(capability-not-granted)");
+        // 契约 §2.6 的登记项已不再写在方法体里（那曾经是三条硬编码常量）：见 EventSelfTest.Skip.cs
+        // 的 EventSources() —— 它先真扫源码生产点，再决定 PASS / 可放过的 SKIP / 判红的 SKIP。
         return failures;
     }
 
@@ -386,10 +382,4 @@ internal static partial class EventSelfTest
     }
 
     private static string Flag(bool value) => value ? "true" : "false";
-
-    private static void Check(ref int failures, string key, bool ok, string detail)
-    {
-        Console.WriteLine($"CHECK {key} {(ok ? "PASS" : "FAIL")} {detail}");
-        if (!ok) failures++;
-    }
 }

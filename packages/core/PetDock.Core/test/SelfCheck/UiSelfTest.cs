@@ -1,11 +1,14 @@
 // UI 母体自检（RFC-12 §3，docs/18 §1/§2/§2.4/§2.5）。
-// 命令形态：`--uitest`，每行 `CHECK ui-<name> PASS|FAIL <detail>`，末行 UI-OK / UI-FAIL n=<k>。
+// 命令形态：`--uitest`，每行 `CHECK ui-<name> PASS|FAIL|SKIP <detail>`，统计行 `STAT uitest …`，
+// 末行 `UI-OK skipped=<s>` / `UI-FAIL n=<fail+unowned> skipped=<s>`。
 // 判据口径来自文档，不由实现自证：
 //   docs/18 §1     托盘恰有五个顶层项，顺序固定，「暂停全局输入钩子」是强制项不可隐藏
 //   docs/18 §2/§2.5 主控面板四页齐全、面板单实例、关闭面板不退出进程
 //   docs/18 §2.4   无宠物时性能页显示「尚无类似」而不是编造数字
 //   docs/18 §3     授权弹窗三选一，Tier 2 的「仅本次」置灰
 // 无人值守：全部控件树只 CreateControl 不 Show，任何一步失败都落成 FAIL 行而不抛。
+// 第三种结局（跳过）在 SkipLedger.cs：2026-10-25 判据体检 S2 之前，`…(skipped)` 只能塞进 ok=true
+// 一起算 PASS，三种结局里两种是绿的。现在 SKIP 只从 Check 这一个收尾出，且没人接的 SKIP 判红。
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -25,7 +28,6 @@ internal static class UiSelfTest
         int logIdx = Array.FindIndex(args, a => string.Equals(a, "--log", StringComparison.Ordinal));
         _logPath = logIdx >= 0 && args.Length > logIdx + 1 ? args[logIdx + 1] : null;
 
-        int failures = 0;
         try
         {
             TrayItems();
@@ -45,8 +47,10 @@ internal static class UiSelfTest
             SettingsChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
-            // RFC-31 §4：命中图参与穿透（ui-hitmap-*）；RFC-32 §4：单实例锁（ui-single-instance-*）。
+            // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。
             HitMapChecks.Run(Check);
+            // RFC-41 §4：命中阈值（hit-threshold-*）与「申报的命中面被消费」（hit-surface-wired* / ui-hit-tier1-consumes）。
+            HitThresholdChecks.Run(Check);
             InstanceChecks.Run(Check);
             // RFC-36 §4：宿主 Start 之前的一致性读取不许干等调度器（ui-compose-read-before-start）。
             HostComposeChecks.Run(Check);
@@ -66,16 +70,18 @@ internal static class UiSelfTest
             AuditTrailChecks.Run(Check);
             // RFC-21 §4：静态节流分档的判据（ui-throttle-*）。判据体在 ThrottleChecks。
             ThrottleChecks.Run(Check);
-            failures = _failed;
+            // 判据体检 S2（2026-10-25）：账本自己的负例对照 —— 证明「跳过」真的分得开、
+            // 且没人接的 SKIP 会改变末行 marker。见 SkipLedger.ControlCheck。
+            SkipLedger.ControlCheck(Check, "ui-skip-ledger-classify");
         }
         catch (Exception error)
         {
-            Emit($"CHECK ui-crash FAIL {error.GetType().Name}: {error.Message}");
-            failures = _failed + 1;
+            Check("ui-crash", false, $"{error.GetType().Name}: {error.Message}");
         }
 
-        Emit(failures == 0 ? "UI-OK" : $"UI-FAIL n={failures}");
-        return failures == 0 ? 0 : failures;
+        // 收尾：pass/skip/fail 分行数，末行 marker 带 skipped=N（可放过的 SKIP 也必须看得见）。
+        Ledger.Report("uitest", "UI-OK", "UI-FAIL");
+        return Ledger.Verdict;
     }
 
     /// <summary>输出同时进控制台与 --log 文件：WinExe + AttachConsole 时管道捕获恒为空，
@@ -99,19 +105,17 @@ internal static class UiSelfTest
     }
 
     /// <summary>
-    /// 判据落地：FAIL 必须计入 failures —— 一条只打印不计数、最后仍打 OK 的门禁，
+    /// 判据落地：三种结局都交给账本（SkipLedger.Check）—— 一条只打印不计数、最后仍打 OK 的门禁，
     /// 比没有门禁更坏（RFC-04 §3「永久红的门禁只有两种结局」的反面）。
+    ///
+    /// 判据体检 S2（2026-10-25）之后，这里同时是**第三种结局唯一的收尾**：`(name, ok, detail)`
+    /// 这个形状没有地方放「跳过」，所以 `…(skipped)` 曾经只能塞进 ok=true 一起算 PASS。判定口径
+    /// 本身在 SkipLedger.SkipKindOf，不在这里。
     /// </summary>
-    private static void Check(string name, bool ok, string detail)
-    {
-        Emit($"CHECK {name} {(ok ? "PASS" : "FAIL")} {detail}");
-        if (!ok)
-        {
-            _failed++;
-        }
-    }
+    private static void Check(string name, bool ok, string detail) => Ledger.Check(name, ok, detail);
 
-    private static int _failed;
+    /// <summary>收尾账本：CHECK 行全部过它，SKIP 只从它出（见 SkipLedger.cs）。</summary>
+    private static readonly SkipLedger Ledger = new(Emit);
 
     /// <summary>§1：五项、顺序固定、id 稳定（宠物项 = pet-1，只数由桌面决定）。</summary>
     private static int TrayItems()

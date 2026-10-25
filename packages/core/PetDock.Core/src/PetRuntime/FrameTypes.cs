@@ -50,11 +50,19 @@ public sealed record Frame(
     byte[]? Hitmap = null)
 {
     /// <summary>
+    /// RFC-41 §3.3 的命中阈值：2 的幂（`alpha &gt;&gt; 4 != 0` 即可判），约 6.3% 不透明。
+    /// 为什么是 16：实测（RFC-41 §2.4）`alpha ∈ [1,15]` 只有 23 个像素（0.14%），
+    /// 而 `alpha ∈ [1,127]` 有 220 个（1.34%）—— 只吃最外那圈抗锯齿边，不啃进轮廓。
+    /// </summary>
+    public const int HitAlphaThreshold = 16;
+
+    /// <summary>
     /// docs/11 §2.2 的命中仲裁：hitmap &gt; bitmap alpha，且 **alpha === 0 永远放行穿透**。
     /// 两个方向都定性：
     /// - alpha === 0 时永远返回 false（不可命中），无论 hitmap 说什么——穿透区不许被任何 surface 变可点（docs/11:190）；
-    /// - hitmap 缺失时退回读预乘位图的 alpha 通道（a != 0 即可命中）；
-    /// - hitmap 存在时先按 alpha===0 放行，其余按 hitmap 的 0|1 判定。
+    /// - hitmap 缺失时退回读预乘位图的 alpha 通道，并按 <see cref="HitAlphaThreshold"/> 阈值化
+    ///   （RFC-41 §3.3：`alpha ∈ [1,15]` 由「命中」改为「穿透」，这是一次语义变更）；
+    /// - hitmap 存在时先按 alpha===0 放行，其余按 hitmap 的 0|1 判定（hitmap 仍然优先于阈值）。
     /// hitmap 长度与位图物理像素数不一致时抛 <see cref="ArgumentException"/>：
     /// 长度不对的命中图是插件写坏了，不许静默当命中（那会把整窗变成可点）。
     /// </summary>
@@ -73,7 +81,7 @@ public sealed record Frame(
 
         if (Hitmap is null)
         {
-            return true;
+            return alpha >= HitAlphaThreshold;
         }
 
         int index = (y * BitmapHandle.PixelWidth) + x;

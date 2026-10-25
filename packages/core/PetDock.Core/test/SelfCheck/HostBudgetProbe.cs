@@ -14,10 +14,10 @@ internal static class HostBudgetProbe
 {
     /// <summary>连续故障 → 自动挂起（契约 §5.3）：专用宿主手动切片驱动目标插件，
     /// 每片打印 计数/状态/tick，断言计数 1..8 逐片递增、第 8 片挂起、挂起后切片冻结且沙箱保留。
-    /// 返回失败数（0 = 判据成立）。</summary>
-    public static int RunConsecutiveFaultDrive(string pluginsRoot, string expectedId)
+    /// 判据行交给调用方的账本（与 --hosttest 同一份统计）—— 探针不再自己数失败数，
+    /// 否则它的 CHECK 行既不进 pass 也不进 fail，收尾统计就成了半张账（判据体检 S2 同一类洞）。</summary>
+    public static void RunConsecutiveFaultDrive(string pluginsRoot, string expectedId, SkipLedger ledger)
     {
-        int failures = 0;
         using PluginHost host = new(pluginsRoot, 600000, autoLoad: false);
         host.ManualTickOnly = true;
         host.Start();
@@ -25,8 +25,8 @@ internal static class HostBudgetProbe
         PluginManifest? manifest = FindManifestById(host, pluginsRoot, expectedId);
         if (manifest is null)
         {
-            Console.WriteLine($"CHECK budget-drive FAIL target-not-found id={expectedId}");
-            return 1;
+            ledger.Fail("budget-drive", $"target-not-found id={expectedId}");
+            return;
         }
 
         PluginHandle handle = (PluginHandle)host.Load(manifest, CancellationToken.None).GetAwaiter().GetResult();
@@ -46,35 +46,33 @@ internal static class HostBudgetProbe
                 chainOk = false;
             }
         }
-        Check(ref failures, "budget-chain", chainOk, "faults 1..8 monotonic one-per-slice");
-        Check(ref failures, "budget-suspend",
+        ledger.Check("budget-chain", chainOk, "faults 1..8 monotonic one-per-slice");
+        ledger.Check("budget-suspend",
             lastState == PluginLifecycleState.Suspended,
             $"state={lastState} at-fault-8");
 
         long frozenTicks = host.Snapshot(() => handle.Ticks);
         host.TickNow();
         host.TickNow();
-        Check(ref failures, "budget-ticks-stop",
+        ledger.Check("budget-ticks-stop",
             host.Snapshot(() => handle.Ticks) == frozenTicks
                 && host.Snapshot(() => handle.State) == PluginLifecycleState.Suspended,
             $"ticks={host.Snapshot(() => handle.Ticks)} frozen={frozenTicks}");
-        Check(ref failures, "budget-keeps-state",
+        ledger.Check("budget-keeps-state",
             host.Snapshot(() => handle.SandboxAlive),
             "sandbox-alive state-kept (auto-suspend = suspend, not unload)");
 
         string trap = FirstTrap(host.Snapshot(() => handle.Sink.Describe()));
         Console.WriteLine($"CHECK-DISPLAY budget-trap {trap}");
-        Check(ref failures, "budget-trap", trap.Length > 0,
+        ledger.Check("budget-trap", trap.Length > 0,
             trap.Length > 0 ? "trap-message-captured" : "no-trap-message");
-        return failures;
     }
 
     /// <summary>内存上限归因（docs/14 §5 150MB）：同一探针模块在三种 Store 上限下各跑一片。
     /// 预期分类：32MB → divide by zero（长在第一段就被拒）；150MB → unreachable（恰在 2400→2401 页被拒）；
-    /// 1GB → fuel（两段增长都成功，切片先被 CPU 预算截住）。返回失败数。</summary>
-    public static int RunMemoryProbe(string pluginsRoot, string probeId)
+    /// 1GB → fuel（两段增长都成功，切片先被 CPU 预算截住）。判据行交给调用方的账本。</summary>
+    public static void RunMemoryProbe(string pluginsRoot, string probeId, SkipLedger ledger)
     {
-        int failures = 0;
         string? modulePath = null;
         using (PluginHost scanner = new(pluginsRoot, autoLoad: false))
         {
@@ -86,18 +84,17 @@ internal static class HostBudgetProbe
         }
         if (modulePath is null || !File.Exists(modulePath))
         {
-            Console.WriteLine($"CHECK memory-probe FAIL probe-not-found id={probeId}");
-            return 1;
+            ledger.Fail("memory-probe", $"probe-not-found id={probeId}");
+            return;
         }
         byte[] module = File.ReadAllBytes(modulePath);
 
-        RunOneMemoryCase(ref failures, "limit-32mb", 32L * 1024 * 1024, "divide by zero", module);
-        RunOneMemoryCase(ref failures, "limit-150mb", 150L * 1024 * 1024, "unreachable", module);
-        RunOneMemoryCase(ref failures, "limit-1gb", 1024L * 1024 * 1024, "fuel", module);
-        return failures;
+        RunOneMemoryCase(ledger, "limit-32mb", 32L * 1024 * 1024, "divide by zero", module);
+        RunOneMemoryCase(ledger, "limit-150mb", 150L * 1024 * 1024, "unreachable", module);
+        RunOneMemoryCase(ledger, "limit-1gb", 1024L * 1024 * 1024, "fuel", module);
     }
 
-    private static void RunOneMemoryCase(ref int failures, string name, long memoryBytes, string expectNeedle, byte[] module)
+    private static void RunOneMemoryCase(SkipLedger ledger, string name, long memoryBytes, string expectNeedle, byte[] module)
     {
         ProbeSink sink = new();
         CapabilityGate gate = new(Array.Empty<string>(), null, sink);
@@ -108,13 +105,13 @@ internal static class HostBudgetProbe
         });
         if (!sandbox.Load(module))
         {
-            Check(ref failures, $"memory-{name}", false, "sandbox-load-failed");
+            ledger.Check($"memory-{name}", false, "sandbox-load-failed");
             return;
         }
         sandbox.Tick();
         string trap = sink.LastTrap();
         bool hit = trap.Contains(expectNeedle, StringComparison.Ordinal);
-        Check(ref failures, $"memory-{name}", hit, $"trap=\"{trap}\" expect~\"{expectNeedle}\"");
+        ledger.Check($"memory-{name}", hit, $"trap=\"{trap}\" expect~\"{expectNeedle}\"");
     }
 
     private static PluginManifest? FindManifestById(PluginHost host, string pluginsRoot, string id)
@@ -183,12 +180,4 @@ internal static class HostBudgetProbe
         }
     }
 
-    private static void Check(ref int failures, string name, bool ok, string detail = "")
-    {
-        Console.WriteLine($"CHECK {name} {(ok ? "PASS" : "FAIL")} {detail}".TrimEnd());
-        if (!ok)
-        {
-            failures++;
-        }
-    }
 }

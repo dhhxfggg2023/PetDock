@@ -250,7 +250,7 @@ internal static class ConsentPersistChecks
                 .ToArray();
             if (declared.Length == 0)
             {
-                return Report(check, "consent-persist-narrow-saved", true, "no-declared-caps (skipped)");
+                return ReportSkip(check, "consent-persist-narrow-saved", "no-declared-caps");
             }
 
             store.Save(new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
@@ -266,7 +266,7 @@ internal static class ConsentPersistChecks
                 .ToArray();
             if (active.Length == 0)
             {
-                return Report(check, "consent-persist-narrow-saved", true, "no-active-leases (skipped)");
+                return ReportSkip(check, "consent-persist-narrow-saved", "no-active-leases");
             }
 
             string[] keep = new[] { active[0] };
@@ -309,6 +309,15 @@ internal static class ConsentPersistChecks
         check(name, ok, detail);
         return ok ? 0 : 1;
     }
+
+    /// <summary>
+    /// 登记一次**跳过**（不是 PASS）：本机这次运行里没有可断言的对象，判据无从下手。
+    /// 2026-10-25 判据体检 S2 之前，这几处是 `Report(…, true, "…(skipped)")` —— 跳过被塞进
+    /// ok=true 一起算绿，三种结局里两种是绿的。现在标记由消费方自检的收尾账本（SkipLedger）
+    /// 判成第三种结局：--hosttest 计入 `skipped=N` 并印在末行 marker 上，没人接的跳过判红。
+    /// </summary>
+    private static int ReportSkip(HostCheck check, string name, string reason) =>
+        Report(check, name, true, reason + " " + SkipLedger.SkippedMark);
 
     /// <summary>删临时目录（失败不抛：临时目录残留不该让自检判红）。</summary>
     private static void TryDelete(string dir)

@@ -3,7 +3,12 @@
 // 判据怎么造：一个真 `LayeredFrameWindow` + 一个假的、带命中图的内容源。
 // 假源左半可命中、右半不可命中，但**整幅位图都是不透明的** —— 这样两条路才分得开：
 // 若命中仍由 alpha 决定，右半也会是 HTCLIENT（判据会红），只有 WM_NCHITTEST 接上命中图才会是 HTTRANSPARENT。
-// 第二个源同一形状但不实现命中图、右半像素透明：它验证「没有命中图时行为与 RFC-31 之前一致」。
+//
+// RFC-41 §4.2b 已删掉 `ui-hitmap-alpha-only-*` 整族：那个桩**无条件**实现 IFrameHitSurface，
+// 而它的 `Hits` 在 hitmap=false 时对任何坐标都返回 false，于是窗口对左右两点都回 HTTRANSPARENT，
+// 判据断言的「右半 == -1」与它宣称的「alpha 路径放行透明像素」不是同一个理由 —— 那是同义反复。
+// 它的两处职责由 RFC-41 的判据接管：alpha 语义（含阈值）归 `hit-threshold-*`（纯函数，无窗口），
+// 「真路由按 alpha 判」归 `ui-hit-tier1-consumes`（见 HitThresholdChecks.cs）。
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -25,7 +30,6 @@ internal static class HitMapChecks
         try
         {
             HitmapPierces(check);
-            AlphaOnlyUnchanged(check);
         }
         catch (Exception error)
         {
@@ -36,9 +40,10 @@ internal static class HitMapChecks
     /// <summary>有命中图：位图全不透明，左半命中、右半穿透 —— 穿透必须按命中图判，不按 alpha。</summary>
     private static void HitmapPierces(Report check)
     {
-        using var source = new SplitSource(hitmap: true);
+        using var source = new SplitSource();
         using var window = new LayeredFrameWindow(source);
         window.Show();
+        window.BringToFrontOfTopmost();
         window.PresentFirstFrame();
         Application.DoEvents();
 
@@ -47,24 +52,6 @@ internal static class HitMapChecks
             $"left={left} expect={HtClient} alpha=opaque hitmap=hit");
         check("ui-hitmap-pierce-pass", right == HtTransparent,
             $"right={right} expect={HtTransparent} alpha=opaque hitmap=miss");
-    }
-
-    /// <summary>
-    /// 同一形状但不给命中图、右侧像素透明：透明侧必须由 alpha 路径放行（OS 判），与是否实现命中图无关。
-    /// 左半不透明侧的读数在本机合成窗上不稳定（见 RFC-31 §9），因此这里只断言透明侧。
-    /// </summary>
-    private static void AlphaOnlyUnchanged(Report check)
-    {
-        using var source = new SplitSource(hitmap: false);
-        using var window = new LayeredFrameWindow(source);
-        window.Show();
-        window.BringToFrontOfTopmost();
-        window.PresentFirstFrame();
-        Application.DoEvents();
-
-        (_, int right) = ProbeSides(window);
-        check("ui-hitmap-alpha-only-right", right == HtTransparent,
-            $"right={right} expect={HtTransparent} alpha=transparent no-hitmap");
     }
 
     private static (int Left, int Right) ProbeSides(LayeredFrameWindow window)
@@ -80,16 +67,13 @@ internal static class HitMapChecks
     }
 
     /// <summary>
-    /// 假内容源：左半永远不透明；`hitmap: true` 时右半也不透明（命中由命中图否掉），
-    /// `hitmap: false` 时右半透明（命中由 alpha 否掉）。
+    /// 假内容源：**整幅位图都不透明**（两半都白），命中只由命中图决定 ——
+    /// 左半可命中、右半不可命中。位图刻意不留透明像素：这样「右半穿透」只可能来自命中图。
     /// </summary>
     private sealed class SplitSource : IFrameContentSource, IFrameHitSurface
     {
-        private readonly bool _hitmap;
         private int _width;
         private Bitmap? _bitmap;
-
-        public SplitSource(bool hitmap) => _hitmap = hitmap;
 
         public Bitmap? GetFrameContent(Size frameSize)
         {
@@ -99,18 +83,12 @@ internal static class HitMapChecks
             using Graphics g = Graphics.FromImage(_bitmap);
             g.Clear(Color.Transparent);
             using var brush = new SolidBrush(Color.White);
-            g.FillRectangle(brush, new Rectangle(0, 0, frameSize.Width / 2, frameSize.Height));
-            if (_hitmap)
-            {
-                int rightWidth = frameSize.Width - (frameSize.Width / 2);
-                g.FillRectangle(brush, new Rectangle(frameSize.Width / 2, 0, rightWidth, frameSize.Height));
-            }
-
+            g.FillRectangle(brush, new Rectangle(0, 0, frameSize.Width, frameSize.Height));
             return _bitmap;
         }
 
-        /// <summary>左半可命中、右半不可命中（命中图只在有 hitmap 时存在）。</summary>
-        public bool Hits(int x, int y) => _hitmap && x < (_width / 2);
+        /// <summary>左半可命中、右半不可命中。</summary>
+        public bool Hits(int x, int y) => x < (_width / 2);
 
         public void Dispose() => _bitmap?.Dispose();
     }

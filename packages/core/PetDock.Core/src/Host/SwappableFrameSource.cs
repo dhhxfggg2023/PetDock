@@ -22,7 +22,8 @@ namespace PetDock.Hosting;
 /// 内容源代理：持有「当前内容源」，可随时替换。
 /// 窗口持有的是它，替换的是它里面的那一份。
 /// </summary>
-internal sealed class SwappableFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector, IFrameReuseInspector
+internal sealed class SwappableFrameSource
+    : IFrameContentSource, IFrameSourceStats, IFrameContentInspector, IFrameReuseInspector, IFrameHitSurface
 {
     private IFrameContentSource _current;
     private bool _disposed;
@@ -94,6 +95,13 @@ internal sealed class SwappableFrameSource : IFrameContentSource, IFrameSourceSt
     /// </summary>
     public bool LastFrameReused =>
         Current is IFrameReuseInspector reuse && reuse.LastFrameReused;
+
+    /// <summary>
+    /// RFC-41 §3.1(b)：转发命中面。与 <see cref="DeliversRealContent"/> 同一个纪律 ——
+    /// **问里面那一份**，代理自己答会让窗口在换宠物后仍按旧宠物的命中图裁决。
+    /// 里面那份没申报命中面时一律穿透（fail-closed）。
+    /// </summary>
+    public bool Hits(int x, int y) => Current is IFrameHitSurface surface && surface.Hits(x, y);
 
     /// <summary>
     /// 换成新的内容源。旧源**不**在这里释放 —— 换源与释放是两件事，

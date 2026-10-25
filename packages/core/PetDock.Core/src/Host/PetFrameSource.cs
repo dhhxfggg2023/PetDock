@@ -18,7 +18,8 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Hosting;
 
 /// <summary>把 PetInstance 的当前帧交给分层窗的内容源适配器。</summary>
-public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFrameContentInspector, IFrameReuseInspector
+public sealed class PetFrameSource
+    : IFrameContentSource, IFrameSourceStats, IFrameContentInspector, IFrameReuseInspector, IFrameHitSurface
 {
     private readonly PetInstance _instance;
     private readonly EventBus _bus;
@@ -68,6 +69,13 @@ public sealed class PetFrameSource : IFrameContentSource, IFrameSourceStats, IFr
     /// 静态节流的静止档靠它判「内容没变」；判定属主是 FrameThrottlePolicy，本类只自述事实。
     /// </summary>
     public bool LastFrameReused => _instance.LastFrameReused;
+
+    /// <summary>
+    /// RFC-41 §3.1(b)：把命中面申报出去，常驻窗口才问得到内容源。
+    /// 不自己比 alpha —— 阀值的唯一实现在 <see cref="Frame.HitsAt"/>，这里转发
+    /// <see cref="PetInstance.HitsAt"/>（隐藏档与无帧都 fail-closed 为穿透）。
+    /// </summary>
+    public bool Hits(int x, int y) => _instance.HitsAt(x, y);
 
     /// <summary>所属实例（宿主侧记账与挂起转发用）。</summary>
     public PetInstance Instance => _instance;
