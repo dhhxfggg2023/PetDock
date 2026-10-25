@@ -10,6 +10,7 @@
 // 绝不在「前台其实不是我的」状态下断言依赖前台的读数。
 using System;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
 
@@ -18,6 +19,12 @@ namespace PetDock.Hosting;
 internal static partial class ThrottleChecks
 {
     private static Form? _foreground;
+
+    /// <summary>世界检查的采样次数（跨一个泵周期；见 <see cref="EnsureNotFullscreenWorld"/>）。</summary>
+    private const int WorldSamples = 3;
+
+    /// <summary>两次世界采样之间的间隔：比 30fps 的一个周期略长，够前台回落暴露出来。</summary>
+    private const int WorldSampleGapMs = 45;
 
     private static void CloseLeftoverWindows() => CloseForeground();
 
@@ -52,25 +59,49 @@ internal static partial class ThrottleChecks
     }
 
     /// <summary>
-    /// 把「前台不是全屏」这一世界状态重建出来，并**当场证出来**（RFC-21 §4：抢不到前台时
-    /// 绝不假装成立）。返回 null = 成立；返回字符串 = 可打印的失败原因。
+    /// 把「前台不是全屏」这一世界状态重建出来，并**当场证出来**（RFC-21 §4：绝不假装成立）。
+    /// 返回 null = 成立；返回字符串 = 可打印的失败原因。
     ///
     /// 为什么每次断言前都要重建：宠物窗是 `WS_EX_NOACTIVATE`，它永远拿不到前台；
     /// 覆盖窗关掉之后前台会**回落到桌面上别的程序**（2026-10-22 实测：回落到一个盖满
     /// 显示器的浏览器窗，于是后面几条判据在「全屏」世界里跑，`tier=fullscreen` 恒成立）。
     /// 那是判据侧的世界错了，不是产品错了。
+    ///
+    /// **证据是产品自己那一问，不是「我抢到前台了」**（2026-10-25 修正，supersedes 2026-10-22
+    /// 那条「用 GetForegroundWindow() == 本窗 证出来」的做法）：判据需要的世界是「前台没有盖满
+    /// 宠物所在显示器的窗」，而那正是 FrameThrottlePolicy 判全屏档时问的
+    /// <see cref="ThrottleProbe.SampleFullscreen"/>。旧证据是**手段**不是世界 —— 别的程序占着
+    /// 前台（终端 / 控制中心 / 任何普通窗）时世界其实成立，判据却报 `foreground-not-acquired`
+    /// 并判红，于是同一份二进制绿/红/绿（2026-10-22、10-23 各记一次，10-25 复现）。
+    /// 抢前台照做（让世界尽量可控），但它**不再**参与结论。
     /// </summary>
-    internal static string? EnsureNotFullscreenWorld()
+    /// <param name="petWindow">宠物窗句柄：全屏那一问要拿它定位显示器（多屏下别的屏上的全屏应用不该算）。</param>
+    internal static string? EnsureNotFullscreenWorld(IntPtr petWindow)
     {
-        bool acquired = SmallForeground();
-        IntPtr self = _foreground?.Handle ?? IntPtr.Zero;
-        IntPtr actual = Win32Extra.GetForegroundWindow();
-        if (acquired && self != IntPtr.Zero && actual == self)
+        _ = SmallForeground();
+        var probe = new ThrottleProbe();
+
+        // 采样必须**跨一个泵周期**都在说「不是全屏」，只采一次不够：刚抢完前台那一刻，
+        // `GetForegroundWindow()` 常常还是**我们自己那个小窗**，而几十毫秒后前台会回落给真正
+        // 拿到焦点的那只窗（2026-10-25 实测：锁屏态下 SetForegroundWindow 看似成功，随后回落给
+        // 锁屏界面，于是世界检查放行、产品第一个 tick 直接判全屏，窗口里全是 ticks=0）。
+        // 采样不是「等运气」：任意一次说全屏就 FAIL 并打出是谁 —— 世界不成立时绝不继续断言。
+        for (int i = 0; i < WorldSamples; i++)
         {
-            return null;
+            if (probe.SampleFullscreen(petWindow))
+            {
+                return "foreground-is-fullscreen foreground=" + probe.LastForeground
+                    + " pet=same-monitor sample=" + (i + 1) + "/" + WorldSamples;
+            }
+
+            if (i + 1 < WorldSamples)
+            {
+                Thread.Sleep(WorldSampleGapMs);
+                Application.DoEvents();
+            }
         }
 
-        return "foreground-not-acquired acquired=" + Flag(acquired) + " foreground=" + ForegroundDescription();
+        return null;
     }
 
     /// <summary>把世界状态失败原因拼进判据读数（null ⇒ 空串）。</summary>

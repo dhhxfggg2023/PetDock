@@ -50,6 +50,14 @@ internal readonly record struct ThrottleDecision(
     string Reason);
 
 /// <summary>
+/// 一次**原子**读数：七个字段取自同一次锁内（逐字段各读会拼出 `Decide` 从未产出过的组合）。
+/// `IdleDecisions` 只在判成静止档那一处前进 ⇒「这窗每 tick 都判成静止」可判定。
+/// </summary>
+internal readonly record struct ThrottleReading(
+    FrameTier Tier, double TargetFrameMs,
+    long Ticks, long Composed, long Submitted, long Skipped, long IdleDecisions);
+
+/// <summary>
 /// 档位判定的**唯一**属主。全仓只有这一个方法把读数折成档位。
 /// 判定顺序（先匹配先赢）：全屏 → DWM 藏窗 → 点探针遮挡 → 外表帧复用且几何未变 → 正常。
 /// </summary>

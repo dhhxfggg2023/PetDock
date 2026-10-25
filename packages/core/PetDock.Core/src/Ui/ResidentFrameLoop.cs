@@ -57,6 +57,9 @@ internal sealed partial class ResidentFrameLoop : IDisposable
     private long _tierChanges;
     private int _geometryFailures;
 
+    /// <summary>判成静止档的 tick 数：只在档位判定那一处前进（见 <see cref="Reading"/>）。</summary>
+    private long _idleDecisions;
+
     public ResidentFrameLoop(LayeredFrameWindow window)
     {
         _window = window ?? throw new ArgumentNullException(nameof(window));
@@ -124,6 +127,19 @@ internal sealed partial class ResidentFrameLoop : IDisposable
             lock (_gate)
             {
                 return _tier;
+            }
+        }
+    }
+
+    /// <summary>一次**原子**读数：任何两个字段之间都夹不进一个泵 tick。判据必须只读它。</summary>
+    internal ThrottleReading Reading
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return new ThrottleReading(_tier, _pump?.TargetFrameMs ?? _targetFrameMs,
+                    _ticks, _composed, _submitted, _skipped, _idleDecisions);
             }
         }
     }

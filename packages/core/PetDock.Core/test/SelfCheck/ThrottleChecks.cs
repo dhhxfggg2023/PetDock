@@ -33,6 +33,9 @@ internal static partial class ThrottleChecks
         "ui-throttle-tier-default-active",
         "ui-throttle-idle-skips-submit",
         "ui-throttle-idle-period-cap",
+        // 2026-10-25 新增：前两条判据的**确定性**版本 —— 只读产品的记账（判成静止的 tick 数 / 合成数），
+        // 不读任何瞬间档位、不含墙上时钟，因此不随泵被抢占而变色。
+        "ui-throttle-idle-decided-idle",
         "ui-throttle-occluded-period",
         "ui-throttle-occluded-by-window",
         "ui-throttle-occluded-transparent-ignored",

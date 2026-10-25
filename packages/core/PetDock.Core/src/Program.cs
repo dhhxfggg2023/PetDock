@@ -62,6 +62,15 @@ internal static partial class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
+        // 静止档的确定性探针（先例 tests/m7 的 --timing-probe）：只跑那一层。放在单实例之前：
+        // 它要真窗口，也不该抢用户形态的锁。
+        int throttleProbeAt = Array.IndexOf(args, "--throttle-probe");
+        if (throttleProbeAt >= 0)
+        {
+            AttachConsole();
+            return ThrottleChecks.Probe(throttleProbeAt + 1 < args.Length ? args[(throttleProbeAt + 1)..] : Array.Empty<string>());
+        }
+
         // 单实例（RFC-32 §3）：只在用户形态抢锁。诊断旗标（--uitest/--selftest/--hosttest/…）
         // 不抢，否则一条卡住的常驻实例会让下一条判据命令静默变成「已有实例，退出 0」，
         // 门禁就从此测不到东西了 —— 那不是约束，那是给门禁造假。

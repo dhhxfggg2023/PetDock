@@ -51,7 +51,9 @@ internal sealed partial class ResidentFrameLoop
                 return false;
             }
 
+            // tick 与合成是**同一个事实**，必须同一次写：分两次写，读数能看到 Composed = Ticks - 1。
             _ticks++;
+            _composed++;
         }
 
         // ① 锁外合成。**每一 tick 都要合成**，与档位无关 —— 它就是「内容有没有变」的取样点。
@@ -91,6 +93,12 @@ internal sealed partial class ResidentFrameLoop
                 _pump?.SetTargetFrameMs(decision.TargetFrameMs);
 
                 submit = decision.Submit;
+
+                // 判成静止档的次数只在判定这一处记账：「这一窗每 tick 都判成静止」因此可判定。
+                if (decision.Tier == FrameTier.Idle)
+                {
+                    _idleDecisions++;
+                }
 
                 // 静止档（Submit=false）的提交条件：内容变了，或者距上次提交超过 2 秒
                 // （后者是 surface 失效的兜底 —— 会话锁定 / 分辨率变化 / 显示驱动重启都没有回调）。
@@ -273,14 +281,10 @@ internal sealed partial class ResidentFrameLoop
     /// <summary>
     /// 合成一帧（锁外）：向内容源要帧 + 写进 DIB，**不上屏**。返回 true 表示帧缓冲仍可用。
     /// 每 tick 都调 —— 它是 <c>LastFrameReused</c> 与动画帧号的唯一更新路径（RFC-21 t11）。
+    /// 计数由调用方记账：tick 那一路与 Ticks 同一次写内前进，泵停着的那一路只由 Submitted 记账。
     /// </summary>
     private bool ComposeOnce()
     {
-        lock (_gate)
-        {
-            _composed++;
-        }
-
         return _window.ComposeFrame();
     }
 

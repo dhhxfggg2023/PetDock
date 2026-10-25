@@ -31,11 +31,12 @@ internal static class ResidentLoopChecks
 
     private static void WindowAndLoop(Check check)
     {
-        // 帧循环只在「前台不是全屏」时出帧：前台若不是我们自己的小窗（而是一个盖满显示器的
-        // 程序），第一个 tick 就会把循环判成全屏档并停泵，帧计数恒为 0 —— 那是判据的世界没造对，
-        // 不是产品缺陷（2026-10-22 实测：同一份二进制浏览器最大化时 FAIL、否则 PASS）。
-        string? world = ThrottleChecks.EnsureNotFullscreenWorld();
+        // 帧循环只在「前台不是全屏」时出帧：前台若是一个盖满显示器的程序，第一个 tick 就会把
+        // 循环判成全屏档并停泵，帧计数恒为 0 —— 那是判据的世界没造对，不是产品缺陷
+        // （2026-10-22 实测：同一份二进制浏览器最大化时 FAIL、否则 PASS）。
+        // 世界那一问要宠物窗句柄（定位显示器），所以窗口先建、世界后证。
         using var window = new LayeredFrameWindow();
+        string? world = ThrottleChecks.EnsureNotFullscreenWorld(window.WindowHandle);
         using var loop = new ResidentFrameLoop(window);
 
         bool visible = false;

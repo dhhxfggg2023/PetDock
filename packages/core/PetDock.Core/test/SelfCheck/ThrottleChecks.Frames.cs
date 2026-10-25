@@ -24,6 +24,13 @@ internal static partial class ThrottleChecks
     /// <summary>判据的等待窗：够 30fps 的泵出若干 tick，又不至于让自检变慢。</summary>
     private const int SpinMs = 600;
 
+    /// <summary>
+    /// 静止档判据的测量窗，单位是 **tick 数**（不是毫秒）。
+    /// 判据要问的是「接下来这些 tick 判成了什么」，不是「600ms 里碰巧跑了几 tick」——
+    /// 后者在泵被抢占时会掉到 10 以下（2026-10-22 实测 `ticks=9 submitted=5`），那测的是负载。
+    /// </summary>
+    private const int WindowTicks = 12;
+
     /// <summary>等档位收敛的上限（泵可能正在睡一个周期，250ms 的滴答窗口之外还要留余量）。</summary>
     private const int ConvergeMs = 3000;
 
@@ -44,33 +51,35 @@ internal static partial class ThrottleChecks
 
             // 「前台不是全屏」这一世界状态必须在**起泵之前**就成立：档位判定发生在第一个 tick，
             // 那时前台若是一个盖满显示器的窗，循环直接进全屏档、泵被停掉，后面所有读数都是 0。
-            string? world = EnsureNotFullscreenWorld();
+            string? world = EnsureNotFullscreenWorld(fixture.Handle);
 
             using var loop = new ResidentFrameLoop(fixture.Window);
             loop.SetTargetFrameMs(userFrameMs);
             loop.Start();
 
-            // 静止档：内容源每帧交付同一个位图对象 ⇒ LastFrameReused=true ⇒ Idle。
-            long ticks0 = loop.Ticks;
-            long composed0 = loop.Composed;
-            long submitted0 = loop.Submitted;
+            // ① **先等产品自己判出过一次静止档**，再开始量。旧写法只等「出过第一帧」就开量，
+            //    而那一刻档位还是 Active（首 tick 判 Active 并提交一帧）⇒ 测量窗里混着启动期，
+            //    2026-10-22 的 `ticks=9 submitted=5` / `tier=occluded` 就是「窗口里档位还在切」。
+            bool settled = WaitFor(ConvergeMs, () => loop.Reading.Tier == FrameTier.Idle);
 
-            // 先等泵出第一帧（冷路径 ~600ms），否则 600ms 窗量到的是启动延迟而不是稳态速率。
-            WaitFor(ConvergeMs, () => loop.Ticks > ticks0);
-            ticks0 = loop.Ticks;
-            composed0 = loop.Composed;
-            submitted0 = loop.Submitted;
-            Spin(SpinMs);
-            long ticks = loop.Ticks - ticks0;
-            long composed = loop.Composed - composed0;
-            long submitted = loop.Submitted - submitted0;
-            long skipped = loop.Skipped;
-            FrameTier tier = loop.Tier;
+            // ② 测量窗按 tick 数算（见 WindowTicks），起点是「已经稳在静止档」的那一刻。
+            ThrottleReading before = loop.Reading;
+            WaitFor(ConvergeMs, () => loop.Reading.Ticks - before.Ticks >= WindowTicks);
+
+            // ③ **一次**原子读数：档位、周期、四个计数取自同一次锁内（旧写法逐字段各读一次，
+            //    中间还夹着一次判据行落盘，泵每 33ms 就合法地重判一次 ⇒ 能拼出 Decide 没产出过的组合）。
+            ThrottleReading after = loop.Reading;
+            long ticks = after.Ticks - before.Ticks;
+            long composed = after.Composed - before.Composed;
+            long submitted = after.Submitted - before.Submitted;
+            long idleDecisions = after.IdleDecisions - before.IdleDecisions;
+            long skipped = after.Skipped;
+            FrameTier tier = after.Tier;
 
             // 三个相对条件，都不写死会随运行累加的量：
-            //   ticks >= 10 —— 等待窗内泵真的跑了足够多 tick（相对下界，不是帧数快照）；
+            //   ticks >= 10 —— 窗口里泵真的跑了足够多 tick（相对下界，不是帧数快照）；
             //   composed >= ticks —— 合成本身**不被档位跳过**（t11 的语义，动画能不能回来的判据面）；
-            //   submitted <= 4 —— 真的上屏次数被压到极低（600ms 里 30fps 本该 ~18 次）。
+            //   submitted <= 4 —— 真的上屏次数被压到极低（同窗 30fps 本该 ~12 次）。
             bool skipsOk = world is null
                 && tier == FrameTier.Idle
                 && ticks >= 10
@@ -82,10 +91,12 @@ internal static partial class ThrottleChecks
                 + " composed=" + composed.ToString(CultureInfo.InvariantCulture)
                 + " submitted=" + submitted.ToString(CultureInfo.InvariantCulture)
                 + " skipped=" + skipped.ToString(CultureInfo.InvariantCulture)
+                + " idleTicks=" + idleDecisions.ToString(CultureInfo.InvariantCulture)
                 + WorldSuffix(world));
 
             // 静止档的周期上限：设置 16.7ms ⇒ 档位给 33.3ms（max(设置, 1000/30)）。
-            double idleTarget = loop.TargetFrameMs;
+            // 周期与档位取自**同一次**读数（after），不再隔一次判据行落盘去读第二遍。
+            double idleTarget = after.TargetFrameMs;
             bool capOk = world is null
                 && tier == FrameTier.Idle
                 && Near(idleTarget, FrameThrottlePolicy.IdleCapMs)
@@ -94,6 +105,23 @@ internal static partial class ThrottleChecks
                 "setting=" + Fmt(userFrameMs) + "ms"
                 + " tier=" + Token(tier)
                 + " target=" + Fmt(idleTarget) + "ms"
+                + WorldSuffix(world));
+
+            // ⑥ **确定性判据**（2026-10-25 新增）：只问「这一窗里的 tick 判成了什么」，
+            //    不含墙上时钟、也不读任何瞬间档位。两句都是产品的记账：IdleDecisions 的增量
+            //    == 窗口 tick 数 ⇒ 每 tick 都判成静止；Composed 的增量 == 同一数 ⇒ 每 tick 都真的合成了。
+            bool decidedOk = world is null
+                && settled
+                && ticks >= WindowTicks
+                && idleDecisions == ticks
+                && composed == ticks;
+            done("ui-throttle-idle-decided-idle", decidedOk,
+                "settled=" + Flag(settled)
+                + " ticks=" + ticks.ToString(CultureInfo.InvariantCulture)
+                + " idleTicks=" + idleDecisions.ToString(CultureInfo.InvariantCulture)
+                + " composed=" + composed.ToString(CultureInfo.InvariantCulture)
+                + " tier=" + Token(tier)
+                + " target=" + Fmt(after.TargetFrameMs) + "ms"
                 + WorldSuffix(world));
 
             DiagnosticLine(done, loop);
@@ -129,7 +157,7 @@ internal static partial class ThrottleChecks
         try
         {
             // 先立住「前台不是全屏」这一世界（理由同 LoopChecks：档位在第一个 tick 就定了）。
-            string? world = EnsureNotFullscreenWorld();
+            string? world = EnsureNotFullscreenWorld(fixture.Handle);
             using var loop = new ResidentFrameLoop(fixture.Window);
             loop.SetTargetFrameMs(1000.0 / 30.0);
             loop.Start();
