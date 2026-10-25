@@ -80,9 +80,11 @@ internal static class PerfChecks
         UiSnapshot snapshot = Snapshot("solo");
         PerfSummary perf = PerfSampler.Measure(WindowMs, snapshot, null);
         string text = PerfPage.Summary(perf);
+        // RFC-42 §3.4：断的是「两格都写未接」这个结构化事实（以及计数器确实没接），不是中文原文；
+        // 「不编造 0」由 !CountersWired 保证 —— 只有接上计数器时 Summary 才会写出数字。
         check("ui-perf-counters-unwired",
-            text.Contains("未接", StringComparison.Ordinal) && !text.Contains("降级 0", StringComparison.Ordinal),
-            $"summary={text}");
+            !perf.CountersWired && text.Contains(PerfPage.NotWired, StringComparison.Ordinal),
+            $"summary={text} counters-wired={perf.CountersWired}");
     }
 
     /// <summary>

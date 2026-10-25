@@ -113,13 +113,13 @@ internal sealed partial class UiHost
         PetImportService? import = _import;
         if (import is null)
         {
-            return OnboardingWindow.NoPetText;
+            return I18n.Get(OnboardingWindow.NoPetKey);
         }
 
         string? pack = BundledExampleAssets.Locate();
         if (pack is null)
         {
-            return OnboardingWindow.NoSampleText;
+            return I18n.Get(OnboardingWindow.NoSampleKey);
         }
 
         ImportResult result = import.Import(pack);

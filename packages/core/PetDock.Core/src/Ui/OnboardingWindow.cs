@@ -30,20 +30,27 @@ internal sealed partial class OnboardingWindow : Form
     /// </summary>
     internal delegate bool WriteSettings(string? language, bool complete, out string error);
 
-    /// <summary>第 2 步必须原样出现的标注（docs/18 §4 的原话，不改写）。</summary>
-    public const string SampleDisclaimerText = "占位素材，发行版替换为 CC0/自绘";
+    // 常量是**键名**，不是文案（RFC-42 §3.4 第 3 条）：判据引用键，文案将来在 assets/i18n 的表里；
+    // 这一片还没有表，I18n.Get 原样返回键，缺键就显示键名本身。
 
-    /// <summary>第 3 步必须原样出现的说明（docs/18 §4 的原话，不改写）。</summary>
-    public const string ThroughCaptionText = "宠物透明区域可以点到下面的东西，这是正常的";
+    /// <summary>第 2 步必须原样出现的标注的键（docs/18 §4 的原话在资源表里，不改写）。</summary>
+    public const string SampleDisclaimerKey = "ui.onboarding.sample.disclaimer";
 
-    /// <summary>放置成功后的回执。</summary>
-    public const string PlacedText = "已放置，桌面上那只就是它";
+    /// <summary>第 3 步必须原样出现的说明的键。</summary>
+    public const string ThroughCaptionKey = "ui.onboarding.through.caption";
 
-    /// <summary>没有视图实现时第 2/3 步被跳过时的页内说明。</summary>
-    public const string NoPetText = "当前没有可显示的宠物";
+    /// <summary>放置成功后的回执的键。</summary>
+    public const string PlacedKey = "ui.onboarding.sample.placed";
 
-    /// <summary>发行物里没带示例素材时的页内说明。</summary>
-    public const string NoSampleText = "发布物里没有示例素材";
+    /// <summary>没有视图实现时第 2/3 步被跳过时的页内说明的键。</summary>
+    public const string NoPetKey = "ui.onboarding.no-pet";
+
+    /// <summary>发行物里没带示例素材时的页内说明的键。</summary>
+    public const string NoSampleKey = "ui.onboarding.no-sample";
+
+    /// <summary>「下一步」与「完成」两个按钮文案的键（最后一步换成完成）。</summary>
+    public const string NextKey = "ui.onboarding.next";
+    public const string FinishKey = "ui.onboarding.finish";
 
     private readonly PlaceSample _placeSample;
     private readonly WriteSettings _writeSettings;
@@ -128,8 +135,11 @@ internal sealed partial class OnboardingWindow : Form
     /// <summary>示意动画已推进的帧数。</summary>
     public int AnimationFrameCount => _hint.FrameCount;
 
-    /// <summary>「下一步」按钮当前文案（判据读它证明界面文案不随语言选择变化）。</summary>
+    /// <summary>「下一步」按钮当前文案（来自 <see cref="NextButtonKey"/>，不随语言选择变化）。</summary>
     public string NextButtonText => _next.Text;
+
+    /// <summary>「下一步」按钮当前文案的键（判据断言这个键，不断言中文字面量）。</summary>
+    public string NextButtonKey => _index == _steps.Length - 1 ? FinishKey : NextKey;
 
     /// <summary>
     /// 某一步里所有标签的文案（判据读它断言 docs/18 §4 的两句话**原样出现**在界面上，
@@ -205,8 +215,8 @@ internal sealed partial class OnboardingWindow : Form
         if (error is null)
         {
             _samplePlaced = true;
-            _sampleStatus = PlacedText;
-            _placed.Text = PlacedText;
+            _sampleStatus = I18n.Get(PlacedKey);
+            _placed.Text = _sampleStatus;
             return;
         }
 
@@ -283,7 +293,7 @@ internal sealed partial class OnboardingWindow : Form
             // 没有视图实现：第 2/3 步不出现，只在第 1 步里说明当前没有可显示的宠物。
             var notice = new Label
             {
-                Text = NoPetText,
+                Text = I18n.Get(NoPetKey),
                 Dock = DockStyle.Top,
                 Height = 28,
                 ForeColor = Color.FromArgb(0xFF, 0x66, 0x66, 0x66),
@@ -336,7 +346,7 @@ internal sealed partial class OnboardingWindow : Form
             _hint.StopAnimation();
         }
 
-        _next.Text = _index == _steps.Length - 1 ? "完成" : "下一步";
+        _next.Text = I18n.Get(NextButtonKey);
     }
 
     private void ShowError(string message)

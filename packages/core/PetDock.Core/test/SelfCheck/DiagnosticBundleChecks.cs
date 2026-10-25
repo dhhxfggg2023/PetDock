@@ -171,18 +171,24 @@ internal static class DiagnosticBundleChecks
         Done("ui-diag-bundle-zip-roundtrip", roundTrip,
             "entries=" + entries.Count + " manifest-files=" + (files?.Count ?? 0) + " mismatches=" + string.Join(",", mismatches));
 
-        // ⑤ 内存读数标着「进程」，且没有「每宠物内存」这类表述。
+        // ⑤ 内存读数标着「进程级」：断的是结构化字段（runtime 的 memoryScope=process）+ 摘要照抄这条读数；
+        //    「不摊到单只宠物」由实例 JSON 里没有逐宠物内存/CPU 字段来表达 —— 行首文案会翻译。
         string summary = Text(entries, DiagnosticBundle.SummaryPath);
         string runtime = Text(entries, DiagnosticBundle.RuntimePath);
-        bool labelled = summary.Contains("进程", StringComparison.Ordinal)
-            && runtime.Contains("process", StringComparison.OrdinalIgnoreCase)
-            && !summary.Contains("每宠物内存", StringComparison.Ordinal)
-            && !runtime.Contains("每宠物内存", StringComparison.Ordinal);
+        string instancesJson = Text(entries, DiagnosticBundle.InstancesPath);
+        string memoryScope = JsonNode.Parse(runtime)?["memoryScope"]?.GetValue<string>() ?? string.Empty;
+        bool hasProcessReading = summary.Contains(readings.ProcessMemory, StringComparison.Ordinal);
+        bool labelled = string.Equals(memoryScope, "process", StringComparison.Ordinal)
+            && hasProcessReading
+            && !instancesJson.Contains("\"memory\"", StringComparison.Ordinal)
+            && !instancesJson.Contains("\"cpu\"", StringComparison.Ordinal);
         Done("ui-diag-bundle-labels-process-level", labelled,
-            "summary-process=" + summary.Contains("进程", StringComparison.Ordinal)
-            + " runtime-memoryScope=" + runtime.Contains("\"memoryScope\"", StringComparison.Ordinal));
+            "memoryScope=" + memoryScope
+            + " summary-has-reading=" + hasProcessReading
+            + " instances-has-memory=" + instancesJson.Contains("\"memory\"", StringComparison.Ordinal));
 
-        // ⑥ 空态不编造数字。
+        // ⑥ 空态不编造数字：没有实例就没有帧读数 —— 断「摘要里一个数据 token 都没有」+ 实例数为 0，
+        //    不是断那句中文说明本身（那句话同样会翻译）。
         var bundle2 = new DiagnosticBundle(Path.Combine(root, "diagnostics-empty"), logDir, rules);
         DiagnosticExportResult emptyExport = bundle2.Export(DiagnosticReadings.Empty);
         bool emptyHonest = false;
@@ -191,11 +197,11 @@ internal static class DiagnosticBundleChecks
         {
             var emptyEntries = ReadZip(emptyExport.BundlePath);
             emptySummary = Text(emptyEntries, DiagnosticBundle.SummaryPath);
-            string instances = Text(emptyEntries, DiagnosticBundle.InstancesPath);
-            emptyHonest = emptySummary.Contains("宠物实例 (0)", StringComparison.Ordinal)
-                && emptySummary.Contains("不填任何占位数字", StringComparison.Ordinal)
-                && emptySummary.Contains("无帧读数", StringComparison.Ordinal)
-                && !instances.Contains("\"frames\"", StringComparison.Ordinal);
+            string emptyInstances = Text(emptyEntries, DiagnosticBundle.InstancesPath);
+            emptyHonest = DiagnosticReadings.Empty.Instances.Count == 0
+                && !emptySummary.Contains("frames=", StringComparison.Ordinal)
+                && !emptySummary.Contains("over-budget=", StringComparison.Ordinal)
+                && !emptyInstances.Contains("\"frames\"", StringComparison.Ordinal);
         }
 
         Done("ui-diag-bundle-empty-is-honest", emptyHonest,
@@ -209,8 +215,8 @@ internal static class DiagnosticBundleChecks
         bool wired = controlNames.Count == 2
             && controlNames.Contains("diag-open-logs")
             && controlNames.Contains("diag-export-bundle")
-            && rows.Any(row => row.Contains("诊断：日志目录", StringComparison.Ordinal))
-            && rows.Any(row => row.Contains("诊断：导出诊断包", StringComparison.Ordinal))
+            && rows.Any(row => row.Contains(ControlPanel.DiagnosticLogsRow, StringComparison.Ordinal))
+            && rows.Any(row => row.Contains(ControlPanel.DiagnosticBundleRow, StringComparison.Ordinal))
             && !rows.Any(row => row.Contains("(未接线)", StringComparison.Ordinal));
         Done("ui-diag-panel-entries-wired", wired,
             "controls=" + string.Join(",", controlNames) + " rows=" + rows.Count);
@@ -228,10 +234,12 @@ internal static class DiagnosticBundleChecks
                 ? service.ExportBundle()
                 : service.OpenLogsDirectory());
         string message = failPanel.TryDiagnosticForCheck(ControlPanel.DiagnosticOpExportBundle);
+        // RFC-42 §3.4：成败读面板的结构化字段 + 「状态标签显示的就是回调那句话」，不解析字面量。
         bool inline = failPanel.SettingsStatusShown
             && !string.IsNullOrWhiteSpace(failPanel.SettingsStatusText)
-            && message.Contains("失败", StringComparison.Ordinal)
-            && failPanel.SettingsStatusText.Contains("失败", StringComparison.Ordinal);
+            && !string.IsNullOrWhiteSpace(message)
+            && !failPanel.SettingsStatusOk
+            && string.Equals(failPanel.SettingsStatusText, message, StringComparison.Ordinal);
         int forms = OwnedFormCount();
         Done("ui-diag-export-failure-is-inline", inline && forms == 0,
             $"message={message} status={failPanel.SettingsStatusText} forms={forms}");

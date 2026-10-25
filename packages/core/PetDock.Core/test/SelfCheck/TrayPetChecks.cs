@@ -53,14 +53,17 @@ internal static class TrayPetChecks
             && order[6] == "exit";
 
         IReadOnlyList<string> children = tray.PetChildTitles(1);
+        // 断言**键**而不是文案：文案搬进 assets/i18n 之后，断言中文的判据红的是判据（RFC-42 §3.4）。
+        IReadOnlyList<string> keys = tray.PetChildKeyList(1);
         bool childrenOk = children.Count == 4
-            && children[0] == "移动"
-            && children[1] == "暂停"
-            && children[2] == "隐藏"
-            && children[3] == "移除";
+            && keys.Count == 4
+            && keys[0] == "ui.tray.pet.move"
+            && keys[1] == "ui.tray.pet.pause"
+            && keys[2] == "ui.tray.pet.hide"
+            && keys[3] == "ui.tray.pet.remove";
 
         check("ui-tray-pet-per-item", orderOk && childrenOk && tray.PetItemCount == 3,
-            $"items={string.Join(",", order)} children={string.Join("/", children)} count={tray.PetItemCount}");
+            $"items={string.Join(",", order)} keys={string.Join("/", keys)} children={string.Join("/", children)} count={tray.PetItemCount}");
     }
 
     /// <summary>点第二条的「隐藏」，只有第二只的命令被调用。</summary>

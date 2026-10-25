@@ -12,8 +12,8 @@
 //   ui-onboarding-marker-survives-settings-write  设置页写盘不抹掉标记
 //   ui-onboarding-state-audit-fields         settings.json 含 agent_id + timestamp
 //   ui-onboarding-language-persisted         选 en-US 后 language == en-US
-//   ui-onboarding-language-is-choice-only    选 en-US 后界面文案仍是中文
-//   ui-onboarding-sample-disclaimer          第 2 步文本含「占位素材，发行版替换为 CC0/自绘」
+//   ui-onboarding-language-is-choice-only    选 en-US 后界面文案仍是键的那一条（断键不断中文）
+//   ui-onboarding-sample-disclaimer          第 2 步文本含 SampleDisclaimerKey 解析出的那句
 //   ui-onboarding-sample-placed              放置成功
 //   ui-onboarding-sample-copied              导入后目标目录文件集合与源一致
 //   ui-onboarding-sample-registered          清单有条目且指向拷贝目录
@@ -22,7 +22,7 @@
 //   ui-onboarding-inline-error               失败时内联错误条可见且有文字
 //   ui-onboarding-no-modal-error             失败路径不弹模态框
 //   ui-onboarding-old-pet-kept               失败时旧宠物原样不动
-//   ui-onboarding-through-caption            第 3 步文本含穿透说明
+//   ui-onboarding-through-caption            第 3 步文本含 ThroughCaptionKey 解析出的那句
 //   ui-onboarding-animation-running          示意动画计时器已启动且帧计数推进
 //   ui-onboarding-frame-alpha-transparent    帧角点 alpha=0、中心 alpha≠0
 using System;
@@ -136,23 +136,28 @@ internal static class OnboardingChecks
         {
             // ① 第 1 步：选语言 → 点下一步。
             window.SelectLanguage("en-US");
-            string beforeText = window.NextButtonText;
+            string beforeKey = window.NextButtonKey;
             window.GoNext();
             check("ui-onboarding-language-persisted",
                 string.Equals(store.Load().Language, "en-US", StringComparison.Ordinal),
                 $"language={store.Load().Language}");
 
             // 「只持久化选择」：界面文案不随选择变化（RFC-16 §3.3 第 1 步）。
+            // 断言的是**键**（RFC-42 §3.4）：文案翻译后这条仍然站得住，中文原样不是它要证明的东西。
             check("ui-onboarding-language-is-choice-only",
-                string.Equals(beforeText, window.NextButtonText, StringComparison.Ordinal)
-                && window.NextButtonText.Contains("下一步", StringComparison.Ordinal),
-                $"before={beforeText} after={window.NextButtonText}");
+                string.Equals(beforeKey, window.NextButtonKey, StringComparison.Ordinal)
+                && window.NextButtonKey.StartsWith("ui.onboarding.", StringComparison.Ordinal)
+                && string.Equals(
+                    window.NextButtonText,
+                    I18n.Get(window.NextButtonKey),
+                    StringComparison.Ordinal),
+                $"before={beforeKey} after={window.NextButtonKey} text={window.NextButtonText}");
 
-            // ② 第 2 步：标注原样出现（读的是窗上的 Label 文本，不是常量）。
+            // ② 第 2 步：标注原样出现（读的是窗上的 Label 文本，不是常量；断言键解析出的那句，不是中文原文）。
             string sampleText = window.CollectStepText(1);
             check("ui-onboarding-sample-disclaimer",
-                sampleText.Contains(OnboardingWindow.SampleDisclaimerText, StringComparison.Ordinal),
-                $"text={sampleText.Replace('\n', '|')}");
+                sampleText.Contains(I18n.Get(OnboardingWindow.SampleDisclaimerKey), StringComparison.Ordinal),
+                $"key={OnboardingWindow.SampleDisclaimerKey} text={sampleText.Replace('\n', '|')}");
 
             // 放置成功。
             window.TryPlaceSample();
@@ -183,13 +188,12 @@ internal static class OnboardingChecks
             check("ui-onboarding-asset-root-reaches-view", rootsReach,
                 $"contexts={StubView.ReceivedContexts.Count}");
 
-            // ③ 第 3 步：穿透说明原样出现。
+            // ③ 第 3 步：穿透说明原样出现（同样断言键解析出的那句，不是中文原文）。
             window.GoNext();
             string throughText = window.CollectStepText(2);
             check("ui-onboarding-through-caption",
-                throughText.Contains("透明区域可以点到下面的东西", StringComparison.Ordinal)
-                && throughText.Contains("这是正常的", StringComparison.Ordinal),
-                $"text={throughText.Replace('\n', '|')}");
+                throughText.Contains(I18n.Get(OnboardingWindow.ThroughCaptionKey), StringComparison.Ordinal),
+                $"key={OnboardingWindow.ThroughCaptionKey} text={throughText.Replace('\n', '|')}");
 
             // 示意动画：计时器已启动且帧计数在推进（读数要在关窗之前取）。
             int framesBefore = window.AnimationFrameCount;

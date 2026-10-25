@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 23005,
+  "budget": 23260,
   "history": [
     {
       "date": "2026-10-18",
@@ -1108,6 +1108,63 @@
             "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Wire.cs"
           ],
           "lines": 13
+        }
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "measured": 23201,
+      "budget": 23260,
+      "note": "RFC-42 本地化第一片：资源表加载器 + 托盘作为范例 + 「成败信号与文案」解耦。实测 22965 → 23201（+236），逐切片之和 = 236（1 行是 `I18n.cs` 换 using 修 CS0234 时多出的那一行，已算进该切片），等于相邻 measured 之差。抬到 23260（余量 59）的理由：这一片不是加功能，是把文案的**所有权**从代码搬到 `assets/i18n/*.json`，并为下一片（把剩下 216 条字面量逐条迁出）留出「新 partial 而不是把主文件顶过 D-03c 400 行」的空间——判据侧已经因此长出一个 `ThrottleChecks.Frames.Diagnostic.cs`。**同时**：`history[36]` 之后有 37 行是已提交、但从未申报的漂移（commit `dd38858` 的抖动取证工装），这次一并补进 attribution，因为它让「相邻 measured 之差 = 逐切片之和」这条规矩断了一次；规矩靠每次申报时真的算一遍来维持，不靠记性。判据仍在 test/ 下，按 D-03a 口径不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-42 资源表加载器（新文件）：外部 JSON 表、缺键返回键名本身、占位符格式化、assets 根解析、MissingCount 读数",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/I18n.cs"
+          ],
+          "lines": 150
+        },
+        {
+          "slice": "RFC-42 托盘范例：12 条文案改为按键取，子项改循环 + PetChildKeys/PetChildKeyList（判据断言键而不是中文）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
+          ],
+          "lines": 26
+        },
+        {
+          "slice": "RFC-42 解耦：诊断成败改成 (bool Ok, string Message) 结构化、SettingsStatusOk 布尔、Onboarding 常量变键名、PerfPage 两个判据锚点常量（净额，含删掉两处 StartsWith/Contains 文案嗅探）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+          ],
+          "lines": 16
+        },
+        {
+          "slice": "RFC-42 装配接线：UiHost 构造里在一切界面对象之前加载资源表",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 3
+        },
+        {
+          "slice": "RFC-42 未采样摘要：PerfSummary.Empty 从静态字段改成属性（字段会在类型初始化时把语言冻结掉），文案按键取",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+          ],
+          "lines": 4
+        },
+        {
+          "slice": "补申报：commit dd38858 的抖动取证工装 —— 节流判定按窗口快照取读数（ResidentFrameLoop 及其 Throttle partial、FrameThrottlePolicy）与 --throttle-probe 入口（Program）。已提交但 history[36] 未记，导致 37 行漂移",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.cs",
+            "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.Throttle.cs",
+            "packages/core/PetDock.Core/src/Ui/FrameThrottlePolicy.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": 37
         }
       ]
     }

@@ -86,6 +86,9 @@ internal sealed partial class UiHost : ApplicationContext
         {
             UserSettings loaded = _settings.Load();
             _loop.SetTargetFrameMs(loaded.IdleFrameBudgetMs);
+            // 文案表在**任何界面对象构造之前**加载：缺表时每个键显示键名本身（RFC-42 §3.2），
+            // 而不是让空字符串把界面画成一片空白。
+            I18n.Load(loaded.Language);
             KernelLog.Write($"settings-loaded {loaded.Describe()}");
         }
 

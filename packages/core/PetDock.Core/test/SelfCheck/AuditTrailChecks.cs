@@ -197,14 +197,17 @@ internal static class AuditTrailChecks
             Done("ui-audit-bundle-not-only-recent", notOnlyRecent,
                 "audit-rows=" + collected.Audit.Count + " ring-capacity=256");
 
-            // ⑪ 摘要里的流水规模与未完成标注如实。
+            // ⑪ 摘要里的流水规模与会话计数如实。RFC-42 §3.4：断的是数据契约（rows=/audit=/denied= 与
+            // 结构化读数），不是中文行首 —— 行首翻了，这条判据不该跟着红。
             string summary = DiagnosticSections.BuildSummary(collected, rules);
-            bool honest = summary.Contains("审计流水", StringComparison.Ordinal)
+            bool honest = collected.Trail is { Available: true }
                 && summary.Contains("rows=" + collected.Audit.Count.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
-                && summary.Contains("本次会话内计数", StringComparison.Ordinal);
+                && summary.Contains("audit=" + collected.AuditCount.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+                && summary.Contains("denied=" + collected.DeniedCount.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
             Done("ui-audit-trail-summary-honest", honest,
-                "summary-has-audit-line=" + summary.Contains("审计流水", StringComparison.Ordinal)
-                + " has-rows=" + summary.Contains("rows=" + collected.Audit.Count.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal));
+                "trail-available=" + (collected.Trail?.Available ?? false)
+                + " has-rows=" + summary.Contains("rows=" + collected.Audit.Count.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+                + " audit=" + collected.AuditCount.ToString(CultureInfo.InvariantCulture));
 
             // ⑥ 宿主侧的授权决定也进流水（consent 这一类）。
             bool consentRecorded = collected.Audit.Any(r => r.Kind == AuditTrail.KindConsent);

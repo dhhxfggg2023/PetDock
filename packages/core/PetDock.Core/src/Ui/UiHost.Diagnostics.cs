@@ -18,13 +18,13 @@ internal sealed partial class UiHost
 
     /// <summary>
     /// 设置页两个诊断入口的宿主侧执行体（UI 线程）。
-    /// 返回一句话：成功路径或失败原因，面板把它显示成内联状态。
+    /// 返回成败与一句话：成功路径或失败原因，面板把它显示成内联状态（成败不看文案）。
     /// </summary>
-    private string RunDiagnosticOp(string op)
+    private (bool Ok, string Message) RunDiagnosticOp(string op)
     {
         if (_diagnostics is null)
         {
-            return "诊断功能不可用：宿主未接管诊断动作。";
+            return (false, "诊断功能不可用：宿主未接管诊断动作。");
         }
 
         try
@@ -39,12 +39,12 @@ internal sealed partial class UiHost
                 return _diagnostics.ExportBundle();
             }
 
-            return "未知的诊断动作：" + op;
+            return (false, "未知的诊断动作：" + op);
         }
         catch (Exception error)
         {
             KernelLog.Write($"diagnostic-failed op={op} {error.GetType().Name}: {error.Message}");
-            return "诊断动作失败：" + error.GetType().Name + " " + error.Message;
+            return (false, "诊断动作失败：" + error.GetType().Name + " " + error.Message);
         }
     }
 }

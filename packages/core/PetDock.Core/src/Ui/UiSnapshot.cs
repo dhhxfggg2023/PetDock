@@ -44,9 +44,13 @@ internal sealed record PerfSummary(
     IReadOnlyList<PerfLine> Rows,
     bool CountersWired = false)
 {
-    /// <summary>没有任何宠物时的诚实摘要（docs/18 §2.4：不编造数字）。</summary>
-    public static PerfSummary Empty { get; } = new(
-        "(未采样)", 0, 0, System.Array.Empty<PerfLine>());
+    /// <summary>
+    /// 没有任何宠物时的诚实摘要（docs/18 §2.4：不编造数字）。
+    /// 是**属性**而不是静态字段：字段会在类型初始化时把当时的语言冻结进字符串，
+    /// 而 <see cref="I18n.Load"/> 发生在界面对象构造之前、静态初始化之后（RFC-42 §3.2）。
+    /// </summary>
+    public static PerfSummary Empty => new(
+        I18n.Get("ui.perf.notSampled"), 0, 0, System.Array.Empty<PerfLine>());
 
     public bool IsEmpty => Rows.Count == 0;
 }

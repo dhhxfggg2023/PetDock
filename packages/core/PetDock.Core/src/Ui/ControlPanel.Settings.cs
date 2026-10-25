@@ -78,6 +78,9 @@ internal sealed partial class ControlPanel
     /// <summary>设置页状态标签的当前文字（自检读它，非空即可判）。</summary>
     public string SettingsStatusText => _settingsStatus.Text;
 
+    /// <summary>状态标签上那句话是「成功」还是「失败」（自检断它，不解析文案）。</summary>
+    public bool SettingsStatusOk { get; private set; }
+
     /// <summary>开机自启勾选框当前是否勾着（自检读它）。</summary>
     public bool StartupChecked => _startupBox.Checked;
 
@@ -173,6 +176,7 @@ internal sealed partial class ControlPanel
         _settingsStatus.Text = message;
         _settingsStatus.ForeColor = ok ? SystemColors.ControlText : Color.FromArgb(0x99, 0x22, 0x22);
         _settingsStatusShown = true;
+        SettingsStatusOk = ok;
     }
 
     /// <summary>

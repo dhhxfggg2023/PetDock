@@ -44,6 +44,18 @@ internal sealed class TrayHost : IDisposable
     private readonly List<ToolStripMenuItem> _petItems = new();
     private bool _disposed;
 
+    /// <summary>
+    /// 每条宠物子菜单的四个子项**按显示顺序**对应的文案键。键是契约（判据断言它），
+    /// 文案在 `assets/i18n`（RFC-42）。顺序照 docs/18 §1：移动 → 暂停 → 隐藏 → 移除。
+    /// </summary>
+    internal static readonly string[] PetChildKeys =
+    {
+        "ui.tray.pet.move",
+        "ui.tray.pet.pause",
+        "ui.tray.pet.hide",
+        "ui.tray.pet.remove",
+    };
+
     public TrayHost(
         IReadOnlyList<PetMenuItem> pets,
         UiCommand toggleAll,
@@ -53,23 +65,23 @@ internal sealed class TrayHost : IDisposable
     {
         _menu = new ContextMenuStrip();
 
-        var toggle = new ToolStripMenuItem("显示/隐藏全部宠物", null, (_, _) => toggleAll())
+        var toggle = new ToolStripMenuItem(I18n.Get("ui.tray.toggleAll"), null, (_, _) => toggleAll())
         {
             Name = "toggle-all",
         };
-        var panel = new ToolStripMenuItem("主控面板", null, (_, _) => openPanel())
+        var panel = new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => openPanel())
         {
             Name = "panel",
         };
 
         // 强制项：docs/18 §1「必须存在且不可隐藏」。Enabled 由宿主状态决定，
         // 但 Visible 恒为 true——任何一条代码路径都不许把它藏起来。
-        _pauseHooks = new ToolStripMenuItem("暂停全局输入钩子", null, (_, _) => pauseHooks())
+        _pauseHooks = new ToolStripMenuItem(I18n.Get("ui.tray.pauseHooks"), null, (_, _) => pauseHooks())
         {
             Name = "pause-hooks",
         };
 
-        var exitItem = new ToolStripMenuItem("退出", null, (_, _) => exit())
+        var exitItem = new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => exit())
         {
             Name = "exit",
         };
@@ -89,7 +101,7 @@ internal sealed class TrayHost : IDisposable
         _icon = new NotifyIcon
         {
             Icon = LoadIcon(),
-            Text = $"PetDock — {pets.Count} 只宠物运行中",
+            Text = I18n.Get("ui.tray.title.running", pets.Count),
             ContextMenuStrip = _menu,
             Visible = true,
         };
@@ -115,19 +127,26 @@ internal sealed class TrayHost : IDisposable
         {
             PetMenuItem pet = pets[i];
             int index = i;
-            var item = new ToolStripMenuItem("宠物：" + pet.Title)
+            var item = new ToolStripMenuItem(I18n.Get("ui.tray.pet.caption", pet.Title))
             {
                 Name = "pet-" + (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture),
             };
-            item.DropDownItems.Add(new ToolStripMenuItem("移动", null, (_, _) => pet.Move()));
-            item.DropDownItems.Add(new ToolStripMenuItem("暂停", null, (_, _) => pet.Pause()));
-            item.DropDownItems.Add(new ToolStripMenuItem("隐藏", null, (_, _) => pet.Hide()));
-            item.DropDownItems.Add(new ToolStripMenuItem("移除", null, (_, _) => pet.Remove()));
+            for (int child = 0; child < PetChildKeys.Length; child++)
+            {
+                UiCommand command = child switch
+                {
+                    0 => pet.Move,
+                    1 => pet.Pause,
+                    2 => pet.Hide,
+                    _ => pet.Remove,
+                };
+                item.DropDownItems.Add(new ToolStripMenuItem(I18n.Get(PetChildKeys[child]), null, (_, _) => command()));
+            }
             _menu.Items.Insert(insertAt + index, item);
             _petItems.Add(item);
         }
 
-        _icon?.SetTextSafe($"PetDock — {pets.Count} 只宠物运行中");
+        _icon?.SetTextSafe(I18n.Get("ui.tray.title.running", pets.Count));
     }
 
     /// <summary>第 <paramref name="index"/> 条宠物子菜单的四个子项文案（自检用；顺序即显示顺序）。</summary>
@@ -149,6 +168,13 @@ internal sealed class TrayHost : IDisposable
 
     /// <summary>宠物子菜单的条数（= 桌面上的只数）。</summary>
     public int PetItemCount => _petItems.Count;
+
+    /// <summary>
+    /// 第 <paramref name="index"/> 条宠物子菜单**用到的键**（显示顺序）。判据断言这个，
+    /// 而不是断言「文案长什么样」——文案跟着语言走，键是契约（RFC-42 §3.4 第 2 条）。
+    /// </summary>
+    public IReadOnlyList<string> PetChildKeyList(int index) =>
+        index >= 0 && index < _petItems.Count ? PetChildKeys : Array.Empty<string>();
 
     /// <summary>
     /// 点一下第 <paramref name="petIndex"/> 条宠物子菜单的第 <paramref name="childIndex"/> 项。
@@ -205,7 +231,7 @@ internal sealed class TrayHost : IDisposable
     public bool HookItemVisible => _pauseHooks.Available;
 
     /// <summary>托盘提示文字随宠物数变化（docs/18 §1）。</summary>
-    public void SetPetCount(int count) => _icon.Text = $"PetDock — {count} 只宠物运行中";
+    public void SetPetCount(int count) => _icon.Text = I18n.Get("ui.tray.title.running", count);
 
     /// <summary>
     /// 托盘图标：docs/18 §1 指定 assets/icons/icon-32.png。找不到就用系统默认图标——

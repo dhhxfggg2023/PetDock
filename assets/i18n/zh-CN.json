@@ -1,0 +1,13 @@
+{
+  "ui.tray.toggleAll": "显示/隐藏全部宠物",
+  "ui.tray.panel": "主控面板",
+  "ui.tray.pauseHooks": "暂停全局输入钩子",
+  "ui.tray.exit": "退出",
+  "ui.tray.title.running": "PetDock — {0} 只宠物运行中",
+  "ui.tray.pet.caption": "宠物：{0}",
+  "ui.tray.pet.move": "移动",
+  "ui.tray.pet.pause": "暂停",
+  "ui.tray.pet.hide": "隐藏",
+  "ui.tray.pet.remove": "移除",
+  "ui.perf.notSampled": "(未采样)"
+}

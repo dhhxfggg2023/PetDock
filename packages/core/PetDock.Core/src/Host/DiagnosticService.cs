@@ -62,8 +62,8 @@ internal sealed class DiagnosticService
     /// <summary>诊断包目录（&lt;DATA&gt;\diagnostics）。</summary>
     public string DiagnosticsDirectory => Path.Combine(_store.Root, DiagnosticsFolder);
 
-    /// <summary>打开日志目录：目录不存在就建一个空的（空目录也是成功），然后打开它。</summary>
-    public string OpenLogsDirectory()
+    /// <summary>打开日志目录：目录不存在就建一个空的（空目录也是成功），然后打开它。成败由返回的布尔给出。</summary>
+    public (bool Ok, string Message) OpenLogsDirectory()
     {
         try
         {
@@ -71,35 +71,32 @@ internal sealed class DiagnosticService
         }
         catch (Exception error)
         {
-            return "无法打开日志目录：" + error.Message + "。目录位置：" + _rules.Text(LogsDirectory);
+            return (false, "无法打开日志目录：" + error.Message + "。目录位置：" + _rules.Text(LogsDirectory));
         }
 
         try
         {
-            // 用双参构造：它默认走系统外壳（等价于「用外壳打开」那个属性），
+            // 双参构造默认走系统外壳（等价于「用外壳打开」那个属性），
             // 所以不需要在 core 源码里写出那个属性名（docs/02 §2 概念黑名单，见 .dsh-code/ 对照表）。
             Process.Start(new ProcessStartInfo("explorer.exe", "\"" + LogsDirectory + "\""));
         }        catch (Exception error)
         {
-            return "无法打开日志目录：" + error.Message + "。目录位置：" + _rules.Text(LogsDirectory);
+            return (false, "无法打开日志目录：" + error.Message + "。目录位置：" + _rules.Text(LogsDirectory));
         }
 
-        return "日志目录已打开：" + _rules.Text(LogsDirectory);
+        return (true, "日志目录已打开：" + _rules.Text(LogsDirectory));
     }
 
-    /// <summary>导出诊断包。返回一句话（成功路径或失败原因）。</summary>
-    public string ExportBundle()
+    /// <summary>导出诊断包。返回成败与一句话（成功路径带目录，失败是原因）。</summary>
+    public (bool Ok, string Message) ExportBundle()
     {
         // 导出前先把缓冲里的行落盘，否则包里会少掉最后一段。
         _log?.CommitNow();
         DiagnosticReadings readings = CollectReadings();
         DiagnosticExportResult result = _bundle.Export(readings);
-        if (!result.Ok)
-        {
-            return result.Message;
-        }
-
-        return result.Message + "（目录：" + _rules.Text(DiagnosticsDirectory) + "）";
+        return (result.Ok, result.Ok
+            ? result.Message + "（目录：" + _rules.Text(DiagnosticsDirectory) + "）"
+            : result.Message);
     }
 
     /// <summary>

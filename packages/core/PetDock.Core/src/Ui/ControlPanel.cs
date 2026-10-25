@@ -265,8 +265,8 @@ internal sealed partial class ControlPanel : Form
         AddSetting("语言", view.Language, "zh-CN / en-US（文案未本地化：只持久化选择）");
         AddSetting("空闲降帧阈值", view.IdleFrameBudgetMs.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ms", "帧周期；改完立即生效");
         AddSetting("宠物数", snapshot.Pets.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), "当前实例");
-        AddSetting("诊断：日志目录", "「打开日志目录」", "常驻形态的运行期日志目录（脱敏后落盘）");
-        AddSetting("诊断：导出诊断包", "「导出诊断包（脱敏后）」", "docs/18 §2.3；导出一份 zip 供排查");
+        AddSetting(DiagnosticLogsRow, "「打开日志目录」", "常驻形态的运行期日志目录（脱敏后落盘）");
+        AddSetting(DiagnosticBundleRow, "「导出诊断包（脱敏后）」", "docs/18 §2.3；导出一份 zip 供排查");
 
         TabPage? settingsPage = FindPage(PanelPages.Settings);
         if (settingsPage is null)

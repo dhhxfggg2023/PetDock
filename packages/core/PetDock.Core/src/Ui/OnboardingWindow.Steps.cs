@@ -60,7 +60,7 @@ internal sealed partial class OnboardingWindow
         };
         var disclaimer = new Label
         {
-            Text = SampleDisclaimerText,
+            Text = I18n.Get(SampleDisclaimerKey),
             Dock = DockStyle.Top,
             Height = 26,
             ForeColor = Color.FromArgb(0xFF, 0x8A, 0x3D, 0x00),
@@ -94,7 +94,7 @@ internal sealed partial class OnboardingWindow
         };
         var caption = new Label
         {
-            Text = ThroughCaptionText,
+            Text = I18n.Get(ThroughCaptionKey),
             Dock = DockStyle.Top,
             Height = 28,
         };

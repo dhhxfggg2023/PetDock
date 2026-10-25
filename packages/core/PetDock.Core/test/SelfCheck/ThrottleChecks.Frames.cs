@@ -313,69 +313,6 @@ internal static partial class ThrottleChecks
         CloseForeground();
     }
 
-    /// <summary>⑫ 诊断包读到档位：一行文本里 tier/ticks/submitted 都是真读数，不是编的。</summary>
-    private static void DiagnosticLine(Check done, ResidentFrameLoop loop)
-    {
-        string root = System.IO.Path.Combine(
-            AppContext.BaseDirectory, "petdock-throttle-diag-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var service = new DiagnosticService(new PetDataStore(root), host: null, pet: null, log: null)
-            {
-                FrameLoop = loop,
-            };
-            DiagnosticReadings readings = service.CollectReadings();
-            string summary = DiagnosticSections.BuildSummary(readings, RedactRules.ForCurrentMachine(root, null));
-            bool hasLine = summary.Contains("节流档位:", StringComparison.Ordinal);
-            string tier = readings.ThrottleTier;
-            bool ok = readings.HasThrottle
-                && hasLine
-                && tier.Length > 0
-                && summary.Contains("tier=" + tier, StringComparison.Ordinal)
-                && summary.Contains("ticks=" + readings.ThrottleTicks.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
-                && summary.Contains("submitted=" + readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
-                // 帧预算那一行也要拼上同一个档位读数（不新增记录字段，只补一行文本）。
-                && readings.FrameBudgetLine.Contains("throttle(", StringComparison.Ordinal)
-                // 读数必须是**这个**循环的，不是 0 占位。
-                && readings.ThrottleTicks == loop.Ticks;
-            done("ui-throttle-diagnostic-line", ok,
-                "tier=" + tier
-                + " ticks=" + readings.ThrottleTicks.ToString(CultureInfo.InvariantCulture)
-                + " submitted=" + readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture)
-                + " loopTicks=" + loop.Ticks.ToString(CultureInfo.InvariantCulture)
-                + " hasLine=" + Flag(hasLine)
-                + " line=" + ExtractThrottleLine(summary));
-        }
-        finally
-        {
-            try
-            {
-                if (System.IO.Directory.Exists(root))
-                {
-                    System.IO.Directory.Delete(root, recursive: true);
-                }
-            }
-            catch (Exception)
-            {
-                // 临时目录删不掉不影响判据结论（先例：DiagnosticChecks）。
-            }
-        }
-    }
-
-    private static string ExtractThrottleLine(string summary)
-    {
-        foreach (string line in summary.Split('\n'))
-        {
-            string trimmed = line.Trim();
-            if (trimmed.StartsWith("节流档位:", StringComparison.Ordinal))
-            {
-                return trimmed;
-            }
-        }
-
-        return "(none)";
-    }
-
     private static bool WaitFor(int timeoutMs, Func<bool> predicate)
     {
         var clock = Stopwatch.StartNew();

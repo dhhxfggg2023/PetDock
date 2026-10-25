@@ -223,13 +223,14 @@ internal static class UiSelfTest
         return failures;
     }
 
-    /// <summary>§2.4：无宠物时性能页必须明说「尚无宠物运行」，不得编造数字。</summary>
+    /// <summary>§2.4：无宠物时性能页必须明说「尚无宠物运行」，不得编造数字（断常量，不断中文原文）。</summary>
     private static int PerfEmptyHonest()
     {
         int failures = 0;
         using var page = new PerfPage(() => UiSnapshot.Empty);
         page.Bind(PerfSummary.Empty);
-        Check("ui-perf-empty-honest", page.RowCount == 0 && page.SummaryText.Contains("尚无宠物运行", StringComparison.Ordinal),
+        Check("ui-perf-empty-honest",
+            page.RowCount == 0 && page.SummaryText.Contains(PerfPage.NoPetRunning, StringComparison.Ordinal),
             $"rows={page.RowCount} summary={page.SummaryText}");
         return failures;
     }
@@ -249,7 +250,8 @@ internal static class UiSelfTest
             new("sample-pet", "0.05 %", "12.0 MB", "1.2 ms", 3),
         };
         page.Bind(new PerfSummary("60.0s", 1, 0, rows));
-        Check("ui-perf-rows", page.RowCount == 1 && page.SummaryText.Contains("未接", StringComparison.Ordinal),
+        Check("ui-perf-rows", page.RowCount == 1
+            && page.SummaryText.Contains(PerfPage.NotWired, StringComparison.Ordinal),
             $"rows={page.RowCount} summary={page.SummaryText}");
         return failures;
     }

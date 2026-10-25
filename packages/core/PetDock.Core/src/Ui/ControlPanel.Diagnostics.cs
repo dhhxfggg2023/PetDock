@@ -33,8 +33,8 @@ internal sealed partial class ControlPanel
     /// <summary>诊断动作的回调（宿主侧执行）。</summary>
     private DiagnosticCommand? _diagnosticCommand;
 
-    /// <summary>诊断动作的回调形状：给一个动作名，宿主侧回一句话（成功或失败原因）。</summary>
-    internal delegate string DiagnosticCommand(string op);
+    /// <summary>诊断动作的回调形状：给一个动作名，宿主侧回成败与一句话（失败原因是文案）。</summary>
+    internal delegate (bool Ok, string Message) DiagnosticCommand(string op);
 
     /// <summary>设置页诊断入口的控件名（自检按它们断言入口存在）。</summary>
     public IReadOnlyList<string> DiagnosticControlNames =>
@@ -45,6 +45,9 @@ internal sealed partial class ControlPanel
 
     /// <summary>诊断动作名：导出诊断包。</summary>
     public const string DiagnosticOpExportBundle = "export-bundle";
+
+    /// <summary>设置页诊断两行的行名（判据断它，不断中文原文）。</summary>
+    public const string DiagnosticLogsRow = "诊断：日志目录", DiagnosticBundleRow = "诊断：导出诊断包";
 
     /// <summary>给设置页装一个宿主侧的诊断回调（构造时传入）。</summary>
     public void SetDiagnosticCommand(DiagnosticCommand? command) => _diagnosticCommand = command;
@@ -77,13 +80,7 @@ internal sealed partial class ControlPanel
     /// 自检入口：直接走宿主侧回调（与点按钮同一条路），
     /// 区别只是不经过按钮事件 —— 自检不该靠模拟点击来证明功能。
     /// </summary>
-    internal string TryDiagnosticForCheck(string op)
-    {
-        string message = RunDiagnostic(op);
-        ShowSettingsStatus(message, ok: !message.StartsWith("无法", StringComparison.Ordinal)
-            && !message.Contains("失败", StringComparison.Ordinal));
-        return message;
-    }
+    internal string TryDiagnosticForCheck(string op) => RunDiagnostic(op).Message;
 
     /// <summary>把两个诊断按钮挂进设置页的操作栏。</summary>
     private void InitDiagnosticsPage()
@@ -112,28 +109,30 @@ internal sealed partial class ControlPanel
         page.Controls.Add(bar);
     }
 
-    /// <summary>执行一个诊断动作并把结果显示成内联状态。</summary>
-    private string RunDiagnostic(string op)
+    /// <summary>
+    /// 执行一个诊断动作并把结果显示成内联状态。
+    /// 成败取回调给的布尔，**不解析**刚生成的文案：文案会被翻译，解析字面量会静默恒真（RFC-42 §3.4）。
+    /// </summary>
+    private (bool Ok, string Message) RunDiagnostic(string op)
     {
+        (bool Ok, string Message) outcome;
         if (_diagnosticCommand is null)
         {
-            string unavailable = "诊断功能不可用：宿主未接管诊断动作。";
-            ShowSettingsStatus(unavailable, ok: false);
-            return unavailable;
+            outcome = (false, "诊断功能不可用：宿主未接管诊断动作。");
+        }
+        else
+        {
+            try
+            {
+                outcome = _diagnosticCommand(op);
+            }
+            catch (Exception error)
+            {
+                outcome = (false, "诊断动作失败：" + error.GetType().Name + " " + error.Message);
+            }
         }
 
-        string message;
-        try
-        {
-            message = _diagnosticCommand(op);
-        }
-        catch (Exception error)
-        {
-            message = "诊断动作失败：" + error.GetType().Name + " " + error.Message;
-        }
-
-        ShowSettingsStatus(message, ok: !message.StartsWith("无法", StringComparison.Ordinal)
-            && !message.Contains("失败", StringComparison.Ordinal));
-        return message;
+        ShowSettingsStatus(outcome.Message, outcome.Ok);
+        return outcome;
     }
 }

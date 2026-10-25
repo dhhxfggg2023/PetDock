@@ -22,6 +22,12 @@ internal sealed class PerfPage : UserControl
     /// <summary>进程级读数在逐宠物行里的标注（docs/10 §3）。</summary>
     public const string ProcessShared = "(进程共享)";
 
+    /// <summary>计数器没有接收口时两格都写它（不是 0：0 会被读成「测过是 0」，RFC-30 §3.4）。</summary>
+    public const string NotWired = "未接";
+
+    /// <summary>没有宠物时的摘要（不得编造数字，§2.4）。判据断言这个常量，不写中文原文。</summary>
+    public const string NoPetRunning = "尚无宠物运行。没有可测量的对象，因此不显示任何性能数字。";
+
     private readonly Func<UiSnapshot> _snapshot;
     private readonly Func<string, PetFrameReadings?>? _framesFor;
     private readonly Label _summary;
@@ -76,7 +82,7 @@ internal sealed class PerfPage : UserControl
         _rows.Items.Clear();
         if (perf.IsEmpty)
         {
-            _summary.Text = "尚无宠物运行。没有可测量的对象，因此不显示任何性能数字。";
+            _summary.Text = NoPetRunning;
             return;
         }
 
@@ -94,7 +100,7 @@ internal sealed class PerfPage : UserControl
     {
         string counters = perf.CountersWired
             ? $"降级 {perf.Degraded} ｜ 隔离区 {perf.Isolated}"
-            : "降级 未接 ｜ 隔离区 未接";
+            : $"降级 {NotWired} ｜ 隔离区 {NotWired}";
         return string.Create(CultureInfo.InvariantCulture, $"采样窗口 {perf.Window} ｜ {counters}");
     }
 
@@ -136,7 +142,7 @@ internal sealed class PerfPage : UserControl
     /// <summary>当前展示的行数（自检用：0 行 = 没有可测量的对象）。</summary>
     public int RowCount => _rows.Items.Count;
 
-    /// <summary>摘要文字（自检用：空快照时必须包含「尚无宠物运行」）。</summary>
+    /// <summary>摘要文字（自检用：空快照时必须包含 <see cref="NoPetRunning"/>）。</summary>
     public string SummaryText => _summary.Text;
 
     /// <summary>第 index 行的五列文字（自检用）。</summary>

@@ -14,6 +14,8 @@
     "lint:manifest": "node tools/validate-manifest.mjs",
     "lint:assets": "node tools/asset-manifest.mjs",
     "lint:fingerprint": "node tools/asset-fingerprint.mjs",
+    "lint:i18n": "node tools/i18n-lint.mjs",
+    "lint:i18n:parity": "node tools/i18n-parity.mjs",
     "release": "node tools/release.mjs",
     "release:dry": "node tools/release.mjs --dry-run",
     "pack": "node tools/pack.mjs",
