@@ -59,7 +59,11 @@ Release 产物（`dotnet build PetDock.sln -c Release`，或先跑过 `dist` 层
   dll，而 `--only contract` 不经过 `build` 层——于是它能对着上一次构建的二进制判绿
   （2026-10-25 有三次单跑正是这么绿的）。现在跑之前先比 mtime：dll 旧于 `src/`+`test/` 下最新
   的 `.cs` 就报 `VERIFY-FAIL layer=<层> step=stale-artifact`，并说明差了多少秒、该跑什么。
-  `--allow-stale` 是显式的「我知道我在判旧产物」。整层 `build` 不受此拦（它就是在修这个问题）。
+  `--allow-stale` 是显式的「我知道我在判旧产物」。闸门问的时刻是**第一个需要 dll 的层开跑之前**，
+  不是整趟开头：请求里含 `build` 时（`npm run verify`、`npm run verify:all`、`--only build,contract`），
+  build 先把 dll 刷新，闸门在它之后才问，所以默认那条命令仍然一条命令自洽；反之 build 真的红了
+  （`--keep-going`）时闸门照样会拦。`--only contract,build` 这种把 contract 写在前的顺序里，
+  contract 仍会被拦——拦不拦取决于「在它之前有没有真的 build 过」，与请求里写没写 build 无关。
 - **`--keep-going` 只跨层、不跨步**：同层里红步之后的步依赖前一步的产物（`release→pack`），
   跳过它们只会制造更难读的二次失败，所以层内遇到第一个红就停。
 - `perf:residenttest` 有前置 `guard`：花名册 `artifacts/_probe/plugroot` 不存在时**直接判红**，

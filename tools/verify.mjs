@@ -467,24 +467,36 @@ function main() {
   let stoppedEarly = false;
 
   // H1：跑之前先问「我要判的是哪份产物」。只拦需要 dll 的层；build 层本身就是在修这个问题。
+  // 问的**时刻**是第一个需要 dll 的层开跑之前，而不是整趟开头：请求里含 build 时（默认的
+  // static+build+contract 就是），build 会在 contract 之前把 dll 刷新；在开头就问，会让默认
+  // 那条命令在源码动过一次以后永远红——而修法就在同一条命令里，被自己的前置闸挡在门外。
+  // 反过来，build 真的红了（--keep-going）时，闸门仍在 contract 开跑前拦下来：旧产物不会因为
+  // 「我请求过 build」就被放过。顺序也按 layers 走：`--only contract,build` 里 contract 在前，
+  // 于是它照样在 build 之前被拦。
   const artifactLayers = layers.filter((layer) => layer.name !== 'build' && needsArtifact(layer));
-  if (artifactLayers.length > 0 && !opts.allowStale) {
-    const reason = staleArtifact(CONFIG);
-    if (reason) {
-      const id = 'stale-artifact';
-      const out = path.join(dir, `${id}.out`);
-      fs.writeFileSync(out, `CHECK verify-${id} FAIL ${reason}\n`, 'utf8');
-      fs.writeFileSync(path.join(dir, `${id}.err`), '', 'utf8');
-      const run = { id, layer: artifactLayers[0].name, code: 1, marker: null, markerOk: true, durationMs: 0, out, err: path.join(dir, `${id}.err`) };
-      runs.push(run);
-      failures.push(run);
-      console.log(`  RUN  ${id} ... FAIL exit=1 marker=exit-only 0.0s`);
-      console.log(`  --- stale-artifact.out ---\n${reason}`);
-      stoppedEarly = true;
-    }
+  const staleCheckBefore = opts.allowStale ? null : (artifactLayers[0]?.name ?? null);
+
+  function recordStaleArtifact(layerName, reason) {
+    const id = 'stale-artifact';
+    const out = path.join(dir, `${id}.out`);
+    fs.writeFileSync(out, `CHECK verify-${id} FAIL ${reason}\n`, 'utf8');
+    fs.writeFileSync(path.join(dir, `${id}.err`), '', 'utf8');
+    const run = { id, layer: layerName, code: 1, marker: null, markerOk: true, durationMs: 0, out, err: path.join(dir, `${id}.err`) };
+    runs.push(run);
+    failures.push(run);
+    console.log(`  RUN  ${id} ... FAIL exit=1 marker=exit-only 0.0s`);
+    console.log(`  --- stale-artifact.out ---\n${reason}`);
   }
 
-  for (const layer of stoppedEarly ? [] : layers) {
+  for (const layer of layers) {
+    if (layer.name === staleCheckBefore) {
+      const reason = staleArtifact(CONFIG);
+      if (reason) {
+        recordStaleArtifact(layer.name, reason);
+        stoppedEarly = true;
+        break;
+      }
+    }
     console.log(`== ${layer.name} — ${layer.title}`);
     for (const step of layer.steps) {
       process.stdout.write(`  RUN  ${step.id} ... `);
