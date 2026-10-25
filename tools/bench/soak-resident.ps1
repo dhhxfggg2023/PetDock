@@ -114,6 +114,13 @@ $petErr = [System.IO.Path]::GetFullPath((Join-Path $repo '.dsh-code\soak-pet.err
 $pet = Start-Process -FilePath $ExePath -PassThru -RedirectStandardOutput $petOut -RedirectStandardError $petErr
 Write-Output "PET-STARTED pid=$($pet.Id) exe=$ExePath"
 Set-Content -LiteralPath $pidFull -Value $pet.Id -Encoding ASCII
+# Record the start instant HERE, not from $pet.StartTime further down.
+# Start-Process -PassThru hands back a Process object whose StartTime can come
+# back null (no handle was opened by us), and `(Get-Date) - $null` throws
+# "Cannot find an overload for op_Subtraction and the argument count: 2" --
+# which is exactly how the 2026-10-24 soak died after its first sample, far
+# from here, looking like a sampler bug instead of a measurement bug.
+$startedAt = Get-Date
 
 # Give the window time to appear and draw its first frame before the sampling
 # baseline is taken; otherwise the first sample measures startup, not residency.
@@ -142,7 +149,7 @@ $still = Get-Process -Id $pet.Id -ErrorAction SilentlyContinue
 # drift a few seconds away from -DurationSeconds. Print it and say so out loud:
 # "resident for 8 hours" must be a measured number, not an inference from the
 # harness having printed PET-STARTED.
-$residency = ((Get-Date) - $pet.StartTime).TotalSeconds
+$residency = ((Get-Date) - $startedAt).TotalSeconds
 Write-Output ("PET-RESIDENCY-SECONDS " + [Math]::Round($residency, 1))
 Write-Output ("PET-RESIDENCY-HOURS " + [Math]::Round($residency / 3600.0, 3))
 if ($residency -lt $DurationSeconds) {
