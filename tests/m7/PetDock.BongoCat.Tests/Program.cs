@@ -41,6 +41,19 @@ internal static partial class Program
             return RunTier2Child(args[1]);
         }
 
+        // 负载复现模式（Program.Stress.cs）：并发起 N 份整套判据，把「只在 --all 里红」
+        // 变成一条可复跑的读数。不在门禁路径上——门禁照旧无参跑一遍。
+        if (args.Length >= 1 && args[0] == "--stress")
+        {
+            int parallel = StressDefaultParallel;
+            if (args.Length >= 2 && !int.TryParse(args[1], out parallel))
+            {
+                Console.WriteLine($"STRESS-ERROR --stress 的参数不是整数：{args[1]}");
+                return 1;
+            }
+            return RunStress(parallel < 2 ? 2 : parallel);
+        }
+
         Console.WriteLine($"CHECK-DISPLAY m7-abi {PetRuntimeAbi.InterfaceName} {PetRuntimeAbi.Version}");
 
         GazeFollowsCursor();
