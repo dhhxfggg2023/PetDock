@@ -292,6 +292,9 @@ internal static class PluginHostSelfTest
             HostBudgetProbe.RunMemoryProbe(root, memoryProbeId, Ledger);
         }
 
+        // ———— tier-2 超时语义（客体是本 exe 自己，不需要窗口，也不需要插件根）————
+        Tier2StateChecks.Run((name, ok, detail) => Ledger.Check(name, ok, detail));
+
         // 收尾：三种结局都从账本过（见 SkipLedger.cs）—— 末行 marker 带 skipped=N，
         // 「没人接的跳过」判红；--hosttest 的 marker 语义没变，仍是 HOST-OK / HOST-FAIL。
         Ledger.Report("hosttest", "HOST-OK", "HOST-FAIL");

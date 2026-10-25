@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 22965,
+  "budget": 23005,
   "history": [
     {
       "date": "2026-10-18",
@@ -1077,6 +1077,37 @@
           "slice": "RFC-37 装配接线：FromCatalog 传入 settingsStore",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "measured": 22965,
+      "budget": 23005,
+      "note": "两片：RFC-41 落地（命中阈值成具名常量、内容源申报通道接通）与 tier-2 超时语义修复（生产缺陷）。实测 22921 → 22965（+44），逐切片之和 = 44，等于相邻 measured 之差。抬到 23005（余量 40）的理由：tier-2 这一片不是还债也不是加功能，是把「一次 >8ms 的慢帧就永久杀死用户的宠物」修成「慢帧只是这一帧没有」，修完余量被吃成 0（22965/22965）——0 余量意味着下一个人的任何一行都会红在与他无关的地方，那会把 D-03a 从预算变成路障。判据 Tier2StateChecks.cs 与既有命中判据都在 test/ 下，按 D-03a 口径不计入本预算。",
+      "attribution": [
+        {
+          "slice": "RFC-41 命中阈值与申报通道：FrameTypes 具名常量 HitAlphaThreshold=16、PetFrameSource 声明并转发 IFrameHitSurface、SwappableFrameSource 转发「当前源是不是可命中面」",
+          "files": [
+            "packages/core/PetDock.Core/src/PetRuntime/FrameTypes.cs",
+            "packages/core/PetDock.Core/src/Host/PetFrameSource.cs",
+            "packages/core/PetDock.Core/src/Host/SwappableFrameSource.cs"
+          ],
+          "lines": 24
+        },
+        {
+          "slice": "tier-2 工装入口：--tier2-guest 分流（客体由本 exe 自己扮演，供 --hosttest 判据驱动）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 7
+        },
+        {
+          "slice": "tier-2 超时语义：HasExited 早退补 NoteCrash、连续 MaxConsecutiveTimeouts 才卸载、abi.frame/abi.tick/tick 改用 requestTimeout、TryRecover 只在真可用时 true（净额：压掉同文件注释散文抵冲新增守卫）",
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs",
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Session.cs",
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Wire.cs"
+          ],
+          "lines": 13
         }
       ]
     }

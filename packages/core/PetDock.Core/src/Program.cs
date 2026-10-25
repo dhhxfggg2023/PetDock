@@ -22,6 +22,13 @@ internal static partial class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // 自检的 tier-2 客体（test/SelfCheck/Tier2StateChecks.Guest.cs）：不建窗口，故在 DPI 之前分流。
+        int guestAt = Array.IndexOf(args, Tier2Guest.Flag);
+        if (guestAt >= 0)
+        {
+            return Tier2Guest.Run(guestAt + 1 < args.Length ? args[guestAt + 1] : string.Empty);
+        }
+
         // 开机第一件事，在任何窗口创建之前把进程钉成 Per-Monitor V2（docs/12 §3）。
         // 这是进程级设置，窗口一被创建就锁死，之后再设也无效——所以必须在 Main 最前面。
         if (!Win32.SetProcessDpiAwarenessContext(Win32.DpiPerMonitorAwareV2))

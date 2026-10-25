@@ -1,13 +1,7 @@
-// RFC-10 §2：Tier-2 进程外沙箱（docs/14 §1：独立进程 + stdio JSON-RPC + 会话 quota/timeout）。
-// 与 PluginSandbox 同形：new → Start → 任意次 Tick → Dispose。
-//
-// 范围：进程边界 + wire 契约。前者是 spawn、行分隔 JSON-RPC、每请求超时、崩溃检测、有序关闭
-// （RFC-10）；后者是帧/命中图/事件包/状态四个 ABI 接口的包形状与会话 quota（RFC-27，见
-// Tier2Wire.cs 与 Tier2Sandbox.Wire.cs）。
-//
-// 本文件只留边界的骨架（spawn / 往返 / 关闭）与 quota 记账；wire 方法在同族的 partial 里。
-//
-// P-05（docs/01 §5）：公共方法一律不外抛，失败只落成沙箱事件。
+// RFC-10 §2：Tier-2 进程外沙箱（docs/14 §1：独立进程 + stdio JSON-RPC + 会话 quota/等待上限）。
+// 范围 = 进程边界（spawn、行分隔 JSON-RPC、每请求等待上限、崩溃检测、有序关闭）；包形状与会话
+// quota 在 Tier2Wire.cs / Tier2Sandbox.Wire.cs，会话状态在 Tier2Sandbox.Session.cs。
+// 本文件只留边界骨架（spawn / 往返 / 关闭）与记账。P-05（docs/01 §5）：公共方法一律不外抛。
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -28,6 +22,9 @@ public sealed partial class Tier2Sandbox : IDisposable
     /// <summary>docs/14 §5 的会话 wire 字节预算默认值（RFC-27 §3.5）。</summary>
     public const long DefaultSessionBytes = 32L * 1024 * 1024;
 
+    /// <summary>连续多少次「等到上限也不回」才算卡死（docs/14 §5.1）：慢是慢，连续不回才是死。</summary>
+    public const int MaxConsecutiveTimeouts = 3;
+
     private readonly ISandboxEventSink _sink;
     private readonly string _command;
     private readonly string _arguments;
@@ -37,6 +34,7 @@ public sealed partial class Tier2Sandbox : IDisposable
     private readonly long _sessionByteBudget;
     private readonly int _maxFrameBytes;
     private readonly StringBuilder _stderrTail = new();
+    private int _consecutiveTimeouts;
 
     private Process? _process;
     private StreamWriter? _stdin;
@@ -147,8 +145,8 @@ public sealed partial class Tier2Sandbox : IDisposable
                 return false;
             }
 
-            // RFC-27 §3.1：握手之后立刻取一次 meta。拿不到 meta 的 tier-2 客体不该装载——
-            // 宿主连它要不要命中图都不知道，之后的每一帧都只能靠猜。
+            // RFC-27 §3.1：握手后立刻取一次 meta。拿不到 meta 的 tier-2 客体不该装载——
+            // 宿主连它要不要命中图都不知道，之后每一帧都只能靠猜。
             if (!NegotiateHello())
             {
                 StopProcess();
@@ -160,7 +158,9 @@ public sealed partial class Tier2Sandbox : IDisposable
                 ("tier2", "started"),
                 ("pid", process.Id),
                 ("rpc", HandshakeMethod),
-                ("hello", Hello?.Id ?? "<none>"));
+                ("hello", Hello?.Id ?? "<none>"),
+                // 渲染预算从这里起只是**宣告**（docs/14 §5.1）：读数是给帧泵与日志看的，不裁决等待。
+                ("frameBudgetMs", _frameBudgetMs));
             _session = Tier2SessionState.Running;
             _restartWindowStartMs = Environment.TickCount64;
             return true;
@@ -173,14 +173,21 @@ public sealed partial class Tier2Sandbox : IDisposable
         }
     }
 
-    // Tick 在 Tier2Sandbox.Session.cs（RFC-33）：它是「会话还活着吗、还要不要驱动」的一部分，
-    // 与 Pause/Resume/TryRecover 放在一起才不会出现两处各自判断进程状态。
+    // Tick 在 Tier2Sandbox.Session.cs（RFC-33）：它是「会话还活着吗、还要不要驱动」的一部分。
 
-    /// <summary>一次 JSON-RPC 往返：写一行 JSON，读一行 JSON，带超时。</summary>
+    /// <summary>一次 JSON-RPC 往返：写一行 JSON，读一行 JSON，带等待上限。</summary>
     public Tier2Reply Call(string method, JsonObject parameters, int? timeoutMs = null)
     {
         if (_stdin is null || _stdout is null || _process is null || _process.HasExited)
         {
+            // 「进程没了」的第四条路（write/eof/read 之外）：会话必须落地（RFC-33），
+            // 否则 Session 停在 Running 而 IsLoaded 已 false，TryRecover 以为没啥可救。
+            if (_session == Tier2SessionState.Running)
+            {
+                Crashes++;
+                NoteCrash("exit");
+            }
+
             return new Tier2Reply(false, null, "process-not-running");
         }
 
@@ -213,8 +220,8 @@ public sealed partial class Tier2Sandbox : IDisposable
             return new Tier2Reply(false, null, $"write-failed: {ex.GetType().Name}");
         }
 
-        // ReadLine 是阻塞的，所以异步读 + 有界等待；超时就杀掉 —— 不回应 tick 的子进程
-        // 不能留着继续占资源（docs/14 §5 的越限后果是卸载）。
+        // ReadLine 是阻塞的，所以异步读 + 有界等待。等到上限不回**不等于**进程死了（docs/14 §5.1）：
+        // 计一次超时、交回「这次没有」，让帧泵自己决定下一帧；连续 MaxConsecutiveTimeouts 次都不回才当卡死。
         try
         {
             Task<string?> pending = _stdout.ReadLineAsync();
@@ -222,9 +229,16 @@ public sealed partial class Tier2Sandbox : IDisposable
             {
                 Timeouts++;
                 Emit(SandboxEventKind.BudgetExceeded, ("stage", "rpc-timeout"), ("method", method), ("budgetMs", budget), ("stderr", Tail()));
-                StopProcess();
+                if (++_consecutiveTimeouts >= MaxConsecutiveTimeouts)
+                {
+                    StopProcess();
+                    NoteCrash("timeout-stuck");
+                }
+
                 return new Tier2Reply(false, null, $"timeout after {budget}ms");
             }
+
+            _consecutiveTimeouts = 0;
 
             string? line = pending.Result;
             if (line is null)
@@ -272,8 +286,7 @@ public sealed partial class Tier2Sandbox : IDisposable
             return new Tier2Reply(false, null, "reply-not-object");
         }
 
-        // id 必须回显：串行的请求/应答一旦错位，之后每一帧都读到上一帧的结果，
-        // 而症状（画面滞后一帧）远比根因难查。这里显式拒绝。
+        // id 必须回显：串行往返一旦错位，之后每一帧都读到上一帧的结果，而症状（画面滞后一帧）远比根因难查。
         string? id = obj["id"]?.GetValue<string>();
         if (!string.Equals(id, expectedId, StringComparison.Ordinal))
         {
