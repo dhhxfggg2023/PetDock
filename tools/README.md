@@ -25,22 +25,45 @@ pwsh 不支持 `&&`，串联命令用 `;`。
 | 层 | 内容 | 判绿的 marker |
 | --- | --- | --- |
 | `static` (L0) | 七道静态门逐条跑 | 各门自己的 PASS |
-| `build` (L1) | `dotnet build PetDock.sln -c Debug` | 只判退出码（dotnet 结论行随区域设置漂） |
+| `build` (L1) | `dotnet build PetDock.sln -c <Config>`（默认 Debug） | 只判退出码（dotnet 结论行随区域设置漂） |
 | `contract` (L2) | `--hosttest` / `--drivetest` / `--eventtest` / `--animtest idle walk hover` | HOST-OK / DRIVE-OK / EVENT-OK / ANIM-OK |
 | `window` (L3) | `--uitest --log <证据>/uitest.log` | UI-OK |
 | `perf` (L4) | `--perftest` / `--residenttest` | PERF-OK / RESIDENT-PERF-OK |
 | `m7` (L5) | `dotnet run --project tests/m7/PetDock.BongoCat.Tests -c Release` | M7-OK |
-| `dist` (L6) | release → pack → zip sha256 → portable-selftest | RELEASE-OK / PACK-OK / PORTABLE-OK |
+| `dist` (L6) | release → pack → portable-selftest → zip sha256（摘要**最后**算） | RELEASE-OK / PACK-OK / PORTABLE-OK |
 
 ```powershell
-node tools/verify.mjs --list                 # 只打印层表与每层的证明 / 不证明
+node tools/verify.mjs --list                 # 只打印层表与每层的证明 / 不证明（含 config=…）
 node tools/verify.mjs --only window          # 只跑一层
 node tools/verify.mjs --only static:depscan  # 只跑一层里的一步
 node tools/verify.mjs --keep-going           # 一层红也继续跑后面的层
+node tools/verify.mjs --allow-stale          # 跳过「dll 比源码旧」的拦截（调试用）
+node tools/verify.mjs --only contract --config release   # 同一批判据，跑 Release 那份 dll
 ```
+
+`--config debug|release`（默认 `debug`）一次换掉三件互相对齐的东西：`contract`/`window`/`perf` 层
+`dotnet exec` 的 dll 路径（`packages/core/PetDock.Core/bin/<Config>/net8.0-windows/PetDock.Core.dll`）、
+`build` 层的 `-c <Config>`、以及证据里记下的 `config` 字段（`verify.json` 的 `config`/`dll` 两行）。
+换配置**不换判据**：层、步 id 与 marker 一字不变，变的只有被验的那份字节。跑 release 前得先有
+Release 产物（`dotnet build PetDock.sln -c Release`，或先跑过 `dist` 层），否则 `dotnet exec`
+会因为找不到 dll 而红——那正是「Release 自检从没跑过」这个缺口被补上以后该有的样子。
 
 判绿看末行 `VERIFY-OK layers=n/7 steps=n evidence=artifacts/verify/<stamp>/`；失败是
 `VERIFY-FAIL layer=<名> step=<名> exit=<n> marker=missing`，并打印该步 `.out` 的末 20 行。
+一层以上同时红时末行多一个 `failures=<n>`，并且**逐条列出** `FAIL <层>/<步> exit=…`——
+证据目录 `README.md` 的「结论」行与终端末行由同一个函数生成，两处不会各说一个失败点。
+
+两条闸门语义，改门禁前先读：
+
+- **`stale-artifact`（默认拦）**：`contract`/`window`/`perf` 都要 `dotnet exec` 一份**已存在**的
+  dll，而 `--only contract` 不经过 `build` 层——于是它能对着上一次构建的二进制判绿
+  （2026-10-25 有三次单跑正是这么绿的）。现在跑之前先比 mtime：dll 旧于 `src/`+`test/` 下最新
+  的 `.cs` 就报 `VERIFY-FAIL layer=<层> step=stale-artifact`，并说明差了多少秒、该跑什么。
+  `--allow-stale` 是显式的「我知道我在判旧产物」。整层 `build` 不受此拦（它就是在修这个问题）。
+- **`--keep-going` 只跨层、不跨步**：同层里红步之后的步依赖前一步的产物（`release→pack`），
+  跳过它们只会制造更难读的二次失败，所以层内遇到第一个红就停。
+- `perf:residenttest` 有前置 `guard`：花名册 `artifacts/_probe/plugroot` 不存在时**直接判红**，
+  不再静默退回默认根——退回等于拿另一份装配去比同一份基线（2026-10-24 那次 ws 假红的形状）。
 证据目录里是每步的 `.out`/`.err`、`verify.json`，以及自动生成的 `README.md`（逐层「证明什么 /
 不证明什么」+ 本轮没跑的层 + 全局不证明项）。
 

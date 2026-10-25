@@ -105,9 +105,13 @@ function layersFor(config) {
   },
   {
     name: 'window',
-    title: 'L3 真实窗口：--uitest（149 条 CHECK，会闪桌面）',
+    // 条数会变（RFC-37 位置持久化后 149→153），标题里写死数字就一定会过期：这里不复述条数，
+    // 真实条数看 `--uitest` 自己的收尾行。
+    title: 'L3 真实窗口：--uitest（全量 CHECK，会闪桌面）',
     proves: '分层窗真的建起来、托盘与面板真的能操作、导入/设置/位置/命中图/单实例这些 UI 母体判据成立。',
-    notProven: '不证明「好不好看」「手感如何」：宠物在桌面上长什么样、点击穿透的手感、两只以上宠物的排布，都没有判据，只有人眼（docs/98 §3.2）。',
+    notProven: '不证明「好不好看」「手感如何」：宠物在桌面上长什么样、点击穿透的手感、两只以上宠物的排布，都没有判据，只有人眼（docs/98 §3.2）。这一层也**故意**不把 TEMP/TMP 指进证据目录（contract 层会指）：--uitest 有一条判据断言审计流水不落进仓库，把 TEMP 搬进仓库反而会让它红。',
+    // 这一层故意**不**把 TEMP/TMP 指进证据目录（contract 层会指）：`--uitest` 有一条判据专门
+    // 断言审计流水不落进仓库，把 TEMP 搬进仓库反而会让它红。别为了「对称」把这里统一掉。
     steps: [{ id: 'uitest', ...selftest(config, '--uitest', ['--log', 'REPLACED'], 'UI-OK') }],
   },
   {
@@ -120,7 +124,8 @@ function layersFor(config) {
       + '全等时发射，发射时才是硬门。',
     notProven: '读数只覆盖本机这一种硬件与窗口管理；前提（机器三段 / 空载水平+允许上浮 / fps 档 / 花名册 / '
       + '采样参数）不符时相对判据只诊断、不拦截，所以「本层没红」不等于「与基线一样快」——差值在 '
-      + '`*-relative-diagnostic` 行里，要人读；8 小时浸泡（--soak 28800）不在这里，且从未跑过（RFC-36 §7.2）。',
+      + '`*-relative-diagnostic` 行里，要人读；8 小时浸泡（--soak 28800）不在这里，且至今没有一次'
+      + '完整读数——2026-10-24 08:58 跑过一次，脚本自己死在 op_Subtraction 重载上（RFC-36 §7.2）。',
     steps: [
       { id: 'perftest', ...selftest(config, '--perftest', [], 'PERF-OK') },
       {
@@ -130,14 +135,13 @@ function layersFor(config) {
         // 裸跑 `--residenttest` 用的是默认 20s + packages/plugins 的 8 目录花名册，等于拿另一份
         // 装配去比这份基线——2026-10-24 首次全跑就是这样把 ws 判红（基线 19.64MB，裸跑 23.7→30.6MB）；
         // 同条件重跑后 ws 回到 19.5~19.8MB，证明红的机制是条件不可比，不是内存变胖。
-        // 花名册不存在时（另一台机器上 artifacts/ 是 gitignore 的）退回默认根，不硬造。
+        // 花名册不存在时**不退回默认根**（那正是上面那次假红的形状）：直接把这一步判红并说清缺什么。
         ...selftest(config, '--residenttest', ['--seconds', '10', '--warmup', '4000'], 'RESIDENT-PERF-OK'),
-        env: () => {
+        guard: () => {
           const roster = path.join(REPO_ROOT, 'artifacts', '_probe', 'plugroot');
-          return fs.existsSync(roster)
-            ? { ...process.env, PETDOCK_PLUGINS_ROOT: roster }
-            : process.env;
+          return fs.existsSync(roster) ? null : `花名册目录不存在：artifacts/_probe/plugroot（基线 tests/perf.resident.json 的采集条件就是它；缺了只能拿另一份装配比同一份基线）`;
         },
+        env: () => ({ ...process.env, PETDOCK_PLUGINS_ROOT: path.join(REPO_ROOT, 'artifacts', '_probe', 'plugroot') }),
       },
     ],
   },
@@ -158,14 +162,16 @@ function layersFor(config) {
   },
   {
     name: 'dist',
-    title: 'L6 真实发布物：release → pack → 摘要 → 解压后运行',
+    title: 'L6 真实发布物：release → pack → 解压后运行 → 摘要',
     proves: '发布目录能装配、能封成一个单顶层目录的 zip、清单与条目集对账、解压后 --hosttest 仍全过；zip 的 sha256 随产物落盘。',
     notProven: '不证明签名（本机无 signtool）、不证明自动更新（无规格）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。',
     steps: [
       { id: 'release', ...node('tools/release.mjs'), marker: 'RELEASE-OK', timeoutMs: 20 * 60 * 1000 },
       { id: 'pack', ...node('tools/pack.mjs'), marker: 'PACK-OK' },
-      { id: 'zip-sha256', kind: 'digest', marker: null },
+      // 顺序有语义：摘要必须描述**已经通过自检的那一个 zip**。先算摘要后跑自检的话，
+      // 一个自检失败的 zip 也会拿到 .sha256 旁车文件，下游会把它当作「已验证的产物」发布。
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
+      { id: 'zip-sha256', kind: 'digest', marker: null },
     ],
   },
   ];
@@ -188,12 +194,13 @@ function stamp() {
 }
 
 function parseArgs(argv) {
-  const opts = { layers: null, all: false, keepGoing: false, list: false, config: DEFAULT_CONFIG };
+  const opts = { layers: null, all: false, keepGoing: false, list: false, allowStale: false, config: DEFAULT_CONFIG };
   const wanted = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--all') opts.all = true;
     else if (arg === '--keep-going') opts.keepGoing = true;
+    else if (arg === '--allow-stale') opts.allowStale = true;
     else if (arg === '--list') opts.list = true;
     else if (arg === '--config') {
       const value = argv[i + 1];
@@ -263,6 +270,17 @@ function runStep(step, dir) {
     return { id: step.id, code: result.ok ? 0 : 1, marker: null, markerOk: true, durationMs: Date.now() - started, out, err };
   }
 
+  // guard 是「跑之前就得成立的前提」：不成立时**不要**退回某个默认值继续跑。
+  // H3 那次假红（基线 19.64MB vs 裸跑 23.7→30.6MB）就是静默退回默认花名册的形状。
+  if (step.guard) {
+    const reason = step.guard(dir);
+    if (reason) {
+      fs.writeFileSync(out, `CHECK verify-${step.id}-guard FAIL ${reason}\n`, 'utf8');
+      fs.writeFileSync(err, '', 'utf8');
+      return { id: step.id, code: 1, marker: step.marker, markerOk: false, durationMs: Date.now() - started, out, err };
+    }
+  }
+
   const fdOut = fs.openSync(out, 'w');
   const fdErr = fs.openSync(err, 'w');
   let result;
@@ -309,16 +327,80 @@ function printList(config) {
     console.log(`  ${layer.name.padEnd(9)} ${layer.title}`);
     console.log(`            步：${marks.join('  ')}`);
   }
+  console.log('--keep-going：某一层红了以后继续跑下一层。它只跨层、不跨步：同层里红步之后' +
+    '的步依赖前一步的产物（如 release→pack），跳过它们只会制造更难读的二次失败。');
+  console.log('--allow-stale：跳过「dll 比源码旧」的拦截。只给调试用——它让判据对着旧二进制判绿，' +
+    '正是 H1 那条假绿的形状；默认行为是拦下并报 VERIFY-FAIL stale-artifact。');
   console.log('NOT-PROVEN 段随层表生成，见每次运行的 artifacts/verify/<stamp>/README.md');
 }
 
-function writeEvidence(dir, runs, executed) {
+// H1：`--only contract` 这类单层跑不经过 build 层，于是可以对着**上一次构建**的 dll 判绿。
+// 2026-10-25 的 010446 / 012450 / 013154 三次单跑都是绿的、都没 build 过——它们证明的是旧二进制。
+// 判据只做一件事：dll 的 mtime 必须不旧于 core 源码树里最新的 .cs。这不是「跑得对不对」，
+// 是「判的到底是哪份产物」。
+function newestSourceMtime() {
+  const roots = [
+    path.join(REPO_ROOT, 'packages', 'core', 'PetDock.Core', 'src'),
+    path.join(REPO_ROOT, 'packages', 'core', 'PetDock.Core', 'test'),
+  ];
+  let newest = { mtime: 0, file: null };
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'bin' || entry.name === 'obj') continue;
+        walk(full);
+      } else if (entry.name.endsWith('.cs')) {
+        const mtime = fs.statSync(full).mtimeMs;
+        if (mtime > newest.mtime) newest = { mtime, file: full };
+      }
+    }
+  };
+  for (const root of roots) walk(root);
+  return newest;
+}
+
+function staleArtifact(config) {
+  const dll = coreDll(config);
+  if (!fs.existsSync(dll)) return `dll 不存在：${path.relative(REPO_ROOT, dll)}（先跑 --only build 或 --config 指定的构建）`;
+  const dllMtime = fs.statSync(dll).mtimeMs;
+  const newest = newestSourceMtime();
+  if (!newest.file) return null;
+  if (newest.mtime <= dllMtime) return null;
+  const lagS = ((newest.mtime - dllMtime) / 1000).toFixed(1);
+  return `dll 比源码旧 ${lagS}s：dll=${path.relative(REPO_ROOT, dll)} 最新源=${path.relative(REPO_ROOT, newest.file)}`
+    + '（这一层会对着旧二进制判绿；先跑 --only build，或加 --allow-stale 明确表示你要判旧产物）';
+}
+
+// 末行与证据 README 必须同源：H2 那次同一次 --keep-going 全跑，README 报 perf/perftest、
+// 终端报 m7/m7，因为两处各自在自己的循环里取了「第一个」和「最后一次」。
+function summaryLine(failures) {
+  if (failures.length === 0) return 'VERIFY-OK';
+  const first = failures[0];
+  const marker = first.marker ? (first.markerOk ? 'ok' : 'missing') : 'exit-only';
+  const base = `VERIFY-FAIL layer=${first.layer} step=${first.id} exit=${first.code} marker=${marker}`;
+  return failures.length === 1 ? base : `${base} failures=${failures.length}`;
+}
+
+// 判据只做一件事：dll 必须不旧于源码。哪些层需要 dll 由它们自己声明 needsArtifact。
+function needsArtifact(layer) {
+  return layer.steps.some((step) => step.cmd === 'dotnet');
+}
+
+function writeEvidence(dir, runs, executed, failures) {
   const lines = [];
   lines.push(`# 验证证据 ${path.basename(dir)}`, '');
   lines.push(`命令：\`node tools/verify.mjs ${executed.label}\` on ${new Date().toISOString()}`, '');
   lines.push(`配置：\`${executed.config}\`（dll = \`${coreDll(executed.config)}\`）`, '');
-  const failed = runs.filter((run) => run.code !== 0 || !run.markerOk);
-  lines.push(`结论：${failed.length === 0 ? 'VERIFY-OK' : `VERIFY-FAIL ${failed[0].layer}/${failed[0].id}`}`, '');
+  const failed = failures;
+  lines.push(`结论：\`${summaryLine(failures)}\``, '');
+  if (failures.length > 1) lines.push(`共 ${failures.length} 处失败（--keep-going 每层在第一个红步处停）`, '');
   lines.push('| 层 | 步 | exit | marker | 耗时 | 证据 |', '|---|---|---|---|---|---|');
   for (const run of runs) {
     const marker = run.marker ? `${run.markerOk ? 'ok' : 'MISSING'} (${run.marker})` : 'exit-only';
@@ -381,9 +463,28 @@ function main() {
       + (CONFIG === DEFAULT_CONFIG ? '' : ` --config ${CONFIG}`),
   };
   const runs = [];
-  let failedLayer = null;
+  const failures = [];
+  let stoppedEarly = false;
 
-  for (const layer of layers) {
+  // H1：跑之前先问「我要判的是哪份产物」。只拦需要 dll 的层；build 层本身就是在修这个问题。
+  const artifactLayers = layers.filter((layer) => layer.name !== 'build' && needsArtifact(layer));
+  if (artifactLayers.length > 0 && !opts.allowStale) {
+    const reason = staleArtifact(CONFIG);
+    if (reason) {
+      const id = 'stale-artifact';
+      const out = path.join(dir, `${id}.out`);
+      fs.writeFileSync(out, `CHECK verify-${id} FAIL ${reason}\n`, 'utf8');
+      fs.writeFileSync(path.join(dir, `${id}.err`), '', 'utf8');
+      const run = { id, layer: artifactLayers[0].name, code: 1, marker: null, markerOk: true, durationMs: 0, out, err: path.join(dir, `${id}.err`) };
+      runs.push(run);
+      failures.push(run);
+      console.log(`  RUN  ${id} ... FAIL exit=1 marker=exit-only 0.0s`);
+      console.log(`  --- stale-artifact.out ---\n${reason}`);
+      stoppedEarly = true;
+    }
+  }
+
+  for (const layer of stoppedEarly ? [] : layers) {
     console.log(`== ${layer.name} — ${layer.title}`);
     for (const step of layer.steps) {
       process.stdout.write(`  RUN  ${step.id} ... `);
@@ -397,20 +498,28 @@ function main() {
         const errTail = tail(run.err);
         if (outTail) console.log(`  --- ${path.basename(run.out)} 末 20 行 ---\n${outTail}`);
         if (errTail) console.log(`  --- ${path.basename(run.err)} 末 20 行 ---\n${errTail}`);
-        failedLayer = { layer: layer.name, step: step.id, run };
+        failures.push(run);
         break;
       }
     }
-    if (failedLayer && !opts.keepGoing) break;
+    if (failures.length > 0 && !opts.keepGoing) {
+      stoppedEarly = true;
+      break;
+    }
   }
 
-  writeEvidence(dir, runs, executed);
+  writeEvidence(dir, runs, executed, failures);
   const evidenceRel = path.relative(REPO_ROOT, dir).split(path.sep).join('/');
 
-  if (failedLayer) {
-    const { run } = failedLayer;
-    console.log(`NOT PROVEN：本层之后的层没有跑；证据在 ${evidenceRel}`);
-    console.log(`VERIFY-FAIL layer=${failedLayer.layer} step=${failedLayer.step} exit=${run.code} marker=${run.marker ? (run.markerOk ? 'ok' : 'missing') : 'exit-only'}`);
+  if (failures.length > 0) {
+    if (stoppedEarly) console.log(`NOT PROVEN：后面的层没有跑；证据在 ${evidenceRel}`);
+    if (failures.length > 1) {
+      for (const failure of failures) {
+        const marker = failure.marker ? (failure.markerOk ? 'ok' : 'missing') : 'exit-only';
+        console.log(`  FAIL ${failure.layer}/${failure.id} exit=${failure.code} marker=${marker}`);
+      }
+    }
+    console.log(summaryLine(failures));
     process.exit(1);
   }
 
