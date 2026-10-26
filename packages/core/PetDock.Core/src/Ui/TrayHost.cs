@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using PetDock.Core.Compositor;
 
 namespace PetDock.Core.Ui;
 
@@ -42,6 +43,7 @@ internal sealed class TrayHost : IDisposable
     private readonly ContextMenuStrip _menu;
     private readonly ToolStripMenuItem _pauseHooks;
     private readonly List<ToolStripMenuItem> _petItems = new();
+    private bool _registered;
     private bool _disposed;
 
     /// <summary>
@@ -103,9 +105,32 @@ internal sealed class TrayHost : IDisposable
             Icon = LoadIcon(),
             Text = I18n.Get("ui.tray.title.running", pets.Count),
             ContextMenuStrip = _menu,
-            Visible = true,
         };
         _icon.DoubleClick += (_, _) => openPanel();
+    }
+
+    /// <summary>
+    /// 把图标真正注册进外壳。**首次滴答才调用**（RFC-14 §2.2 的同一条理由）：
+    /// 构造期没有消息泵，而 `Shell_NotifyIcon(NIM_ADD)` 要等本进程回一次消息才算成功——
+    /// 装载一忙（内容插件在装、帧泵在跑），这个握手就超时，图标静默地不进托盘，
+    /// 用户看到的是「托盘里根本没有东西」（2026-10-26 实测：构造期注册时外壳无图标，
+    /// 同样的字节在别处延迟注册就正常）。返回是否**在这次**调用里改变了注册状态。
+    /// </summary>
+    public void Register()
+    {
+        if (_registered)
+        {
+            return;
+        }
+
+        _registered = true;
+        _icon.Visible = true;
+
+        // Shell_NotifyIcon 失败是静默的（NotifyIcon 既不抛也不报），这一行是唯一的现场记录：
+        // 图标句柄为 0 或文本为空，外壳都会拒绝这一条，而 visible=True 只是宿主侧的意愿。
+        KernelLog.Write(
+            $"tray-icon icon={(_icon.Icon?.Handle ?? IntPtr.Zero).ToInt64()} " +
+            $"visible={_icon.Visible} text-chars={(_icon.Text ?? string.Empty).Length}");
     }
 
     /// <summary>

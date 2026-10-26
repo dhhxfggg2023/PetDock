@@ -230,6 +230,10 @@ internal sealed partial class UiHost : ApplicationContext
             _petShown = true;
             _loop.Start();
 
+            // 托盘图标与宠物窗同一条理由（RFC-14 §2.2）：构造期没有消息泵，而外壳的 NIM_ADD
+            // 握手要等本进程回消息——装载一忙就超时，图标静默地不进托盘（2026-10-26 实测）。
+            _tray.Register();
+
             // 窗口刚显示出来：把保存的位置摆回去（RFC-22 §3.3）。放在 Show 之后、第一帧之前，
             // 窗口就不会在屏幕上先闪一下右下角再跳走。
             TryRestorePosition();
