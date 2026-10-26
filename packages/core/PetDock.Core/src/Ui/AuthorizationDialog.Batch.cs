@@ -140,4 +140,94 @@ internal sealed partial class AuthorizationDialog
             row.Group = _list.Groups[requestIndex];
         }
     }
+
+    /// <summary>为第 <paramref name="requestIndex"/> 份请求铺行（构造期与晚到请求共用同一条路径）。
+    /// 勾选真值自己存一份：句柄建好前读原生 <c>Checked</c> 会抛（先例：D-03 那次 ListView 事故）。</summary>
+    private void BuildRows(int requestIndex)
+    {
+        foreach (ConsentItem entry in _requests[requestIndex].Items)
+        {
+            var item = new ListViewItem(RowText(entry))
+            {
+                // Tag 存行下标：事后事件的参数只有 Item（没有 Index），靠它把原生行对回清单。
+                Tag = _ids.Count,
+                ForeColor = entry.Denied ? SystemColors.GrayText : SystemColors.ControlText,
+            };
+            _list.Items.Add(item);
+            AttachGroup(item, requestIndex);
+
+            _ids.Add(entry.CapabilityId);
+            _owner.Add(requestIndex);
+            if (entry.Denied)
+            {
+                _deniedIds.Add(entry.CapabilityId);
+                _checked.Add(false);
+            }
+            else
+            {
+                // 默认全勾（docs/18 §3：只有被拒绝的项才默认不勾）。
+                _checked.Add(true);
+                item.Checked = true;
+            }
+        }
+    }
+
+    /// <summary>分段头对齐请求数：晚到的请求让「单请求」变成「批」，这时才补分组头，
+    /// 并把已有的行按 <see cref="_owner"/> 重新挂回各自的分段。</summary>
+    private void SyncGroups()
+    {
+        _list.ShowGroups = Batch;
+        if (!Batch)
+        {
+            return;
+        }
+
+        if (_list.Groups.Count == _requests.Count)
+        {
+            return;
+        }
+
+        _list.Groups.Clear();
+        CreateGroups();
+        for (int i = 0; i < _list.Items.Count && i < _owner.Count; i++)
+        {
+            _list.Items[i].Group = _list.Groups[_owner[i]];
+        }
+    }
+
+    /// <summary>晚到的请求并进**已经打开**的窗（2026-10-26 真机：三只插件在 0.4–0.6 秒内先后申请，
+    /// 开窗瞬间的队里只有一份 → 原来会连弹三个窗）。UI 线程专用：由端口在模态循环里投递调用。</summary>
+    internal void AddRequest(ConsentRequest request)
+    {
+        if (_building)
+        {
+            return; // 建窗中不可能有外来的 UI 回调
+        }
+
+        int index = _requests.Count;
+        _requests.Add(request);
+
+        _building = true;
+        try
+        {
+            SyncGroups();
+            if (_list.Items.Count == 1 && _list.Items[0].Tag is null)
+            {
+                // 空清单占位行（「没有需要授权的项」）：有真行了就撤掉。
+                _list.Items.Clear();
+                _list.CheckBoxes = true;
+            }
+
+            BuildRows(index);
+
+            _header.Text = HeaderFor();
+            _intro.Text = I18n.Get(Batch ? "ui.auth.intro.batch" : "ui.auth.intro");
+            _once.Enabled = _requests.All(r => r.Tier < 2);
+            _once.Text = _requests.Any(r => r.Tier >= 2) ? I18n.Get("ui.auth.once.tier2") : I18n.Get("ui.auth.once");
+        }
+        finally
+        {
+            _building = false;
+        }
+    }
 }

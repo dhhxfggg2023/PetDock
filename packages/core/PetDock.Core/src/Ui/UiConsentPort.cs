@@ -29,6 +29,12 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
     /// 这个守卫就是用来挡掉那一次触发（否则同一次询问会被弹两遍）。</summary>
     private volatile bool _showing;
 
+    /// <summary>已经打开的那个授权窗（UI 线程写；模态期间后来的请求并进它）。</summary>
+    private AuthorizationDialog? _dialog;
+
+    /// <summary>当前窗里承载的请求（顺序 = 弹窗里的请求顺序；模态期间会增长）。</summary>
+    private List<Pending> _open = new();
+
     /// <summary>问一次授权。UI 线程上直接弹窗；别的线程上排队并阻塞到有人回答。</summary>
     public ConsentAnswer? Ask(ConsentRequest request)
     {
@@ -62,14 +68,18 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
         return pending.Answer;
     }
 
-    /// <summary>弹出队首的待答询问。<b>必须在 UI 线程调用。</b>
+    /// <summary>弹出待答询问。<b>必须在 UI 线程调用。</b>
     /// 2026-10-26 真机故障（三只插件同时要授权 → 连弹三个窗）：这里一次取走**全部**待答请求，
-    /// 只开一个窗、按插件分段；答案按每份请求各自的勾选集分别落账。</summary>
+    /// 只开一个窗、按插件分段；答案按每份请求各自的勾选集分别落账。
+    /// 真机第二幕（同日 16:56）：三只插件是隔 0.4–0.6 秒**先后**申请——开窗那一刻队里只有一份，
+    /// 另两份在模态循环里才到，于是仍连弹三个。既然模态期间计时器仍在触发（约束③），
+    /// 就让后来的请求并进**已经打开**的窗：一份答案，各插件一段。</summary>
     public void Pump()
     {
         if (_showing)
         {
-            return; // 已经有一个弹窗在模态循环里：不能再弹第二个
+            AbsorbPending(); // 窗还开着：新来的请求并进去，不另开窗
+            return;
         }
 
         List<Pending> batch = TakeAllPending();
@@ -78,23 +88,25 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
             return;
         }
 
+        _open = batch;
         _showing = true;
+        var requests = new ConsentRequest[batch.Count];
+        for (int i = 0; i < batch.Count; i++)
+        {
+            requests[i] = batch[i].Request;
+        }
+
+        var dialog = new AuthorizationDialog(requests);
         try
         {
-            var requests = new ConsentRequest[batch.Count];
-            for (int i = 0; i < batch.Count; i++)
-            {
-                requests[i] = batch[i].Request;
-            }
-
-            using var dialog = new AuthorizationDialog(requests);
+            _dialog = dialog; // 让模态期间的 AbsorbPending 找得到它
             dialog.ShowDialog();
 
             // 关窗（「取消」与右上角 ×）= 没有回答 = 按拒绝处理：默认拒绝比默认允许安全
             // （授权弹窗自己的规则也是「取消按拒绝处理」）。
             if (dialog.DialogResult != DialogResult.OK)
             {
-                foreach (Pending pending in batch)
+                foreach (Pending pending in _open)
                 {
                     pending.Complete(ConsentAnswer.Reject);
                 }
@@ -102,23 +114,44 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
                 return;
             }
 
-            for (int i = 0; i < batch.Count; i++)
+            // _open 可能比 batch 长（模态期间并进来的那些），下标与弹窗里的请求一一对应。
+            for (int i = 0; i < _open.Count; i++)
             {
-                batch[i].Complete(MapAnswer(dialog.Answer, dialog.SelectedIdsFor(i)));
+                _open[i].Complete(MapAnswer(dialog.Answer, dialog.SelectedIdsFor(i)));
             }
         }
         catch (Exception ex)
         {
             // 弹窗自己炸了也不能让等待方永远挂着：没有回答 = 按拒绝处理。
             KernelLog.Write($"consent-dialog-failed {ex.GetType().Name}: {ex.Message}");
-            foreach (Pending pending in batch)
+            foreach (Pending pending in _open)
             {
                 pending.Complete(null);
             }
         }
         finally
         {
+            _dialog = null;
+            _open = new List<Pending>();
             _showing = false;
+            dialog.Dispose();
+        }
+    }
+
+    /// <summary>把模态循环期间新到的请求并进已打开的窗（UI 线程；没有窗时什么都不做）。</summary>
+    private void AbsorbPending()
+    {
+        AuthorizationDialog? dialog = _dialog;
+        if (dialog is null)
+        {
+            return;
+        }
+
+        List<Pending> late = TakeAllPending();
+        for (int i = 0; i < late.Count; i++)
+        {
+            _open.Add(late[i]);
+            dialog.AddRequest(late[i].Request);
         }
     }
 

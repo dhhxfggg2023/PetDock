@@ -52,6 +52,10 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
     /// <summary>构造期：初始勾选状态只是标志位，别让事件处理器插手。</summary>
     private bool _building;
 
+    /// <summary>说明行。晚到的请求会把它从「单插件」换成「N 个插件同时请求」，
+    /// 所以它是字段而不是构造期局部变量。</summary>
+    private readonly Label _intro;
+
     /// <summary>旧入口：只有能力 ID 列表（没有既往状态）。</summary>
     public AuthorizationDialog(string pluginName, string source, int tier, IReadOnlyList<string> capabilities)
         : this(pluginName, source, tier, PlainItems(capabilities), isReview: false)
@@ -91,7 +95,7 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
             Padding = new Padding(12, 8, 12, 0),
         };
 
-        var intro = new Label
+        _intro = new Label
         {
             Text = I18n.Get(Batch ? "ui.auth.intro.batch" : "ui.auth.intro"),
             AutoSize = false,
@@ -121,33 +125,9 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         _building = true;
         for (int r = 0; r < _requests.Count; r++)
         {
-            foreach (ConsentItem entry in _requests[r].Items)
-            {
-                var item = new ListViewItem(RowText(entry))
-                {
-                    // Tag 存行下标：事后事件的参数只有 Item（没有 Index），靠它把原生行对回清单。
-                    Tag = _ids.Count,
-                    ForeColor = entry.Denied ? SystemColors.GrayText : SystemColors.ControlText,
-                };
-                _list.Items.Add(item);
-                AttachGroup(item, r);
-
-                _ids.Add(entry.CapabilityId);
-                _owner.Add(r);
-                if (entry.Denied)
-                {
-                    _deniedIds.Add(entry.CapabilityId);
-                    _checked.Add(false);
-                }
-                else
-                {
-                    // 默认全勾（docs/18 §3：只有被拒绝的项才默认不勾）。
-                    // 句柄还没建时设勾选状态是安全的，而且会一直带到原生控件上。
-                    _checked.Add(true);
-                    item.Checked = true;
-                }
-            }
+            BuildRows(r);
         }
+
         _building = false;
 
         if (_list.Items.Count == 0)
@@ -206,7 +186,7 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         Controls.Add(footer);
         Controls.Add(choices);
         Controls.Add(buttons);
-        Controls.Add(intro);
+        Controls.Add(_intro);
         Controls.Add(_header);
         AcceptButton = _ok;
         CancelButton = cancel;

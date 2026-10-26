@@ -80,6 +80,30 @@ internal static class ConsentBatchChecks
             single.RequestCount == 1 && !single.GroupsVisible
             && single.SelectedIds.Count == 1 && single.OnceEnabled,
             $"requests={single.RequestCount} groups={single.GroupsVisible} header={single.HeaderText}");
+
+        // 晚到的请求并进**已经打开**的窗（真机 2026-10-26 16:56：三只插件隔 0.4–0.6 秒先后申请，
+        // 开窗那一刻队里只有一份 → 原来会连弹三个窗）。并进来之后：变成批、补分段头、
+        // 老行归属与勾选状态都不动，新行挂到新段；Tier 2 晚到则「仅本次」要跟着置灰。
+        using var late = new AuthorizationDialog(new[] { alpha });
+        bool uncheckFirst = late.SetItemChecked("input.mousePosition", false);
+        late.AddRequest(beta);
+        bool grown = late.RequestCount == 2
+            && late.GroupsVisible
+            && late.GroupHeaders.Count == 2
+            && late.ItemIds.Count == 3
+            && late.ItemIdsFor(1).Count == 1
+            && !late.OnceEnabled
+            && late.HeaderText.Contains('2');
+        check("ui-auth-batch-late-arrival", uncheckFirst && grown,
+            $"requests={late.RequestCount} groups={late.GroupsVisible}/{late.GroupHeaders.Count} "
+            + $"items={string.Join(",", late.ItemIds)} once={late.OnceEnabled} header={late.HeaderText}");
+
+        // 老段里用户已经取消的勾，不因为新段进来而被复位（否则「一次回答」会悄悄改掉用户的决定）。
+        bool kept = late.SelectedIdsFor(0).Count == 0
+            && late.SelectedIdsFor(1).Count == 1
+            && late.SelectedIdsFor(1).Contains("ipc.tier2:shim");
+        check("ui-auth-batch-late-arrival-keeps-selection", kept,
+            $"a={string.Join(",", late.SelectedIdsFor(0))} b={string.Join(",", late.SelectedIdsFor(1))}");
         return 0;
     }
 }
