@@ -262,6 +262,7 @@ internal sealed partial class UiHost
             {
                 host.Disable(handle).GetAwaiter().GetResult();
                 KernelLog.Write($"plugin-disabled plugin={pluginId}");
+                PersistPluginDisabled(pluginId, disabled: true);
                 return;
             }
 
@@ -269,6 +270,7 @@ internal sealed partial class UiHost
             {
                 handle.Resume();
                 KernelLog.Write($"plugin-enabled plugin={pluginId}");
+                PersistPluginDisabled(pluginId, disabled: false);
                 return;
             }
 
@@ -277,6 +279,51 @@ internal sealed partial class UiHost
         catch (Exception ex)
         {
             KernelLog.Write($"toggle-failed plugin={pluginId} {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 把「用户关掉了这只插件」落盘（2026-10-26 用户要求「插件可以选择关闭，重启生效」）。
+    /// 运行时那半由 <see cref="PluginHost.Disable"/> 负责，这里管的是**下一轮**：
+    /// 落进 settings.json 的 pluginsDisabled，Program 起装载之前读它、直接跳过这些 id。
+    /// 没有设置存储（自检形态）就只留一行日志 —— 不假装记住了。
+    /// </summary>
+    private void PersistPluginDisabled(string pluginId, bool disabled)
+    {
+        UserSettingsStore? store = _settings;
+        if (store is null)
+        {
+            KernelLog.Write($"plugin-toggle-not-persisted plugin={pluginId} reason=no-settings");
+            return;
+        }
+
+        try
+        {
+            UserSettings current = store.Load();
+            var ids = current.DisabledPlugins is null
+                ? new List<string>()
+                : new List<string>(current.DisabledPlugins);
+            bool present = ids.Exists(id => string.Equals(id, pluginId, StringComparison.Ordinal));
+            if (present == disabled)
+            {
+                return; // 已经是这个状态：不白写一次盘
+            }
+
+            if (disabled)
+            {
+                ids.Add(pluginId);
+            }
+            else
+            {
+                ids.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
+            }
+
+            store.Save(current with { DisabledPlugins = ids });
+            KernelLog.Write($"plugin-disabled-persisted plugin={pluginId} disabled={(disabled ? 1 : 0)} count={ids.Count}");
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"plugin-toggle-persist-failed plugin={pluginId} {error.GetType().Name}: {error.Message}");
         }
     }
 

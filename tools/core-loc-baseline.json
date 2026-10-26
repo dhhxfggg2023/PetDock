@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 23720,
+  "budget": 24030,
   "history": [
     {
       "date": "2026-10-18",
@@ -1448,6 +1448,54 @@
             "packages/core/PetDock.Core/src/Ui/UiConsentPort.cs"
           ],
           "lines": 53
+        }
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "measured": 23979,
+      "budget": 24030,
+      "note": "2026-10-26 真机第三幕用户要求（m01899 / m01928 逐字：「要不要我加右键宠物直接弹菜单，你觉得呢，当然要啊」/「还有就是插件可以选择关闭，重启生效」）：右键宠物弹菜单；插件可关、重启生效。实测 23666 → 23939（+273）。归属三片：（1）右键菜单链——宠物窗收到 WM_RBUTTONUP/NCHITTEST 命中后弹上下文菜单并派遣回核心（LayeredFrameWindow.Messages.cs +45、LayeredFrameWindow.cs +9、LayeredWindowApi.cs +3、PetWindowSet.cs +35、UiHost.Panel.cs +48）；（2）插件开关——settings.json 多一个 pluginsDisabled 表、面板每个插件一个复选框与一行说明、装载时跳过被禁的清单 id（UserSettings.cs +3、UserSettingsStore.cs +38、PluginHost.cs +27、Program.cs +10、ControlPanel.Plugins.cs +17）；（3）宿主与托盘接线（UiHost.cs +14、UiHost.Tray.cs +20、TrayHost.cs +17）。文件级之和 286 而整包 measured 差 273，13 行差按整包裁定并进第一片（判据 ui-pet-context-menu*、ui-plugins-disabled*、ui-plugins-hint-present、ui-plugins-disabled-known 都在 test/ 下，按 D-03a 口径不计）。抬到 23990（余量 51）：ControlPanel.Plugins.cs 324、PetWindowSet.cs 408（已超 400，见下）、PluginHost.cs 423（已超 400）——下一轮动这三处必须先拆文件。 同日补记：D-03c 拆分（本轮新增的三处代码把三个文件顶过 400 行）——PluginHost.cs 423 → 299（封送四件套搬到 PluginHost.Scheduler.cs 135 行）、PetWindowSet.cs 408 → 376（右键接线搬到 PetWindowSet.ContextMenu.cs 44 行）、LayeredWindowApi.cs 401 → 349（诊断探针搬到 LayeredWindowApi.Diagnostics.cs 63 行，Win32 因此改 partial）。拆分本身不动语义，但三个新文件的文件头/using/类声明是净增，实测 23939 → 23979（+40），故把本片的 measured 改成 23979、预算抬到 24030（余量 51）。归属第四片记的就是这 40 行：三片功能归属 127+95+51=273 加拆分净增 40，等于相邻 measured 之差 313。",
+      "attribution": [
+        {
+          "slice": "右键宠物弹菜单：宠物窗命中与菜单弹出（消息钩子、命中测试、菜单宿主、宠物窗集合）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredWindowApi.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 127
+        },
+        {
+          "slice": "插件开关：pluginsDisabled 持久化 + 面板复选框与说明 + 装载时跳过被禁清单",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.cs",
+            "packages/core/PetDock.Core/src/Program.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs"
+          ],
+          "lines": 95
+        },
+        {
+          "slice": "宿主与托盘接线：菜单/开关事件接到 UiHost 与托盘",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
+          ],
+          "lines": 51
+        },
+        {
+          "slice": "D-03c 文件拆分净增：三个 partial 新文件的文件头、using、类声明与 partial 关键字（被搬走的 211 行在两处之间对冲）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Scheduler.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.ContextMenu.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredWindowApi.Diagnostics.cs"
+          ],
+          "lines": 40
         }
       ]
     }

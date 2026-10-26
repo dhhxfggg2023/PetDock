@@ -151,7 +151,27 @@ internal sealed class UserSettingsStore
                 KernelLog.Write($"settings-field-unreadable field=petPositions reason=not-an-object type={notObject.GetType().Name}");
             }
 
-            return new UserSettings(period, language, onboarding, petPosition, petPositions).Clamped();
+            // 用户关掉的插件 id（2026-10-26 用户要求「插件可以选择关闭，重启生效」）。
+            // 只收字符串；坏条目单独跳过 —— 宁可下一轮多装一只，不要因为一条脏数据启动失败。
+            List<string>? disabledPlugins = null;
+            if (obj["pluginsDisabled"] is JsonArray disabled)
+            {
+                disabledPlugins = new List<string>(disabled.Count);
+                foreach (JsonNode? entry in disabled)
+                {
+                    string? id = entry is JsonValue value && value.TryGetValue(out string? text) ? text : null;
+                    if (!string.IsNullOrWhiteSpace(id) && !disabledPlugins.Contains(id, StringComparer.Ordinal))
+                    {
+                        disabledPlugins.Add(id);
+                    }
+                }
+            }
+            else if (obj["pluginsDisabled"] is JsonNode notArray)
+            {
+                KernelLog.Write($"settings-field-unreadable field=pluginsDisabled reason=not-an-array type={notArray.GetType().Name}");
+            }
+
+            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins).Clamped();
         }
         catch (Exception error)
         {
@@ -212,6 +232,23 @@ internal sealed class UserSettingsStore
             }
 
             doc["petPositions"] = positionDoc;
+        }
+
+        // 用户关掉的插件（同上：空表 / null 就不写这个键）。排序后写，字节序稳定。
+        if (value.DisabledPlugins is { Count: > 0 } disabledPlugins)
+        {
+            var ids = new List<string>(disabledPlugins);
+            ids.Sort(StringComparer.Ordinal);
+            var disabledDoc = new JsonArray();
+            foreach (string id in ids)
+            {
+                // 用 JsonValue.Create 而不是 disabledDoc.Add(id)：泛型 Add<T> 会把字符串包成
+                // JsonValueCustomized<string>，写出时要求 JsonSerializerOptions 带 TypeInfoResolver，
+                // 否则运行期抛 InvalidOperationException（与 DiagnosticSections.ToJsonArray 同一个坑）。
+                disabledDoc.Add(JsonValue.Create(id)!);
+            }
+
+            doc["pluginsDisabled"] = disabledDoc;
         }
 
         string? dir = System.IO.Path.GetDirectoryName(_path);

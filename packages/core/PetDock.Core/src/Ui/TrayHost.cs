@@ -149,6 +149,22 @@ internal sealed class TrayHost : IDisposable
         _icon?.SetTextSafe(I18n.Get("ui.tray.title.running", pets.Count));
     }
 
+    /// <summary>
+    /// 在屏幕坐标处弹出同一份菜单（2026-10-26 用户要求「右键宠物弹菜单」）。
+    /// 复用托盘那一份而不是另建一套：菜单是「用户的一次点击 → 内核的一次动作」的映射，
+    /// 两套菜单迟早会漂移成两套语义。宠物窗的右键与托盘图标因此是同一个入口。
+    /// 只在 UI 线程上调用（ContextMenuStrip.Show 要求）：生产路径是 WndProc/托盘回调，天然是 UI 线程。
+    /// </summary>
+    public void ShowMenuAt(Point screen)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _menu.Show(screen);
+    }
+
     /// <summary>第 <paramref name="index"/> 条宠物子菜单的四个子项文案（自检用；顺序即显示顺序）。</summary>
     public IReadOnlyList<string> PetChildTitles(int index)
     {

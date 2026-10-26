@@ -52,18 +52,37 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
         string pluginsRoot,
         int tickIntervalMs = ResidentTickMs,
         bool autoLoad = true,
-        ICapabilityConsentPort? consent = null)
+        ICapabilityConsentPort? consent = null,
+        IReadOnlyCollection<string>? disabledPlugins = null)
     {
         _pluginsRoot = pluginsRoot ?? string.Empty;
         _tickIntervalMs = Math.Max(10, tickIntervalMs);
         _autoLoad = autoLoad;
         _consent = consent;
+        if (disabledPlugins is not null)
+        {
+            foreach (string id in disabledPlugins)
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                {
+                    _skipIds.Add(id);
+                }
+            }
+        }
         _thread = new Thread(Loop)
         {
             Name = "petdock-plugin-host",
             IsBackground = true,
         };
     }
+
+    /// <summary>设置里被关掉的插件 id（用户 2026-10-26 要求「插件可以选择关闭，重启生效」）。
+    /// 装载期直接跳过：不实例化、不弹授权、不占调度。注销在下一进程生效，所以要重启。</summary>
+    private readonly HashSet<string> _skipIds = new(StringComparer.Ordinal);
+
+    /// <summary>该 id 是否已被用户关掉（面板把「关掉」与「运行时禁用」区分开，判据也读它）。</summary>
+    public bool IsDisabledByUser(string pluginId) => _skipIds.Contains(pluginId);
+
 
     /// <summary>自检用确定性驱动：true 时调度循环不再自行 tick / 应用重载，
     /// 每个切片由 TickNow() 显式同步触发 —— 预算判据（连续故障计数）需要逐片可读的驱动。
@@ -133,6 +152,13 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
                 continue;
             }
             PluginManifest manifest = result.Ok!;
+            if (_skipIds.Contains(manifest.Id))
+            {
+                // 用户在上一轮把它关掉了：这次进程不装载它（重启生效这件事就落在这里）。
+                KernelLog.Write($"plugin-skipped-disabled plugin={manifest.Id}");
+                continue;
+            }
+
             try
             {
                 LoadCore(manifest, CancellationToken.None);
@@ -269,129 +295,4 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
         KernelLog.Write($"lifecycle {name} plugin={pluginId}");
     }
 
-    /// <summary>入队一条调度线程命令（fire-and-forget；停机中静默丢弃）。</summary>
-    private void PostCommand(HostCommand work)
-    {
-        try
-        {
-            _commands.Add(work);
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-        catch (InvalidOperationException)
-        {
-            // CompleteAdding 之后：宿主正在停机
-        }
-    }
-
-    /// <summary>同步封送：在调度线程上执行并等完成/等异常（Resume/自检用）。</summary>
-    private void RunOnScheduler(HostCommand work)
-    {
-        if (Thread.CurrentThread == _thread)
-        {
-            work();
-            return;
-        }
-        using var done = new ManualResetEventSlim(false);
-        Exception? caught = null;
-        PostCommand(() =>
-        {
-            try
-            {
-                work();
-            }
-            catch (Exception ex)
-            {
-                caught = ex;
-            }
-            finally
-            {
-                done.Set();
-            }
-        });
-        if (!done.Wait(SchedulerStallMs))
-        {
-            throw new TimeoutException("plugin host scheduler stalled");
-        }
-        if (caught is not null)
-        {
-            ExceptionDispatchInfo.Capture(caught).Throw();
-        }
-    }
-
-    /// <summary>异步封送（接口方法用）：返回在调度线程上执行结果的 Task。</summary>
-    private Task<T> RunOnSchedulerAsync<T>(Func<T> work)
-    {
-        if (Thread.CurrentThread == _thread)
-        {
-            return Task.FromResult(work());
-        }
-        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
-        PostCommand(() =>
-        {
-            try
-            {
-                tcs.SetResult(work());
-            }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
-        });
-        return tcs.Task;
-    }
-
-    /// <summary>异步封送（无返回值版本；Task&lt;object?&gt; 协变到 Task）。</summary>
-    private Task RunOnSchedulerVoid(HostCommand work)
-    {
-        if (Thread.CurrentThread == _thread)
-        {
-            work();
-            return Task.CompletedTask;
-        }
-        var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        PostCommand(() =>
-        {
-            try
-            {
-                work();
-                tcs.SetResult(null);
-            }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
-        });
-        return tcs.Task;
-    }
-
-    /// <summary>一致性读取（自检用）：在调度线程上取值，避免对可变状态的撕裂读。
-    /// **调度线程没在跑时直接读**：那时没有并发写者，而 post 进一个没人抽的队列只会干等
-    /// SchedulerStallMs 再抛 TimeoutException（RFC-36 §1 的启动崩溃就是这么来的）。</summary>
-    internal T Snapshot<T>(Func<T> read)
-    {
-        if (!_threadStarted || !_thread.IsAlive || Thread.CurrentThread == _thread)
-        {
-            return read();
-        }
-        using var done = new ManualResetEventSlim(false);
-        T value = default!;
-        PostCommand(() =>
-        {
-            try
-            {
-                value = read();
-            }
-            finally
-            {
-                done.Set();
-            }
-        });
-        if (!done.Wait(SchedulerStallMs))
-        {
-            throw new TimeoutException("plugin host scheduler stalled (Snapshot)");
-        }
-        return value;
-    }
 }

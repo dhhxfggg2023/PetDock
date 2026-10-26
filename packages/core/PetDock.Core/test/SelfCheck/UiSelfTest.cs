@@ -54,6 +54,8 @@ internal static class UiSelfTest
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
             SettingsChecks.Run(Check);
+            // 2026-10-26：插件开关落盘 + 右键宠物弹菜单的接线（ui-plugins-* / ui-pet-context-menu-*）。
+            PluginToggleChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。

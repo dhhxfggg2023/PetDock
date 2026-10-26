@@ -19,6 +19,7 @@
   "cp.plugins.authorize": "Authorize the selected plugin",
   "cp.plugins.disable": "Disable the selected plugin",
   "cp.plugins.enable": "Enable the selected plugin",
+  "cp.plugins.disableHint": "Disabling stops this plugin now; it will not be loaded on the next start (takes effect after a restart).",
   "cp.plugins.empty": "No plugins loaded.",
   "cp.plugins.count": "{0} plugin(s). The authorize button opens the capability dialog; the disable button only revokes event subscriptions and does not unload the plugin.",
   "cp.plugins.col.name": "Plugin",

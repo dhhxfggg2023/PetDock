@@ -28,6 +28,17 @@ internal sealed partial class LayeredFrameWindow : Form
     /// <summary>窗口事件出口（core.window.*）：宿主订阅；Compositor 不能反向引用 PetDock.Hosting。</summary>
     public event WindowEventDelegate? WindowEvent;
 
+    /// <summary>在宠物身上按右键：宿主在这里弹菜单（docs/18 §1，2026-10-26 用户要求）。
+    /// 载荷是屏幕坐标 —— 菜单要落在鼠标处，而不是窗口原点（窗口可能被拖到负坐标）。
+    /// 手势归属：右键从此归宿主（插件层原有的右键手势因此让位，用户 2026-10-26 明确同意）。</summary>
+    public event ContextRequestDelegate? ContextRequested;
+
+    /// <summary>右键菜单回调。用具名委托而不是泛型委托：D-03b 词表把那个泛型名列为概念黑名单。</summary>
+    public delegate void ContextRequestDelegate(Point screen);
+
+    /// <summary>有没有人接右键（判据用：null 说明菜单没接上，右键会变成没反应的死键）。</summary>
+    public bool ContextMenuWired => ContextRequested is not null;
+
     /// <summary>注入内容源构造（生产与自检路径：内容由上层给，内核只收像素+尺寸）。</summary>
     public LayeredFrameWindow(IFrameContentSource content, bool ownsContent = true)
     {

@@ -25,6 +25,16 @@ internal sealed partial class LayeredFrameWindow
         {
             HandleDpiChanged(ref m);
         }
+        else if (m.Msg == Win32.WM_CONTEXTMENU)
+        {
+            RaiseContextRequested(ref m);
+        }
+        else if (m.Msg == Win32.WM_RBUTTONUP)
+        {
+            // 右键抬手兜底（2026-10-26）：分层窗口的命中裁决把穿透区交回 OS，
+            // 只有 alpha>0 的像素才会走到这里，所以「点在宠物身上」这件事已经由命中图保证。
+            RaiseContextRequested(ref m);
+        }
         else if (m.Msg == Win32.WM_ACTIVATEAPP)
         {
             // core.window.focus：wParam≠0 = 有焦点。NOACTIVATE 窗口只在程序切换前台时收到它。
@@ -48,6 +58,40 @@ internal sealed partial class LayeredFrameWindow
             ["windowId"] = $"hwnd-{Handle.ToInt64():X}",
             ["position"] = new JsonArray(x, y),
         });
+
+    /// <summary>
+    /// 右键 → 宿主弹菜单（docs/18 §1，2026-10-26）。载荷用**屏幕坐标**取光标位置：
+    /// WM_CONTEXTMENU 的 lParam 键盘唤出时是 (-1,-1)（不可信），WM_RBUTTONUP 的 lParam 又是客户区坐标，
+    /// 两条消息取同一个来源才不会一个对一个错。菜单只落在鼠标处，窗口被拖到负坐标也照样对。
+    /// 没有订阅者就不做任何事 —— 判据读 ContextMenuWired 能看出「菜单没接上」这种死键状态。
+    /// </summary>
+    private void RaiseContextRequested(ref Message m)
+    {
+        LayeredFrameWindow.ContextRequestDelegate? handler = ContextRequested;
+        if (handler is null)
+        {
+            return;
+        }
+
+        try
+        {
+            handler(Cursor.Position);
+        }
+        catch (Exception error)
+        {
+            // 抛出去会让 WndProc 带着异常回消息循环：菜单画不出来事小，消息泵断掉事大。
+            KernelLog.Write($"context-menu-failed {error.GetType().Name}: {error.Message}");
+        }
+
+        // 不吞消息：m.Result 保持默认，base.WndProc 照走（右键没有别的默认行为，留着更安全）。
+    }
+
+    /// <summary>
+    /// 判据专用（RFC-22 §4 的先例）：自检没有真右键，而生产路径（WndProc 的两条消息）
+    /// 除了「取光标位置 + 抛事件」没有别的接线，所以让判据从同一个方法进。
+    /// </summary>
+    internal void RaiseContextRequestedForCheck(System.Drawing.Point screen) =>
+        ContextRequested?.Invoke(screen);
 
     private void HandleDpiChanged(ref Message m)
     {

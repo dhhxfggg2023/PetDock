@@ -126,11 +126,21 @@ internal static partial class Program
             : probe.DenyAll
                 ? new RecordingConsentPort(_ => ConsentAnswer.Reject)
                 : new RecordingConsentPort(r => new ConsentAnswer(ConsentScope.Session, r.AskableIds));
+        // 用户关掉的插件（2026-10-26 用户要求「插件可以选择关闭，重启生效」）：
+        // 必须在装载之前读 —— 「重启生效」的事实源就是这份设置。
+        PetDataStore dataStore = PetDataStore.Resolve();
+        UserSettings startupSettings = new UserSettingsStore(dataStore.Root).Load();
+        if (startupSettings.DisabledPlugins is { Count: > 0 } disabledIds)
+        {
+            KernelLog.Write($"startup-plugins-disabled count={disabledIds.Count}");
+        }
+
         using PluginHost pluginHost = new(
             PluginHost.ProbePluginsRoot() ?? string.Empty,
             PluginHost.ResidentTickMs,
             autoLoad: true,
-            consent: pluginPort);
+            consent: pluginPort,
+            disabledPlugins: startupSettings.DisabledPlugins);
 
         // 跨进程授权记忆（RFC-19 §2.3 第 1 点）：把上次进程记住的授予灌进会话记忆，
         // 于是「允许（记住这个决定）」过的插件这次启动不再被问。
@@ -140,7 +150,6 @@ internal static partial class Program
         // 跨进程审计流水（RFC-20 §3.3 第 2 点）：同样必须在 Start() 之前接——
         // 装载期就会发 grant 事件，那时流水还没接上，那批授权证据就永远丢了
         // （与 RFC-19 同一纪律：一个道理）。
-        PetDataStore dataStore = PetDataStore.Resolve();
         var auditTrail = new AuditTrail(
             Path.Combine(dataStore.Root, AuditTrail.AuditFolder),
             RedactRules.ForCurrentMachine(dataStore.Root, PluginHost.ProbePluginsRoot()));

@@ -19,6 +19,7 @@
   "cp.plugins.authorize": "授权选中插件",
   "cp.plugins.disable": "禁用选中插件",
   "cp.plugins.enable": "启用选中插件",
+  "cp.plugins.disableHint": "禁用会立刻停掉这只插件；下次启动不再装载它（重启生效）。",
   "cp.plugins.empty": "尚无插件装载。",
   "cp.plugins.count": "共 {0} 个插件。授权按钮打开能力弹窗；禁用按钮只撤销事件订阅，不卸载插件。",
   "cp.plugins.col.name": "插件名",

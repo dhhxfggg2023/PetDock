@@ -48,6 +48,21 @@ internal sealed partial class ControlPanel
         Enabled = false,
     };
 
+    /// <summary>
+    /// 页底那行说明（2026-10-26）：用户要求「插件可以选择关闭，重启生效」——
+    /// 只说「重启生效」这四个字，用户才知道这个按钮做了什么、以及为什么桌面上那只还赖着不动。
+    /// </summary>
+    private readonly Label _hint = new()
+    {
+        Text = I18n.Get("cp.plugins.disableHint"),
+        Name = "plugin-hint",
+        AutoSize = true,
+        Padding = new Padding(8, 8, 0, 0),
+    };
+
+    /// <summary>插件页那条说明的当前文案（自检断言它确实挂上了）。</summary>
+    public string PluginHintText => _hint.Text;
+
     /// <summary>插件页的行数据，按插件 id 索引（每次重画从新快照重建，不缓存旧值）。</summary>
     private readonly Dictionary<string, PluginLine> _pluginRows = new(StringComparer.Ordinal);
 
@@ -100,6 +115,7 @@ internal sealed partial class ControlPanel
         };
         bar.Controls.Add(_authorizeButton);
         bar.Controls.Add(_disableButton);
+        bar.Controls.Add(_hint);
 
         TabPage page = PluginPage();
         // 加控件的顺序要紧：后加的先排版，所以操作栏（Bottom）后加，它才贴页底、

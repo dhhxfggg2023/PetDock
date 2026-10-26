@@ -13,6 +13,25 @@ namespace PetDock.Core.Ui;
 
 internal sealed partial class UiHost
 {
+    /// <summary>
+    /// 右键宠物 → 在光标处弹出托盘那份菜单（2026-10-26 用户要求「右键宠物可以弹菜单」）。
+    /// 复用托盘那一份而不是另建：docs/18 §0 「未写进清单的界面元素不许出现」——
+    /// 另建一套就得先在文档里新增一张清单，而用户要的是「能点到那些功能」，不是第二份菜单。
+    /// 手势归属：右键从此归宿主，插件层原有的右键手势因此让位（用户 2026-10-26 明确同意）。
+    /// </summary>
+    private void ShowPetMenu(System.Drawing.Point screen)
+    {
+        TrayHost? tray = _tray;
+        if (tray is null)
+        {
+            KernelLog.Write("pet-menu-skip reason=no-tray");
+            return;
+        }
+
+        tray.ShowMenuAt(screen);
+        KernelLog.Write($"pet-menu-shown x={screen.X} y={screen.Y}");
+    }
+
     /// <summary>主窗那只的菜单 id。它可能没有实例（内核纯色兜底），所以要一个不会撞车的名字。</summary>
     private const string PrimaryPetId = "primary";
 
