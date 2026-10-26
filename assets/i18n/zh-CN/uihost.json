@@ -7,5 +7,7 @@
   "ui.panel.problemSeparator": "；",
   "ui.tray.kernelFallback": "(内核兜底)",
   "ui.tray.exitConfirm": "确定退出 PetDock？宠物会从桌面消失。",
-  "ui.tray.exitConfirmTitle": "PetDock — 退出确认"
+  "ui.tray.exitConfirmTitle": "PetDock — 退出确认",
+  "ui.confirm.ok": "确定",
+  "ui.confirm.cancel": "取消"
 }

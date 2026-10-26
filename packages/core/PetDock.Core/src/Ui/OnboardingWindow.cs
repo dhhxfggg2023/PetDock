@@ -18,7 +18,7 @@ using System.Windows.Forms;
 namespace PetDock.Core.Ui;
 
 /// <summary>首次运行引导窗：三步（语言 → 放置示例宠物 → 穿透说明）。</summary>
-internal sealed partial class OnboardingWindow : Form
+internal sealed partial class OnboardingWindow : PetDockDialog
 {
     /// <summary>放置示例宠物（宿主侧执行：走既有的 PetImportService.Import）。返回 null = 成功，否则是错误文本。</summary>
     internal delegate string? PlaceSample();

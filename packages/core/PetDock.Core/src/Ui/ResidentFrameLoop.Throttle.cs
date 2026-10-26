@@ -50,10 +50,6 @@ internal sealed partial class ResidentFrameLoop
             {
                 return false;
             }
-
-            // tick 与合成是**同一个事实**，必须同一次写：分两次写，读数能看到 Composed = Ticks - 1。
-            _ticks++;
-            _composed++;
         }
 
         // ① 锁外合成。**每一 tick 都要合成**，与档位无关 —— 它就是「内容有没有变」的取样点。
@@ -71,6 +67,14 @@ internal sealed partial class ResidentFrameLoop
             {
                 return false;
             }
+
+            // tick、合成、静止判定是**同一个事实**的三个计数，必须在同一次锁内写完：
+            // 旧写法把 _ticks/_composed 写在合成前的独立锁块里、_idleDecisions 写在判定处，
+            // 读数就能停在两次写之间，拼出 `ticks=12 idleTicks=13` 这种 Advance 从未产出过的组合
+            // （2026-10-26 实测 `ui-throttle-idle-decided-idle` 红）。Reading 与本块共用 _gate，
+            // 所以三个计数要么全在窗内、要么全在窗外。
+            _ticks++;
+            _composed++;
 
             ThrottleDecision decision = DecideLocked();
 

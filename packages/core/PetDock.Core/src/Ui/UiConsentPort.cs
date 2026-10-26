@@ -62,7 +62,9 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
         return pending.Answer;
     }
 
-    /// <summary>弹出队首的待答询问。<b>必须在 UI 线程调用。</b></summary>
+    /// <summary>弹出队首的待答询问。<b>必须在 UI 线程调用。</b>
+    /// 2026-10-26 真机故障（三只插件同时要授权 → 连弹三个窗）：这里一次取走**全部**待答请求，
+    /// 只开一个窗、按插件分段；答案按每份请求各自的勾选集分别落账。</summary>
     public void Pump()
     {
         if (_showing)
@@ -70,26 +72,63 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
             return; // 已经有一个弹窗在模态循环里：不能再弹第二个
         }
 
-        Pending? pending = TakePending();
-        if (pending is null)
+        List<Pending> batch = TakeAllPending();
+        if (batch.Count == 0)
         {
             return;
         }
 
-        ConsentAnswer? answer;
+        _showing = true;
         try
         {
-            answer = ShowDialog(pending.Request);
+            var requests = new ConsentRequest[batch.Count];
+            for (int i = 0; i < batch.Count; i++)
+            {
+                requests[i] = batch[i].Request;
+            }
+
+            using var dialog = new AuthorizationDialog(requests);
+            dialog.ShowDialog();
+
+            // 关窗（「取消」与右上角 ×）= 没有回答 = 按拒绝处理：默认拒绝比默认允许安全
+            // （授权弹窗自己的规则也是「取消按拒绝处理」）。
+            if (dialog.DialogResult != DialogResult.OK)
+            {
+                foreach (Pending pending in batch)
+                {
+                    pending.Complete(ConsentAnswer.Reject);
+                }
+
+                return;
+            }
+
+            for (int i = 0; i < batch.Count; i++)
+            {
+                batch[i].Complete(MapAnswer(dialog.Answer, dialog.SelectedIdsFor(i)));
+            }
         }
         catch (Exception ex)
         {
             // 弹窗自己炸了也不能让等待方永远挂着：没有回答 = 按拒绝处理。
             KernelLog.Write($"consent-dialog-failed {ex.GetType().Name}: {ex.Message}");
-            answer = null;
+            foreach (Pending pending in batch)
+            {
+                pending.Complete(null);
+            }
         }
-
-        pending.Complete(answer);
+        finally
+        {
+            _showing = false;
+        }
     }
+
+    /// <summary>把弹窗的回答映射成端口契约的形状（单份请求）。范围统一、勾选集各自一份。</summary>
+    internal static ConsentAnswer MapAnswer(GrantAnswer answer, IReadOnlyList<string> granted) => answer switch
+    {
+        GrantAnswer.Deny => ConsentAnswer.Reject,
+        GrantAnswer.Once => new ConsentAnswer(ConsentScope.Once, granted),
+        _ => new ConsentAnswer(ConsentScope.Session, granted),
+    };
 
     /// <summary>关闭端口：让所有等待方醒来并拿到 null（= 没有回答 = 全拒）。</summary>
     public void Close()
@@ -128,17 +167,20 @@ internal sealed class UiConsentPort : ICapabilityConsentPort
         }
     }
 
-    /// <summary>取队首的待答询问（没有就返回 null）。</summary>
-    private Pending? TakePending()
+    /// <summary>取走全部待答询问（没有就返回空表）。一次取走是合批的前提：
+    /// 同一个窗里能问几个，取决于调用这一刻队列里有几个。</summary>
+    private List<Pending> TakeAllPending()
     {
         lock (_lock)
         {
             if (_closed || _queue.Count == 0)
             {
-                return null;
+                return new List<Pending>();
             }
 
-            return _queue.Dequeue();
+            var batch = new List<Pending>(_queue);
+            _queue.Clear();
+            return batch;
         }
     }
 

@@ -1,6 +1,9 @@
 // 授权弹窗（docs/18 §3，RFC-12 §2.1 补的交互细节；RFC-13 §2.2 改为逐项勾选）。
 // 规则来自文档，不是我的设计：拒绝后不允许重试同一能力；「仅本次」只对 Tier 1 有效，
 // 因此 Tier 2 的「仅本次」按钮置灰；被拒绝的能力在下次打开弹窗时置灰且点不动。
+// 2026-10-26 真机故障（三只插件启动时同时要授权 → 连弹三个窗）：同一个窗可以同时承载
+// 多份请求，按插件分段展示；答案仍按每份请求各自落账（各自勾选集，范围三选一统一）。
+// 合批那一半在 AuthorizationDialog.Batch.cs（partial：D-03c 单文件行数上限）。
 // 能力描述照抄 docs/14 §2 的条目，用大白话重述。
 using System;
 using System.Collections.Generic;
@@ -21,13 +24,17 @@ internal enum GrantAnswer
 }
 
 /// <summary>授权弹窗。无状态：每次打开都是新的，答案由调用方落账。</summary>
-internal sealed class AuthorizationDialog : Form
+internal sealed partial class AuthorizationDialog : PetDockDialog
 {
     private readonly RadioButton _allow;
     private readonly RadioButton _deny;
     private readonly RadioButton _once;
     private readonly Button _ok;
+    private readonly Label _header;
     private readonly ListView _list;
+
+    /// <summary>本窗要问的请求（按顺序）。单请求弹窗就是只有一个元素的批。</summary>
+    private readonly List<ConsentRequest> _requests;
 
     /// <summary>展示出来的能力 ID，顺序 = 清单顺序（第 i 个对应第 i 行）。</summary>
     private readonly List<string> _ids = new();
@@ -35,6 +42,9 @@ internal sealed class AuthorizationDialog : Form
     /// <summary>每一行的勾选状态（逻辑真值）。原生控件的勾选状态在句柄建好前读不得
     /// （行还没有原生下标，一读就抛），所以真值自己存一份，不去问原生控件。</summary>
     private readonly List<bool> _checked = new();
+
+    /// <summary>每一行属于第几份请求（与 <see cref="_ids"/> 平行）。</summary>
+    private readonly List<int> _owner = new();
 
     /// <summary>此前已被拒绝的能力 ID：置灰、不可勾、也永不出现在 <see cref="SelectedIds"/> 里。</summary>
     private readonly HashSet<string> _deniedIds = new(StringComparer.Ordinal);
@@ -52,7 +62,16 @@ internal sealed class AuthorizationDialog : Form
     /// <paramref name="isReview"/> 给默认值，是为了让两个重载的参数个数一致 ——
     /// 否则四参数调用会绑到「只有 ID 列表」那个重载上，编译期报不出意图。</summary>
     public AuthorizationDialog(string pluginName, string source, int tier, IReadOnlyList<ConsentItem> items, bool isReview = false)
+        : this(new[] { new ConsentRequest(source, pluginName, tier, items, isReview) })
     {
+    }
+
+    /// <summary>批入口（2026-10-26）：同批请求只开一个窗，按插件分段；一次回答覆盖同批每份请求。
+    /// 每份请求仍各自保留勾选集，范围（允许/拒绝/仅本次）统一 —— 用户看到的是一次询问。</summary>
+    public AuthorizationDialog(IReadOnlyList<ConsentRequest> requests)
+    {
+        _requests = new List<ConsentRequest>(requests);
+
         Text = I18n.Get("ui.auth.title");
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -62,9 +81,9 @@ internal sealed class AuthorizationDialog : Form
         Height = 430;
         Font = SystemFonts.MessageBoxFont;
 
-        var title = new Label
+        _header = new Label
         {
-            Text = string.Format(CultureInfo.InvariantCulture, I18n.Get(isReview ? "ui.auth.header.review" : "ui.auth.header"), pluginName, source),
+            Text = HeaderFor(),
             AutoSize = false,
             Height = 24,
             Dock = DockStyle.Top,
@@ -74,7 +93,7 @@ internal sealed class AuthorizationDialog : Form
 
         var intro = new Label
         {
-            Text = I18n.Get("ui.auth.intro"),
+            Text = I18n.Get(Batch ? "ui.auth.intro.batch" : "ui.auth.intro"),
             AutoSize = false,
             Height = 40,
             Dock = DockStyle.Top,
@@ -82,6 +101,7 @@ internal sealed class AuthorizationDialog : Form
         };
 
         // 逐项可勾：ListView 的 Details 视图 + 复选框（CheckedListBox 不能按项置灰）。
+        // 批模式用分组头把每份请求隔开：一个窗、几个插件、各自一段。
         _list = new ListView
         {
             Dock = DockStyle.Fill,
@@ -89,36 +109,43 @@ internal sealed class AuthorizationDialog : Form
             CheckBoxes = true,
             FullRowSelect = true,
             GridLines = true,
+            ShowGroups = Batch,
         };
         _list.Columns.Add(I18n.Get("ui.auth.col.capability"), 470);
         // ItemCheck 是事前事件：e.NewValue 可以改 —— 改成 Unchecked 就不勾。
         _list.ItemCheck += OnItemCheck;
         // 事后事件兜底：万一事前事件被绕过去了（例如外部代码直接改控件状态），这里补回来。
         _list.ItemChecked += OnItemChecked;
+        CreateGroups();
 
         _building = true;
-        foreach (ConsentItem entry in items)
+        for (int r = 0; r < _requests.Count; r++)
         {
-            var row = new ListViewItem(RowText(entry))
+            foreach (ConsentItem entry in _requests[r].Items)
             {
-                // Tag 存能力 ID：事后事件里靠它把原生行对回清单下标
-                //（ItemCheckedEventArgs 只有 Item，没有 Index）。
-                Tag = entry.CapabilityId,
-                ForeColor = entry.Denied ? SystemColors.GrayText : SystemColors.ControlText,
-            };
-            _list.Items.Add(row);
-            _ids.Add(entry.CapabilityId);
-            if (entry.Denied)
-            {
-                _deniedIds.Add(entry.CapabilityId);
-                _checked.Add(false);
-            }
-            else
-            {
-                // 默认全勾（docs/18 §3：只有被拒绝的项才默认不勾）。
-                // 句柄还没建时设勾选状态是安全的，而且会一直带到原生控件上。
-                _checked.Add(true);
-                row.Checked = true;
+                var item = new ListViewItem(RowText(entry))
+                {
+                    // Tag 存行下标：事后事件的参数只有 Item（没有 Index），靠它把原生行对回清单。
+                    Tag = _ids.Count,
+                    ForeColor = entry.Denied ? SystemColors.GrayText : SystemColors.ControlText,
+                };
+                _list.Items.Add(item);
+                AttachGroup(item, r);
+
+                _ids.Add(entry.CapabilityId);
+                _owner.Add(r);
+                if (entry.Denied)
+                {
+                    _deniedIds.Add(entry.CapabilityId);
+                    _checked.Add(false);
+                }
+                else
+                {
+                    // 默认全勾（docs/18 §3：只有被拒绝的项才默认不勾）。
+                    // 句柄还没建时设勾选状态是安全的，而且会一直带到原生控件上。
+                    _checked.Add(true);
+                    item.Checked = true;
+                }
             }
         }
         _building = false;
@@ -133,9 +160,10 @@ internal sealed class AuthorizationDialog : Form
         _deny = new RadioButton { Text = I18n.Get("ui.auth.deny"), AutoSize = true, Name = "Deny" };
         _once = new RadioButton
         {
-            Text = tier >= 2 ? I18n.Get("ui.auth.once.tier2") : I18n.Get("ui.auth.once"),
-            // 「仅本次」仅对 Tier 1 会话有效（docs/18 §3 规则）——不可选的选项要看起来不可选。
-            Enabled = tier < 2,
+            // 「仅本次」仅对 Tier 1 会话有效（docs/18 §3 规则）——批里只要有一份 Tier 2，
+            // 统一的范围就选不了「仅本次」：不可选的选项要看起来不可选。
+            Text = _requests.Any(r => r.Tier >= 2) ? I18n.Get("ui.auth.once.tier2") : I18n.Get("ui.auth.once"),
+            Enabled = _requests.All(r => r.Tier < 2),
             AutoSize = true,
             Name = "Once",
         };
@@ -179,7 +207,7 @@ internal sealed class AuthorizationDialog : Form
         Controls.Add(choices);
         Controls.Add(buttons);
         Controls.Add(intro);
-        Controls.Add(title);
+        Controls.Add(_header);
         AcceptButton = _ok;
         CancelButton = cancel;
     }
@@ -229,64 +257,16 @@ internal sealed class AuthorizationDialog : Form
     /// 被拒绝（锁定）的项一律不生效：返回 false，且 <see cref="SelectedIds"/> 不变 ——
     /// 「拒绝后该插件不允许重试同一能力」这条规则在数据层就成立，不只是画灰
     /// （docs/18 §3）。这个入口是给无人值守自检用的：真实鼠标点击跑不出来，
-    /// 但「被拒项即使被程序强行设置也不进授予集」是可断言的。</summary>
+    /// 但「被拒项即使被程序强行设置也不进授予集」是可断言的。
+    /// 同 ID 出现在多份请求里时作用于第一行（批模式请用 <see cref="SetItemCheckedAt"/>）。</summary>
     public bool SetItemChecked(string capabilityId, bool isChecked)
     {
         int index = _ids.IndexOf(capabilityId);
-        if (index < 0 || index >= _checked.Count)
-        {
-            return false;
-        }
-
-        if (_deniedIds.Contains(capabilityId))
-        {
-            // 锁定项不可勾：明确不改任何状态。
-            _checked[index] = false;
-            return false;
-        }
-
-        _checked[index] = isChecked;
-        if (index < _list.Items.Count)
-        {
-            TrySetChecked(_list.Items[index], isChecked);
-        }
-
-        return true;
+        return index >= 0 && SetItemCheckedAt(index, isChecked);
     }
 
-    /// <summary>把能力 ID 说成人话（docs/14 §2 的描述列）。未知能力原样显示 ——
-    /// 猜一个友好的说法比显示原始 ID 更危险：用户会以为他知道自己授权了什么。</summary>
-    public static string PlainTalk(string capabilityId) => capabilityId switch
-    {
-        "input.mousePosition" => I18n.Get("ui.auth.cap.input.mousePosition"),
-        "input.moveWindow" => I18n.Get("ui.auth.cap.input.moveWindow"),
-        "input.clickThrough" => I18n.Get("ui.auth.cap.input.clickThrough"),
-        "input.keyboardHook" => I18n.Get("ui.auth.cap.input.keyboardHook"),
-        "assets.read:cas" => I18n.Get("ui.auth.cap.assets.read"),
-        "assets.write:cas" => I18n.Get("ui.auth.cap.assets.write"),
-        "audio.play" => I18n.Get("ui.auth.cap.audio.play"),
-        "persist.write:self" => I18n.Get("ui.auth.cap.persist.write"),
-        "persist.read:self" => I18n.Get("ui.auth.cap.persist.read"),
-        "screen.changeDpi" => I18n.Get("ui.auth.cap.screen.changeDpi"),
-        _ when capabilityId.StartsWith("network.fetch:", StringComparison.Ordinal) =>
-            string.Format(CultureInfo.InvariantCulture, I18n.Get("ui.auth.cap.networkFetch"), capabilityId["network.fetch:".Length..], capabilityId),
-        _ when capabilityId.StartsWith("ipc.tier2:", StringComparison.Ordinal) => I18n.Get("ui.auth.cap.ipcTier2", capabilityId),
-        _ => capabilityId,
-    };
-
-    /// <summary>旧入口的清单：只有 ID，没有既往状态 —— 全部视为「未拒绝、未授予」。</summary>
-    private static IReadOnlyList<ConsentItem> PlainItems(IReadOnlyList<string> capabilities)
-    {
-        var items = new List<ConsentItem>(capabilities.Count);
-        foreach (string id in capabilities)
-        {
-            items.Add(new ConsentItem(id, PreGranted: false, Denied: false));
-        }
-
-        return items;
-    }
-
-    /// <summary>一行显示文字：人话描述 + 既往状态后缀。</summary>
+    /// <summary>一行显示文字：人话描述 + 既往状态后缀。
+    /// <see cref="PlainTalk"/> 的实现放在 AuthorizationDialog.Batch.cs（D-03c 行数上限）。</summary>
     private static string RowText(ConsentItem entry) =>
         PlainTalk(entry.CapabilityId)
         + (entry.PreGranted ? I18n.Get("ui.auth.row.preGranted") : string.Empty)
@@ -315,15 +295,14 @@ internal sealed class AuthorizationDialog : Form
 
     /// <summary>事后事件兜底：若事前事件被绕过去了（例如外部代码直接改控件状态），
     /// 这里把被拒绝项弹回未勾，并把逻辑真值对齐。
-    /// 事后事件的参数只有 Item（没有 Index），行下标靠 Tag 里的能力 ID 对回来。</summary>
+    /// 事后事件的参数只有 Item（没有 Index），行下标靠 Tag 存的行号对回来。</summary>
     private void OnItemChecked(object? sender, ItemCheckedEventArgs e)
     {
-        if (_building || e.Item is not ListViewItem row)
+        if (_building || e.Item is not ListViewItem row || row.Tag is not int index)
         {
             return;
         }
 
-        int index = row.Tag is string id ? _ids.IndexOf(id) : -1;
         if (index < 0 || index >= _checked.Count)
         {
             return;

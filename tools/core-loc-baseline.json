@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 23320,
+  "budget": 23610,
   "history": [
     {
       "date": "2026-10-18",
@@ -36,7 +36,9 @@
       "attribution": [
         {
           "slice": "M8 D-14 --perftest 入口分派",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 11
         }
       ]
@@ -64,7 +66,9 @@
         },
         {
           "slice": "Program.cs 拆分与入口迁出（D-03c 还款）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": -205
         }
       ]
@@ -77,7 +81,9 @@
       "attribution": [
         {
           "slice": "全局键盘钩子（新建）",
-          "files": ["packages/core/PetDock.Core/src/Input/KeyboardHook.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Input/KeyboardHook.cs"
+          ],
           "lines": 176
         },
         {
@@ -109,7 +115,9 @@
         },
         {
           "slice": "RFC-13 授权弹窗逐项勾选",
-          "files": ["packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs"
+          ],
           "lines": 239
         },
         {
@@ -270,7 +278,9 @@
       "attribution": [
         {
           "slice": "RFC-19 A 授权记忆落盘存储（读写 + 损坏回落 + 两阶段提交）",
-          "files": ["packages/core/PetDock.Core/src/Host/ConsentStore.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/ConsentStore.cs"
+          ],
           "lines": 147
         },
         {
@@ -283,7 +293,9 @@
         },
         {
           "slice": "RFC-19 C 装配接线（常驻形态在 Start 之前接上存储）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 5
         }
       ]
@@ -314,7 +326,9 @@
         },
         {
           "slice": "RFC-16 C 自带示例素材的定位（只定位，不复制不解析）",
-          "files": ["packages/core/PetDock.Core/src/Host/BundledExampleAssets.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/BundledExampleAssets.cs"
+          ],
           "lines": 75
         },
         {
@@ -411,7 +425,9 @@
         },
         {
           "slice": "RFC-20 D 常驻装配（造流水、接进宿主、退出时收尾）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 16
         }
       ]
@@ -424,7 +440,9 @@
       "attribution": [
         {
           "slice": "RFC-20 遗留：审计流水取批次竞态（Flush 的取批次与写文件并入同一把 _commitGate）",
-          "files": ["packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs"
+          ],
           "lines": 32
         }
       ]
@@ -445,7 +463,9 @@
         },
         {
           "slice": "RFC-21 B 档位判定（唯一判定属主，纯函数式 Decide）",
-          "files": ["packages/core/PetDock.Core/src/Ui/FrameThrottlePolicy.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/FrameThrottlePolicy.cs"
+          ],
           "lines": 145
         },
         {
@@ -458,7 +478,9 @@
         },
         {
           "slice": "RFC-21 D 帧泵自述面（HasExited / ExitReason 四条退出路径）",
-          "files": ["packages/core/PetDock.Core/src/Compositor/FramePump.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/FramePump.cs"
+          ],
           "lines": 57
         },
         {
@@ -489,7 +511,9 @@
         },
         {
           "slice": "RFC-21 H 世界探针热路径（前台进程名按句柄缓存，D-14d 稳态判据要求）",
-          "files": ["packages/core/PetDock.Core/src/Host/WorldProbe.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/WorldProbe.cs"
+          ],
           "lines": 23
         }
       ]
@@ -502,12 +526,16 @@
       "attribution": [
         {
           "slice": "D-14d 根因修复：事件日志有界化（256 条环形窗口 + 全量 total + 按类型全量计数），并按 D-03c 拆进独立文件",
-          "files": ["packages/core/PetDock.Core/src/Host/EventDispatchLog.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/EventDispatchLog.cs"
+          ],
           "lines": 83
         },
         {
           "slice": "HostArbiter.cs 让出事件派发类（拆片的另一侧，净减）",
-          "files": ["packages/core/PetDock.Core/src/Host/HostArbiter.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/HostArbiter.cs"
+          ],
           "lines": -60
         }
       ]
@@ -520,7 +548,9 @@
       "attribution": [
         {
           "slice": "RFC-22 A 位置可见性策略（纯几何，无 Win32 调用，可无桌面断言）",
-          "files": ["packages/core/PetDock.Core/src/Compositor/ScreenPlacement.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/ScreenPlacement.cs"
+          ],
           "lines": 49
         },
         {
@@ -541,7 +571,9 @@
         },
         {
           "slice": "RFC-22 D 判据专用事件入口（从生产路径同一个委托抬 core.window.moved）",
-          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"
+          ],
           "lines": 12
         }
       ]
@@ -554,12 +586,16 @@
       "attribution": [
         {
           "slice": "RFC-23 A 插件日志门面（级别/作用域/计数器/故障隔离，无 Win32 依赖）",
-          "files": ["packages/core/PetDock.Core/src/PetRuntime/PluginLog.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/PetRuntime/PluginLog.cs"
+          ],
           "lines": 162
         },
         {
           "slice": "RFC-23 B 宿主收口（路由 info→通用日志、warn/error→审计流水、按插件错误计数）",
-          "files": ["packages/core/PetDock.Core/src/Host/HostPluginLog.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/HostPluginLog.cs"
+          ],
           "lines": 149
         },
         {
@@ -584,7 +620,9 @@
         },
         {
           "slice": "RFC-23 E 自检形态也接上收口（每个门禁都真的走一遍「插件→门面→收口」，不再只有桩件）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 8
         }
       ]
@@ -597,17 +635,23 @@
       "attribution": [
         {
           "slice": "RFC-24 A 状态文件本体（形状、两阶段提交、按 key 的单文件定位、8 KiB 拒绝、锁）",
-          "files": ["packages/core/PetDock.Core/src/Host/StateStore.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/StateStore.cs"
+          ],
           "lines": 260
         },
         {
           "slice": "RFC-24 B 宿主侧缓冲区与层叠（写-读-提交-迁移-只读阻断，Plugins 的迁移策略在这里被调用）",
-          "files": ["packages/core/PetDock.Core/src/Host/PersistentPetState.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PersistentPetState.cs"
+          ],
           "lines": 266
         },
         {
           "slice": "RFC-24 C 纯内存替身（没有状态插件时的默认实现，同时也是判据里的 inner 层）",
-          "files": ["packages/core/PetDock.Core/src/Host/MemoryPetState.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/MemoryPetState.cs"
+          ],
           "lines": 45
         },
         {
@@ -628,7 +672,9 @@
         },
         {
           "slice": "RFC-24 F 位置落点改道（读状态层 → 一次性迁移旧键 → 写入状态层并当场提交）",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Position.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Position.cs"
+          ],
           "lines": 108
         },
         {
@@ -641,7 +687,9 @@
         },
         {
           "slice": "RFC-23 提交后的基线漂移（上一条 measured 取的是提交前读数，与 HEAD 树差 107 行）",
-          "files": ["packages/core/PetDock.Core/src/Host/PetInstance.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+          ],
           "lines": 107
         }
       ]
@@ -654,7 +702,9 @@
       "attribution": [
         {
           "slice": "RFC-25 §3.3 便携数据区分支与标记常量",
-          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs"
+          ],
           "lines": 21
         }
       ]
@@ -667,22 +717,30 @@
       "attribution": [
         {
           "slice": "RFC-26 A --residenttest 入口分派（开关解析、探针启动、退出码）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 27
         },
         {
           "slice": "RFC-26 B 审计流水消费循环的满速自旋修复（Set 之后从未 Reset）",
-          "files": ["packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs"
+          ],
           "lines": 5
         },
         {
           "slice": "RFC-26 C 同型点：常驻日志消费循环的同一处修复（潜伏，未独立观测到触发）",
-          "files": ["packages/core/PetDock.Core/src/Host/ResidentLog.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/ResidentLog.cs"
+          ],
           "lines": 5
         },
         {
           "slice": "RFC-26 D 探针出口（ExitForProbe：门禁里没有能点托盘确认框的人）",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
           "lines": 6
         }
       ]
@@ -695,22 +753,30 @@
       "attribution": [
         {
           "slice": "RFC-27 A 帧/命中图/meta 的编解码（abi.hello、abi.frame、Tier2Frame.Hits 的命中图优先仲裁）",
-          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Wire.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Wire.cs"
+          ],
           "lines": 313
         },
         {
           "slice": "RFC-27 B 世界快照/六种指令/事件包的编解码（未知 kind 令整包作废）",
-          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Wire.Brain.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Wire.Brain.cs"
+          ],
           "lines": 133
         },
         {
           "slice": "RFC-27 C wire 方法面与会话 quota 记账（TryQueryFrame/TryTickBrain/SendEvent/TryStateGet/Set/Notify/ChargeWire）",
-          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Wire.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Wire.cs"
+          ],
           "lines": 264
         },
         {
           "slice": "RFC-27 D 边界骨架上的 quota 字段/构造参数/往返记账/Dispose 审计行 + abi.hello 握手（+68/-8）",
-          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"
+          ],
           "lines": 60
         }
       ]
@@ -723,22 +789,30 @@
       "attribution": [
         {
           "slice": "RFC-28 A 帧内容源适配层（GetFrameContent/Blit 预乘还原/IFrameSourceStats 等四个可选诊断面/Note）",
-          "files": ["packages/core/PetDock.Core/src/Host/Tier2FrameContent.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/Tier2FrameContent.cs"
+          ],
           "lines": 122
         },
         {
           "slice": "RFC-28 B 头脑桥（IBrain 适配：Meta 取自 abi.hello、Tick 失败返回空列表、OnEvent 转 abi.event）",
-          "files": ["packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"
+          ],
           "lines": 54
         },
         {
           "slice": "RFC-28 C 公开面增加 IFrameHitSurface（命中图优先，未实现者行为不变）",
-          "files": ["packages/core/PetDock.Core/src/Compositor/FrameSource.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/FrameSource.cs"
+          ],
           "lines": 11
         },
         {
           "slice": "RFC-28 D 宿主工厂方法 CreateFrameContent/CreateBrain 与句柄解析（+24/-5）",
-          "files": ["packages/core/PetDock.Core/src/Host/PluginHost.Tier2.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Tier2.cs"
+          ],
           "lines": 19
         }
       ]
@@ -751,17 +825,23 @@
       "attribution": [
         {
           "slice": "RFC-29 A 装配点插入 tier-2 分支与选中规则（Compose 加 host 参数、Tier2Content）",
-          "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+          ],
           "lines": 61
         },
         {
           "slice": "RFC-29 B 判据入口 --composetest（ComposeProbe：Start + 轮询装载、COMPOSE-OK/FAIL）",
-          "files": ["packages/core/PetDock.Core/src/Host/ComposeProbe.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/ComposeProbe.cs"
+          ],
           "lines": 72
         },
         {
           "slice": "RFC-29 C Program.cs 旗标接线与宿主透传（+13/-2）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 11
         }
       ]
@@ -774,22 +854,30 @@
       "attribution": [
         {
           "slice": "RFC-30 A 性能页重写：逐宠物行、归属规则、NotAttributed/ProcessShared 常量、Summary 静态化、RowText 自检接口（+87/-21）",
-          "files": ["packages/core/PetDock.Core/src/Ui/PerfPage.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+          ],
           "lines": 66
         },
         {
           "slice": "RFC-30 B PetFrameReadings 记录与 PerfSummary.CountersWired",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+          ],
           "lines": 12
         },
         {
           "slice": "RFC-30 C UiHost.FrameReadings 取常驻泵读数并透传",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
           "lines": 12
         },
         {
           "slice": "RFC-30 D ControlPanel 构造参数透传（+3/-2）",
-          "files": ["packages/core/PetDock.Core/src/Ui/ControlPanel.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
+          ],
           "lines": 1
         }
       ]
@@ -802,22 +890,30 @@
       "attribution": [
         {
           "slice": "RFC-31 A 命中图裁决：LayeredFrameWindow.HitTest.cs 新 partial（WM_NCHITTEST 的像素换算与答案）",
-          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.HitTest.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.HitTest.cs"
+          ],
           "lines": 69
         },
         {
           "slice": "RFC-31 B WndProc 接入 TryHitTestPixel 分支（+6）",
-          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs"
+          ],
           "lines": 6
         },
         {
           "slice": "RFC-31 C 单实例锁 SingleInstance（命名互斥体，抢不到即退出 0）",
-          "files": ["packages/core/PetDock.Core/src/Host/SingleInstance.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/SingleInstance.cs"
+          ],
           "lines": 62
         },
         {
           "slice": "RFC-32 用户形态抢锁的分派点（诊断旗标不抢锁，+17）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 17
         }
       ]
@@ -830,12 +926,16 @@
       "attribution": [
         {
           "slice": "RFC-33 A Tier2Sandbox.Session.cs 新 partial：五态会话机、暂停/恢复、重启配额、崩溃检出、ProcessExited",
-          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Session.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Session.cs"
+          ],
           "lines": 179
         },
         {
           "slice": "RFC-33 B Tier2Sandbox.cs：Start 置 Running、三处进程已死分支调 NoteCrash、Tick 移进 Session partial（净 -10）",
-          "files": ["packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"
+          ],
           "lines": -10
         }
       ]
@@ -848,17 +948,23 @@
       "attribution": [
         {
           "slice": "RFC-34 A PluginHost.Lifecycle.cs DisableCore：tier-2 句柄暂停会话并落审计行",
-          "files": ["packages/core/PetDock.Core/src/Host/PluginHost.Lifecycle.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Lifecycle.cs"
+          ],
           "lines": 9
         },
         {
           "slice": "RFC-34 B Tier2FrameContent.GetFrameContent：会话非 Running 直接返回 null（不发 RPC）",
-          "files": ["packages/core/PetDock.Core/src/Host/Tier2FrameContent.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/Tier2FrameContent.cs"
+          ],
           "lines": 8
         },
         {
           "slice": "RFC-34 C Tier2BrainBridge.Tick：会话非 Running 计一次 dropped 并返回空列表",
-          "files": ["packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/Tier2BrainBridge.cs"
+          ],
           "lines": 7
         }
       ]
@@ -871,27 +977,37 @@
       "attribution": [
         {
           "slice": "RFC-35 A LayeredFrameWindow.Pointer.cs（新 partial）：四个钩子 + 会话期鼠标捕获 + 失焦/关窗取消 + 三个鼠标消息处理函数迁入",
-          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs"
+          ],
           "lines": 196
         },
         {
           "slice": "RFC-35 B LayeredFrameWindow.cs：三个鼠标处理函数迁出（-42），按住先问交互层",
-          "files": ["packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
+          ],
           "lines": -42
         },
         {
           "slice": "RFC-35 C FrameComposition.WirePointer：接线唯一所有者（生产与自检共用），时钟与帧源同一个",
-          "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+          ],
           "lines": 17
         },
         {
           "slice": "RFC-35 D PetFrameSource：每帧 EnforceSessionBudget(nowMs) + 对外暴露 ClockMs()",
-          "files": ["packages/core/PetDock.Core/src/Host/PetFrameSource.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetFrameSource.cs"
+          ],
           "lines": 10
         },
         {
           "slice": "RFC-35 E Program.ComposeWindow：装配后调 WirePointer + pointer-wiring 日志",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 8
         }
       ]
@@ -904,7 +1020,9 @@
       "attribution": [
         {
           "slice": "RFC-36 PluginHost：_threadStarted + Start() 置位 + Snapshot 未运行时直接读",
-          "files": ["packages/core/PetDock.Core/src/Host/PluginHost.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.cs"
+          ],
           "lines": 6
         }
       ]
@@ -917,12 +1035,16 @@
       "attribution": [
         {
           "slice": "RFC-37 PetDataStore：ReadPets() 新增 + ReadActive() 改为基于集合（一个解析者，两个答案）",
-          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs"
+          ],
           "lines": 27
         },
         {
           "slice": "RFC-37 FrameComposition：surface-catalog registered=<N> shown=1 日志行",
-          "files": ["packages/core/PetDock.Core/src/Host/FrameComposition.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+          ],
           "lines": 6
         }
       ]
@@ -935,22 +1057,30 @@
       "attribution": [
         {
           "slice": "RFC-37 PetWindowSet：槽位集合 = 窗口 + 帧源 + 帧循环，摆位/切换全部/收起/释放",
-          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"
+          ],
           "lines": 268
         },
         {
           "slice": "RFC-37 Program：常驻装配后按清单把其余几只装进集合并挂到 UiHost",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 12
         },
         {
           "slice": "RFC-37 UiHost：PetSet 字段 + AttachPetSet + 首滴答 StartAll + 释放",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
           "lines": 25
         },
         {
           "slice": "RFC-37 UiHost.Tray：切换全部/隐藏宠物 管到每一只",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+          ],
           "lines": 12
         }
       ]
@@ -963,22 +1093,30 @@
       "attribution": [
         {
           "slice": "RFC-37 PetWindowSet.TryAdd：把已初始化的实例补上窗口、帧源句柄、鼠标接线与帧循环（失败不留残骸）",
-          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"
+          ],
           "lines": 53
         },
         {
           "slice": "RFC-37 PetImportService：AdoptExtra 采纳分支 + active 回填（主窗那只不因追加而失去选中）",
-          "files": ["packages/core/PetDock.Core/src/Host/PetImportService.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs"
+          ],
           "lines": 28
         },
         {
           "slice": "RFC-37 PetDataStore：SetActive + SaveCatalog 抽取（一个写者两条路径）",
-          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs"
+          ],
           "lines": 19
         },
         {
           "slice": "RFC-37 UiHost：把集合的 TryAdd 接到导入服务，并同步托盘只数",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
           "lines": 13
         }
       ]
@@ -991,27 +1129,37 @@
       "attribution": [
         {
           "slice": "RFC-37 PetWindowSet.Commands：槽位查找 / 逐只暂停·隐藏·居中·移除",
-          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.Commands.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.Commands.cs"
+          ],
           "lines": 157
         },
         {
           "slice": "RFC-37 TrayHost：每宠物一条子菜单（pet-1..N）、重建入口与可点的子项",
-          "files": ["packages/core/PetDock.Core/src/Ui/TrayHost.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
+          ],
           "lines": 100
         },
         {
           "slice": "RFC-37 UiHost.Tray：命令按 id 路由、移除后同步托盘与只数",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+          ],
           "lines": 97
         },
         {
           "slice": "RFC-37 PetDataStore.Catalog：清单删除 + active 交接（按 D-03c 从主文件拆出）",
-          "files": ["packages/core/PetDock.Core/src/Host/PetDataStore.Catalog.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.Catalog.cs"
+          ],
           "lines": 65
         },
         {
           "slice": "RFC-37 UiHost：_store 字段与 _primaryRemoved 标记",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
           "lines": 4
         }
       ]
@@ -1024,27 +1172,37 @@
       "attribution": [
         {
           "slice": "RFC-37 PerfPage：PerfSampler 按宠物 id 取读数、进程合计行只在单泵时可归属、超限计数可空",
-          "files": ["packages/core/PetDock.Core/src/Ui/PerfPage.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+          ],
           "lines": 11
         },
         {
           "slice": "RFC-37 PetWindowSet：Readings() 逐只给出可见/在出帧/帧读数",
-          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"
+          ],
           "lines": 42
         },
         {
           "slice": "RFC-37 UiHost.Panel：FrameReadingsFor(petId) 先问集合再回落到主窗循环",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
           "lines": 15
         },
         {
           "slice": "RFC-37 UiSnapshot：PetLine 增加归因键 Id、PerfLine.Overruns 可空、新增 PetReading",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+          ],
           "lines": 15
         },
         {
           "slice": "RFC-37 UiRoster：快照里的宠物行带上 Id",
-          "files": ["packages/core/PetDock.Core/src/Ui/UiRoster.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs"
+          ],
           "lines": 1
         }
       ]
@@ -1057,7 +1215,9 @@
       "attribution": [
         {
           "slice": "RFC-37 PetWindowSet.Positions 新 partial：逐宠物位置表、位置键、ResolveStart 纯函数、拖动落地落盘",
-          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.Positions.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.Positions.cs"
+          ],
           "lines": 186
         },
         {
@@ -1070,12 +1230,16 @@
         },
         {
           "slice": "RFC-37 PetWindowSet 主文件：Slot 带清单 id、Add 统一订阅落盘、TryAdd/StartAll 走 PlaceAtStart、FromCatalog 收设置存储",
-          "files": ["packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"
+          ],
           "lines": 11
         },
         {
           "slice": "RFC-37 装配接线：FromCatalog 传入 settingsStore",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 1
         }
       ]
@@ -1097,7 +1261,9 @@
         },
         {
           "slice": "tier-2 工装入口：--tier2-guest 分流（客体由本 exe 自己扮演，供 --hosttest 判据驱动）",
-          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
           "lines": 7
         },
         {
@@ -1206,6 +1372,59 @@
             "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
           ],
           "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "measured": 23395,
+      "budget": 23430,
+      "note": "2026-10-26 真机故障的修复：宠物窗是置顶的（docs/12 §2.1），而本产品自己的模态窗（首次运行引导、能力授权、退出确认）落在普通档 —— 用户前台有最大化应用时弹窗被压在它后面，宠物窗又被 ShowDialog 置 WS_DISABLED，用户看到的是「可见、点不了、也关不掉的桌宠」。修法：给自有模态窗一个同档基类，并把退出确认从 MessageBox 换成同档的确认框。实测 23277 → 23395（本片 +118：PetDockDialog 71 + ConfirmDialog 49，UiHost.Tray.cs −2），加上 history[38] 少算的 4 行（I18n.cs 实测 +60，那条按 +56 申报）合计 +122 = 23395 − 23273，等于相邻 measured 之差。基类比两行版本厚，是因为只设 TopMost 属性不够：ShowInTaskbar 为真的窗显示时会被 HWND_TOP 抹掉 TOPMOST 位（实测授权弹窗 0x50101），所以改为「属性 + 句柄/显示两处主动设位 + ShowInTaskbar=false」，判据 ui-modal-topmost-* 读原生位。抬到 23430（余量 35）：动手前余量只有 43，低于本片的 118，于是这一轮先红了一次 D-03a —— 那一条只说明全包预算未申报，不代表本片代码有问题（见 2026-10-20 那条坑）；留 35 是延续 2026-10-25「余量归零会让下一个人的无关改动红在 D-03a 上」的口径。判据（ui-modal-*）在 test/ 下，按 D-03a 口径不计入本预算。",
+      "attribution": [
+        {
+          "slice": "自有模态窗进置顶档：新增 PetDockDialog 基类（引导窗与授权弹窗改为继承它，行数不变）与 ConfirmDialog（退出确认从 MessageBox 换成同档确认框，两个新文件）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetDockDialog.cs",
+            "packages/core/PetDock.Core/src/Ui/ConfirmDialog.cs"
+          ],
+          "lines": 120
+        },
+        {
+          "slice": "托盘退出改调 ConfirmDialog：MessageBox 的五参数调用换成一次问句，净减 2 行",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+          ],
+          "lines": -2
+        },
+        {
+          "slice": "history[38] 申报时少算的 4 行（RFC-42 收尾）：I18n.cs 相对 d218663^ 实测 +60，那条记录按 +56 申报 —— 23273 与真机树上的 23277 之差，在这一条里补齐，此后预算按实测走",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/I18n.cs"
+          ],
+          "lines": 4
+        }
+      ]
+    },
+    {
+      "date": "2026-10-26",
+      "measured": 23559,
+      "budget": 23610,
+      "note": "2026-10-26 真机故障（续，m00643）：启动时三只插件同时申请授权，UiConsentPort 一份请求弹一个窗，连弹三个（日志同一进程三条 consent-saved：myfirstbrain granted=2 / bongocat.interaction granted=2 / brain.reaction granted=1）。用户裁决「合并成一个窗、按插件分段」。修法：授权弹窗可承载多份请求（分段头 = 每只插件名+Tier、每份请求各自的勾选集与行归属、允许/拒绝/仅本次三选一在整批统一），UI 线程队列泵一次取走全部待答请求只开一个窗、答案按每份请求分别映射；单请求路径行为一字不变。实测 23395 → 23559（+164）：AuthorizationDialog.cs −20（合批那半与 PlainTalk 拆出去）、新增 AuthorizationDialog.Batch.cs 144、UiConsentPort.cs +43（TakeAllPending 与按请求落账）。归属表按整包裁定：AuthorizationDialog.cs 实测 −20、AuthorizationDialog.Batch.cs 144、UiConsentPort.cs 43，文件级之和 167，而整包 measured 差 164 —— 3 行差（split 边界处的空行归属）并进第一个切片，申报 121，使归属之和等于相邻 measured 之差。另：AuthorizationDialog.cs 第一版合批后是 482 行，先被 D-03c 顶红才拆的文件——本片的 +144 有一部分是那次拆分本身（判据 ui-auth-batch-* 在 test/ 下，按 D-03a 口径不计）。抬到 23610（余量 51）：AuthorizationDialog.cs 现在 380 行、UiConsentPort.cs 249、Batch 144，三者都离 400 只差 20~150 行，下一次动授权链路仍会先撞 D-03c，留一点余量给下一次拆分。",
+      "attribution": [
+        {
+          "slice": "授权弹窗合批：一个窗承载多份请求（分段头、按请求的勾选集与行归属、PlainTalk/RowText 与单请求入口拆到 partial），单请求行为不变",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs",
+            "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.Batch.cs"
+          ],
+          "lines": 121
+        },
+        {
+          "slice": "UI 线程队列泵合批：一次取走全部待答请求、只弹一个窗、按请求分别映射答案（MapAnswer），取消/异常两条路径按批收尾",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiConsentPort.cs"
+          ],
+          "lines": 43
         }
       ]
     }

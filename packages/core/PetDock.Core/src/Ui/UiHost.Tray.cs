@@ -175,16 +175,14 @@ internal sealed partial class UiHost
         KernelLog.Write($"tray-pause-hooks uninstalled={installed} resumable=0");
     }
 
-    /// <summary>退出确认（docs/18 §1：退出是固定项，但要有一次确认）。</summary>
+    /// <summary>
+    /// 退出确认（docs/18 §1：退出是固定项，但要有一次确认）。
+    /// 走 ConfirmDialog 而不是 MessageBox：后者不进置顶档，前台有最大化应用时会被压在后面，
+    /// 用户以为关掉了、进程还在（真机取证见 PetDockDialog.cs）。
+    /// </summary>
     private void ExitApp()
     {
-        DialogResult answer = MessageBox.Show(
-            I18n.Get("ui.tray.exitConfirm"),
-            I18n.Get("ui.tray.exitConfirmTitle"),
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question,
-            MessageBoxDefaultButton.Button2);
-        if (answer == DialogResult.Yes)
+        if (ConfirmDialog.Ask(I18n.Get("ui.tray.exitConfirm"), I18n.Get("ui.tray.exitConfirmTitle")))
         {
             ExitThread();
         }

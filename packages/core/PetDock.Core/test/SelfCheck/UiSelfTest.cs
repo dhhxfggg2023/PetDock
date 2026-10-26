@@ -40,7 +40,12 @@ internal static class UiSelfTest
             PanelSingleton();
             RosterReadOnly();
             AuthorizationDialogCheck();
+            // 2026-10-26 真机故障（弹窗被压在宠物下面/后面）的反向门禁：模态窗必须在置顶档，
+            // 且真的压在宠物上面。见 ModalBandChecks.cs。
+            ModalBandChecks.Run(Check);
             ConsentUiChecks.Run(Emit, Check);
+            // 2026-10-26：同批授权请求合进一个窗、按插件分段的判据（ui-auth-batch-*）。
+            ConsentBatchChecks.Run(Check);
             PerfEmptyHonest();
             PerfPageSample();
             // RFC-30 §4：逐宠物行、归属规则、超限计数是否真的会动。

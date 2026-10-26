@@ -7,5 +7,7 @@
   "ui.panel.problemSeparator": "; ",
   "ui.tray.kernelFallback": "(kernel fallback)",
   "ui.tray.exitConfirm": "Quit PetDock? Your pets will disappear from the desktop.",
-  "ui.tray.exitConfirmTitle": "PetDock — Confirm quit"
+  "ui.tray.exitConfirmTitle": "PetDock — Confirm quit",
+  "ui.confirm.ok": "OK",
+  "ui.confirm.cancel": "Cancel"
 }

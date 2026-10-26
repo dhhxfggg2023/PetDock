@@ -62,6 +62,13 @@ internal static partial class ThrottleChecks
             //    2026-10-22 的 `ticks=9 submitted=5` / `tier=occluded` 就是「窗口里档位还在切」。
             bool settled = WaitFor(ConvergeMs, () => loop.Reading.Tier == FrameTier.Idle);
 
+            // ①b 夹具卫生：同一进程里先前的判据（遮挡族 / 全屏族）造过 topmost 窗，它们与本夹具同层，
+            //     而层内先后决定 WindowFromPoint 的答案 ⇒ 本夹具可能在测量窗里**合法地**被判成遮挡档。
+            //     2026-10-26 `--all` 实测 `tier=occluded ticks=12 idleTicks=6`，单独跑三层却四次全绿，
+            //     差别就是前一层留下的置顶窗。把自己重新插到这一层最前，再确认档位回到静止档。
+            fixture.Window.BringToFrontOfTopmost();
+            settled = WaitFor(ConvergeMs, () => loop.Reading.Tier == FrameTier.Idle);
+
             // ② 测量窗按 tick 数算（见 WindowTicks），起点是「已经稳在静止档」的那一刻。
             ThrottleReading before = loop.Reading;
             WaitFor(ConvergeMs, () => loop.Reading.Ticks - before.Ticks >= WindowTicks);

@@ -17,6 +17,10 @@
 
     <InvariantGlobalization>true</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- 应用图标（2026-10-26）：仓库自绘的像素猫，assets/icons/icon.ico 是多分辨率 ICO。
+         在此之前 exe 里没有图标资源，资源管理器里显示的是 .NET 默认图。 -->
+    <ApplicationIcon>..\..\..\assets\icons\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <!-- RFC-06 §4 的自检面外迁（2026-10-18）：12 个自检/判据源文件已从 src/SelfTest/ 与 src/Host/
