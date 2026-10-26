@@ -21,7 +21,11 @@ internal static partial class ThrottleChecks
             {
                 FrameLoop = loop,
             };
+            // 读数必须在采集前后各取一次 tick 再夹住比：只在采集**之后**比 `==` 是竞态——
+            // 采集与比较之间泵还能合法地走一 tick（2026-10-26 `--all` 实测 ticks=16 loopTicks=17）。
+            long ticksBefore = loop.Ticks;
             DiagnosticReadings readings = service.CollectReadings();
+            long ticksAfter = loop.Ticks;
             string summary = DiagnosticSections.BuildSummary(readings, RedactRules.ForCurrentMachine(root, null));
             // RFC-42 §3.4：行的标题会翻译，判据只认结构化字段与 ASCII 数据 token ——
             // 「这一行存在」由 tier=/ticks=/submitted= 三个 token 同时出现来证明。
@@ -34,13 +38,16 @@ internal static partial class ThrottleChecks
                 && summary.Contains("submitted=" + readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
                 // 帧预算那一行也要拼上同一个档位读数（不新增记录字段，只补一行文本）。
                 && readings.FrameBudgetLine.Contains("throttle(", StringComparison.Ordinal)
-                // 读数必须是**这个**循环的，不是 0 占位。
-                && readings.ThrottleTicks == loop.Ticks;
+                // 读数必须是**这个**循环的真读数，不是 0 占位：落在采集窗口内即可（不要求等于事后读数）。
+                && readings.ThrottleTicks > 0
+                && readings.ThrottleTicks >= ticksBefore
+                && readings.ThrottleTicks <= ticksAfter;
             done("ui-throttle-diagnostic-line", ok,
                 "tier=" + tier
                 + " ticks=" + readings.ThrottleTicks.ToString(CultureInfo.InvariantCulture)
+                + " window=" + ticksBefore.ToString(CultureInfo.InvariantCulture)
+                + ".." + ticksAfter.ToString(CultureInfo.InvariantCulture)
                 + " submitted=" + readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture)
-                + " loopTicks=" + loop.Ticks.ToString(CultureInfo.InvariantCulture)
                 + " hasTierToken=" + Flag(hasTierToken)
                 + " line=" + ExtractThrottleLine(summary));
         }
