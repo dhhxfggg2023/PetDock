@@ -61,7 +61,7 @@
   "ui.onboarding.sample.placed": "已放置示例宠物。",
   "ui.onboarding.through.title": "透明区域可以点穿",
   "ui.onboarding.through.caption": "宠物透明区域可以点到下面的东西，这是正常的",
-  "ui.onboarding.through.tip": "试着点一下宠物边角上什么都没有的地方 —— 下面那个窗口会接到你的点击。",
+  "ui.onboarding.through.tip": "试着点一下宠物边角上什么都没有的地方 —— 下面那个窗口会接到你的点击。入口：右键宠物弹出菜单（主控面板、隐藏、退出），双击宠物直接打开主控面板。",
   "ui.onboarding.no-pet": "当前没有可显示的宠物，第 2、3 步已跳过。",
   "ui.onboarding.no-sample": "发行物里没有示例素材，第 2 步无法放置示例宠物。",
   "ui.onboarding.placeFailed": "放置示例宠物失败：{0}",

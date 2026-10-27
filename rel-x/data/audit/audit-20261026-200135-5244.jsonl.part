@@ -1,0 +1,8 @@
+{"timestamp":"2026-10-26T12:01:42.6314038Z","agent_id":"host","plugin_id":"com.petdock.myfirstbrain","kind":"consent","detail":"asked=input.mousePosition,persist.write:self granted=input.mousePosition,persist.write:self declined=(none) scope=remember"}
+{"timestamp":"2026-10-26T12:01:42.6358911Z","agent_id":"host","plugin_id":"com.petdock.myfirstbrain","kind":"grant","detail":"grant=input.mousePosition"}
+{"timestamp":"2026-10-26T12:01:42.6359559Z","agent_id":"host","plugin_id":"com.petdock.myfirstbrain","kind":"grant","detail":"grant=persist.write:self"}
+{"timestamp":"2026-10-26T12:01:43.2174408Z","agent_id":"host","plugin_id":"com.petdock.bongocat.interaction","kind":"consent","detail":"asked=input.mousePosition,input.keyboardHook granted=input.mousePosition,input.keyboardHook declined=(none) scope=remember"}
+{"timestamp":"2026-10-26T12:01:43.2180647Z","agent_id":"host","plugin_id":"com.petdock.bongocat.interaction","kind":"grant","detail":"grant=input.mousePosition"}
+{"timestamp":"2026-10-26T12:01:43.2181003Z","agent_id":"host","plugin_id":"com.petdock.bongocat.interaction","kind":"grant","detail":"grant=input.keyboardHook"}
+{"timestamp":"2026-10-26T12:01:43.6671242Z","agent_id":"host","plugin_id":"petdock.brain.reaction","kind":"consent","detail":"asked=input.mousePosition granted=input.mousePosition declined=(none) scope=remember"}
+{"timestamp":"2026-10-26T12:01:43.6677144Z","agent_id":"host","plugin_id":"petdock.brain.reaction","kind":"grant","detail":"grant=input.mousePosition"}

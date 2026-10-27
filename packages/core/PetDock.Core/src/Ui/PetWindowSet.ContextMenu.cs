@@ -23,6 +23,38 @@ internal sealed partial class PetWindowSet
         }
     }
 
+    /// <summary>
+    /// 双击的接线（2026-10-27，docs/18 §1）：与右键共用同一条纪律 —— 在唯一登记点接一次，
+    /// 装配期与运行期的槽位都走这里。处理函数为空时不接：窗口上的双击仍是惰性的（不弹面板）。
+    /// </summary>
+    internal PetTapHookSignature? DoubleClickHandler { get; set; }
+
+    private void WireDoubleClick(LayeredFrameWindow window)
+    {
+        if (DoubleClickHandler is { } handler)
+        {
+            window.DoubleClicked += handler;
+        }
+    }
+
+    /// <summary>判据用：桌上有几只真的接上了双击（0 = 双击是个死键）。</summary>
+    internal int DoubleClickWiredCount
+    {
+        get
+        {
+            int wired = 0;
+            foreach (Slot slot in _slots)
+            {
+                if (slot.Window.DoubleClickWired)
+                {
+                    wired++;
+                }
+            }
+
+            return wired;
+        }
+    }
+
     /// <summary>判据用：桌上有几只真的接上了右键（0 = 菜单是个死键）。</summary>
     internal int ContextMenuWiredCount
     {

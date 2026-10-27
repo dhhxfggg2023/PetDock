@@ -1,0 +1,5 @@
+{"timestamp":"2026-10-26T13:25:30.8858848Z","agent_id":"host","plugin_id":"com.petdock.myfirstbrain","kind":"grant","detail":"grant=input.mousePosition"}
+{"timestamp":"2026-10-26T13:25:30.8860688Z","agent_id":"host","plugin_id":"com.petdock.myfirstbrain","kind":"grant","detail":"grant=persist.write:self"}
+{"timestamp":"2026-10-26T13:25:30.9019129Z","agent_id":"host","plugin_id":"com.petdock.bongocat.interaction","kind":"grant","detail":"grant=input.mousePosition"}
+{"timestamp":"2026-10-26T13:25:30.9019700Z","agent_id":"host","plugin_id":"com.petdock.bongocat.interaction","kind":"grant","detail":"grant=input.keyboardHook"}
+{"timestamp":"2026-10-26T13:25:30.9024854Z","agent_id":"host","plugin_id":"petdock.brain.reaction","kind":"grant","detail":"grant=input.mousePosition"}

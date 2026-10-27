@@ -1,0 +1,283 @@
+timestamp=2026-10-26T12:35:25.9729136Z agent_id=host level=info msg=resident-log-started
+timestamp=2026-10-26T12:35:25.9732660Z agent_id=host level=info msg=i18n-loaded lang=zh-CN keys=226 fallback=0
+timestamp=2026-10-26T12:35:25.9733114Z agent_id=host level=info msg=settings-loaded idle-frame=33.3ms language=zh-CN onboarding=1 position=(none) pet-positions=0 plugins-disabled=0 start-with-windows=(见注册表)
+timestamp=2026-10-26T12:35:25.9733441Z agent_id=host level=info msg=pet-set pets=1 extras=0 started=false ids= catalog=0
+timestamp=2026-10-26T12:35:25.9733769Z agent_id=host level=info msg=pet-set-attached pets=1 extras=0 started=false ids=
+timestamp=2026-10-26T12:35:26.1752701Z agent_id=host level=info msg=topmost before=0x8090088 after=0x8090088 setpos-ok=True win32err=0
+timestamp=2026-10-26T12:35:26.1753058Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.1753379Z agent_id=host level=info msg=resident-loop started visible=true pumping=true reason=start target=33.3ms
+timestamp=2026-10-26T12:35:26.1753669Z agent_id=host level=info msg=pet-position-restored x=1854 y=1225
+timestamp=2026-10-26T12:35:26.1753973Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.1754293Z agent_id=host level=info msg=sandbox plugin=com.petdock.myfirstbrain kind=Audit grant=input.mousePosition
+timestamp=2026-10-26T12:35:26.1754610Z agent_id=host level=info msg=sandbox plugin=com.petdock.myfirstbrain kind=Audit grant=persist.write:self
+timestamp=2026-10-26T12:35:26.1754915Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=com.petdock.myfirstbrain
+timestamp=2026-10-26T12:35:26.1755222Z agent_id=host level=info msg=lifecycle pluginActivated plugin=com.petdock.myfirstbrain
+timestamp=2026-10-26T12:35:26.1755612Z agent_id=host level=info msg=sandbox plugin=com.petdock.bongocat.interaction kind=Audit grant=input.mousePosition
+timestamp=2026-10-26T12:35:26.1755922Z agent_id=host level=info msg=sandbox plugin=com.petdock.bongocat.interaction kind=Audit grant=input.keyboardHook
+timestamp=2026-10-26T12:35:26.1756219Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=com.petdock.bongocat.interaction
+timestamp=2026-10-26T12:35:26.1756524Z agent_id=host level=info msg=lifecycle pluginActivated plugin=com.petdock.bongocat.interaction
+timestamp=2026-10-26T12:35:26.1756813Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=com.petdock.brainnull
+timestamp=2026-10-26T12:35:26.1757102Z agent_id=host level=info msg=lifecycle pluginActivated plugin=com.petdock.brainnull
+timestamp=2026-10-26T12:35:26.1757405Z agent_id=host level=info msg=sandbox plugin=petdock.brain.reaction kind=Audit grant=input.mousePosition
+timestamp=2026-10-26T12:35:26.1757708Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=petdock.brain.reaction
+timestamp=2026-10-26T12:35:26.1758002Z agent_id=host level=info msg=lifecycle pluginActivated plugin=petdock.brain.reaction
+timestamp=2026-10-26T12:35:26.1758295Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=com.petdock.dyberpet.importer
+timestamp=2026-10-26T12:35:26.1758592Z agent_id=host level=info msg=lifecycle pluginActivated plugin=com.petdock.dyberpet.importer
+timestamp=2026-10-26T12:35:26.1758904Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=com.petdock.spriteseq
+timestamp=2026-10-26T12:35:26.1759197Z agent_id=host level=info msg=lifecycle pluginActivated plugin=com.petdock.spriteseq
+timestamp=2026-10-26T12:35:26.1759486Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=com.petdock.statenull
+timestamp=2026-10-26T12:35:26.1759775Z agent_id=host level=info msg=lifecycle pluginActivated plugin=com.petdock.statenull
+timestamp=2026-10-26T12:35:26.1760075Z agent_id=host level=info msg=lifecycle pluginLoaded plugin=petdock.sample.petimage
+timestamp=2026-10-26T12:35:26.1760369Z agent_id=host level=info msg=lifecycle pluginActivated plugin=petdock.sample.petimage
+timestamp=2026-10-26T12:35:26.1760725Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:26.1760998Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.1761281Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.1761554Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.3768718Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.3769501Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:26.3770186Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.3770628Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:26.3771039Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.3771425Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.3771819Z agent_id=host level=info msg=key-hook-installed reason=capability-granted
+timestamp=2026-10-26T12:35:26.3772310Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.3772711Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:26.3773131Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5784668Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:26.5785492Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5786170Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5786847Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5787691Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5788426Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:26.5789080Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5789800Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:26.5791038Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.5792255Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.7806016Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.7807244Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.7810266Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.7811291Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:26.7812620Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.7813444Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:26.7814252Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.7815146Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.9815045Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.9815509Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:26.9815836Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.9816175Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:26.9816565Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.9816855Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.9817128Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:26.9817436Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.1815016Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.1815290Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:27.1815478Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.1815698Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:27.1815891Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.1816090Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.1816279Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.1816514Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.3825940Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:27.3826179Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.3826354Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:27.3826527Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.3826686Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.3826833Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.3827182Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.3827345Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:27.3827502Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.5833966Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:27.5834206Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.5834348Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.5834480Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.5834611Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.5834756Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:27.5834894Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.5835039Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:27.5835203Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.7834368Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.7834525Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.7834650Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.7834772Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:27.7835324Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.7835482Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:27.7835612Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.7835731Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.9843337Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.9843672Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.9843993Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:27.9844476Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.9844899Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:27.9845185Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.9845469Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:27.9845757Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.1850180Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.1850420Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:28.1850554Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.1850739Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:28.1850884Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.1851025Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.1851168Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.1851300Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.3853333Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:28.3853533Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.3853725Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:28.3853855Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.3853997Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.3854155Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.3854297Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.3854443Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:28.3854562Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.5861126Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:28.5861349Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.5861545Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.5861746Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.5861899Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.5862054Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:28.5862187Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.5862365Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:28.5862502Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.7862819Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.7863027Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.7863174Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.7863429Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:28.7863581Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.7863913Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:28.7864108Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.7864912Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9870700Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9870879Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9871114Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:28.9871263Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9871447Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:28.9871584Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9871722Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9871940Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:28.9872091Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.1871949Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:29.1872167Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.1872387Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:29.1872541Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.1872756Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.1872900Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.1873046Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.1873202Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:29.1873332Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.3880868Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:29.3881041Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.3881183Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.3881320Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.3881457Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.3881613Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:29.3881747Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.3881897Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:29.3882064Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.5883636Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.5883805Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.5883956Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.5884116Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:29.5884253Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.5884407Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:29.5884537Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.5884678Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.7894862Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.7895885Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.7896759Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.7897066Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:29.7897204Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.7897345Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:29.7897469Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.7897603Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.9896130Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.9896838Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:29.9897005Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.9897150Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:29.9897271Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.9897386Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.9897524Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:29.9897644Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.1901615Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.1901845Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:30.1902035Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.1902241Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:30.1902402Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.1902570Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.1902694Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.1902820Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.3906742Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:30.3907184Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.3907432Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:30.3907579Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.3907729Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.3907860Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.3908011Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.3908190Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:30.3908352Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.5904599Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:30.5904782Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.5904928Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.5905062Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.5905196Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.5905343Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:30.5905484Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.5905633Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:30.5905768Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.7919940Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.7920866Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.7921669Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.7922547Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:30.7923244Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.7923404Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:30.7923534Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.7923667Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.9925928Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.9926793Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.9927658Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:30.9928216Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.9928367Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:30.9928493Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.9928616Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:30.9928738Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.1931380Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.1931559Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:31.1931685Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.1931909Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:31.1932036Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.1932161Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.1932275Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.1932449Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3934771Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:31.3934919Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3935121Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:31.3935248Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3935373Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3935534Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3935677Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3935827Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:31.3935955Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.3936107Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:31.3936358Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.5946709Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.5946861Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.5947017Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.5947173Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:31.5947310Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.5947465Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:31.5947600Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.5947742Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.7953740Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.7954389Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.7954942Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:31.7955474Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.7955995Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:31.7956483Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.7956960Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.7957463Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.9955593Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.9956045Z agent_id=host level=info msg=throttle-tier-changed idle->active reason=active target=33.3ms
+timestamp=2026-10-26T12:35:31.9956188Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.9956329Z agent_id=host level=info msg=throttle-tier-changed active->idle reason=idle-reused target=33.3ms
+timestamp=2026-10-26T12:35:31.9956482Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.9956612Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.9956740Z agent_id=host level=info msg=frame-pump-target 33.3ms
+timestamp=2026-10-26T12:35:31.9956861Z agent_id=host level=info msg=frame-pump-target 33.3ms

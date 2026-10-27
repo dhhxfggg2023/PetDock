@@ -39,6 +39,9 @@ internal sealed partial class LayeredFrameWindow : Form
     /// <summary>有没有人接右键（判据用：null 说明菜单没接上，右键会变成没反应的死键）。</summary>
     public bool ContextMenuWired => ContextRequested is not null;
 
+    /// <summary>有没有人接双击（判据用：null 说明双击是死键；事件在 Pointer.cs 里声明）。</summary>
+    public bool DoubleClickWired => DoubleClicked is not null;
+
     /// <summary>注入内容源构造（生产与自检路径：内容由上层给，内核只收像素+尺寸）。</summary>
     public LayeredFrameWindow(IFrameContentSource content, bool ownsContent = true)
     {

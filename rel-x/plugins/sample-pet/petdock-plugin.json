@@ -1,0 +1,11 @@
+{
+  "id": "petdock.sample.petimage",
+  "name": "Sample Pet Image Content",
+  "version": "0.1.0",
+  "api": { "major": 1, "minor": 0 },
+  "kind": "presenter",
+  "tier": 0,
+  "entry": "PetDock.SamplePet/bin/Release/net8.0-windows/PetDock.SamplePet.dll",
+  "capabilities": [],
+  "license": { "spdx": "CC0-1.0" }
+}

@@ -31,6 +31,64 @@ internal sealed partial class LayeredFrameWindow
     /// <summary>本窗是否正在拖（判据用它区分「按下去拖窗」与「按下去进会话」）。</summary>
     internal bool IsDraggingNow => _dragging;
 
+    /// <summary>
+    /// 双击（2026-10-27，docs/18 §1）：宠物上连点两下 → 打开主控面板。这是右键菜单之外的第二条
+    /// 入口 —— 托盘图标在部分机器/布局上不进外壳（结论见 docs/98 §3.1 第 1 条），而「界面上什么也点不开」
+    /// 比「菜单没接上」更致命。双击不是新语义：宿主只把它接到与托盘「主控面板」同一个动作上。
+    /// </summary>
+    internal event PetTapHookSignature? DoubleClicked;
+
+    /// <summary>上一次「点了一下但没拖动」的时刻与光标位置（双击判定用；系统阈值见 NoteTap）。</summary>
+    private DateTime _lastTapAt;
+    private Point _lastTapPos;
+    private bool _hasLastTap;
+
+    /// <summary>按下时的窗口位置：抬起来还在这里 = 这是一次「点」，不是一次「拖」。</summary>
+    private (int X, int Y) _downWindowPos;
+
+    /// <summary>拖过的距离上限（像素）：超过它就算拖窗，不计入双击。</summary>
+    private const int TapSlopPixels = 3;
+
+    /// <summary>
+    /// 一次「点」的记账与双击判定。阈值取系统设置（`SystemInformation.DoubleClickTime` /
+    /// `DoubleClickSize`），不自造常量：用户把双击速度调慢时这里必须跟着慢。
+    /// 两下都必须是「点」而不是「拖」—— 拖动宠物是最常用的手势，不能每次落地都算一下双击。
+    /// </summary>
+    private void NoteTap()
+    {
+        DateTime now = DateTime.UtcNow;
+        Point cursor = Cursor.Position;
+        bool second = _hasLastTap
+            && (now - _lastTapAt).TotalMilliseconds <= SystemInformation.DoubleClickTime
+            && Math.Abs(cursor.X - _lastTapPos.X) <= SystemInformation.DoubleClickSize.Width
+            && Math.Abs(cursor.Y - _lastTapPos.Y) <= SystemInformation.DoubleClickSize.Height;
+
+        if (!second)
+        {
+            _hasLastTap = true;
+            _lastTapAt = now;
+            _lastTapPos = cursor;
+            return;
+        }
+
+        _hasLastTap = false;
+        try
+        {
+            DoubleClicked?.Invoke();
+        }
+        catch (Exception error)
+        {
+            // 与右键同一条纪律：处理函数炸了不许把消息循环打穿。
+            KernelLog.Write($"double-click-failed {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 判据专用（先例：`RaiseContextRequestedForCheck`）：自检没有真鼠标，而生产路径（NoteTap）
+    /// 除了阈值判定只剩「抛事件」，所以让判据从同一个事件进。
+    /// </summary>
+    internal void RaiseDoubleClickedForCheck() => DoubleClicked?.Invoke();
+
     /// <summary>会话期间的鼠标捕获是否由本窗持有（会话结束必须还回去）。</summary>
     private bool _pointerCapture;
 
@@ -135,6 +193,7 @@ internal sealed partial class LayeredFrameWindow
         _dragging = true;
         Capture = true;
         _dragOffset = new Point(e.X, e.Y);
+        _downWindowPos = CurrentPosition;
     }
 
     private void OnMouseMove(object? sender, MouseEventArgs e)
@@ -171,6 +230,18 @@ internal sealed partial class LayeredFrameWindow
             ["windowId"] = $"hwnd-{Handle.ToInt64():X}",
             ["position"] = new System.Text.Json.Nodes.JsonArray(pos.X, pos.Y),
         });
+
+        // 双击判定只认「点」：窗口没被拖走才算（拖动落地不参与，见 NoteTap 的注释）。
+        bool tapped = Math.Abs(pos.X - _downWindowPos.X) <= TapSlopPixels
+            && Math.Abs(pos.Y - _downWindowPos.Y) <= TapSlopPixels;
+        if (tapped)
+        {
+            NoteTap();
+        }
+        else
+        {
+            _hasLastTap = false;
+        }
     }
 
     protected override void OnDeactivate(EventArgs e)
@@ -195,3 +266,6 @@ internal delegate void PointerMoveHookSignature(int x, int y);
 
 /// <summary>取消钩子的形状（宿主侧按 why 记账：deactivate / closing）。</summary>
 internal delegate void PointerCancelHookSignature(string why);
+
+/// <summary>双击（2026-10-27）的形状。自声明而不是用系统泛型委托：D-03b 词表把那个泛型名列为概念黑名单。</summary>
+internal delegate void PetTapHookSignature();

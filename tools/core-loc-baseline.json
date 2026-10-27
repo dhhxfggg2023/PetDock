@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 24030,
+  "budget": 24180,
   "history": [
     {
       "date": "2026-10-18",
@@ -1494,6 +1494,31 @@
             "packages/core/PetDock.Core/src/Host/PluginHost.Scheduler.cs",
             "packages/core/PetDock.Core/src/Ui/PetWindowSet.ContextMenu.cs",
             "packages/core/PetDock.Core/src/Compositor/LayeredWindowApi.Diagnostics.cs"
+          ],
+          "lines": 40
+        }
+      ]
+    },
+    {
+      "date": "2026-10-27",
+      "measured": 24121,
+      "budget": 24180,
+      "note": "2026-10-27 用户上午授权「现在是早上，你有大把时间，快去将整个项目完善吧」（m03425）。本片只做「入口可见」：托盘图标在发行布局下不进外壳（取证见 docs/98 §3.1 第 1 条），而面板是唯一能改设置/开关插件/看性能的地方，所以给它补一条不经托盘的路 —— 双击宠物直接打开主控面板。实测 23979 → 24121（+142）。归属两片：（1）单击/双击判定与事件（LayeredFrameWindow.Pointer.cs +74 的 NoteTap/阈值/事件/自检钩子、LayeredFrameWindow.cs +3 的 DoubleClickWired、PetWindowSet.cs +1 的接线调用、UiHost.cs +6 的主窗与集合订阅，再加 18 行整包差额 —— 同一文件内既有行被替换后 numstat 与实际差 25 行，按整包裁定并进第一片）共 102；（2）双击接线半边与判据（PetWindowSet.ContextMenu.cs +32 的 DoubleClickHandler/WireDoubleClick/DoubleClickWiredCount）共 40。判据 ui-pet-double-click-wired / -dispatch / -set-wired 在 test/ 下，按 D-03a 口径不计。抬到 24180（余量 59）：LayeredFrameWindow.Pointer.cs 现 271 行，仍有余量；下一轮若继续动它，先看它和 PetWindowSet.cs（377）的距离。",
+      "attribution": [
+        {
+          "slice": "双击开面板：窗口层的单击/双击判定、系统阈值、事件与自检钩子，以及主窗与集合的订阅",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 102
+        },
+        {
+          "slice": "双击接线半边：集合的唯一登记点与「接上了几只」的读数",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.ContextMenu.cs"
           ],
           "lines": 40
         }

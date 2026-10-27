@@ -11,6 +11,9 @@
 //   ui-pet-context-menu-wired        宠物窗的右键接着宿主（没接 = 右键是个死键）
 //   ui-pet-context-menu-dispatch     右键事件真的把屏幕坐标递到处理函数
 //   ui-pet-context-menu-set-wired    集合里那几只也接上了（主窗接上不算数）
+//   ui-pet-double-click-wired        双击接着宿主（2026-10-27：托盘之外的入口）
+//   ui-pet-double-click-dispatch     双击事件真的把处理函数叫起来
+//   ui-pet-double-click-set-wired    集合里那几只也接上了双击
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -38,6 +41,9 @@ internal static class PluginToggleChecks
         "ui-pet-context-menu-wired",
         "ui-pet-context-menu-dispatch",
         "ui-pet-context-menu-set-wired",
+        "ui-pet-double-click-wired",
+        "ui-pet-double-click-dispatch",
+        "ui-pet-double-click-set-wired",
     };
 
     public static void Run(Check check)
@@ -152,6 +158,35 @@ internal static class PluginToggleChecks
             set.ContextMenuHandler = _ => { };
             set.Add(new PetWindowSet.Slot(null, "(probe)", second, null, new ResidentFrameLoop(second)));
             return (set.ContextMenuWiredCount == 1, $"wired={set.ContextMenuWiredCount} slots={set.Slots.Count}");
+        });
+
+        // ⑧⑨⑩ 双击（2026-10-27）：托盘之外的第二条入口。托盘图标在发行布局里不进外壳
+        //    （docs/98 §3.1 第 1 条），所以「双击宠物开面板」必须有判据钉着，不然它会静默变成死键。
+        Judge(check, "ui-pet-double-click-wired", () =>
+        {
+            using var window = new LayeredFrameWindow();
+            using var host = new UiHost(window, null, null, null, null, null);
+            bool wired = window.DoubleClickWired;
+            return (wired, $"wired={wired}");
+        });
+
+        Judge(check, "ui-pet-double-click-dispatch", () =>
+        {
+            using var window = new LayeredFrameWindow();
+            int calls = 0;
+            window.DoubleClicked += () => calls++;
+            window.RaiseDoubleClickedForCheck();
+            return (calls == 1, $"calls={calls}");
+        });
+
+        Judge(check, "ui-pet-double-click-set-wired", () =>
+        {
+            using var window = new LayeredFrameWindow();
+            var second = new LayeredFrameWindow();
+            using var set = new PetWindowSet(window);
+            set.DoubleClickHandler = () => { };
+            set.Add(new PetWindowSet.Slot(null, "(probe)", second, null, new ResidentFrameLoop(second)));
+            return (set.DoubleClickWiredCount == 1, $"wired={set.DoubleClickWiredCount} slots={set.Slots.Count}");
         });
     }
 

@@ -61,7 +61,7 @@
   "ui.onboarding.sample.placed": "Sample pet placed.",
   "ui.onboarding.through.title": "Transparent areas are click-through",
   "ui.onboarding.through.caption": "Clicks on the pet's transparent areas reach whatever is below it; this is expected",
-  "ui.onboarding.through.tip": "Try clicking an empty spot near the pet's edge — the window below receives your click.",
+  "ui.onboarding.through.tip": "Try clicking an empty spot near the pet's edge — the window below receives your click. Entry points: right-click the pet for the menu (control panel, hide, exit); double-click the pet to open the control panel directly.",
   "ui.onboarding.no-pet": "There is no pet to show; steps 2 and 3 are skipped.",
   "ui.onboarding.no-sample": "This build ships no sample assets, so step 2 cannot place a sample pet.",
   "ui.onboarding.placeFailed": "Could not place the sample pet: {0}",

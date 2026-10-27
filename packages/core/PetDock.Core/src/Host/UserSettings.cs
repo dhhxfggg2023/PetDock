@@ -52,7 +52,7 @@ internal sealed record UserSettings(
     /// 这是 v1 的版本号；引导出 v2 时把这里改成 2，v1 做过的用户仍会看到 v2（这是有意的：
     /// 引导内容变了就该再走一遍），而 v2 做完的标记是 2。
     /// </summary>
-    public const int OnboardingVersion = 1;
+    public const int OnboardingVersion = 2;
 
     /// <summary>
     /// 把越界的值拉回合法区间。写入前与读出后各过一遍：

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "agent_id": "host",
+  "timestamp": "2026-10-26T12:01:43.6673482Z",
+  "plugins": {
+    "com.petdock.myfirstbrain": [
+      "input.mousePosition",
+      "persist.write:self"
+    ],
+    "com.petdock.bongocat.interaction": [
+      "input.keyboardHook",
+      "input.mousePosition"
+    ],
+    "petdock.brain.reaction": [
+      "input.mousePosition"
+    ]
+  }
+}

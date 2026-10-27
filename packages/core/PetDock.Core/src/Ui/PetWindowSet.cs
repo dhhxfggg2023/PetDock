@@ -170,6 +170,7 @@ internal sealed partial class PetWindowSet : IDisposable
     {
         slot.Window.WindowEvent += (type, payload) => OnSlotMoved(slot, type, payload);
         WireContextMenu(slot.Window);
+        WireDoubleClick(slot.Window);
         _slots.Add(slot);
     }
 
