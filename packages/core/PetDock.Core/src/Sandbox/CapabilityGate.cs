@@ -1,7 +1,7 @@
-// M1 契约 §5（docs/handoff/M1-contract-frozen.md）：能力闸门。
+// M1 契约 §5（交接档案）：能力闸门。
 // 职责：持有「已授予集合」，回答「这次调用允不允许」，并对每次判定记审计。
-// docs/14 §2：白名单、最小授权、每次授予/拒绝记审计。
-// docs/14 §5 越限规则：任一越限事件 → 撤销一项能力 + 拒绝下一次同类请求；
+// 原规格 14 §2：白名单、最小授权、每次授予/拒绝记审计。
+// 原规格 14 §5 越限规则：任一越限事件 → 撤销一项能力 + 拒绝下一次同类请求；
 // 该「撤销一项」也走本闸门（RevokeOne），并同样记审计。
 namespace PetDock.Core.Sandbox;
 
@@ -25,7 +25,7 @@ public sealed class CapabilityGate
     private readonly ISandboxEventSink _sink;
 
     /// <summary>
-    /// declaredIds：安装期一次性声明的全集（docs/14 §2 一次性声明）。
+    /// declaredIds：安装期一次性声明的全集（原规格 14 §2 一次性声明）。
     /// grantedIds：本次实例化实际授予的子集（默认最小授权 = 仅声明集 ∩ 白名单，且默认全授）。
     /// 每一项授予/拒绝都会在构造期各记一条审计。
     /// </summary>
@@ -74,7 +74,7 @@ public sealed class CapabilityGate
 
     /// <summary>
     /// 判定一次能力调用。未授予即拒绝 + 记 CapabilityDenied；授予则记 Audit。
-    /// 每次调用都记 —— docs/14 §2「每次授予、拒绝都记审计」的运行期形态。
+    /// 每次调用都记 —— 原规格 14 §2「每次授予、拒绝都记审计」的运行期形态。
     /// </summary>
     public CapabilityDecision Check(string id)
     {
@@ -93,7 +93,7 @@ public sealed class CapabilityGate
     }
 
     /// <summary>
-    /// 越限处置的「撤销一项能力」（docs/14 §5）。
+    /// 越限处置的「撤销一项能力」（原规格 14 §5）。
     /// 撤销指定项；若指定项不在授予集则撤销任意一项（取排序后首项，保证确定性）。
     /// 返回被撤销的 ID；授予集为空时返回 null（无可撤销，仍记审计说明）。
     /// </summary>

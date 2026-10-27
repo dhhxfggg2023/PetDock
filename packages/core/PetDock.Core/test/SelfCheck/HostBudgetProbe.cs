@@ -1,7 +1,7 @@
 // 预算判据探针（t7）：把两条沙箱预算保证从「不可判定」变成「可判定 + 原始证据」。
 // (1) 连续故障驱动：专用宿主 ManualTickOnly 逐片同步驱动，8 连故障 → 自动挂起的计数链逐片可读；
 // (2) 内存上限归因：同一探针模块在三种 Store 上限下各跑一片，按 trap 消息分类归因。
-// 探针 id 一律由调用方（命令行）传入 —— 本文件不写任何插件名（docs/01 P-02 第 4 条）。
+// 探针 id 一律由调用方（命令行）传入 —— 本文件不写任何插件名（原规格 01 P-02 第 4 条）。
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -68,7 +68,7 @@ internal static class HostBudgetProbe
             trap.Length > 0 ? "trap-message-captured" : "no-trap-message");
     }
 
-    /// <summary>内存上限归因（docs/14 §5 150MB）：同一探针模块在三种 Store 上限下各跑一片。
+    /// <summary>内存上限归因（原规格 14 §5 150MB）：同一探针模块在三种 Store 上限下各跑一片。
     /// 预期分类：32MB → divide by zero（长在第一段就被拒）；150MB → unreachable（恰在 2400→2401 页被拒）；
     /// 1GB → fuel（两段增长都成功，切片先被 CPU 预算截住）。判据行交给调用方的账本。</summary>
     public static void RunMemoryProbe(string pluginsRoot, string probeId, SkipLedger ledger)

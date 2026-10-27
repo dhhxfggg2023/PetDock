@@ -1,4 +1,4 @@
-// 实现 docs/12 §2.1「只做这一种窗」与 §5「拖动、焦点」：WS_EX_LAYERED 透明分层窗宿主
+// 实现 原规格 12 §2.1「只做这一种窗」与 §5「拖动、焦点」：WS_EX_LAYERED 透明分层窗宿主
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -10,8 +10,8 @@ namespace PetDock.Core.Compositor;
 /// <summary>
 /// 分层窗宿主：WS_EX_LAYERED | TOPMOST | TOOLWINDOW | NOACTIVATE。
 /// 逐像素命中穿透完全交给 OS 读 alpha —— 本类既不用 SetWindowRgn / SetLayeredWindowAttributes /
-/// WS_EX_TRANSPARENT，也不覆写 WndProc 的 WM_NCHITTEST（docs/12 §2.1、§2.3）。
-/// 内容由 IFrameContentSource 提供（像素 + 尺寸，docs/40 D-03b：内核零上层概念）；
+/// WS_EX_TRANSPARENT，也不覆写 WndProc 的 WM_NCHITTEST（原规格 12 §2.1、§2.3）。
+/// 内容由 IFrameContentSource 提供（像素 + 尺寸，原规格 40 D-03b：内核零上层概念）；
 /// 未注入内容源时退回不透明纯色占位帧。
 /// </summary>
 internal sealed partial class LayeredFrameWindow : Form
@@ -28,7 +28,7 @@ internal sealed partial class LayeredFrameWindow : Form
     /// <summary>窗口事件出口（core.window.*）：宿主订阅；Compositor 不能反向引用 PetDock.Hosting。</summary>
     public event WindowEventDelegate? WindowEvent;
 
-    /// <summary>在宠物身上按右键：宿主在这里弹菜单（docs/18 §1，2026-10-26 用户要求）。
+    /// <summary>在宠物身上按右键：宿主在这里弹菜单（原规格 18 §1，2026-10-26 用户要求）。
     /// 载荷是屏幕坐标 —— 菜单要落在鼠标处，而不是窗口原点（窗口可能被拖到负坐标）。
     /// 手势归属：右键从此归宿主（插件层原有的右键手势因此让位，用户 2026-10-26 明确同意）。</summary>
     public event ContextRequestDelegate? ContextRequested;

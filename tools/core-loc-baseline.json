@@ -1,12 +1,12 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 27380,
+  "budget": 28380,
   "history": [
     {
       "date": "2026-10-18",
       "measured": 8031,
       "budget": 8100,
-      "note": "创世条：RFC-07 把自检面 3,366 行迁出内核 src 后的实测值，预算 8,100（余量 69）。此前的 8,000/9,500/11,000 三档见 docs/50-roadmap.md 的历史段。",
+      "note": "创世条：RFC-07 把自检面 3,366 行迁出内核 src 后的实测值，预算 8,100（余量 69）。此前的 8,000/9,500/11,000 三档见 原规格 50 的历史段。",
       "attribution": []
     },
     {
@@ -47,7 +47,7 @@
       "date": "2026-10-19",
       "measured": 9633,
       "budget": 9700,
-      "note": "RFC-12：UI 母体（托盘 + 主控面板四页 + 授权弹窗 + 性能页 + 只读花名册）。这是自 RFC-01 以来最大的一笔增长，且是路线图外的补账：docs/18 定义的整套界面此前一行未实现，M8 仪表盘因此无处安放。同期 Program.cs 因 D-03c 拆分与入口迁出净减 205 行，已从本笔增量中扣抵。",
+      "note": "RFC-12：UI 母体（托盘 + 主控面板四页 + 授权弹窗 + 性能页 + 只读花名册）。这是自 RFC-01 以来最大的一笔增长，且是路线图外的补账：原规格 18 定义的整套界面此前一行未实现，M8 仪表盘因此无处安放。同期 Program.cs 因 D-03c 拆分与入口迁出净减 205 行，已从本笔增量中扣抵。",
       "attribution": [
         {
           "slice": "RFC-12 UI 母体（新建 9 个文件）",
@@ -57,7 +57,6 @@
             "packages/core/PetDock.Core/src/Ui/TrayHost.cs",
             "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs",
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
-            "packages/core/PetDock.Core/src/Ui/PerfPage.cs",
             "packages/core/PetDock.Core/src/Ui/UiHost.cs",
             "packages/core/PetDock.Core/src/Host/PluginHost.Roster.cs",
             "packages/core/PetDock.Core/src/Program.SelfTest.cs"
@@ -77,7 +76,7 @@
       "date": "2026-10-19",
       "measured": 9909,
       "budget": 9950,
-      "note": "M7 遗留：input.key.* 的生产源（docs/16 §3 把它定为 capability only，此前全仓零生产源，BongoCat 的抬爪逻辑成立但真实键盘无反应）。这一笔同时补上 docs/14:110 要求的托盘固定项背后真正被停掉的东西——RFC-12 建了那个菜单项，但它当时只能如实写 installed=0。",
+      "note": "M7 遗留：input.key.* 的生产源（原规格 16 §3 把它定为 capability only，此前全仓零生产源，BongoCat 的抬爪逻辑成立但真实键盘无反应）。这一笔同时补上 原规格 14:110 要求的托盘固定项背后真正被停掉的东西——RFC-12 建了那个菜单项，但它当时只能如实写 installed=0。",
       "attribution": [
         {
           "slice": "全局键盘钩子（新建）",
@@ -171,7 +170,7 @@
       "date": "2026-10-20",
       "measured": 12636,
       "budget": 12650,
-      "note": "RFC-15：宠物导入 v1（docs/18 §2.1 要求的「导入」此前一行代码都没有）。用户选一个素材包目录 → 复制进用户数据区 → 写清单 → 用新素材根重建实例 → 换内容源 → 释放旧实例。core 不解析任何素材格式（格式知识留在视图实现侧，D-03b）。增量分五片，与 RFC-15 §5 的分片建议一一对应。测试面（test/SelfCheck/ImportChecks.cs、PetContractStubs.cs）不计入本预算（D-03a 只算 src）；插件侧（视图实现按实例级素材根定位素材）同样不计入。",
+      "note": "RFC-15：宠物导入 v1（原规格 18 §2.1 要求的「导入」此前一行代码都没有）。用户选一个素材包目录 → 复制进用户数据区 → 写清单 → 用新素材根重建实例 → 换内容源 → 释放旧实例。core 不解析任何素材格式（格式知识留在视图实现侧，D-03b）。增量分五片，与 RFC-15 §5 的分片建议一一对应。测试面（test/SelfCheck/ImportChecks.cs、PetContractStubs.cs）不计入本预算（D-03a 只算 src）；插件侧（视图实现按实例级素材根定位素材）同样不计入。",
       "attribution": [
         {
           "slice": "RFC-15 A 用户数据根与清单（落盘、复制、护栏、清单读写）",
@@ -225,7 +224,7 @@
       "date": "2026-10-20",
       "measured": 13279,
       "budget": 13350,
-      "note": "RFC-18：设置持久化 v1（docs/18 §2.3 的可写设置页）。三条裁决：① 开机自启的事实源是注册表 HKCU Run 键，设置文件不重复存这一项（同一事实存两处必然漂移）；② 空闲降帧阈值 = 帧泵目标周期，运行期立即生效，越界钳制 [1000/60, 1000/5]；③ 语言只持久化，界面文案未本地化（登记为欠账）。每宠物默认项与诊断两项本次不做。",
+      "note": "RFC-18：设置持久化 v1（原规格 18 §2.3 的可写设置页）。三条裁决：① 开机自启的事实源是注册表 HKCU Run 键，设置文件不重复存这一项（同一事实存两处必然漂移）；② 空闲降帧阈值 = 帧泵目标周期，运行期立即生效，越界钳制 [1000/60, 1000/5]；③ 语言只持久化，界面文案未本地化（登记为欠账）。每宠物默认项与诊断两项本次不做。",
       "attribution": [
         {
           "slice": "RFC-18 A 设置形态与落盘（设置记录 + 越界钳制 + settings.json 两阶段提交 + 损坏回落默认）",
@@ -274,7 +273,7 @@
       "date": "2026-10-20",
       "measured": 13535,
       "budget": 13600,
-      "note": "RFC-19：授权决定的跨进程记忆。落点 <data>/consent.json，写盘姿势照抄 RFC-15/18 的两阶段提交。持久化裁决：'允许（记住这个决定）'的授予集持久化，插件页收窄后的授予集持久化（撤销不跨进程则下次启动能力会悄悄回来），'仅本次'不持久化，拒绝不持久化（docs/18 §3 要求被拒项在弹窗里不可重新勾选，持久化拒绝等于永久锁死且无清除出口）。",
+      "note": "RFC-19：授权决定的跨进程记忆。落点 <data>/consent.json，写盘姿势照抄 RFC-15/18 的两阶段提交。持久化裁决：'允许（记住这个决定）'的授予集持久化，插件页收窄后的授予集持久化（撤销不跨进程则下次启动能力会悄悄回来），'仅本次'不持久化，拒绝不持久化（原规格 18 §3 要求被拒项在弹窗里不可重新勾选，持久化拒绝等于永久锁死且无清除出口）。",
       "attribution": [
         {
           "slice": "RFC-19 A 授权记忆落盘存储（读写 + 损坏回落 + 两阶段提交）",
@@ -304,7 +303,7 @@
       "date": "2026-10-21",
       "measured": 14417,
       "budget": 14475,
-      "note": "RFC-16：首次运行引导 v1（docs/18 §4 的三步引导，此前一行代码都没有）。一次性判定落 settings.json 的可空字段 onboardingCompletedVersion（null=没做过，旧文件缺字段即 null，不需要迁移）；第 2 步的放置走既有的 PetImportService.Import，不新造第二条导入语义；引导窗开着时滴答器不泵授权询问，询问留在 UiConsentPort 队列里。实测增量 +882，超出 RFC-16 §5 预估的 425~605：超出部分主要在引导窗的控件树与页内错误条（WinForms 每个控件都要显式 Dock/Height/颜色），以及 D-03c 单文件 400 行上限把三步控件树逼到第二个 partial 文件。测试面（test/SelfCheck/OnboardingChecks.cs、OnboardingConsentChecks.cs）不计入本预算（D-03a 只算 src）；发布装配侧（tools/release.mjs 带上 assets/sample-pet 并加出口断言）不计入 core。",
+      "note": "RFC-16：首次运行引导 v1（原规格 18 §4 的三步引导，此前一行代码都没有）。一次性判定落 settings.json 的可空字段 onboardingCompletedVersion（null=没做过，旧文件缺字段即 null，不需要迁移）；第 2 步的放置走既有的 PetImportService.Import，不新造第二条导入语义；引导窗开着时滴答器不泵授权询问，询问留在 UiConsentPort 队列里。实测增量 +882，超出 RFC-16 §5 预估的 425~605：超出部分主要在引导窗的控件树与页内错误条（WinForms 每个控件都要显式 Dock/Height/颜色），以及 D-03c 单文件 400 行上限把三步控件树逼到第二个 partial 文件。测试面（test/SelfCheck/OnboardingChecks.cs、OnboardingConsentChecks.cs）不计入本预算（D-03a 只算 src）；发布装配侧（tools/release.mjs 带上 assets/sample-pet 并加出口断言）不计入 core。",
       "attribution": [
         {
           "slice": "RFC-16 A 引导窗（三步控件树 + 示意动画 + 页内错误条 + 公开读数）",
@@ -345,7 +344,7 @@
       "date": "2026-10-21",
       "measured": 16240,
       "budget": 16300,
-      "note": "RFC-17：诊断包导出（docs/18 §2.3 的两行诊断入口，此前一行代码都没有）。常驻形态的 KernelLog 终于有地方落——KernelLog 加可插的 sink，ResidentLog 接管落盘（写入路径只做内存操作，落盘交给后台线程，帧泵线程不做同步文件 IO）；脱敏发生在落盘前，磁盘上从来没有明文路径。诊断包是 .zip（.NET 8 内置 System.IO.Compression，零新增依赖），内含 summary/runtime/plugins/instances/audit/manifest 六节加 logs/ 副本，manifest 逐文件给 sha256；导出路径固定，不弹对话框，失败一律落设置页内联状态标签。实测增量 +1823，超出 RFC-17 §5 预估：超出部分主要在脱敏规则表（每类占位符与最长路径前缀优先的替换顺序）、D-03c 单文件 400 行上限把包装配拆成 DiagnosticBundle（文件层）与 DiagnosticSections（文本装配）两个文件、以及日志落盘层的文件生命周期拆成 ResidentLog.Files.cs。测试面（test/SelfCheck/DiagnosticChecks.cs、DiagnosticBundleChecks.cs）不计入本预算（D-03a 只算 src）；发布装配侧不计入 core。",
+      "note": "RFC-17：诊断包导出（原规格 18 §2.3 的两行诊断入口，此前一行代码都没有）。常驻形态的 KernelLog 终于有地方落——KernelLog 加可插的 sink，ResidentLog 接管落盘（写入路径只做内存操作，落盘交给后台线程，帧泵线程不做同步文件 IO）；脱敏发生在落盘前，磁盘上从来没有明文路径。诊断包是 .zip（.NET 8 内置 System.IO.Compression，零新增依赖），内含 summary/runtime/plugins/instances/audit/manifest 六节加 logs/ 副本，manifest 逐文件给 sha256；导出路径固定，不弹对话框，失败一律落设置页内联状态标签。实测增量 +1823，超出 RFC-17 §5 预估：超出部分主要在脱敏规则表（每类占位符与最长路径前缀优先的替换顺序）、D-03c 单文件 400 行上限把包装配拆成 DiagnosticBundle（文件层）与 DiagnosticSections（文本装配）两个文件、以及日志落盘层的文件生命周期拆成 ResidentLog.Files.cs。测试面（test/SelfCheck/DiagnosticChecks.cs、DiagnosticBundleChecks.cs）不计入本预算（D-03a 只算 src）；发布装配侧不计入 core。",
       "attribution": [
         {
           "slice": "RFC-17 A 运行期日志落盘层与脱敏规则（KernelLog sink、后台写入、滚动与目录上限、脱敏占位符）",
@@ -451,7 +450,7 @@
       "date": "2026-10-21",
       "measured": 18307,
       "budget": 18377,
-      "note": "RFC-21：静态节流分档（docs/12 §4 的静止降帧 / 遮挡 10fps / 全屏停泵，此前帧泵恒定 30fps）。实测增量 +1137，超出 RFC-21 §5 预估的 330~400 近三倍——超出部分不在判定逻辑，而在四件实施期才暴露的事：① 探测层（ThrottleProbe 278 行）必须自建 DWM cloaked 探测 + 五点不透明取样 + 前台窗覆盖比较三套读数，任何一套单独用都会给出相反结论（t2 审计的实证）；② 「静止档不能跳合成，只能跳提交」这条修正把帧循环拆成 Advance/Reevaluate 两个入口与独立的合成/提交记账（ResidentFrameLoop.Throttle 310 行 + ResidentFrameLoop 净 +169）；③ 帧泵自退自愈（t13）给 FramePump 加了 HasExited/ExitReason 自述面 +57 行；④ 探测层是每帧都跑的热路径，实测发现三处每 tick 分配（WindowDescription 的两个 StringBuilder + Process.GetProcessById、ClassNameOf 的 StringBuilder、SampleAlpha 的方法组转委托）把 D-14d 的稳态判据顶红，于是加了按句柄缓存与复用缓冲（WorldProbe +23、ThrottleProbe/LayeredWindowApi/ResidentFrameLoop.Throttle 内含）。测试面（test/SelfCheck/ThrottleChecks*.cs 三份 + PerfGate.Throttle.cs + PerfGate.Sampler.cs）不计入本预算（D-03a 只算 src）。",
+      "note": "RFC-21：静态节流分档（原规格 12 §4 的静止降帧 / 遮挡 10fps / 全屏停泵，此前帧泵恒定 30fps）。实测增量 +1137，超出 RFC-21 §5 预估的 330~400 近三倍——超出部分不在判定逻辑，而在四件实施期才暴露的事：① 探测层（ThrottleProbe 278 行）必须自建 DWM cloaked 探测 + 五点不透明取样 + 前台窗覆盖比较三套读数，任何一套单独用都会给出相反结论（t2 审计的实证）；② 「静止档不能跳合成，只能跳提交」这条修正把帧循环拆成 Advance/Reevaluate 两个入口与独立的合成/提交记账（ResidentFrameLoop.Throttle 310 行 + ResidentFrameLoop 净 +169）；③ 帧泵自退自愈（t13）给 FramePump 加了 HasExited/ExitReason 自述面 +57 行；④ 探测层是每帧都跑的热路径，实测发现三处每 tick 分配（WindowDescription 的两个 StringBuilder + Process.GetProcessById、ClassNameOf 的 StringBuilder、SampleAlpha 的方法组转委托）把 D-14d 的稳态判据顶红，于是加了按句柄缓存与复用缓冲（WorldProbe +23、ThrottleProbe/LayeredWindowApi/ResidentFrameLoop.Throttle 内含）。测试面（test/SelfCheck/ThrottleChecks*.cs 三份 + PerfGate.Throttle.cs + PerfGate.Sampler.cs）不计入本预算（D-03a 只算 src）。",
       "attribution": [
         {
           "slice": "RFC-21 A 探测层（DWM cloaked / 五点不透明取样 / 前台窗覆盖显示器 / 类名缓冲复用）",
@@ -582,7 +581,7 @@
       "date": "2026-10-22",
       "measured": 18995,
       "budget": 19042,
-      "note": "RFC-23「插件日志面」（docs/20 §1 的 `@petdock/sdk/log`，此前全仓零实现：JS 侧 `__bind` 无人调用、C# 侧连类型都没有）。形态是一层**静态门面 + AsyncLocal 归属作用域 + 单一收口**：插件写 `PluginLog.Info(...)`，宿主在每次「即将进入插件代码」的时刻开作用域把这段日志记到那个插件头上；作用域外写的记 `(unattributed)`，**绝不猜**归属（记错比不记更坏）。路由：info 只进通用日志；warn/error 另记进审计流水（新增 `kind=log`，warn/error 是「需要人看见的决定」，info 不是）；debug 接受调用但不落盘、只计数（docs/20:50 承诺的「仅开发模式落盘」没有宿主开关承接，登记为 §8 冲突）；收口自身抛异常一律吞掉并计数（一次日志失败不能带走插件的一帧）。同片把 `PetInstance` 的两处插件调用（brain init/tick）挪进新 partial `PetInstance.Brain.cs` 以获得作用域包围，`PetInstance.cs` 因此净减 43 行。按 D-03a 只申报 src 面增量，test/SelfCheck 的判据体（`PetDriveTest.Log.cs` 173 行）不计入本预算。",
+      "note": "RFC-23「插件日志面」（原规格 20 §1 的 `@petdock/sdk/log`，此前全仓零实现：JS 侧 `__bind` 无人调用、C# 侧连类型都没有）。形态是一层**静态门面 + AsyncLocal 归属作用域 + 单一收口**：插件写 `PluginLog.Info(...)`，宿主在每次「即将进入插件代码」的时刻开作用域把这段日志记到那个插件头上；作用域外写的记 `(unattributed)`，**绝不猜**归属（记错比不记更坏）。路由：info 只进通用日志；warn/error 另记进审计流水（新增 `kind=log`，warn/error 是「需要人看见的决定」，info 不是）；debug 接受调用但不落盘、只计数（原规格 20:50 承诺的「仅开发模式落盘」没有宿主开关承接，登记为 §8 冲突）；收口自身抛异常一律吞掉并计数（一次日志失败不能带走插件的一帧）。同片把 `PetInstance` 的两处插件调用（brain init/tick）挪进新 partial `PetInstance.Brain.cs` 以获得作用域包围，`PetInstance.cs` 因此净减 43 行。按 D-03a 只申报 src 面增量，test/SelfCheck 的判据体（`PetDriveTest.Log.cs` 173 行）不计入本预算。",
       "attribution": [
         {
           "slice": "RFC-23 A 插件日志门面（级别/作用域/计数器/故障隔离，无 Win32 依赖）",
@@ -631,7 +630,7 @@
       "date": "2026-10-23",
       "measured": 19884,
       "budget": 19950,
-      "note": "RFC-24：宠物状态层落盘（docs/17 的「快照 + schemaVersion + 宿主侧缓冲区」，此前 IPetState 的实现只有空壳）。形态：<数据区>/state/<实例 id>.json（一实例一文件，不跨宠物共享）、宿主侧缓冲区 + 唯一提交点、单键 8 KiB 拒绝、schema 只许 v1→vN 向前迁移（磁盘更新时只读运行、绝不覆盖）、FileShare.None 锁。同一片把窗口位置的事实源从 settings.json 搬进状态层保留键 position（RFC-22 §7 第 1 条「两者只能留一个」），旧键只在升级时搬一次然后消失。实测增量 +889：本片 src 净增 +782，另 +107 是上一条 measured（18995）与 RFC-23 提交后树实际的差 —— 上一条取的是提交前的一次读数，按 RFC-11 的纪律在这里显式归属，不吞进本片。判据面（test/SelfCheck/StateChecks.cs 289 行、SettingsChecks.cs 的两条新增、PetDriveTest.cs 1 行）按 D-03a 不计入本预算。",
+      "note": "RFC-24：宠物状态层落盘（原规格 17 的「快照 + schemaVersion + 宿主侧缓冲区」，此前 IPetState 的实现只有空壳）。形态：<数据区>/state/<实例 id>.json（一实例一文件，不跨宠物共享）、宿主侧缓冲区 + 唯一提交点、单键 8 KiB 拒绝、schema 只许 v1→vN 向前迁移（磁盘更新时只读运行、绝不覆盖）、FileShare.None 锁。同一片把窗口位置的事实源从 settings.json 搬进状态层保留键 position（RFC-22 §7 第 1 条「两者只能留一个」），旧键只在升级时搬一次然后消失。实测增量 +889：本片 src 净增 +782，另 +107 是上一条 measured（18995）与 RFC-23 提交后树实际的差 —— 上一条取的是提交前的一次读数，按 RFC-11 的纪律在这里显式归属，不吞进本片。判据面（test/SelfCheck/StateChecks.cs 289 行、SettingsChecks.cs 的两条新增、PetDriveTest.cs 1 行）按 D-03a 不计入本预算。",
       "attribution": [
         {
           "slice": "RFC-24 A 状态文件本体（形状、两阶段提交、按 key 的单文件定位、8 KiB 拒绝、锁）",
@@ -713,7 +712,7 @@
       "date": "2026-10-23",
       "measured": 19948,
       "budget": 19993,
-      "note": "RFC-26：常驻形态 D-14 重钉（docs/50 M8 的未闭合点「D-14 基线未针对常驻形态重测」，此前所有读数都来自 --perftest 的开关型自检）。新增探针 --residenttest 原样跑 Program.RunResident，只在旁边挂采样线程；出口判据 5 条（resident-loop-running / -cpu-idle / -private-ws / -handles-stable / -regression），基线钉在 tests/perf.resident.json。判据面（test/SelfCheck/ResidentPerfProbe.cs 363 行 + ResidentThreadCensus.cs 364 行 + PerfGate*.cs 三处可见性放宽）按 D-03a 不计入本预算。定位过程中查出的是**产品的真缺陷**：AuditTrail 的 ManualResetEventSlim 只 Set 从不 Reset，第一次 Set 之后消费循环的 Wait(200) 永远立即返回，退化成满速自旋 —— 常驻空闲因此烧掉约 1 个核（实测 3.1% 整机 = 每 10s 单线程 9672ms），而同帧读数的 --perftest 只有 0.06%。触发条件是「插件声明了任一 capability」（授权入队即 Set），与是否声明 events 无关，这解释了 --deny-capabilities 为何无效。两处同型点各补一次 Reset（放在本轮 Flush/Commit 之后，否则会吞掉期间的 Set）后，同一花名册常驻空闲降到 0.04%~0.06%，帧读数一字未变。实测增量 +43，落在上一片预算余额（19950）内仍差 2 行，故按 RFC-11 抬 budget 到 19993：余量保持 45 行不取整到 20,000（RFC-11 §6 把「余量一次留大」列为否决项）。",
+      "note": "RFC-26：常驻形态 D-14 重钉（原规格 50 M8 的未闭合点「D-14 基线未针对常驻形态重测」，此前所有读数都来自 --perftest 的开关型自检）。新增探针 --residenttest 原样跑 Program.RunResident，只在旁边挂采样线程；出口判据 5 条（resident-loop-running / -cpu-idle / -private-ws / -handles-stable / -regression），基线钉在 旧测试目录/perf.resident.json。判据面（test/SelfCheck/ResidentPerfProbe.cs 363 行 + ResidentThreadCensus.cs 364 行 + PerfGate*.cs 三处可见性放宽）按 D-03a 不计入本预算。定位过程中查出的是**产品的真缺陷**：AuditTrail 的 ManualResetEventSlim 只 Set 从不 Reset，第一次 Set 之后消费循环的 Wait(200) 永远立即返回，退化成满速自旋 —— 常驻空闲因此烧掉约 1 个核（实测 3.1% 整机 = 每 10s 单线程 9672ms），而同帧读数的 --perftest 只有 0.06%。触发条件是「插件声明了任一 capability」（授权入队即 Set），与是否声明 events 无关，这解释了 --deny-capabilities 为何无效。两处同型点各补一次 Reset（放在本轮 Flush/Commit 之后，否则会吞掉期间的 Set）后，同一花名册常驻空闲降到 0.04%~0.06%，帧读数一字未变。实测增量 +43，落在上一片预算余额（19950）内仍差 2 行，故按 RFC-11 抬 budget 到 19993：余量保持 45 行不取整到 20,000（RFC-11 §6 把「余量一次留大」列为否决项）。",
       "attribution": [
         {
           "slice": "RFC-26 A --residenttest 入口分派（开关解析、探针启动、退出码）",
@@ -749,7 +748,7 @@
       "date": "2026-10-23",
       "measured": 20718,
       "budget": 20760,
-      "note": "RFC-27：tier-2 跨进程 wire 契约（docs/50 M7 的未交付项：docs/11 四个 ABI 接口里帧/命中图、事件包、状态三者的跨进程包形状，外加 docs/14 第 5 节缺失的会话 wire 字节配额）。宿主侧三个新文件 + Tier2Sandbox 边界骨架改造；判据面（tests/m7 的 Program.Wire.cs 与 Program.cs 改造）在 tests/ 下，按 D-03a 不计入本预算。实测增量 +770，上一片余量（19993）远不够，故按 RFC-11 抬 budget 到 20760：余量 42 行，沿 history[20] 的口径（RFC-11 第 6 节把「余量一次留大」列为否决项，所以不取整到 21,000）。",
+      "note": "RFC-27：tier-2 跨进程 wire 契约（原规格 50 M7 的未交付项：原规格 11 四个 ABI 接口里帧/命中图、事件包、状态三者的跨进程包形状，外加 原规格 14 第 5 节缺失的会话 wire 字节配额）。宿主侧三个新文件 + Tier2Sandbox 边界骨架改造；判据面（旧测试目录/m7 的 Program.Wire.cs 与 Program.cs 改造）在 旧测试目录/ 下，按 D-03a 不计入本预算。实测增量 +770，上一片余量（19993）远不够，故按 RFC-11 抬 budget 到 20760：余量 42 行，沿 history[20] 的口径（RFC-11 第 6 节把「余量一次留大」列为否决项，所以不取整到 21,000）。",
       "attribution": [
         {
           "slice": "RFC-27 A 帧/命中图/meta 的编解码（abi.hello、abi.frame、Tier2Frame.Hits 的命中图优先仲裁）",
@@ -785,7 +784,7 @@
       "date": "2026-10-23",
       "measured": 20924,
       "budget": 20970,
-      "note": "RFC-28：宿主把 tier-2 句柄交成产品类型（docs/50 M7 的未交付项：Wire 契约写完了但产品路径上没人用它；RFC-27 §7.7 的欠账）。核心是两件事：帧内容源（IFrameContentSource 适配层，按帧缓冲出图、逐像素预乘还原、命中图优先）与头脑桥（IBrain 适配层）。判定面（tests/m7 的 Program.Wire.cs 追加 6 条判据）在 tests/ 下，按 D-03a 不计入本预算。实测增量 +206（20718 → 20924），按 RFC-11 抬 budget 到 20970：余量 46 行，口径同 history[21]。",
+      "note": "RFC-28：宿主把 tier-2 句柄交成产品类型（原规格 50 M7 的未交付项：Wire 契约写完了但产品路径上没人用它；RFC-27 §7.7 的欠账）。核心是两件事：帧内容源（IFrameContentSource 适配层，按帧缓冲出图、逐像素预乘还原、命中图优先）与头脑桥（IBrain 适配层）。判定面（旧测试目录/m7 的 Program.Wire.cs 追加 6 条判据）在 旧测试目录/ 下，按 D-03a 不计入本预算。实测增量 +206（20718 → 20924），按 RFC-11 抬 budget 到 20970：余量 46 行，口径同 history[21]。",
       "attribution": [
         {
           "slice": "RFC-28 A 帧内容源适配层（GetFrameContent/Blit 预乘还原/IFrameSourceStats 等四个可选诊断面/Note）",
@@ -821,7 +820,7 @@
       "date": "2026-10-24",
       "measured": 21068,
       "budget": 21160,
-      "note": "RFC-29：装配顺序接上 tier-2 客体（docs/50 M7 最后一条未交付项「宿主侧未消费」的落地形态）。实测增量 +144（20924 → 21068），按 RFC-11 抬 budget 到 21160：余量 92 行，口径同 history[22]。判据（tests/m7 的 tier2-compose-source / tier2-compose-fail-closed，走 --composetest 探针跑产品那条 Compose）在 tests/ 下，按 D-03a 不计入本预算。",
+      "note": "RFC-29：装配顺序接上 tier-2 客体（原规格 50 M7 最后一条未交付项「宿主侧未消费」的落地形态）。实测增量 +144（20924 → 21068），按 RFC-11 抬 budget 到 21160：余量 92 行，口径同 history[22]。判据（旧测试目录/m7 的 tier2-compose-source / tier2-compose-fail-closed，走 --composetest 探针跑产品那条 Compose）在 旧测试目录/ 下，按 D-03a 不计入本预算。",
       "attribution": [
         {
           "slice": "RFC-29 A 装配点插入 tier-2 分支与选中规则（Compose 加 host 参数、Tier2Content）",
@@ -850,13 +849,11 @@
       "date": "2026-10-24",
       "measured": 21159,
       "budget": 21260,
-      "note": "RFC-30：性能页的逐宠物形态（docs/50 M8 的多宠物聚合仪表盘）。实测增量 +91（21068 → 21159），按 RFC-11 抬 budget 到 21260：余量 101 行，口径同 history[23]。判据（tests 下 PerfChecks.cs 的 5 条 ui-perf-*，走 --uitest）按 D-03a 不计入本预算。",
+      "note": "RFC-30：性能页的逐宠物形态（原规格 50 M8 的多宠物聚合仪表盘）。实测增量 +91（21068 → 21159），按 RFC-11 抬 budget 到 21260：余量 101 行，口径同 history[23]。判据（tests 下 PerfChecks.cs 的 5 条 ui-perf-*，走 --uitest）按 D-03a 不计入本预算。",
       "attribution": [
         {
           "slice": "RFC-30 A 性能页重写：逐宠物行、归属规则、NotAttributed/ProcessShared 常量、Summary 静态化、RowText 自检接口（+87/-21）",
-          "files": [
-            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
-          ],
+          "files": [],
           "lines": 66
         },
         {
@@ -922,7 +919,7 @@
       "date": "2026-10-24",
       "measured": 21482,
       "budget": 21650,
-      "note": "RFC-33：tier-2 会话生命周期（Pause/Resume/TryRecover/崩溃检出/重启配额）。实测增量 +169（21313 → 21482），按 RFC-11 抬 budget 到 21650：余量 168 行，口径同 history[23]。判据（tests/m7 的 5 条 m7-tier2-session-*）不计入本预算。",
+      "note": "RFC-33：tier-2 会话生命周期（Pause/Resume/TryRecover/崩溃检出/重启配额）。实测增量 +169（21313 → 21482），按 RFC-11 抬 budget 到 21650：余量 168 行，口径同 history[23]。判据（旧测试目录/m7 的 5 条 m7-tier2-session-*）不计入本预算。",
       "attribution": [
         {
           "slice": "RFC-33 A Tier2Sandbox.Session.cs 新 partial：五态会话机、暂停/恢复、重启配额、崩溃检出、ProcessExited",
@@ -944,7 +941,7 @@
       "date": "2026-10-24",
       "measured": 21506,
       "budget": 21650,
-      "note": "RFC-34：宿主消费会话（禁用 = 暂停 tier-2 客体、内容源与头脑在非 Running 会话上不发 RPC）。实测增量 +24（21482 → 21506），未抬 budget：余量仍有 144 行。判据（tests/m7 的 2 条 m7-tier2-host-*）不计入本预算。",
+      "note": "RFC-34：宿主消费会话（禁用 = 暂停 tier-2 客体、内容源与头脑在非 Running 会话上不发 RPC）。实测增量 +24（21482 → 21506），未抬 budget：余量仍有 144 行。判据（旧测试目录/m7 的 2 条 m7-tier2-host-*）不计入本预算。",
       "attribution": [
         {
           "slice": "RFC-34 A PluginHost.Lifecycle.cs DisableCore：tier-2 句柄暂停会话并落审计行",
@@ -973,7 +970,7 @@
       "date": "2026-10-24",
       "measured": 21695,
       "budget": 21770,
-      "note": "RFC-35：窗口鼠标消息接进交互会话（docs/11 §5）+ 每帧 10 秒会话预算。实测 21506 → 21695（+189）：新 partial 196 行里 42 行是从 LayeredFrameWindow.cs 搬过来的（那个文件因此 −42，回到 357 行，离开 D-03c 的 400 行边）。判据 PointerWiringChecks.cs（151 行）在 test/ 下，按 lint-core 口径不计入本预算。budget 抬到 21770（余量 75）。判据：--uitest 的 6 条 ui-pointer-*。",
+      "note": "RFC-35：窗口鼠标消息接进交互会话（原规格 11 §5）+ 每帧 10 秒会话预算。实测 21506 → 21695（+189）：新 partial 196 行里 42 行是从 LayeredFrameWindow.cs 搬过来的（那个文件因此 −42，回到 357 行，离开 D-03c 的 400 行边）。判据 PointerWiringChecks.cs（151 行）在 test/ 下，按 lint-core 口径不计入本预算。budget 抬到 21770（余量 75）。判据：--uitest 的 6 条 ui-pointer-*。",
       "attribution": [
         {
           "slice": "RFC-35 A LayeredFrameWindow.Pointer.cs（新 partial）：四个钩子 + 会话期鼠标捕获 + 失焦/关窗取消 + 三个鼠标消息处理函数迁入",
@@ -1172,9 +1169,7 @@
       "attribution": [
         {
           "slice": "RFC-37 PerfPage：PerfSampler 按宠物 id 取读数、进程合计行只在单泵时可归属、超限计数可空",
-          "files": [
-            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
-          ],
+          "files": [],
           "lines": 11
         },
         {
@@ -1303,8 +1298,7 @@
             "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
             "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
             "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
-            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
-            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs"
           ],
           "lines": 16
         },
@@ -1368,9 +1362,7 @@
         },
         {
           "slice": "RFC-42 §3.4 界面侧迁移：控制面板/授权弹窗/性能页/引导窗/托盘与宿主入口的文案改为按键取值（净额来自性能页汇总改成带占位符的模板，其余为等长替换）",
-          "files": [
-            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
-          ],
+          "files": [],
           "lines": 1
         }
       ]
@@ -1379,7 +1371,7 @@
       "date": "2026-10-26",
       "measured": 23395,
       "budget": 23430,
-      "note": "2026-10-26 真机故障的修复：宠物窗是置顶的（docs/12 §2.1），而本产品自己的模态窗（首次运行引导、能力授权、退出确认）落在普通档 —— 用户前台有最大化应用时弹窗被压在它后面，宠物窗又被 ShowDialog 置 WS_DISABLED，用户看到的是「可见、点不了、也关不掉的桌宠」。修法：给自有模态窗一个同档基类，并把退出确认从 MessageBox 换成同档的确认框。实测 23277 → 23395（本片 +118：PetDockDialog 71 + ConfirmDialog 49，UiHost.Tray.cs −2），加上 history[38] 少算的 4 行（I18n.cs 实测 +60，那条按 +56 申报）合计 +122 = 23395 − 23273，等于相邻 measured 之差。基类比两行版本厚，是因为只设 TopMost 属性不够：ShowInTaskbar 为真的窗显示时会被 HWND_TOP 抹掉 TOPMOST 位（实测授权弹窗 0x50101），所以改为「属性 + 句柄/显示两处主动设位 + ShowInTaskbar=false」，判据 ui-modal-topmost-* 读原生位。抬到 23430（余量 35）：动手前余量只有 43，低于本片的 118，于是这一轮先红了一次 D-03a —— 那一条只说明全包预算未申报，不代表本片代码有问题（见 2026-10-20 那条坑）；留 35 是延续 2026-10-25「余量归零会让下一个人的无关改动红在 D-03a 上」的口径。判据（ui-modal-*）在 test/ 下，按 D-03a 口径不计入本预算。",
+      "note": "2026-10-26 真机故障的修复：宠物窗是置顶的（原规格 12 §2.1），而本产品自己的模态窗（首次运行引导、能力授权、退出确认）落在普通档 —— 用户前台有最大化应用时弹窗被压在它后面，宠物窗又被 ShowDialog 置 WS_DISABLED，用户看到的是「可见、点不了、也关不掉的桌宠」。修法：给自有模态窗一个同档基类，并把退出确认从 MessageBox 换成同档的确认框。实测 23277 → 23395（本片 +118：PetDockDialog 71 + ConfirmDialog 49，UiHost.Tray.cs −2），加上 history[38] 少算的 4 行（I18n.cs 实测 +60，那条按 +56 申报）合计 +122 = 23395 − 23273，等于相邻 measured 之差。基类比两行版本厚，是因为只设 TopMost 属性不够：ShowInTaskbar 为真的窗显示时会被 HWND_TOP 抹掉 TOPMOST 位（实测授权弹窗 0x50101），所以改为「属性 + 句柄/显示两处主动设位 + ShowInTaskbar=false」，判据 ui-modal-topmost-* 读原生位。抬到 23430（余量 35）：动手前余量只有 43，低于本片的 118，于是这一轮先红了一次 D-03a —— 那一条只说明全包预算未申报，不代表本片代码有问题（见 2026-10-20 那条坑）；留 35 是延续 2026-10-25「余量归零会让下一个人的无关改动红在 D-03a 上」的口径。判据（ui-modal-*）在 test/ 下，按 D-03a 口径不计入本预算。",
       "attribution": [
         {
           "slice": "自有模态窗进置顶档：新增 PetDockDialog 基类（引导窗与授权弹窗改为继承它，行数不变）与 ConfirmDialog（退出确认从 MessageBox 换成同档确认框，两个新文件）",
@@ -1503,7 +1495,7 @@
       "date": "2026-10-27",
       "measured": 24121,
       "budget": 24180,
-      "note": "2026-10-27 用户上午授权「现在是早上，你有大把时间，快去将整个项目完善吧」（m03425）。本片只做「入口可见」：托盘图标在发行布局下不进外壳（取证见 docs/98 §3.1 第 1 条），而面板是唯一能改设置/开关插件/看性能的地方，所以给它补一条不经托盘的路 —— 双击宠物直接打开主控面板。实测 23979 → 24121（+142）。归属两片：（1）单击/双击判定与事件（LayeredFrameWindow.Pointer.cs +74 的 NoteTap/阈值/事件/自检钩子、LayeredFrameWindow.cs +3 的 DoubleClickWired、PetWindowSet.cs +1 的接线调用、UiHost.cs +6 的主窗与集合订阅，再加 18 行整包差额 —— 同一文件内既有行被替换后 numstat 与实际差 25 行，按整包裁定并进第一片）共 102；（2）双击接线半边与判据（PetWindowSet.ContextMenu.cs +32 的 DoubleClickHandler/WireDoubleClick/DoubleClickWiredCount）共 40。判据 ui-pet-double-click-wired / -dispatch / -set-wired 在 test/ 下，按 D-03a 口径不计。抬到 24180（余量 59）：LayeredFrameWindow.Pointer.cs 现 271 行，仍有余量；下一轮若继续动它，先看它和 PetWindowSet.cs（377）的距离。",
+      "note": "2026-10-27 用户上午授权「现在是早上，你有大把时间，快去将整个项目完善吧」（m03425）。本片只做「入口可见」：托盘图标在发行布局下不进外壳（取证见 原规格 98 §3.1 第 1 条），而面板是唯一能改设置/开关插件/看性能的地方，所以给它补一条不经托盘的路 —— 双击宠物直接打开主控面板。实测 23979 → 24121（+142）。归属两片：（1）单击/双击判定与事件（LayeredFrameWindow.Pointer.cs +74 的 NoteTap/阈值/事件/自检钩子、LayeredFrameWindow.cs +3 的 DoubleClickWired、PetWindowSet.cs +1 的接线调用、UiHost.cs +6 的主窗与集合订阅，再加 18 行整包差额 —— 同一文件内既有行被替换后 numstat 与实际差 25 行，按整包裁定并进第一片）共 102；（2）双击接线半边与判据（PetWindowSet.ContextMenu.cs +32 的 DoubleClickHandler/WireDoubleClick/DoubleClickWiredCount）共 40。判据 ui-pet-double-click-wired / -dispatch / -set-wired 在 test/ 下，按 D-03a 口径不计。抬到 24180（余量 59）：LayeredFrameWindow.Pointer.cs 现 271 行，仍有余量；下一轮若继续动它，先看它和 PetWindowSet.cs（377）的距离。",
       "attribution": [
         {
           "slice": "双击开面板：窗口层的单击/双击判定、系统阈值、事件与自检钩子，以及主窗与集合的订阅",
@@ -1528,7 +1520,7 @@
       "date": "2026-10-28",
       "measured": 25762,
       "budget": 25820,
-      "note": "docs/18 §2.6 外观母体重做（2026-10-27/28 用户「将项目完成到可以验收」m00001 的那一片）：把四页、三个弹窗、托盘菜单从系统默认外观换成一套自绘令牌（深色底 + 奶油白字 + 韭菜色强调）。实测 24121 → 25762（+1641）。归属四片：（1）新建 `src/Ui/Design/` 设计系统（令牌、DPI 字体栈、Ink 绘制基元、NavRail 侧栏、自绘按钮/列表/开关/数字框/菜单）共 1635 —— 这是本片的主体，也是唯一新增目录；（2）四页与侧栏重接（ControlPanel.cs 与四个 partial 换成主题控件，按钮文案改由 FitToText 定宽）净 +25；（3）授权/确认/引导三个弹窗与穿透示意面板换成同一套令牌（授权弹窗净 -75 是把三个单选与两个按钮交给自绘基元、删掉重复的配色代码）净 -22；（4）numstat 与实测整包差额 +3（同一文件内既有行被替换后逐文件算术与实际整包读数不闭合，按整包裁定，同 2026-10-27 那条的口径）。抬到 25820（余量 58）。判据面（test/SelfCheck 下的 ui-appearance-* 与 docs/18 §2.6 清单）在 test/ 下，按 D-03a 口径不计。",
+      "note": "原规格 18 §2.6 外观母体重做（2026-10-27/28 用户「将项目完成到可以验收」m00001 的那一片）：把四页、三个弹窗、托盘菜单从系统默认外观换成一套自绘令牌（深色底 + 奶油白字 + 韭菜色强调）。实测 24121 → 25762（+1641）。归属四片：（1）新建 `src/Ui/Design/` 设计系统（令牌、DPI 字体栈、Ink 绘制基元、NavRail 侧栏、自绘按钮/列表/开关/数字框/菜单）共 1635 —— 这是本片的主体，也是唯一新增目录；（2）四页与侧栏重接（ControlPanel.cs 与四个 partial 换成主题控件，按钮文案改由 FitToText 定宽）净 +25；（3）授权/确认/引导三个弹窗与穿透示意面板换成同一套令牌（授权弹窗净 -75 是把三个单选与两个按钮交给自绘基元、删掉重复的配色代码）净 -22；（4）numstat 与实测整包差额 +3（同一文件内既有行被替换后逐文件算术与实际整包读数不闭合，按整包裁定，同 2026-10-27 那条的口径）。抬到 25820（余量 58）。判据面（test/SelfCheck 下的 ui-appearance-* 与 原规格 18 §2.6 清单）在 test/ 下，按 D-03a 口径不计。",
       "attribution": [
         {
           "slice": "设计系统母体（新建 Ui/Design：Theme/Ink/NavRail/ThemedButton/ThemedList/ThemedMenu/ThemedNumber/ThemedToggle）",
@@ -1615,8 +1607,7 @@
           "slice": "列表空白区自绘与空态（空表不再按列画竖线、最后一行的残行不再露出、性能页没有可测对象时不摆空表）",
           "files": [
             "packages/core/PetDock.Core/src/Ui/Design/ThemedList.EmptyArea.cs",
-            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs",
-            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs"
           ],
           "lines": 100
         }
@@ -1709,6 +1700,36 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": -26
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28315,
+      "budget": 28380,
+      "note": "插件管理面与安装器（+1004 净值）：新增 PluginInventory / PluginInstaller / PluginHost.Manage / 面板安装与删除入口，删除性能页（-280）已抵；同时按 D-03c 拆出四个 partial（Program.ManifestValidate、UiHost.Panel.Plugins、ControlPanel.Plugins.Manage、PluginHost.Discovery）。默认开关改由 manifest.defaultEnabled 决定，内核不再内置任何生态 id。抬到 28380（余量 65）。",
+      "attribution": [
+        {
+          "slice": "插件发现/管理/安装（清单视图、暂存校验、启停卸载、面板动作）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInstaller.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Manage.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Discovery.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.Manage.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.Plugins.cs"
+          ],
+          "lines": 900
+        },
+        {
+          "slice": "D-03c 拆分与本次接线（净值）",
+          "files": [
+            "packages/core/PetDock.Core/src/Program.ManifestValidate.cs",
+            "packages/core/PetDock.Core/src/Program.SelfTest.cs",
+            "packages/core/PetDock.Core/src/Host/PluginPolicy.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.cs"
+          ],
+          "lines": 104
         }
       ]
     }

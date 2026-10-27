@@ -236,4 +236,81 @@ internal static partial class Program
         return ExitFail;
     }
 
+    /// <summary>插件宿主自检入口（--hosttest [expectedPluginId]）：
+    /// 期望插件 id 由命令行传入 —— core 源码不写插件名特判（原规格 01 P-02 第 4 条）。</summary>
+    private static int RunHostTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PluginHostSelfTest.Run(args.Where(a => !string.Equals(a, "--hosttest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>动画循环自检入口（--animtest clipA clipB ...）：判据与命令形态见
+    /// 交接档案 §3.3（C1 clip-frames / C2 同 now 同帧 / C3 周期绕回）。</summary>
+    private static int RunAnimTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PetAnimTest.Run(args.Where(a => !string.Equals(a, "--animtest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>宿主帧驱动自检入口（--drivetest）：生命周期 §10、降级链 §9、帧预算 §7 的判据面。</summary>
+    private static int RunDriveTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PetDriveTest.Run(args.Where(a => !string.Equals(a, "--drivetest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>事件总线自检入口（--eventtest，M4 契约 §7.5）：判据行 `CHECK <key> PASS|FAIL <detail>`，
+    /// 末行 EVENT-OK / EVENT-FAIL n=<k>，退出码 0/n；SKIP 行不算 PASS（契约 §7.5）。</summary>
+    private static int RunEventTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return EventSelfTest.Run(args.Where(a => !string.Equals(a, "--eventtest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>功耗门禁入口（--perftest，原规格 41 D-14）：判据行 `CHECK perf-<name> PASS|FAIL`，
+    /// 末行 PERF-OK / PERF-FAIL。采样逻辑在 test/SelfCheck/PerfGate.cs（不计入 D-03a 预算）。</summary>
+    private static int RunPerfTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return PerfGate.Run(args.Where(a => !string.Equals(a, "--perftest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>装配顺序探针入口（--composetest [pluginsRoot]，RFC-29 §3.6）：
+    /// 打 `COMPOSE …` 与 `COMPOSE-OK|FAIL`，退出码 0/1。判据体在 Host/ComposeProbe.cs。</summary>
+    private static int RunComposeTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return ComposeProbe.Run(args.Where(a => !string.Equals(a, "--composetest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>UI 母体自检入口（--uitest，RFC-12 §3）：判据行 `CHECK ui-<name> PASS|FAIL`，
+    /// 末行 UI-OK / UI-FAIL n=&lt;k&gt;。判据体在 test/SelfCheck/UiSelfTest.cs（不计入 D-03a 预算）。</summary>
+    private static int RunUiTest(string[] args)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        return UiSelfTest.Run(args.Where(a => !string.Equals(a, "--uitest", StringComparison.Ordinal)).ToArray());
+    }
+
+    /// <summary>金图基准生成入口（--golden-baseline outdir）：渲染示例宠物三 clip 首帧到基准 PNG，
+    private static int RunGoldenBaseline(string[] args, int flagIdx)
+    {
+        AttachConsole();
+        KernelLog.ConsoleAttached = true;
+        string outdir = args.Length > flagIdx + 1 ? args[flagIdx + 1] : string.Empty;
+        if (string.IsNullOrWhiteSpace(outdir))
+        {
+            Console.Error.WriteLine("GOLDEN-FAIL usage: --golden-baseline <outdir>");
+            return ExitFail;
+        }
+
+        return GoldenBaselineGen.Run(outdir);
+    }
+
 }

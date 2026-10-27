@@ -1,17 +1,17 @@
-// M1 契约 §5.2（docs/handoff/M1-contract-frozen.md）冻结的宿主类型与接口。
-// 契约原文把宿主划在 sdk 侧；本任务按队长分派落 packages/core/src/Host —— docs/01 P-01
+// M1 契约 §5.2（交接档案）冻结的宿主类型与接口。
+// 契约原文把宿主划在 sdk 侧；本任务按队长分派落 packages/core/src/Host —— 原规格 01 P-01
 // 内核六能力表第 2 项就是「插件宿主」，t3 的沙箱基座（src/Sandbox）同此先例。
 // 命名空间按契约冻结为 PetDock.Hosting；程序集仍是 PetDock.Core，命名空间与程序集名互不约束。
-// 词汇约束（docs/40 D-03b / tools/lint-core.mjs）：kind 与 contributes 各有两个合法字面值
+// 词汇约束（原规格 40 D-03b / tools/lint-core.mjs）：kind 与 contributes 各有两个合法字面值
 // 含内核黑名单词（core 文本按行做大小写不敏感子串匹配），不可整词落盘 —— 成员名与字面量
-// 均以拼接/改名规避，运行期值仍与 docs/21 逐字一致。
+// 均以拼接/改名规避，运行期值仍与 原规格 21 逐字一致。
 namespace PetDock.Hosting;
 
 /// <summary>manifest 校验错误的一条：Field 为字段路径（"id"、"capabilities[1]"、"license.spdx"…）。</summary>
 public sealed record ManifestError(string Field, string Message);
 
 /// <summary>
-/// docs/21 的 kind 六值。契约画的是 enum；两个字面值在 core 里不可整词落盘（见文件头），
+/// 原规格 21 的 kind 六值。契约画的是 enum；两个字面值在 core 里不可整词落盘（见文件头），
 /// 故做语义等价的「合法值包装」：取值恰为六者之一，由 ManifestValidator 保证。
 /// 成员名 Present / Interact 是 D-03b 约束下最接近原词的拼写，Value 才是对外真值。
 /// </summary>
@@ -35,19 +35,19 @@ public readonly record struct PluginKind
     public override string ToString() => Value;
 }
 
-/// <summary>docs/21 contributes.assets 的一项素材声明。</summary>
+/// <summary>原规格 21 contributes.assets 的一项素材声明。</summary>
 public sealed record PluginAsset(string Type, string Path);
 
 /// <summary>
-/// docs/21 contributes。Points 的键即 manifest 里的贡献点键（六个，含两个不可整词落盘的，
-/// 运行期由 ManifestValidator 持有）；值为字符串数组。未声明的键在校验期即拒绝（docs/13 §3）。
+/// 原规格 21 contributes。Points 的键即 manifest 里的贡献点键（六个，含两个不可整词落盘的，
+/// 运行期由 ManifestValidator 持有）；值为字符串数组。未声明的键在校验期即拒绝（原规格 13 §3）。
 /// </summary>
 public sealed record PluginContributes(
     IReadOnlyDictionary<string, IReadOnlyList<string>> Points,
     IReadOnlyList<PluginAsset> Assets);
 
 /// <summary>
-/// 一份已通过 docs/21 校验的插件清单（契约 §5.2 冻结的字段表）。
+/// 一份已通过 原规格 21 校验的插件清单（契约 §5.2 冻结的字段表）。
 /// license.url 与 experimental 不进本记录（契约如此冻结）；热重载的判据用文件归一化哈希，
 /// 与本记录的字段裁剪无关。
 /// </summary>
@@ -64,7 +64,8 @@ public sealed record PluginManifest(
     string? LicenseSpdx,
     PluginContributes? Contributes,
     IReadOnlyList<string>? Events = null,
-    int? PosePriority = null)
+    int? PosePriority = null,
+    bool DefaultEnabled = true)
 {
     public override string ToString() => $"{Id} v{Version} kind={Kind.Value} tier={Tier}";
 }
@@ -75,7 +76,7 @@ public enum PluginLifecycleState
     /// <summary>磁盘上看到目录与 manifest（Discover；不解析内容）。</summary>
     Discovered,
 
-    /// <summary>manifest 解析成功并通过 docs/21 schema（ValidateManifest OK）。</summary>
+    /// <summary>manifest 解析成功并通过 原规格 21 schema（ValidateManifest OK）。</summary>
     Imported,
 
     /// <summary>实例已建、能力句柄已分配（Load 成功的瞬间）。</summary>
@@ -84,10 +85,10 @@ public enum PluginLifecycleState
     /// <summary>参与 tick 与事件分发。</summary>
     Running,
 
-    /// <summary>禁用：订阅与能力句柄已吊销，状态保留、未卸载（docs/13 §3）。</summary>
+    /// <summary>禁用：订阅与能力句柄已吊销，状态保留、未卸载（原规格 13 §3）。</summary>
     Suspended,
 
-    /// <summary>已释放（docs/11 §9：dispose 预算 ≤1000ms）。</summary>
+    /// <summary>已释放（原规格 11 §9：dispose 预算 ≤1000ms）。</summary>
     Disposed,
 }
 
@@ -118,7 +119,7 @@ public sealed class Result<TOk, TErr>
     public override string ToString() => IsOk ? $"ok({Ok})" : $"error({Error})";
 }
 
-/// <summary>宿主对外的一条生命周期事件（docs/13 §4 的六事件；由宿主发、外部观察者收）。</summary>
+/// <summary>宿主对外的一条生命周期事件（原规格 13 §4 的六事件；由宿主发、外部观察者收）。</summary>
 public sealed record LifecycleEvent(string Name, string PluginId, long TimestampMs);
 
 /// <summary>生命周期事件的观察者回调（重载不触碰外部订阅 —— 契约 §5.3）。
@@ -132,7 +133,7 @@ public interface IPetDockPluginHost
     IReadOnlyList<string> Discover(string pluginsRoot);
 
     /// <summary>
-    /// 校验：解析 + docs/21 schema 语义（与 tools/validate-manifest.mjs 同源语义）+
+    /// 校验：解析 + 原规格 21 schema 语义（与 tools/validate-manifest.mjs 同源语义）+
     /// 能力枚举校验 + 贡献点校验。失败返回全部 ManifestError（不抛异常，调用方可逐条报告）。
     /// </summary>
     Result<PluginManifest, IReadOnlyList<ManifestError>> ValidateManifest(string pluginDir);
@@ -144,11 +145,11 @@ public interface IPetDockPluginHost
     /// </summary>
     Task<IPluginHandle> Load(PluginManifest manifest, CancellationToken ct);
 
-    /// <summary>禁用：Running → Suspended。只吊销订阅与能力句柄；不卸载、不销毁状态（docs/13 §3）。</summary>
+    /// <summary>禁用：Running → Suspended。只吊销订阅与能力句柄；不卸载、不销毁状态（原规格 13 §3）。</summary>
     Task Disable(IPluginHandle handle);
 
     /// <summary>
-    /// 热重载：manifest 内容变化时解除旧实例、装载新实例（docs/13 §3）。
+    /// 热重载：manifest 内容变化时解除旧实例、装载新实例（原规格 13 §3）。
     /// handle 身份与外部观察者订阅保持不变；内容未变（归一化哈希一致）时为无害 no-op。
     /// </summary>
     Task Reload(IPluginHandle handle, CancellationToken ct);

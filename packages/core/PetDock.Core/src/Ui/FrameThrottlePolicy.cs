@@ -1,6 +1,6 @@
 // RFC-21 §3.3：档位表与**唯一**的档位判定。
 //
-// 为什么单独一个类：docs/12 §4 的三条（静止 / 遮挡 / 全屏）如果让帧循环各判一半，
+// 为什么单独一个类：原规格 12 §4 的三条（静止 / 遮挡 / 全屏）如果让帧循环各判一半，
 // 「现在该用哪一档」就有了两个答案。本文件是全仓**唯一**把读数折成档位的地方 ——
 // ResidentFrameLoop 只调 Decide、只消费结果，不自己再判一套（RFC-21 §3.1 的属主表，
 // 判据 ui-throttle-single-decision-owner 就是扫这一条）。
@@ -63,10 +63,10 @@ internal readonly record struct ThrottleReading(
 /// </summary>
 internal sealed class FrameThrottlePolicy
 {
-    /// <summary>静止档的周期上限基准：docs/12:72「降到 30 fps」—— 是**上限**，不是绝对值。</summary>
+    /// <summary>静止档的周期上限基准：原规格 12:72「降到 30 fps」—— 是**上限**，不是绝对值。</summary>
     internal const double IdleCapMs = 1000.0 / 30.0;
 
-    /// <summary>遮挡档的周期：docs/12:73「降帧到 10 fps」—— 是绝对数值，不受用户设置影响。</summary>
+    /// <summary>遮挡档的周期：原规格 12:73「降帧到 10 fps」—— 是绝对数值，不受用户设置影响。</summary>
     internal const double OccludedFrameMs = 100.0;
 
     private readonly ThrottleProbe _probe = new();
@@ -91,7 +91,7 @@ internal sealed class FrameThrottlePolicy
             // ① 全屏：前台有一个覆盖本宠物所在显示器的窗（桌面本体与任务栏类由探测层排除）。
             if (_probe.SampleFullscreen(inputs.Window))
             {
-                // 全屏档**没有周期可表达**（docs/11 §7 只有 8.3 / 33.3 / 25ms，没有 0fps），
+                // 全屏档**没有周期可表达**（原规格 11 §7 只有 8.3 / 33.3 / 25ms，没有 0fps），
                 // 它的执行方式是停泵。这里返回的周期是「恢复时」要套用的值（RFC-21 §3.3）。
                 return new ThrottleDecision(
                     FrameTier.Fullscreen,
@@ -130,7 +130,7 @@ internal sealed class FrameThrottlePolicy
                 && rect == inputs.WindowRect
                 && lastSubmitDpi == inputs.Dpi)
             {
-                // 周期取 max(设置, 1000/30)：docs/12:72 说「降到 30 fps」，那是**上限**。
+                // 周期取 max(设置, 1000/30)：原规格 12:72 说「降到 30 fps」，那是**上限**。
                 // 用户把阈值设成 5fps（200ms）时不该把他拉回 30fps（那叫提速）；
                 // 默认 33.3ms 时这条是恒等式（RFC-21 §8 第 1 条如实登记）。
                 return new ThrottleDecision(

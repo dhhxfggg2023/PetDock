@@ -1,5 +1,5 @@
-// docs/11 §1 的四接口怎么被宿主发现（t1 契约 §1.3 第四步）。**不新开发现路径**：
-// 唯一入口仍是 PluginHost.Discover + ValidateManifest（docs/21），本文件只做 Discover 之后那一步。
+// 原规格 11 §1 的四接口怎么被宿主发现（t1 契约 §1.3 第四步）。**不新开发现路径**：
+// 唯一入口仍是 PluginHost.Discover + ValidateManifest（原规格 21），本文件只做 Discover 之后那一步。
 //   1. kind → 接口，映射见 InterfaceFor（kind 字面值经 PluginKind 包装，HostingTypes.cs 的拼接先例）。
 //   2. entry 是相对插件目录的 .dll 时用 Assembly.LoadFrom 并探测实现类；tier 必须为 0
 //      （tier 1 的执行体是 wasm 沙箱，托管 ABI 面不是它）。entry 不是 .dll 时不载入代码。
@@ -50,10 +50,10 @@ public sealed partial class PetSurfaceRoster
 
     /// <summary>
     /// 已知的文档越界（每次装载的**实况**，不是注释里的一句声明）：目前只有一种 ——
-    /// tier 0 + entry 是托管 .dll，与 docs/13 §2「Tier 0 = 声明式资源包，无展开代码」字面冲突。
+    /// tier 0 + entry 是托管 .dll，与 原规格 13 §2「Tier 0 = 声明式资源包，无展开代码」字面冲突。
     /// 单独暴露成一个列表，是为了让它出现在每次装配的诊断行上（`overruns=N`）与 --drivetest 的
     /// 判据里 —— 队长 2026-10-16 的要求：这个越界必须**显式可见**，不许让它看起来像合规。
-    /// 方向未定，由 t6 按 docs/40 D-08c 判。
+    /// 方向未定，由 t6 按 原规格 40 D-08c 判。
     /// </summary>
     public IReadOnlyList<string> Overruns => _overruns;
 
@@ -70,11 +70,11 @@ public sealed partial class PetSurfaceRoster
     public IPetState? StateLayer => First<IPetState>();
 
     /// <summary>
-    /// 行为层按**配置**选，不按 Ordinal 取首。理由：docs/11:308 规定三个默认实现的优先级高于任何第三方，
+    /// 行为层按**配置**选，不按 Ordinal 取首。理由：原规格 11:308 规定三个默认实现的优先级高于任何第三方，
     /// 而默认实现那个 id 在 Ordinal 上恰好排在示例反应实现之前 —— 「取首」于是把这条文档规则
     /// 实现成了「永远选默认实现」，任何第三方行为层都装不进来。
     /// 选择器是环境变量（与插件根目录那个同一形态）：core 里不出现任何插件 id 字面值，
-    /// 符合 docs/01 P-02 第 4 条「内核通过插件 ID 引用配置条目，但不得在代码里特判任何 ID」。
+    /// 符合 原规格 01 P-02 第 4 条「内核通过插件 ID 引用配置条目，但不得在代码里特判任何 ID」。
     /// 未设置时保持原行为（取首 = 默认实现优先）。
     /// </summary>
     public string? BrainSelector { get; set; }
@@ -221,7 +221,7 @@ public sealed partial class PetSurfaceRoster
 
         if (!manifest.Entry.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
-            // docs/13 §2 的 Tier 0 声明式资源包：没有展开代码，不是错误，只是没有实现可登记。
+            // 原规格 13 §2 的 Tier 0 声明式资源包：没有展开代码，不是错误，只是没有实现可登记。
             KernelLog.Write($"surface-skip plugin={manifest.Id} entry={manifest.Entry} (no code unit)");
             return;
         }
@@ -234,14 +234,14 @@ public sealed partial class PetSurfaceRoster
         }
 
         // ⚠️ 已知的文档越界，**显式记账、不埋在注释里**（队长 2026-10-16 要求：别让它看起来像合规）：
-        // docs/13 §2 对 Tier 0 的逐字定义是「声明式资源包，**无展开代码**，主机负责读包」，
+        // 原规格 13 §2 对 Tier 0 的逐字定义是「声明式资源包，**无展开代码**，主机负责读包」，
         // 而本分支装载的是托管 .NET 程序集 —— **有代码**。字面冲突，方向未定（走 RFC 加
         // 「第一方托管内置实现」条款，或把内置实现移出 manifest/tier 路径由 core 注册），
-        // 由 t6 按 docs/40 D-08c 判。本行为记录在每次装载的 stderr 上，使这个越界在判据输出里可见。
+        // 由 t6 按 原规格 40 D-08c 判。本行为记录在每次装载的 stderr 上，使这个越界在判据输出里可见。
         _overruns.Add($"{manifest.Id}:tier-0-with-managed-entry:{manifest.Entry}");
         KernelLog.Write(
             $"surface-overrun plugin={manifest.Id} tier=0 entry={manifest.Entry}"
-            + " docs13-tier0-says-no-code t6-D-08c-pending");
+            + " spec13-tier0-says-no-code t6-D-08c-pending");
 
         Assembly assembly;
         try
@@ -320,7 +320,7 @@ public sealed partial class PetSurfaceRoster
         }
     }
 
-    /// <summary>manifest 的 kind → docs/11 的四接口之一（不认识的 kind 返回 null）。</summary>
+    /// <summary>manifest 的 kind → 原规格 11 的四接口之一（不认识的 kind 返回 null）。</summary>
     private static Type? InterfaceFor(PluginKind kind)
     {
         if (kind == PluginKind.Present)

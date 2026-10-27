@@ -1,14 +1,14 @@
 // 授权决定的跨进程记忆（RFC-19 §2.1）。
 //
 // 落点：<data>/consent.json —— 与 pets.json（RFC-15）、settings.json（RFC-18）同级。
-// 为什么落 JSON 而不是注册表：授权决定是「用户偏好」，docs/17 §1 把它归在 UserSettings 形态；
+// 为什么落 JSON 而不是注册表：授权决定是「用户偏好」，原规格 17 §1 把它归在 UserSettings 形态；
 // 注册表适合的是开机自启那种系统级开关（RFC-18 的裁决）。
 //
 // 写盘姿势照抄 UserSettingsStore.Save 与 PetDataStore.RegisterActive：先写 .tmp 再整文件替换
-// （docs/17 §3 的两阶段提交）。读到损坏的文件时回落成空表、不抛 —— 一份坏掉的授权记忆
+// （原规格 17 §3 的两阶段提交）。读到损坏的文件时回落成空表、不抛 —— 一份坏掉的授权记忆
 // 不该让程序起不来（最坏后果是「重新问一遍用户」）。
 //
-// 只记**授予**，不记拒绝（RFC-19 §2.2 的裁决）：被拒项在弹窗里不可重新勾选（docs/18 §3），
+// 只记**授予**，不记拒绝（RFC-19 §2.2 的裁决）：被拒项在弹窗里不可重新勾选（原规格 18 §3），
 // 持久化拒绝 = 用户被永久锁在门外，且没有任何「清除」的出口。
 using System;
 using System.Collections.Generic;
@@ -21,13 +21,13 @@ using PetDock.Core.Compositor;
 
 namespace PetDock.Hosting;
 
-/// <summary>授权决定的落盘读写（docs/17 §1 的 UserSettings 形态之一种）。</summary>
+/// <summary>授权决定的落盘读写（原规格 17 §1 的 UserSettings 形态之一种）。</summary>
 internal sealed class ConsentStore
 {
     /// <summary>授权记忆文件名（与其它两份 JSON 同级）。</summary>
     public const string ConsentFile = "consent.json";
 
-    /// <summary>schema 版本（docs/17 §2：显式版本，只向前）。</summary>
+    /// <summary>schema 版本（原规格 17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
 
     private readonly string _path;
@@ -136,7 +136,7 @@ internal sealed class ConsentStore
             Directory.CreateDirectory(dir);
         }
 
-        // 两阶段提交（docs/17 §3）：先写临时文件，再整文件替换。
+        // 两阶段提交（原规格 17 §3）：先写临时文件，再整文件替换。
         string temp = _path + ".tmp";
         File.WriteAllText(
             temp,

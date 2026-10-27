@@ -9,6 +9,7 @@
   "kind": "importer",
   "tier": 0,
   "capabilities": [],
+  "defaultEnabled": false,
   "entry": "PetDock.DyberPetImporter/bin/Release/net8.0-windows/PetDock.DyberPetImporter.dll",
   "license": {
     "spdx": "CC0-1.0"

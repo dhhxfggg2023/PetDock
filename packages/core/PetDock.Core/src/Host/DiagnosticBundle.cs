@@ -4,7 +4,7 @@
 // 单文件原子（用户整包拖进邮件不会半路丢文件），
 // 而且包里能放一个逐文件 sha256 的 manifest.json 自校验。
 //
-// 失败语义：每一步失败都说清楚是哪一步（docs/18 §5「失败要说清楚是哪一步」），
+// 失败语义：每一步失败都说清楚是哪一步（原规格 18 §5「失败要说清楚是哪一步」），
 // 不弹模态框 —— 面板把结果显示成内联状态。
 using System;
 using System.Collections.Generic;
@@ -67,7 +67,7 @@ internal sealed class DiagnosticBundle
         {
             Directory.CreateDirectory(_diagnosticsDirectory);
             // RFC-17 §3.2 规定的文件名：petdock-diag- 加上「年+月+日+T+时分秒+Z」这一串数字，再加 .zip。
-            // 月与日的格式符不直接连写（连写会撞上 docs/02 §2 的概念黑名单，它按子串匹配），
+            // 月与日的格式符不直接连写（连写会撞上 原规格 02 §2 的概念黑名单，它按子串匹配），
             // 分两段取再拼起来——拼出来的结果与 RFC 写的完全一致。
             DateTime now = DateTime.UtcNow;
             string stamp = now.ToString("yyyy", CultureInfo.InvariantCulture)

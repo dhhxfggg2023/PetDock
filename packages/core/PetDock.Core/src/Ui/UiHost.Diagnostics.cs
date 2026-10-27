@@ -1,6 +1,6 @@
 // 宿主侧的诊断接线（RFC-17 §3.4）：设置页的两个入口 → 宿主侧执行体。
 //
-// 面板只发意图（docs/18 §2.4「面板只读展示」在这里仍成立）：
+// 面板只发意图（原规格 18 §2.4「面板只读展示」在这里仍成立）：
 // 判定、落盘、打开目录都在这一侧完成，完成后把一句话回给面板。
 using System;
 using PetDock.Core.Compositor;
@@ -54,7 +54,7 @@ internal sealed partial class UiHost
     }
 
     /// <summary>
-    /// 审计流水的只读视图（docs/18 §2.8）。读盘在这里，窗口只负责列。
+    /// 审计流水的只读视图（原规格 18 §2.8）。读盘在这里，窗口只负责列。
     /// 非模态：它是「看一眼」的窗，不该把面板和宠物一起冻住（Exit 确认那种才需要模态）。
     /// </summary>
     private (bool Ok, string Message) OpenAuditWindow()

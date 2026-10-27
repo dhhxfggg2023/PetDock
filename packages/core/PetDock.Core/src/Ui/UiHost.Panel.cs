@@ -1,5 +1,5 @@
 // 面板与插件页入口（RFC-13 §2.6）：把插件页的两个按钮接到宿主侧的真实动作上。
-// 面板只发出意图（docs/18 §2.4「面板只读展示」在这里仍成立）：它给出 pluginId，
+// 面板只发出意图（原规格 18 §2.4「面板只读展示」在这里仍成立）：它给出 pluginId，
 // 判定、弹窗与落账都在这一侧完成。
 //
 // 为什么复核与禁用都放到后台线程：
@@ -44,7 +44,13 @@ internal sealed partial class UiHost
             return;
         }
 
-        _panel = new ControlPanel(Snapshot, showWindow: false, AuthorizePlugin, TogglePluginDisabled, FrameReadingsFor);
+        _panel = new ControlPanel(
+            Snapshot,
+            showWindow: false,
+            AuthorizePlugin,
+            TogglePluginDisabled,
+            InstallPluginFromPanel,
+            RemovePluginFromPanel);
         _panel.SetImportCommand(RunImportFromPanel);
         _panel.SetSettingsCommand(ApplySettings);
         _panel.SetDiagnosticCommand(RunDiagnosticOp);
@@ -59,34 +65,7 @@ internal sealed partial class UiHost
 
     /// <summary>取一次快照（面板每次重绘都调用它，不缓存）。</summary>
     public UiSnapshot Snapshot() =>
-        UiRoster.Build(_pet, _host, _perf, SettingsView());
-
-    /// <summary>
-    /// 帧泵的逐宠物读数（RFC-30 §3.2 / RFC-37 片 4）：按**宠物 id**取，桌上有几只就有几份读数。
-    /// 先问集合（每只一个泵），集合里没有这一只才落到主窗循环；都没有 → null，
-    /// 面板据此写「—」而不是 0（0 会被读成「测过是 0」）。
-    /// </summary>
-    private PetFrameReadings? FrameReadingsFor(string petId)
-    {
-        if (_petSet is not null)
-        {
-            foreach (PetReading reading in _petSet.Readings())
-            {
-                if (string.Equals(reading.Id, petId, StringComparison.Ordinal))
-                {
-                    return reading.Frames;
-                }
-            }
-        }
-
-        ResidentFrameLoop? loop = _loop;
-        if (loop is null || _pet is null || !string.Equals(_pet.Id, petId, StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        return new PetFrameReadings(loop.AvgFrameMs, loop.MaxFrameMs, loop.TargetFrameMs, loop.OverBudgetFrames);
-    }
+        UiRoster.Build(_pet, _host, SettingsView(), _inventory);
 
     /// <summary>
     /// 设置页的当前状态（读数来源：设置文件 + 注册表）。
@@ -164,7 +143,7 @@ internal sealed partial class UiHost
     /// <summary>
     /// 面板「导入素材包」入口的执行体（UI 线程）。
     /// 面板负责弹目录选择器、把目录交过来；宿主编排做复制、登记与换源（RFC-15 §3.3）。
-    /// 失败时把原因交回面板，由面板显示成内联错误条 —— 不弹模态框（docs/18 §5）。
+    /// 失败时把原因交回面板，由面板显示成内联错误条 —— 不弹模态框（原规格 18 §5）。
     /// </summary>
     private bool RunImportFromPanel(string sourceDir, out string message)
     {
@@ -185,12 +164,9 @@ internal sealed partial class UiHost
         return result.Ok;
     }
 
-    /// <summary>触发一次性能采样并把结果留在快照里（面板的采样按钮走这里）。</summary>
-    public void NotePerf(PerfSummary perf) => _perf = perf ?? PerfSummary.Empty;
-
     /// <summary>
     /// 插件页「授权」入口（RFC-13 §2.6）：打开复核弹窗，然后把授权**收窄**。
-    /// 运行期不能新增授予（docs/14 §2「一次断言：安装时一次性提交能力清单；不允许补申请」）：
+    /// 运行期不能新增授予（原规格 14 §2「一次断言：安装时一次性提交能力清单；不允许补申请」）：
     /// 用户在复核时勾了此前没给过的能力，那一项**不授予**——只保留「此前已授予 ∩ 本次勾选」。
     /// 这一条在日志里如实说明，不靠界面暗示。
     /// </summary>
@@ -249,147 +225,11 @@ internal sealed partial class UiHost
         int notGranted = answer.Granted.Count(id => !row.GrantedIds.Contains(id));
         if (notGranted > 0)
         {
-            // 复核里勾了此前没给过的能力：运行期不补授（docs/14 §2），只说明、不假装授了。
+            // 复核里勾了此前没给过的能力：运行期不补授（原规格 14 §2），只说明、不假装授了。
             KernelLog.Write($"authorize-note plugin={pluginId} not-granted count={notGranted} reason=runtime-no-new-grant");
         }
 
         bool changed = host.RestrictConsent(pluginId, keep);
         KernelLog.Write($"authorize-done plugin={pluginId} keep={keep.Count} changed={changed}");
-    }
-
-    /// <summary>
-    /// 插件页「禁用/启用」入口：Running → 禁用；Suspended → 启用（不卸载，docs/13 §3）。
-    /// 同样放到后台线程：动作要过宿主调度线程，在 UI 线程上等它会把界面冻住。
-    /// </summary>
-    public void TogglePluginDisabled(string pluginId)
-    {
-        if (_host is null)
-        {
-            return;
-        }
-
-        _ = Task.Run(() => TogglePluginDisabledCore(pluginId));
-    }
-
-    /// <summary>禁用/启用的本体（后台线程）。</summary>
-    private void TogglePluginDisabledCore(string pluginId)
-    {
-        PluginHost? host = _host;
-        if (host is null)
-        {
-            return;
-        }
-
-        PluginHandle? handle = FindHandle(host, pluginId);
-        if (handle is null)
-        {
-            KernelLog.Write($"toggle-skip plugin={pluginId} reason=not-loaded");
-            return;
-        }
-
-        try
-        {
-            if (handle.State == PluginLifecycleState.Running)
-            {
-                host.Disable(handle).GetAwaiter().GetResult();
-                KernelLog.Write($"plugin-disabled plugin={pluginId}");
-                PersistPluginDisabled(pluginId, disabled: true);
-                return;
-            }
-
-            if (handle.State == PluginLifecycleState.Suspended)
-            {
-                handle.Resume();
-                KernelLog.Write($"plugin-enabled plugin={pluginId}");
-                PersistPluginDisabled(pluginId, disabled: false);
-                return;
-            }
-
-            KernelLog.Write($"toggle-skip plugin={pluginId} reason=state-{handle.State}");
-        }
-        catch (Exception ex)
-        {
-            KernelLog.Write($"toggle-failed plugin={pluginId} {ex.GetType().Name}: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 把「用户关掉了这只插件」落盘（2026-10-26 用户要求「插件可以选择关闭，重启生效」）。
-    /// 运行时那半由 <see cref="PluginHost.Disable"/> 负责，这里管的是**下一轮**：
-    /// 落进 settings.json 的 pluginsDisabled，Program 起装载之前读它、直接跳过这些 id。
-    /// 没有设置存储（自检形态）就只留一行日志 —— 不假装记住了。
-    /// </summary>
-    private void PersistPluginDisabled(string pluginId, bool disabled)
-    {
-        UserSettingsStore? store = _settings;
-        if (store is null)
-        {
-            KernelLog.Write($"plugin-toggle-not-persisted plugin={pluginId} reason=no-settings");
-            return;
-        }
-
-        try
-        {
-            UserSettings current = store.Load();
-            var ids = current.DisabledPlugins is null
-                ? new List<string>()
-                : new List<string>(current.DisabledPlugins);
-            bool present = ids.Exists(id => string.Equals(id, pluginId, StringComparison.Ordinal));
-            if (present == disabled)
-            {
-                return; // 已经是这个状态：不白写一次盘
-            }
-
-            if (disabled)
-            {
-                ids.Add(pluginId);
-            }
-            else
-            {
-                ids.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
-            }
-
-            store.Save(current with { DisabledPlugins = ids });
-            KernelLog.Write($"plugin-disabled-persisted plugin={pluginId} disabled={(disabled ? 1 : 0)} count={ids.Count}");
-        }
-        catch (Exception error)
-        {
-            KernelLog.Write($"plugin-toggle-persist-failed plugin={pluginId} {error.GetType().Name}: {error.Message}");
-        }
-    }
-
-    /// <summary>按 id 找宿主侧的行（授权复核要读它的声明能力与已授予能力）。</summary>
-    private static PluginRow? FindRow(PluginHost host, string pluginId)
-    {
-        foreach (PluginRow row in host.Roster())
-        {
-            if (string.Equals(row.Id, pluginId, StringComparison.Ordinal))
-            {
-                return row;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>按 id 找句柄（禁用/启用要按 id 说话，面板不持有句柄）。</summary>
-    private static PluginHandle? FindHandle(PluginHost host, string pluginId)
-    {
-        try
-        {
-            foreach (PluginHandle handle in host.HandlesSnapshot())
-            {
-                if (string.Equals(handle.Manifest.Id, pluginId, StringComparison.Ordinal))
-                {
-                    return handle;
-                }
-            }
-        }
-        catch (TimeoutException)
-        {
-            KernelLog.Write("plugin-lookup-timeout scheduler-stalled");
-        }
-
-        return null;
     }
 }

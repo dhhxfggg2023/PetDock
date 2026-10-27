@@ -1,7 +1,7 @@
 // RFC-37 §3.2 片 5（2026-10-26 用户要求「右键宠物可以弹菜单」）：右键菜单的接线半边。
 // 与「拖拽落地」同一条纪律 —— 在**唯一**的登记点接一次，装配期建出来的和运行期追加进来的
 // 都走这里，两个入口各接一次就会漏掉一边。主窗那只不在本集合里，它的接线归 UiHost。
-// 本文件是 docs/40 D-03c 的拆分半边。
+// 本文件是 原规格 40 D-03c 的拆分半边。
 using PetDock.Core.Compositor;
 
 namespace PetDock.Core.Ui;
@@ -24,7 +24,7 @@ internal sealed partial class PetWindowSet
     }
 
     /// <summary>
-    /// 双击的接线（2026-10-27，docs/18 §1）：与右键共用同一条纪律 —— 在唯一登记点接一次，
+    /// 双击的接线（2026-10-27，原规格 18 §1）：与右键共用同一条纪律 —— 在唯一登记点接一次，
     /// 装配期与运行期的槽位都走这里。处理函数为空时不接：窗口上的双击仍是惰性的（不弹面板）。
     /// </summary>
     internal PetTapHookSignature? DoubleClickHandler { get; set; }

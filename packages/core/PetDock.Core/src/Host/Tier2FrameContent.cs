@@ -43,7 +43,7 @@ internal sealed class Tier2FrameContent :
     /// <summary>tier-2 的 wire 帧号严格递增（RFC-27 §3.2），因此这里恒 false（RFC-28 §3.2 第 4 条）。</summary>
     public bool LastFrameReused => false;
 
-    /// <summary>最近一帧的命中判定（`docs/11 §2.2`：命中图优先，否则看 alpha）。</summary>
+    /// <summary>最近一帧的命中判定（`原规格 11 §2.2`：命中图优先，否则看 alpha）。</summary>
     public bool Hits(int x, int y) => _last is not null && _last.Hits(x, y);
 
     public Bitmap? GetFrameContent(Size frameSize)

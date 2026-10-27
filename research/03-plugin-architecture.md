@@ -1,4 +1,4 @@
-# PetDock — Plugin Architecture: DSH Reverse-Engineering + Prior Art + Proposal
+﻿# PetDock — Plugin Architecture: DSH Reverse-Engineering + Prior Art + Proposal
 
 > Research note 03. Reconnaissance only — no PetDock code, no scaffolding.
 > Part 1 is read-only analysis of the installed DSH app on this machine; nothing under `E:\tools\DSH` was modified.
@@ -327,7 +327,7 @@ Each of these is a structural failure mode with named, citable incidents. Full d
 
 **2. API breakage / ecosystem reset.**
 *Mechanism:* the replacement API ships before it is complete, or the old one is retired on a date rather than on a capability.
-*Named examples:* Firefox 57's XUL→WebExtensions flag day (2017); Chrome MV2→MV3, gate closed Jan 2022 and full removal Aug 31 2026 — four and a half years, and it still disabled working extensions ([Chrome timeline](https://developer.chrome.com/docs/extensions/develop/migrate/mv2-deprecation-timeline)); Blender 2.79→2.80 invalidated most addons; OBS 27→28 ABI break.
+*Named examples:* Firefox 57's XUL→WebExtensions flag day (2017); Chrome MV2→MV3, gate closed Jan 2022 and full removal Aug 31 2026 — four and a half years, and it still disabled working extensions ([Chrome timeline](https://developer.chrome.com/docs)); Blender 2.79→2.80 invalidated most addons; OBS 27→28 ABI break.
 *Rule:* **version the API independently of the host; serve N−2 shims; start the deprecation clock only when the replacement is feature-complete.**
 
 **3. Permission fatigue / consent theatre.**

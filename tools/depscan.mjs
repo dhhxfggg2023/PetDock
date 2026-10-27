@@ -1,5 +1,5 @@
 // depscan.mjs - machine gates D-01a / D-01b / D-02a / D-02b / D-02c
-// Spec: docs/40-development-paradigm.md sections 1-2 (rules D-01, D-02).
+// Spec: 原规格 40 sections 1-2 (rules D-01, D-02).
 // Zero npm dependencies, Node built-ins only. Run: node tools/depscan.mjs
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
@@ -116,7 +116,7 @@ function collectPackages() {
 // Returns the rule id for a bad edge, or null when the edge is allowed.
 // core/test -> sdk is the sanctioned stub-registration path (P-03 item 4,
 // D-02c: only core/test -> plugins is called out as a failure).
-// A cross-layer skip edge (docs/40 section 2: plugins -> sdk -> core, no
+// A cross-layer skip edge (原规格 40 section 2: plugins -> sdk -> core, no
 // skipping) is D-02d. It must be tested before the reverse-edge early
 // return below: plugins -> core is both a lower-rank target (would return
 // null there) and a layer skip, which is the blind spot this rule closes.

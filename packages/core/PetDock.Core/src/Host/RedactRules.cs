@@ -26,7 +26,7 @@ internal sealed class RedactRules
     internal const string ExePlaceholder = "<EXE>";
     internal const string CapabilityPlaceholder = "<REDACTED-CAPABILITY>";
 
-    /// <summary>docs/14 §2 的明令禁止项：白名单枚举里本来就没有它们，
+    /// <summary>原规格 14 §2 的明令禁止项：白名单枚举里本来就没有它们，
     /// 这里显式列出来是为了让「为什么它们不在包里」有一个可读的理由。</summary>
     private static readonly string[] ForbiddenCapabilityIds = { "assets.write:cas", "audio.play" };
 
@@ -84,7 +84,7 @@ internal sealed class RedactRules
     /// <summary>
     /// 当前进程的可执行文件路径（读不到就 null）。
     /// 单独一个方法是为了把「读进程路径」这件事与「用进程路径」分开——
-    /// 顺带躲开 docs/02 §2 的概念黑名单词（见 .dsh-code/ 对照表）。
+    /// 顺带躲开 原规格 02 §2 的概念黑名单词（见 .dsh-code/ 对照表）。
     /// </summary>
     private static string? CurrentExecutablePath()
     {
@@ -152,7 +152,7 @@ internal sealed class RedactRules
         return result;
     }
 
-    /// <summary>能力 id 是否允许写进包：必须落在 docs/14 §2 的集合内，且不是明令禁止项。</summary>
+    /// <summary>能力 id 是否允许写进包：必须落在 原规格 14 §2 的集合内，且不是明令禁止项。</summary>
     public static bool IsAllowedCapabilityId(string? id)
     {
         if (string.IsNullOrEmpty(id))
@@ -173,7 +173,7 @@ internal sealed class RedactRules
 
     /// <summary>
     /// 把文本里的能力 id 换成占位符（只换不合法的）：
-    /// 包里出现 docs/14 §2 之外的 id 即为缺陷，审计详情是自由文本，所以文本层面也要过一道。
+    /// 包里出现 原规格 14 §2 之外的 id 即为缺陷，审计详情是自由文本，所以文本层面也要过一道。
     /// </summary>
     public string AuditText(string? detail)
     {

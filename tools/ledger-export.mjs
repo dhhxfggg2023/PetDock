@@ -4,7 +4,7 @@
 //
 // 为什么需要它：`.gitignore:33` 忽略 `.dsh-code/`，git 跟踪 0 个文件 —— 132KB decisions.md、
 // 163KB mistakes.md、3.6MB journal、44KB 任务板、全部交接文档都只在这台机器上，一次磁盘故障
-// 或误删就全没了。而 `docs/` 是**规格**（冻结契约），不是**状态**；两者不能混。
+// 或误删就全没了。而 `原规格` 是**规格**（冻结契约），不是**状态**；两者不能混。
 //
 // 用法：
 //   node tools/ledger-export.mjs                 # 导出到 <repo>/ledger/
@@ -32,7 +32,7 @@ function resolveRepoRoot() {
   // 从本脚本位置向上找含 package.json 的目录。
   let dir = resolve(import.meta.dirname ?? process.cwd());
   for (let i = 0; i < 8; i++) {
-    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'docs'))) return dir;
+    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'PetDock.sln'))) return dir;
     const parent = resolve(dir, '..');
     if (parent === dir) break;
     dir = parent;
@@ -138,7 +138,7 @@ const stamp = new Date().toISOString();
 const rows = picked.map((p) => `| \`${p.name}\` | ${p.size} B | \`${p.sha}\` |`).join('\n');
 const readme = `# ledger/ — 开发账本的仓库内快照
 
-**这不是规格，是状态。** 规格在 \`docs/\`（冻结契约、权威顺序 \`00-vision\` > \`01-principles\` >
+**这不是规格，是状态。** 规格在 \`原规格\`（冻结契约、权威顺序 \`00-vision\` > \`01-principles\` >
 \`02-glossary\` > \`40/41/43\`）；本目录只是把**只存在本机**的开发账本定期搬进 git，使决策与教训
 不随一台机器一起消失。
 
@@ -163,7 +163,7 @@ ${rows}
    的 commands 是「这个项目怎么跑」的权威。
 3. \`HANDOFF-*.md\` 与 \`session-digest-*.md\` 是历史会话的交接件，**其中的「下一步」是当时的状态，
    不是现在的指令**；现在的任务以 \`tasks.json\` / 团队看板为准。
-4. 提交本目录时用 \`chore(ledger): …\` 前缀；它不参与任何机器门禁（\`docs/\` 的 doclink 不扫这里）。
+4. 提交本目录时用 \`chore(ledger): …\` 前缀；它不参与任何机器门禁（\`原规格\` 的 doclink 不扫这里）。
 `;
 
 writeFileSync(join(outDir, 'README.md'), readme);

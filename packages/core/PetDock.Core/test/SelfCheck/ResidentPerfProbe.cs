@@ -1,8 +1,8 @@
-// --residenttest：D-14 的「常驻形态」重钉（docs/50 M8 的未闭合点，2026-10-23）。
+// --residenttest：D-14 的「常驻形态」重钉（原规格 50 M8 的未闭合点，2026-10-23）。
 //
 // 为什么需要它：`--perftest` 自己合成一个窗口 + ResidentFrameLoop（受控、可重放，适合判
 // 降级链与节流档），但**那不是产品跑起来的样子**——常驻形态还多着插件宿主、托盘、日志落盘、
-// 审计流水、清单恢复与 UiHost 的 250ms 滴答。docs/50:131-133 因此写着「D-14 基线未针对常驻
+// 审计流水、清单恢复与 UiHost 的 250ms 滴答。原规格 50:131-133 因此写着「D-14 基线未针对常驻
 // 形态重测」。本探针补的就是那一段：**原样跑 Program.RunResident**，只在旁边挂一个采样线程。
 //
 // 与产品路径的三处、且仅三处差异（都写在 RFC-26 §3）：
@@ -10,13 +10,13 @@
 //   ② 采完改用 UiHost.ExitForProbe 退出（托盘那条「退出」有确认框，同样要人点）；
 //   ③ 进程会写自己的数据区日志/审计（那正是产品行为，不规避）。
 //
-// 判据（docs/41 §6 D-14a/b/d 的常驻读数；D-14c 是启动到首帧，perftest 已覆盖，此处不重测）：
+// 判据（原规格 41 §6 D-14a/b/d 的常驻读数；D-14c 是启动到首帧，perftest 已覆盖，此处不重测）：
 //   CHECK resident-loop-running       ticks>0 且 composed>=ticks（没在出帧的 CPU 读数不可信）
 //   CHECK resident-cpu-idle           ≤0.5% 单核（M-02）
 //   CHECK resident-private-ws         ≤150MB（M-04）
 //   CHECK resident-handles-stable     GDI/USER/句柄不增（D-14d 的非托管半边）
 //   CHECK resident-baseline-shape     基线文件 + premise + 必需数值字段（硬；RFC-40 §3.1 第 3 条）
-//   CHECK-DISPLAY resident-relative-diagnostic  与 tests/perf.resident.json 的差（永不进 failures）
+//   CHECK-DISPLAY resident-relative-diagnostic  与旧常驻性能基线的差（永不进 failures）
 //   CHECK resident-relative-gated     仅前提全等时发射（那时是硬门：CPU +5% 且过 0.05pp，或 ws 超 max(1MB,+5%)）
 // 末行 RESIDENT-PERF-OK / RESIDENT-PERF-FAIL，退出码 0/1。
 using System;

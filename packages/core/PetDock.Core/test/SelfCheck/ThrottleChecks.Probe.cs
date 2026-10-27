@@ -1,4 +1,4 @@
-// 静止档判据的确定性探针（`--throttle-probe [窗口数]`；先例是 tests/m7 的 `--timing-probe`）。
+// 静止档判据的确定性探针（`--throttle-probe [窗口数]`；先例是早先的 `--timing-probe`）。
 //
 // 为什么需要它：ui-throttle-idle-skips-submit 与 -period-cap 在**一次** --uitest 里各只量一个
 // 600ms 窗，一次进程运行就一个样本 —— 想说「复现率 k/N」就必须能在同一份二进制上把同一个窗

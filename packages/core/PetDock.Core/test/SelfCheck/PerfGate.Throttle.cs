@@ -134,10 +134,10 @@ internal static partial class PerfGate
             + " cover-on-top=" + (sample.CoverOnTop ? "true" : "false")
             + " cover=" + sample.Cover
             + " uncovered-tick-rate=" + sample.UncoveredRate.ToString("0.0", CultureInfo.InvariantCulture) + "/s");
-        // docs/41:126「完全遮挡时 ≤0.1%」：本命令**只显示不判**。理由：那是 60 秒均值面板的读数，
+        // 原规格 41:126「完全遮挡时 ≤0.1%」：本命令**只显示不判**。理由：那是 60 秒均值面板的读数，
         // 5 秒窗 + 一次 DoEvents 抖动就足以翻红；把它变成门禁等于收紧阈值（t15 硬约束 3 禁止）。
         Emit("CHECK-DISPLAY perf-throttle-occluded-cpu " + Fmt(sample.CpuPct)
-            + "% (docs/41:126 子阈值 0.10%，本命令不据此判失败：采样窗只有 "
+            + "% (原规格 41:126 子阈值 0.10%，本命令不据此判失败：采样窗只有 "
             + sample.Seconds.ToString("0.0", CultureInfo.InvariantCulture) + "s)");
 
         bool ok = inTier && inBand && submitDropped;

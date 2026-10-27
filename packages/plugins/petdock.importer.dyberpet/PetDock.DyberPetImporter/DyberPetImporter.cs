@@ -20,7 +20,7 @@ internal sealed record DyberPetAction(
 
 /// <summary>
 /// DyberPet 真包 → sprite-seq 标准包（petdock-sample.json + anim/*.json）的转换核心。
-/// 逐条裁决出自 docs/handoff/M3-contract-frozen.md：
+/// 逐条裁决出自 交接档案：
 ///   §2.2 帧数 = 文件枚举（前缀取 act_conf 的 images 字段，不是动作名）；
 ///   §2.3 act_num 不消费（真包 18 前缀无一与文件数相等，sleep 20>16）——只进 provenance；
 ///   §2.4 fps = 1/frame_refresh（缺/≤0 回落 0.120 → 8.3333fps，不许 fps=act_num/frame_refresh）；
@@ -32,7 +32,7 @@ internal sealed record DyberPetAction(
 /// </summary>
 internal static class DyberPetImporter
 {
-    public const string PackManifestName = "petdock-sample.json"; // docs/31 §1：与 PackLoader.ManifestName 同一格式名
+    public const string PackManifestName = "petdock-sample.json"; // 原规格 31 §1：与 PackLoader.ManifestName 同一格式名
     public const string AnimDirName = "anim";
     public const string ProvenanceFileName = "dyberpet-provenance.json";
     public const double DefaultFrameRefresh = 0.120;
@@ -200,7 +200,7 @@ internal static class DyberPetImporter
         return actions;
     }
 
-    /// <summary>嵌套档（docs/32 §2）：actions/actions_conf.json 清单 + actions/&lt;action&gt;_conf.json 单动作配置。</summary>
+    /// <summary>嵌套档（原规格 32 §2）：actions/actions_conf.json 清单 + actions/&lt;action&gt;_conf.json 单动作配置。</summary>
     private static List<DyberPetAction> ReadNestedActions(string sourceDir)
     {
         string actionsDir = Path.Combine(sourceDir, DyberPetLayout.NestedActionsDir);
@@ -237,7 +237,7 @@ internal static class DyberPetImporter
             using JsonDocument conf = JsonDocument.Parse(File.ReadAllText(confFile));
             JsonElement entry = conf.RootElement;
 
-            // 帧文件名列表（docs/32 §3「帧文件名列表」）相对 actions/<action>/ 解析；
+            // 帧文件名列表（原规格 32 §3「帧文件名列表」）相对 actions/<action>/ 解析；
             // 没有 frames 列表但写了 images 前缀时，退回 <images>_<n>.png 枚举（与 flat 同律）。
             List<string>? explicitFrames = null;
             if (entry.TryGetProperty("frames", out JsonElement framesEl) && framesEl.ValueKind == JsonValueKind.Array)
@@ -262,7 +262,7 @@ internal static class DyberPetImporter
         JsonValueKind.String => element.GetString() ?? throw new InvalidDataException("actions 清单含 null 项"),
         JsonValueKind.Object when element.TryGetProperty("name", out JsonElement n) && n.ValueKind == JsonValueKind.String
             => n.GetString() ?? throw new InvalidDataException("actions 清单项 name 为 null"),
-        _ => throw new InvalidDataException($"actions 清单项形态不识别（{element.ValueKind}），docs/32 §2 的 unverified 字段需先定稿"),
+        _ => throw new InvalidDataException($"actions 清单项形态不识别（{element.ValueKind}），原规格 32 §2 的 unverified 字段需先定稿"),
     };
 
     /// <summary>flat/nested 共用的动作配置字段读取（同一套键名，真包实测出处）。</summary>
@@ -356,7 +356,7 @@ internal static class DyberPetImporter
             ["schemaVersion"] = 1,
             ["name"] = Path.GetFileName(sourceDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
             ["author"] = "imported from DyberPet pack (read-only reference; assets NOT bundled)",
-            ["license"] = "UNLICENSED-third-party (see dyberpet-provenance.json; docs/52 §5 只读引用不入库)",
+            ["license"] = "UNLICENSED-third-party (see dyberpet-provenance.json; 原规格 52 §5 只读引用不入库)",
             ["naturalSize"] = new Dictionary<string, object?> { ["w"] = w, ["h"] = h },
             ["preferredFps"] = defaultClip.Fps,
             ["animations"] = clips.Select(c => new Dictionary<string, object?>

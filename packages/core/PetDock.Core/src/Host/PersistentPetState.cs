@@ -1,6 +1,6 @@
-// RFC-24（docs/17）：把 State 接口的缓冲区接到磁盘上。
+// RFC-24（原规格 17）：把 State 接口的缓冲区接到磁盘上。
 // 层次：插件实现（IPetState，可以是 NullState）管「载荷语义」；本类管「缓冲区 / 上限 / 迁移 / 落盘时机」。
-// 崩溃恢复语义（docs/11:211-214）：write 只进缓冲区，进程崩了缓冲全丢、磁盘不动；
+// 崩溃恢复语义（原规格 11:211-214）：write 只进缓冲区，进程崩了缓冲全丢、磁盘不动；
 // 只有 Commit 会落盘，且落盘是原子替换（旧文件要么完整可见、要么被新文件完整替换）。
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
@@ -83,7 +83,7 @@ internal sealed class PersistentPetState : IPetState
         return layer;
     }
 
-    /// <summary>docs/11:198：内层实现的版本号（本层不自己升版本）。</summary>
+    /// <summary>原规格 11:198：内层实现的版本号（本层不自己升版本）。</summary>
     public int SchemaVersion => _version;
 
     public IReadOnlyDictionary<string, JsonNode?> ReadAll() => new Dictionary<string, JsonNode?>(_buffer, StringComparer.Ordinal);
@@ -91,7 +91,7 @@ internal sealed class PersistentPetState : IPetState
     public JsonNode? Read(string key) =>
         !string.IsNullOrEmpty(key) && _buffer.TryGetValue(key, out JsonNode? value) ? value : null;
 
-    /// <summary>docs/11:202：只进缓冲区。宿主拥有的键由宿主写，插件写它被拒绝（RFC-24 §5 第 3 条）。</summary>
+    /// <summary>原规格 11:202：只进缓冲区。宿主拥有的键由宿主写，插件写它被拒绝（RFC-24 §5 第 3 条）。</summary>
     public void Write(IReadOnlyDictionary<string, JsonNode?> patch)
     {
         System.ArgumentNullException.ThrowIfNull(patch);
@@ -128,7 +128,7 @@ internal sealed class PersistentPetState : IPetState
         _dirty = true;
     }
 
-    /// <summary>docs/11:203：唯一持久化入口。</summary>
+    /// <summary>原规格 11:203：唯一持久化入口。</summary>
     public System.Threading.Tasks.Task CommitAsync()
     {
         if (TryCommit(out StateCommitException? refusal))
@@ -185,14 +185,14 @@ internal sealed class PersistentPetState : IPetState
         return true;
     }
 
-    /// <summary>docs/11:204：丢弃自上次提交以来的全部缓冲。</summary>
+    /// <summary>原规格 11:204：丢弃自上次提交以来的全部缓冲。</summary>
     public void Rollback()
     {
         _buffer = new Dictionary<string, JsonNode?>(_committed, StringComparer.Ordinal);
         _dirty = false;
     }
 
-    /// <summary>docs/11:207：跨版本迁移（1 ≤ to ≤ current，纯函数，返回新载荷）。</summary>
+    /// <summary>原规格 11:207：跨版本迁移（1 ≤ to ≤ current，纯函数，返回新载荷）。</summary>
     public IReadOnlyDictionary<string, JsonNode?> Migrate(int from, int to, IReadOnlyDictionary<string, JsonNode?> snapshot)
     {
         System.ArgumentNullException.ThrowIfNull(snapshot);
@@ -221,7 +221,7 @@ internal sealed class PersistentPetState : IPetState
     /// 装载：读盘 → 版本比对 → 迁移。三档结局：
     ///   · 文件不存在 / 坏文件 → 空缓冲区（首次启动是正常路径）；
     ///   · 版本更高 → 被拦（<see cref="StateRefusal.SchemaNewer"/>）：只读装载，一次都不写；
-    ///   · 版本更低 → 逐级迁移，成功后立刻落盘并发布 pet.state.migrated（docs/16 让插件发现它的数据被升级了）。
+    ///   · 版本更低 → 逐级迁移，成功后立刻落盘并发布 pet.state.migrated（原规格 16 让插件发现它的数据被升级了）。
     /// </summary>
     private void LoadFromDisk()
     {

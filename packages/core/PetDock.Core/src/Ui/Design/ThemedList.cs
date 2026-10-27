@@ -1,4 +1,4 @@
-// 主题化列表（docs/18 §2.6）：把默认 ListView 的灰白表格改成深色行、自绘表头与选中条。
+// 主题化列表（原规格 18 §2.6）：把默认 ListView 的灰白表格改成深色行、自绘表头与选中条。
 //
 // 为什么仍用 ListView 而不是全新控件：判据与插件页/宠物页/设置页都按 Name 找它、按
 // Columns/Items 读内容；换控件等于把所有页面重写一遍。自绘只替换「怎么画」，不改「有什么」。
@@ -53,7 +53,7 @@ internal sealed partial class ThemedList : ListView
     // 空白区的自绘（WM_ERASEBKGND / WM_PAINT 与表头高度读数）在 ThemedList.EmptyArea.cs。
 
     /// <summary>
-    /// 每行左侧画一个勾选框（插件页「下次启动不再装载」= docs/18 §2.2 的那只复选框）。
+    /// 每行左侧画一个勾选框（插件页「下次启动不再装载」= 原规格 18 §2.2 的那只复选框）。
     /// 打开后第一列的文字整体右移一个留白，点击留白交给 <see cref="RowCheckToggled"/>。
     /// </summary>
     public bool RowChecks

@@ -112,8 +112,8 @@ internal sealed partial class StubView : IPetView, IClipCatalog
     }
 
     /// <summary>
-    /// 取帧：帧索引由 now 决定（**同一 now 必返回同一帧**，docs/11:120），
-    /// 而像素对象按索引缓存 —— 空闲档判据（docs/11:225）读的正是这个对象身份。
+    /// 取帧：帧索引由 now 决定（**同一 now 必返回同一帧**，原规格 11:120），
+    /// 而像素对象按索引缓存 —— 空闲档判据（原规格 11:225）读的正是这个对象身份。
     /// </summary>
     public Frame QueryFrame(int nowMs)
     {
@@ -173,7 +173,7 @@ internal sealed class StubBrain : IBrain
 {
     private readonly List<BrainDirective> _queue = new();
 
-    /// <summary>true 时 Tick 抛异常（验 docs/11:259 的「指令全部作废 + degraded」）。</summary>
+    /// <summary>true 时 Tick 抛异常（验 原规格 11:259 的「指令全部作废 + degraded」）。</summary>
     public bool ThrowOnTick { get; set; }
 
     public int TickCalls { get; private set; }
@@ -228,7 +228,7 @@ internal sealed class StubSurface : IPointerSurface
 
     public bool Hits { get; set; }
 
-    /// <summary>true 时返回 null = 拒绝，宿主必须转给下一个 surface（docs/11:176）。</summary>
+    /// <summary>true 时返回 null = 拒绝，宿主必须转给下一个 surface（原规格 11:176）。</summary>
     public bool Decline { get; set; }
 
     public bool HitTest(PetPoint local)
@@ -264,7 +264,7 @@ internal sealed class StubSurface : IPointerSurface
     }
 }
 
-/// <summary>状态层桩件：按 docs/11 §6 的语义把缓冲区与落盘分开，越限抛 StateLimitException。</summary>
+/// <summary>状态层桩件：按 原规格 11 §6 的语义把缓冲区与落盘分开，越限抛 StateLimitException。</summary>
 internal sealed class StubState : IPetState
 {
     private readonly Dictionary<string, System.Text.Json.Nodes.JsonNode?> _buffer = new();
@@ -277,7 +277,7 @@ internal sealed class StubState : IPetState
 
     public int Rollbacks { get; private set; }
 
-    /// <summary>单键上限（docs/11:212 的 8 KiB；桩件按它判）。</summary>
+    /// <summary>单键上限（原规格 11:212 的 8 KiB；桩件按它判）。</summary>
     public int KeyLimitBytes { get; set; } = 8 * 1024;
 
     public IReadOnlyDictionary<string, System.Text.Json.Nodes.JsonNode?> ReadAll() =>
@@ -315,7 +315,7 @@ internal sealed class StubState : IPetState
     public void Rollback()
     {
         Rollbacks++;
-        // docs/11:213 逐字：「write 之后到 commit 之间是内存中的修改。**崩溃：缓冲区全丢**，磁盘无影响」。
+        // 原规格 11:213 逐字：「write 之后到 commit 之间是内存中的修改。**崩溃：缓冲区全丢**，磁盘无影响」。
         // 所以 rollback = 缓冲清零（未落盘的修改全丢），磁盘内容不动；
         // 它不是「回到上次 commit 的快照」—— 那会把「丢掉的修改」重新装回来。
         _buffer.Clear();

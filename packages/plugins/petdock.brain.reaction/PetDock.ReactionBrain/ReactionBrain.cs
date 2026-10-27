@@ -5,16 +5,16 @@ using System.Collections.Generic;
 namespace PetDock.Plugins.ReactionBrain
 {
     /// <summary>
-    /// 对时间 / 鼠标 / 前台窗口三类事件做出反应的行为层（docs/50:23 的 M4 退出标准）。
+    /// 对时间 / 鼠标 / 前台窗口三类事件做出反应的行为层（原规格 50:23 的 M4 退出标准）。
     ///
     /// **clip 名的来源**：本插件只能切到呈现层真的有的片段。首发验证物 `fixtures/sample-pet`
-    /// 按 docs/31 §2 声明了 `idle` / `walk` / `hover` 三个 —— 所以三类反应分别映射到这三个，
+    /// 按 原规格 31 §2 声明了 `idle` / `walk` / `hover` 三个 —— 所以三类反应分别映射到这三个，
     /// 不另造 `wave` / `moving` / `surprise`（那些名字在示例包里不存在，`SetAnimation` 会返回
     /// false、仲裁器记 refused，屏幕上什么都不变）。
     ///
     /// **为什么用 world 而不是自己读时钟**：`WorldSnapshot.TimeOfDayMinutes` 与 `FocusedApp`
-    /// 都是宿主每帧采样后交给 Brain 的（docs/11 §4）；Brain 自己调 `DateTime.Now` 会让
-    /// 「同一 tick 输入 → 同一指令序列」这条 ABI 要求失效（docs/11:161）。
+    /// 都是宿主每帧采样后交给 Brain 的（原规格 11 §4）；Brain 自己调 `DateTime.Now` 会让
+    /// 「同一 tick 输入 → 同一指令序列」这条 ABI 要求失效（原规格 11:161）。
     /// </summary>
     public sealed class ReactionBrain : IBrain
     {

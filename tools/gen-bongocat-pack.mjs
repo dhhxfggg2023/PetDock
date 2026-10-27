@@ -1,14 +1,14 @@
-// 程序化生成 BongoCat 交互包的素材（docs/33-bongocat.md）。
+// 程序化生成 BongoCat 交互包的素材（原规格 33）。
 //
-// 许可：本脚本与它产出的每一帧都是 PetDock 自有资产（CC0）。docs/33 §6 的三条法律约束
+// 许可：本脚本与它产出的每一帧都是 PetDock 自有资产（CC0）。原规格 33 §6 的三条法律约束
 // 在这里是代码事实而不是承诺：
 //   1. 不引用、不打包、不逆向原 BongoCat 应用的任何素材 —— 本文件不读任何外部文件；
 //   2. 造型是**自绘的几何猫**（耳朵=三角形、头=椭圆、爪=圆角块），与原应用那只手绘猫无关；
 //   3. 包名不冒充官方（manifest 的 id 是 com.petdock.bongocat.interaction，作者是 petdock）。
 //
-// 输出形态刻意用 docs/31 Sample Pack 格式（petdock-sample.json + anim/*.json + img/*.png）：
+// 输出形态刻意用 原规格 31 Sample Pack 格式（petdock-sample.json + anim/*.json + img/*.png）：
 // 这样现成的 sprite-seq 呈现层直接能渲染，不需要内核认识第二种素材格式
-// （docs/01 P-02 第 2 条：core 不认识任何素材格式）。
+// （原规格 01 P-02 第 2 条：core 不认识任何素材格式）。
 //
 //   node tools/gen-bongocat-pack.mjs --out assets/bongocat-pack
 import fs from 'node:fs'

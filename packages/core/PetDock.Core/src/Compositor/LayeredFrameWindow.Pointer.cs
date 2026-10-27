@@ -1,10 +1,10 @@
-// RFC-35 §3.1：把窗口的鼠标消息交给交互层（docs/11 §5），而不是只用来拖窗。
+// RFC-35 §3.1：把窗口的鼠标消息交给交互层（原规格 11 §5），而不是只用来拖窗。
 //
 // 为什么单独一个 partial：LayeredFrameWindow.cs 贴着 400 行上限（D-03c），
 // 而「谁先拿到按下」是本片唯一要新增的裁决点。三个鼠标消息处理函数随本片一起搬进来
 // （它们本来就在主文件末尾），一个文件里「消息进来 → 问交互层 → 没人接才拖」是完整的。
 //
-// 三条纪律（docs/11:188-190）：
+// 三条纪律（原规格 11:188-190）：
 //   1. 这一层不做「点击」，只做「会话」—— down 之后窗口不再自己拖，除非没人接；
 //   2. 命中判定（hitmap / alpha → surface）在 PetInstance 里，本文件不重复判；
 //   3. 会话期间要抓住鼠标，否则指针一移出窗口就再也收不到 up。
@@ -32,8 +32,8 @@ internal sealed partial class LayeredFrameWindow
     internal bool IsDraggingNow => _dragging;
 
     /// <summary>
-    /// 双击（2026-10-27，docs/18 §1）：宠物上连点两下 → 打开主控面板。这是右键菜单之外的第二条
-    /// 入口 —— 托盘图标在部分机器/布局上不进外壳（结论见 docs/98 §3.1 第 1 条），而「界面上什么也点不开」
+    /// 双击（2026-10-27，原规格 18 §1）：宠物上连点两下 → 打开主控面板。这是右键菜单之外的第二条
+    /// 入口 —— 托盘图标在部分机器/布局上不进外壳（结论见 原规格 98 §3.1 第 1 条），而「界面上什么也点不开」
     /// 比「菜单没接上」更致命。双击不是新语义：宿主只把它接到与托盘「主控面板」同一个动作上。
     /// </summary>
     internal event PetTapHookSignature? DoubleClicked;
@@ -146,7 +146,7 @@ internal sealed partial class LayeredFrameWindow
         ReleasePointerCapture();
     }
 
-    /// <summary>宿主侧取消（docs/11:183）：失焦 / 窗口销毁 / 捕获被系统拿走。</summary>
+    /// <summary>宿主侧取消（原规格 11:183）：失焦 / 窗口销毁 / 捕获被系统拿走。</summary>
     internal void RaisePointerCancel(string why)
     {
         if (PointerCancelHook is null)
@@ -246,7 +246,7 @@ internal sealed partial class LayeredFrameWindow
 
     protected override void OnDeactivate(EventArgs e)
     {
-        // 失焦 = 宿主取消（docs/11:183 的 ALT 情形）。拖窗不需要取消（拖窗由鼠标捕获保证 up 到达）。
+        // 失焦 = 宿主取消（原规格 11:183 的 ALT 情形）。拖窗不需要取消（拖窗由鼠标捕获保证 up 到达）。
         RaisePointerCancel("deactivate");
         base.OnDeactivate(e);
     }

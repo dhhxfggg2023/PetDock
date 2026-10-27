@@ -161,7 +161,7 @@ internal static class PluginToggleChecks
         });
 
         // ⑧⑨⑩ 双击（2026-10-27）：托盘之外的第二条入口。托盘图标在发行布局里不进外壳
-        //    （docs/98 §3.1 第 1 条），所以「双击宠物开面板」必须有判据钉着，不然它会静默变成死键。
+        //    （原规格 98 §3.1 第 1 条），所以「双击宠物开面板」必须有判据钉着，不然它会静默变成死键。
         Judge(check, "ui-pet-double-click-wired", () =>
         {
             using var window = new LayeredFrameWindow();

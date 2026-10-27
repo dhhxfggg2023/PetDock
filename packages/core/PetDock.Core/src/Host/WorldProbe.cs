@@ -29,7 +29,7 @@ public sealed class WorldProbe
     /// <summary>
     /// 最近一次 GetCursorPos 的**原始屏幕坐标**，与窗口无关（光标在窗口外也照样有值）。
     /// 为什么与 <see cref="LastCursor"/> 分开：`WorldSnapshot.Cursor` 按契约 §7.1 必须是
-    /// 「窗口内坐标，窗口外 → null」，而 `input.pointer.move`（docs/16 §3，host-generated）
+    /// 「窗口内坐标，窗口外 → null」，而 `input.pointer.move`（原规格 16 §3，host-generated）
     /// 要的是「指针在哪」，不受窗口边界限制 —— 两者共用一个字段会让鼠标一离开宠物就再也不发事件，
     /// 而「鼠标移过来 → 宠物反应」这条 M4 判据恰恰要求它在窗口外也继续发。
     /// </summary>

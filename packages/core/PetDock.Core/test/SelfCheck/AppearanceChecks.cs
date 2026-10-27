@@ -1,4 +1,4 @@
-// 外观母体的机器判据（docs/18 §2.6，2026-10-28）。
+// 外观母体的机器判据（原规格 18 §2.6，2026-10-28）。
 //
 // 这一片把四页、三个弹窗、托盘菜单从系统默认外观换成一套自绘令牌，可验收的读数是四件事：
 //   ① 源码里不再有裸色/裸字体/裸 MessageBox ——「换了一处、漏了三处」是这类改造最常见的残局；
@@ -8,7 +8,7 @@
 //      ①~③ 都只是它的必要条件。
 //
 // 判据不 Show 任何窗（无人值守）：只 CreateControl + 逐层 PerformLayout。
-// 口径与 docs/18 §2.6 的清单一一对应，双向记账：清单里有的这里必有一条，反之亦然。
+// 口径与 原规格 18 §2.6 的清单一一对应，双向记账：清单里有的这里必有一条，反之亦然。
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -287,7 +287,12 @@ internal static partial class AppearanceChecks
             Size one = TextRenderer.MeasureText(text, font, new Size(int.MaxValue, int.MaxValue), Single);
             if (one.Width <= availW)
             {
-                return null;
+                // 宽度够不等于放得下：单行文字的高度也必须进得去。
+                // 2026-10-28 的 144dpi 截图里，说明行被钉死 14dip，字形上下各裁掉一截，
+                // 而只比宽度的旧判据全程绿灯 —— 用户看到的和判据断的不是同一件事。
+                return one.Height <= availH
+                    ? null
+                    : $"label-text height need={one.Height} avail={availH}";
             }
 
             Size wrapped = TextRenderer.MeasureText(

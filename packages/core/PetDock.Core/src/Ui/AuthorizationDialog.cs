@@ -1,10 +1,10 @@
-// 授权弹窗（docs/18 §3，RFC-12 §2.1 补的交互细节；RFC-13 §2.2 改为逐项勾选）。
+// 授权弹窗（原规格 18 §3，RFC-12 §2.1 补的交互细节；RFC-13 §2.2 改为逐项勾选）。
 // 规则来自文档，不是我的设计：拒绝后不允许重试同一能力；「仅本次」只对 Tier 1 有效，
 // 因此 Tier 2 的「仅本次」按钮置灰；被拒绝的能力在下次打开弹窗时置灰且点不动。
 // 2026-10-26 真机故障（三只插件启动时同时要授权 → 连弹三个窗）：同一个窗可以同时承载
 // 多份请求，按插件分段展示；答案仍按每份请求各自落账（各自勾选集，范围三选一统一）。
 // 合批那一半在 AuthorizationDialog.Batch.cs（partial：D-03c 单文件行数上限）。
-// 能力描述照抄 docs/14 §2 的条目，用大白话重述。
+// 能力描述照抄 原规格 14 §2 的条目，用大白话重述。
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -92,7 +92,9 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         {
             Text = HeaderFor(),
             AutoSize = false,
-            Height = Theme.Dip(this, 30),
+            // 30dip 时上边距吃掉 8dip，留给 Heading 字形的高度只有 22px，比行高少 2px
+            // （2026-10-28 判据补上「高度也要放得下」之后抓到的）。34dip 留出余量。
+            Height = Theme.Dip(this, 34),
             Dock = DockStyle.Top,
             Font = Theme.FontFor(this, TypeRole.Heading),
             ForeColor = Theme.Text,
@@ -146,7 +148,7 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         _deny = new ThemedRadio { Text = I18n.Get("ui.auth.deny"), Name = "Deny" };
         _once = new ThemedRadio
         {
-            // 「仅本次」仅对 Tier 1 会话有效（docs/18 §3 规则）——批里只要有一份 Tier 2，
+            // 「仅本次」仅对 Tier 1 会话有效（原规格 18 §3 规则）——批里只要有一份 Tier 2，
             // 统一的范围就选不了「仅本次」：不可选的选项要看起来不可选。
             Text = _requests.Any(r => r.Tier >= 2) ? I18n.Get("ui.auth.once.tier2") : I18n.Get("ui.auth.once"),
             Enabled = _requests.All(r => r.Tier < 2),
@@ -216,7 +218,7 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
     public string Answers =>
         string.Join(",", new[] { _allow, _deny, _once }.Select(r => r.Name));
 
-    /// <summary>「仅本次」是否可选（Tier 2 必须置灰，docs/18 §3）。</summary>
+    /// <summary>「仅本次」是否可选（Tier 2 必须置灰，原规格 18 §3）。</summary>
     public bool OnceEnabled => _once.Enabled;
 
     /// <summary>当前勾选的能力 ID（顺序 = 清单顺序；被拒绝的项永不在内）。</summary>
@@ -244,13 +246,13 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
     public IReadOnlyList<string> LockedIds =>
         _ids.Where(id => _deniedIds.Contains(id)).ToArray();
 
-    /// <summary>该能力是否锁定（此前已被拒绝：置灰且点不动，docs/18 §3）。</summary>
+    /// <summary>该能力是否锁定（此前已被拒绝：置灰且点不动，原规格 18 §3）。</summary>
     public bool IsItemLocked(string capabilityId) => _deniedIds.Contains(capabilityId);
 
     /// <summary>以编程方式设置某项的勾选状态，返回是否真的生效。
     /// 被拒绝（锁定）的项一律不生效：返回 false，且 <see cref="SelectedIds"/> 不变 ——
     /// 「拒绝后该插件不允许重试同一能力」这条规则在数据层就成立，不只是画灰
-    /// （docs/18 §3）。这个入口是给无人值守自检用的：真实鼠标点击跑不出来，
+    /// （原规格 18 §3）。这个入口是给无人值守自检用的：真实鼠标点击跑不出来，
     /// 但「被拒项即使被程序强行设置也不进授予集」是可断言的。
     /// 同 ID 出现在多份请求里时作用于第一行（批模式请用 <see cref="SetItemCheckedAt"/>）。</summary>
     public bool SetItemChecked(string capabilityId, bool isChecked)
@@ -271,7 +273,7 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
     private bool IsRowChecked(ListViewItem row) =>
         row.Tag is int index && index >= 0 && index < _checked.Count && _checked[index];
 
-    /// <summary>某一行是否可勾：此前被拒绝的能力置灰且点不动（docs/18 §3）。</summary>
+    /// <summary>某一行是否可勾：此前被拒绝的能力置灰且点不动（原规格 18 §3）。</summary>
     private bool IsRowCheckEnabled(ListViewItem row) =>
         row.Tag is int index && index >= 0 && index < _ids.Count && !_deniedIds.Contains(_ids[index]);
 

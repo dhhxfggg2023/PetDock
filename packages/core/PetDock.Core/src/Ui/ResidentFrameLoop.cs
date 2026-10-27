@@ -13,7 +13,7 @@
 // ResidentFrameLoop.Throttle.cs 管 RFC-21 的两个入口（Advance / Reevaluate）与档位执行。
 // 两块共用同一个 _gate —— 锁纪律写在 Throttle 那一块的文件头。
 //
-// 帧泵为什么复用 FramePump：docs/12 §4 的帧预算按 8.3ms 计，UI 线程忙时帧率不可预期；
+// 帧泵为什么复用 FramePump：原规格 12 §4 的帧预算按 8.3ms 计，UI 线程忙时帧率不可预期；
 // FramePump 已有 30fps 目标 + 睡眠补偿 + 超预算计数（src/Compositor/FramePump.cs），
 // 复用它而不是再造一个节流器。
 using System;
@@ -41,7 +41,7 @@ internal sealed partial class ResidentFrameLoop : IDisposable
     /// <summary>已经停掉的泵留下的帧数（停泵后读数不许掉回 0 —— 判据要比「停之前」与「停之后」）。</summary>
     private long _retiredFrames;
 
-    /// <summary>目标帧周期（毫秒）。泵还没起时先记着，起泵时套用（docs/18 §2.3 的空闲降帧阈值）。</summary>
+    /// <summary>目标帧周期（毫秒）。泵还没起时先记着，起泵时套用（原规格 18 §2.3 的空闲降帧阈值）。</summary>
     private double _targetFrameMs = 1000.0 / 30.0;
 
     /// <summary>用户设置的目标周期 —— 档位判定拿它当 Active 档的基准（档位不改这个值）。</summary>
@@ -216,7 +216,7 @@ internal sealed partial class ResidentFrameLoop : IDisposable
     }
 
     /// <summary>
-    /// 隐藏窗口并**停泵**。隐藏的宠物不该继续烧 CPU —— 这是 docs/12 §4 的节流精神，
+    /// 隐藏窗口并**停泵**。隐藏的宠物不该继续烧 CPU —— 这是 原规格 12 §4 的节流精神，
     /// 也是托盘「隐藏宠物」的真实含义（不是「只是看不见了，CPU 照烧」）。
     /// </summary>
     public void Hide()

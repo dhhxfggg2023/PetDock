@@ -1,10 +1,10 @@
-// 主控面板（docs/18 §2 + RFC-12 §2.5）：单窗口、左导航右内容、四页。
+// 主控面板（原规格 18 §2 + RFC-12 §2.5）：单窗口、左导航右内容、四页。
 // 面板只读展示（§2.4「面板只读展示，不改任何宠物/插件状态」），写操作只有三处：
 //   ① 刷新快照与采样；② 插件页的「授权」「禁用/启用」两个入口（RFC-13 §2.6）。
 // 后者只**发出意图**（把选中的 pluginId 交给回调），真正的判定与落账在宿主侧。
 // 单实例由 ControlPanelHost 保证（RFC-12 §2.5「再次点托盘只激活已有窗口」）。
 //
-// 外观（docs/18 §2.6，2026-10-27）：全部用 Ui/Design 的设计令牌与自绘控件，
+// 外观（原规格 18 §2.6，2026-10-27）：全部用 Ui/Design 的设计令牌与自绘控件，
 // 不再出现默认 Button/ListView 的系统外观。四页不再用 TabControl 装——
 // 它只是切页用的，却会带一圈原生边框和默认底色；换成一个 Panel 容器 + 每页一个 Panel，
 // 切页就是改 Visible。
@@ -20,31 +20,30 @@ namespace PetDock.Core.Ui;
 /// D-03b：系统自带的同名泛型委托含黑名单子串，所以自声明一个，理由同 UiCommand。</summary>
 internal delegate void PluginCommand(string pluginId);
 
-/// <summary>四个页面的稳定 id（自检按 id 断言，不按标题文字）。</summary>
+/// <summary>三个页面的稳定 id（自检按 id 断言，不按标题文字）。
+/// 2026-10-28 删掉「性能」页：那是给开发者看的逐帧采样台，普通用户没有动作可做，
+/// 与「装宠物 / 管插件 / 改设置」三个真实任务无关；帧预算仍在设置页可调，采样命令仍在 --perftest。</summary>
 internal static class PanelPages
 {
     public const string Pets = "pets";
     public const string Plugins = "plugins";
-    public const string Perf = "perf";
     public const string Settings = "settings";
 
-    public static readonly string[] All = { Pets, Plugins, Perf, Settings };
+    public static readonly string[] All = { Pets, Plugins, Settings };
 
     public static string Title(string id) => id switch
     {
         Pets => I18n.Get("cp.tab.pets"),
         Plugins => I18n.Get("cp.tab.plugins"),
-        Perf => I18n.Get("cp.tab.perf"),
         Settings => I18n.Get("cp.tab.settings"),
         _ => id,
     };
 
-    /// <summary>页头副标题：一句话说清这一页能做什么（docs/18 §2.5 的一行说明位）。</summary>
+    /// <summary>页头副标题：一句话说清这一页能做什么（原规格 18 §2.5 的一行说明位）。</summary>
     public static string Note(string id) => id switch
     {
         Pets => I18n.Get("cp.page.pets.hint"),
         Plugins => I18n.Get("cp.page.plugins.hint"),
-        Perf => I18n.Get("cp.page.perf.hint"),
         Settings => I18n.Get("cp.page.settings.hint"),
         _ => string.Empty,
     };
@@ -64,13 +63,18 @@ internal sealed partial class ControlPanel : Form
     private readonly NavRail _rail;
     private readonly Panel _content;
     private readonly Dictionary<string, Panel> _pageOf = new(StringComparer.Ordinal);
-    private readonly PerfPage _perfPage;
 
     /// <summary>插件页「授权」入口的回调（可空：没人接就静默）。</summary>
     private readonly PluginCommand? _authorize;
 
     /// <summary>插件页「禁用/启用」入口的回调（可空：没人接就静默）。</summary>
     private readonly PluginCommand? _toggleDisabled;
+
+    /// <summary>插件页「安装」入口的回调（source, 是否安装后立即启用；返回 null = 成功，否则是失败原因）。</summary>
+    private readonly Func<string, bool, string?>? _installPlugin;
+
+    /// <summary>插件页「删除」入口的回调（pluginId；返回 null = 成功，否则是失败原因）。</summary>
+    private readonly Func<string, string?>? _removePlugin;
 
     private string _current = PanelPages.Pets;
 
@@ -79,11 +83,14 @@ internal sealed partial class ControlPanel : Form
         bool showWindow,
         PluginCommand? authorize = null,
         PluginCommand? toggleDisabled = null,
-        Func<string, PetFrameReadings?>? frames = null)
+        Func<string, bool, string?>? installPlugin = null,
+        Func<string, string?>? removePlugin = null)
     {
         _snapshot = snapshot ?? (() => UiSnapshot.Empty);
         _authorize = authorize;
         _toggleDisabled = toggleDisabled;
+        _installPlugin = installPlugin;
+        _removePlugin = removePlugin;
 
         Text = I18n.Get("cp.title");
         StartPosition = FormStartPosition.CenterScreen;
@@ -147,33 +154,10 @@ internal sealed partial class ControlPanel : Form
         titleHost.Controls.Add(_headerTitle);
         titleHost.Resize += (_, _) => PlaceHeaderText(titleHost, _headerTitle, _headerSubtitle);
 
-        var refresh = new ThemedButton
-        {
-            Text = I18n.Get("cp.button.refresh"),
-            Name = "refresh",
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-        };
-        refresh.FitToText();
-        refresh.Click += (_, _) => RefreshCurrent();
-
-        // 右侧占位条：Dock=Right 的容器给按钮留出位置，按钮在其中垂直居中。
-        // 直接把按钮 Dock=Right 会被拉成与页头等高的竖条（2026-10-28 截图实测）。
-        var rightHost = new Panel
-        {
-            Dock = DockStyle.Right,
-            Width = refresh.Width + (Theme.Dip(this, Theme.SpaceXl) * 2),
-            BackColor = Theme.Bg,
-            Name = "panel-header-right",
-        };
-        rightHost.Controls.Add(refresh);
-        rightHost.Resize += (_, _) =>
-            refresh.Location = new Point(
-                Math.Max(0, (rightHost.Width - refresh.Width) / 2),
-                Math.Max(0, (rightHost.Height - refresh.Height) / 2));
+        // 页头没有「刷新」按钮（2026-10-28 重构）：它刷新的是同一份快照，点了等于没点。
+        // 面板每次显示与每次数据变化都会自己重绑（BindCurrent），用户不需要按一个假按钮。
         header.Controls.Add(titleHost);
-        header.Controls.Add(rightHost);
 
-        PlaceHeaderText(titleHost, _headerTitle, _headerSubtitle);
         PlaceHeaderText(titleHost, _headerTitle, _headerSubtitle);
         header.Paint += (_, e) => Ink.Line(
             e.Graphics, 0, header.Height - 1, header.Width, header.Height - 1, Theme.Line);
@@ -207,9 +191,6 @@ internal sealed partial class ControlPanel : Form
         }
 
         _list = new ThemedList { Name = "page-list", Dock = DockStyle.Fill };
-        _perfPage = new PerfPage(_snapshot, frames);
-        _perfPage.Dock = DockStyle.Fill;
-        _pageOf[PanelPages.Perf].Controls.Add(_perfPage);
 
         // 插件页有自己的列表与操作栏（partial 的另一半建），所以它不进共享的 BindListOn。
         InitPluginPage();
@@ -289,9 +270,6 @@ internal sealed partial class ControlPanel : Form
             case PanelPages.Plugins:
                 BindPlugins(snapshot);
                 break;
-            case PanelPages.Perf:
-                _perfPage.Bind(snapshot.Perf);
-                break;
             case PanelPages.Settings:
                 BindSettings(snapshot);
                 break;
@@ -326,9 +304,6 @@ internal sealed partial class ControlPanel : Form
         BindSettingsValues(snapshot.Settings);
         _status.Text = I18n.Get("cp.settings.hint");
     }
-
-    private void AddSetting(string name, string value, string note) =>
-        _list.Items.Add(new ListViewItem(new[] { name, value, note }));
 
     private void BindListOn(Panel page)
     {

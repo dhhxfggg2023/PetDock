@@ -229,7 +229,7 @@ internal static class OnboardingChecks
             && Math.Abs(after.IdleFrameBudgetMs - 80.0) < 0.05,
             $"marker={after.OnboardingCompletedVersion} idle={after.IdleFrameBudgetMs:0.0}");
 
-        // ⑦ settings.json 的审计字段（docs/17 §4）。
+        // ⑦ settings.json 的审计字段（原规格 17 §4）。
         JsonNode? doc = JsonNode.Parse(File.ReadAllText(store.Path));
         bool audit = doc is JsonObject obj
             && obj.ContainsKey("agent_id")

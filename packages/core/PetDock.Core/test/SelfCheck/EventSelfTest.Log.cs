@@ -69,7 +69,7 @@ internal static partial class EventSelfTest
         // 那条事实（欠账「core.clock.tick 每帧一次分配」的取证结论，2026-10-25）。
         //
         // 链条：PetEvent.Payload 是 JsonObject（可变）→ 同一个对象经 IBrain.OnEvent 交到第三方 DLL 手里
-        // （docs/11 §4 的 onEvent 契约只规定顺序，没有任何「只读」条款）→ 同时也是 Log 窗口里那一条。
+        // （原规格 11 §4 的 onEvent 契约只规定顺序，没有任何「只读」条款）→ 同时也是 Log 窗口里那一条。
         // 若 tick 按 dt 复用同一个 JsonObject，观察者对最新一条的写入就会改写整段历史。
         // 2026-10-25 实测（artifacts/_probe/tickalloc 的 ShareHazardProbe）：缓存版一次写入改写 3/3 条，
         // 每帧分配版只改被写那 1 条。

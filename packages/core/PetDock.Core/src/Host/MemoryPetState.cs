@@ -12,7 +12,7 @@ internal sealed class MemoryPetState : IPetState
 {
     private readonly Dictionary<string, JsonNode?> _values = new(StringComparer.Ordinal);
 
-    /// <summary>docs/11:198：内建实现的版本号固定为 1，升级它要走迁移（RFC-24 §6.4）。</summary>
+    /// <summary>原规格 11:198：内建实现的版本号固定为 1，升级它要走迁移（RFC-24 §6.4）。</summary>
     public int SchemaVersion => 1;
 
     public IReadOnlyDictionary<string, JsonNode?> ReadAll() => new Dictionary<string, JsonNode?>(_values, StringComparer.Ordinal);

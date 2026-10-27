@@ -24,11 +24,11 @@ internal sealed record LayoutProbe(
 }
 
 /// <summary>
-/// DyberPet 素材包的布局探测（M3 契约 §1 冻结的三条规则，docs/32 §2 与真包实测的分歧由此裁决）：
+/// DyberPet 素材包的布局探测（M3 契约 §1 冻结的三条规则，原规格 32 §2 与真包实测的分歧由此裁决）：
 ///   flat    = <dir>/pet_conf.json 且 <dir>/act_conf.json          → 置信度 0.9
 ///   nested  = <dir>/pet_conf.json 且 <dir>/actions/actions_conf.json → 置信度 0.9
 ///   两档同命中 → nested 优先，并强制输出审计行 dyberpet-layout-ambiguous
-///   只有 pet_conf.json → 0.4，**不接收**（docs/99:67 点名的「静默解析出空动画」由此堵死）
+///   只有 pet_conf.json → 0.4，**不接收**（原规格 99:67 点名的「静默解析出空动画」由此堵死）
 /// 只看本目录里写得出名字的文件，不做扩展名猜测。
 /// </summary>
 internal static class DyberPetLayout
@@ -98,7 +98,7 @@ internal static class DyberPetLayout
         }
     }
 
-    /// <summary>嵌套档动作数：actions_conf.json 是「动作清单」（docs/32 §2），对象/数组两种容忍形态都数。</summary>
+    /// <summary>嵌套档动作数：actions_conf.json 是「动作清单」（原规格 32 §2），对象/数组两种容忍形态都数。</summary>
     private static int CountActionsNested(string sourceDir)
     {
         try

@@ -1,10 +1,10 @@
 // 授权链路的宿主侧自检（RFC-13 §3 判据表）。
 // 为什么单独一个文件：PluginHostSelfTest.cs 已接近 D-03c 的单文件行数上限。
-// 判据全部对着 docs/18 §3 与 docs/14 §2 的字面要求写，不对着实现自证：
-//   docs/18 §3   拒绝后该插件不允许重试同一能力
-//   docs/18 §3   「仅本次」下次装载再问；「允许（记住这个决定）」本会话不再问
-//   docs/14 §2   一次断言：安装时一次性提交能力清单
-//   docs/14 §2   input.mousePosition「Tier 0 可请求」→ tier 0 也必须有闸门与租约
+// 判据全部对着 原规格 18 §3 与 原规格 14 §2 的字面要求写，不对着实现自证：
+//   原规格 18 §3   拒绝后该插件不允许重试同一能力
+//   原规格 18 §3   「仅本次」下次装载再问；「允许（记住这个决定）」本会话不再问
+//   原规格 14 §2   一次断言：安装时一次性提交能力清单
+//   原规格 14 §2   input.mousePosition「Tier 0 可请求」→ tier 0 也必须有闸门与租约
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -93,8 +93,8 @@ internal static class ConsentHostChecks
     }
 
     /// <summary>
-    /// tier 0 也产租约（docs/14 §2 明写 input.mousePosition「Tier 0 可请求」）。
-    /// 仓库插件以 tier 0 为主，若它们不产租约，docs/16:56 的钩子门永远不成立。
+    /// tier 0 也产租约（原规格 14 §2 明写 input.mousePosition「Tier 0 可请求」）。
+    /// 仓库插件以 tier 0 为主，若它们不产租约，原规格 16:56 的钩子门永远不成立。
     /// </summary>
     public static int Tier0Leases(PluginHost host, HostCheck check)
     {
@@ -113,7 +113,7 @@ internal static class ConsentHostChecks
     /// <summary>
     /// 收窄授权（RFC-13 §2.6）：复核后不该再保留的能力被撤销。
     /// 判据：收窄后活动租约只剩 keep 里的那些；且**不能新增授予**
-    /// （docs/14 §2 一次断言：keep 里没被授予过的能力不会因此拿到授予）。
+    /// （原规格 14 §2 一次断言：keep 里没被授予过的能力不会因此拿到授予）。
     /// </summary>
     public static int RestrictConsentCheck(PluginHost host, string pluginId, HostCheck check)
     {

@@ -1,13 +1,14 @@
-// 插件页的操作入口（RFC-13 §2.6）。规格依据 docs/18 §2.2 插件页：
+// 插件页的操作入口（RFC-13 §2.6）。规格依据 原规格 18 §2.2 插件页：
 //   「授权按钮：打开 §3 的授权弹窗」「禁用开关：撤销事件订阅，不卸载」。
 // 面板在这里只**发出意图**：把选中的 pluginId 交给回调——弹窗、逐项勾选与落账都在宿主侧
-// （docs/18 §2.4「面板只读展示」在这里仍成立：面板自己不改任何插件状态）。
-// 为什么「禁用」不是「卸载」：docs/18 §2.2 写的是「撤销事件订阅，不卸载」，对应宿主侧的
+// （原规格 18 §2.4「面板只读展示」在这里仍成立：面板自己不改任何插件状态）。
+// 为什么「禁用」不是「卸载」：原规格 18 §2.2 写的是「撤销事件订阅，不卸载」，对应宿主侧的
 // PluginHost.Disable —— 能力闸门逐项吊销、租约置 Inactive、状态改 Suspended，沙箱与记录保留。
 // 所以这一个按钮要同时表达两种意图：选中的是 Suspended 的插件时是「启用」，否则是「禁用」。
 // 拆成 partial 只是为了守住单文件行数上限（D-03c），语义上仍是同一个面板。
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
 using PetDock.Core.Ui.Design;
@@ -42,6 +43,24 @@ internal sealed partial class ControlPanel
         Enabled = false,
     };
 
+    /// <summary>「安装插件」入口：点开是「从文件夹 / 从 zip」两项。</summary>
+    private readonly ThemedButton _installButton = new()
+    {
+        Text = I18n.Get("cp.plugins.install"),
+        Name = "install",
+    };
+
+    /// <summary>「删除选中插件」入口（只对用户装进来的插件可用）。</summary>
+    private readonly ThemedButton _removeButton = new()
+    {
+        Text = I18n.Get("cp.plugins.remove"),
+        Name = "remove",
+        Enabled = false,
+    };
+
+    /// <summary>安装入口的两种来源（文件夹 / zip）。</summary>
+    private readonly ContextMenuStrip _installMenu = new();
+
     /// <summary>
     /// 页底那行说明（2026-10-26）：用户要求「插件可以选择关闭，重启生效」——
     /// 只说「重启生效」这四个字，用户才知道这个按钮做了什么、以及为什么桌面上那只还赖着不动。
@@ -49,7 +68,9 @@ internal sealed partial class ControlPanel
     private readonly Label _hint = new()
     {
         Name = "plugin-hint",
-        AutoSize = true,
+        AutoSize = false,
+        AutoEllipsis = true,
+        TextAlign = ContentAlignment.MiddleLeft,
     };
 
     /// <summary>插件页那条说明的当前文案（自检断言它确实挂上了）。</summary>
@@ -96,23 +117,35 @@ internal sealed partial class ControlPanel
 
         _authorizeButton.Click += (_, _) => AuthorizeSelected();
         _disableButton.Click += (_, _) => ToggleSelectedDisabled();
+        _installButton.Click += (_, _) => _installMenu.Show(_installButton, new Point(0, _installButton.Height));
+        _removeButton.Click += (_, _) => RemoveSelected();
         _authorizeButton.FitToText();
         _disableButton.FitToText();
+        _installButton.FitToText();
+        _removeButton.FitToText();
+        _installMenu.Items.Add(InstallMenuItem(I18n.Get("cp.plugins.install.folder"), folder: true));
+        _installMenu.Items.Add(InstallMenuItem(I18n.Get("cp.plugins.install.zip"), folder: false));
 
         Panel page = PluginPage();
         _hint.Text = I18n.Get("cp.plugins.disableHint");
         _hint.Font = Theme.FontFor(page, TypeRole.Caption);
         _hint.ForeColor = Theme.TextDim;
         _hint.BackColor = Color.Transparent;
-        _hint.Padding = new Padding(Theme.Dip(page, Theme.SpaceSm), Theme.Dip(page, Theme.SpaceMd), 0, 0);
+        _hint.Padding = new Padding(Theme.Dip(page, Theme.SpaceMd), 0, Theme.Dip(page, Theme.SpaceMd), 0);
+        // 说明独占一行：四个按钮已经把操作栏占满，再塞进去只会被裁掉半句
+        // （144dpi 截图实锤）。它仍然贴底，只是排在按钮行上面。
+        _hint.Dock = DockStyle.Bottom;
+        _hint.Height = _hint.Font.Height + Theme.Dip(page, Theme.SpaceSm);
 
-        FlowLayoutPanel bar = ThemedBar(page);
+        FlowLayoutPanel bar = FormGrid.Bar(page);
+        bar.Controls.Add(_installButton);
+        bar.Controls.Add(_removeButton);
         bar.Controls.Add(_authorizeButton);
         bar.Controls.Add(_disableButton);
-        bar.Controls.Add(_hint);
-        // 加控件的顺序要紧：后加的先排版，所以操作栏（Bottom）后加，它才贴页底、
-        // 列表（Fill）占剩下的空间，不会被盖住。
+        // 加控件的顺序要紧：后加的先排版，所以操作栏（Bottom）最后加，它才贴页底、
+        // 说明行与列表（Fill）占剩下的空间，不会被盖住。
         page.Controls.Add(_pluginList);
+        page.Controls.Add(_hint);
         page.Controls.Add(bar);
     }
 
@@ -137,10 +170,10 @@ internal sealed partial class ControlPanel
         _pluginList.Items.Clear();
         _pluginList.Columns.Clear();
         _pluginList.Columns.Add(I18n.Get("cp.plugins.col.name"), 180);
-        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.version"), 90);
-        _pluginList.Columns.Add("Tier", 60);
-        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.granted"), 110);
-        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.state"), 120);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.source"), 90);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.version"), 80);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.state"), 110);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.granted"), 100);
 
         foreach (PluginLine line in snapshot.Plugins)
         {
@@ -148,10 +181,10 @@ internal sealed partial class ControlPanel
             _pluginList.Items.Add(new ListViewItem(new[]
             {
                 line.Name,
+                line.Source,
                 line.Version,
-                line.Tier.ToString(CultureInfo.InvariantCulture),
-                line.Granted.ToString(CultureInfo.InvariantCulture),
                 line.State,
+                line.Granted.ToString(CultureInfo.InvariantCulture),
             })
             {
                 Tag = line.Id,
@@ -211,7 +244,7 @@ internal sealed partial class ControlPanel
     }
 
     /// <summary>
-    /// 对选中行发起授权复核（docs/18 §3 的弹窗由调用方打开）。
+    /// 对选中行发起授权复核（原规格 18 §3 的弹窗由调用方打开）。
     /// 没有选中行时静默返回——不猜一个插件来授权。
     /// </summary>
     public void AuthorizeSelected()
@@ -243,18 +276,21 @@ internal sealed partial class ControlPanel
         string? id = _selectedPluginId;
         bool has = false;
         bool suspended = false;
+        bool enabled = false;
+        bool removable = false;
         if (id is not null && _pluginRows.TryGetValue(id, out PluginLine? line) && line is not null)
         {
             has = true;
-            suspended = string.Equals(
-                line.State,
-                PluginLifecycleState.Suspended.ToString(),
-                StringComparison.Ordinal);
+            enabled = line.Enabled;
+            removable = line.Removable;
+            suspended = string.Equals(line.State, PluginLifecycleState.Suspended.ToString(), StringComparison.Ordinal)
+                || string.Equals(line.State, I18n.Get("cp.plugins.state.suspended"), StringComparison.Ordinal);
         }
 
         _authorizeButton.Enabled = has;
         _disableButton.Enabled = has;
-        _disableButton.Text = suspended ? I18n.Get("cp.plugins.enable") : I18n.Get("cp.plugins.disable");
+        _removeButton.Enabled = has && removable;
+        _disableButton.Text = suspended || !enabled ? I18n.Get("cp.plugins.enable") : I18n.Get("cp.plugins.disable");
         _disableButton.FitToText();
     }
 

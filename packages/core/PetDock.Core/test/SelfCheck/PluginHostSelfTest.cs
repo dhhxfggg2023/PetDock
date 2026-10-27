@@ -2,8 +2,8 @@
 // 禁用 / 恢复 / 热重载 / 即插即用 / tier2 拒绝，输出 CHECK <name> PASS/FAIL|SKIP 行，
 // 统计行 STAT hosttest …，末行 HOST-OK skipped=<s> / HOST-FAIL n=<fail+unowned> skipped=<s>。
 // 期望插件 id 由命令行传入（缺省取第一个 Running 句柄的 id）—— 本文件不写任何真实插件名
-// （docs/01 P-02 第 4 条）；夹具 id 一律来自 HostTestFleet 常量。
-// 与 --selftest 的分工：selftest 验窗口/渲染路径；hosttest 验插件宿主（docs/13 §3 全链路）。
+// （原规格 01 P-02 第 4 条）；夹具 id 一律来自 HostTestFleet 常量。
+// 与 --selftest 的分工：selftest 验窗口/渲染路径；hosttest 验插件宿主（原规格 13 §3 全链路）。
 using System;
 using System.Diagnostics;
 using System.IO;

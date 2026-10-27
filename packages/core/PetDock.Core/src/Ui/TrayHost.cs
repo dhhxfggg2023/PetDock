@@ -1,4 +1,4 @@
-// 托盘（docs/18 §1，唯一常驻入口）。五项菜单的顺序与文案照抄文档，一项不多一项不少——
+// 托盘（原规格 18 §1，唯一常驻入口）。五项菜单的顺序与文案照抄文档，一项不多一项不少——
 // §7 写死「未在本文列出的菜单项，代码审查时视为缺陷」，所以这里没有任何「顺手加」的项。
 //
 // RFC-37 §3.6（片 3）：§1 那一行「宠物：<名称> | 子菜单：移动/暂停/隐藏/移除 | **每宠物一条**」
@@ -48,7 +48,7 @@ internal sealed class TrayHost : IDisposable
 
     /// <summary>
     /// 每条宠物子菜单的四个子项**按显示顺序**对应的文案键。键是契约（判据断言它），
-    /// 文案在 `assets/i18n`（RFC-42）。顺序照 docs/18 §1：移动 → 暂停 → 隐藏 → 移除。
+    /// 文案在 `assets/i18n`（RFC-42）。顺序照 原规格 18 §1：移动 → 暂停 → 隐藏 → 移除。
     /// </summary>
     internal static readonly string[] PetChildKeys =
     {
@@ -76,7 +76,7 @@ internal sealed class TrayHost : IDisposable
             Name = "panel",
         };
 
-        // 强制项：docs/18 §1「必须存在且不可隐藏」。Enabled 由宿主状态决定，
+        // 强制项：原规格 18 §1「必须存在且不可隐藏」。Enabled 由宿主状态决定，
         // 但 Visible 恒为 true——任何一条代码路径都不许把它藏起来。
         _pauseHooks = new ToolStripMenuItem(I18n.Get("ui.tray.pauseHooks"), null, (_, _) => pauseHooks())
         {
@@ -136,7 +136,7 @@ internal sealed class TrayHost : IDisposable
 
     /// <summary>
     /// 重建宠物那几条子菜单（导入追加、移除之后调用）。插在「主控面板」与分隔线之间，
-    /// 顺序与 docs/18 §1 一致：显示/隐藏全部 → 主控面板 → 每宠物一条 → 暂停钩子 → 退出。
+    /// 顺序与 原规格 18 §1 一致：显示/隐藏全部 → 主控面板 → 每宠物一条 → 暂停钩子 → 退出。
     /// </summary>
     public void SetPets(IReadOnlyList<PetMenuItem> pets)
     {
@@ -268,15 +268,15 @@ internal sealed class TrayHost : IDisposable
     /// 强制项是否处于「可显示」状态——自检断言它永远为 true。
     /// 用 Available 而不是 Visible：Visible 是运行时状态，宿主菜单从未 Show 过时恒为 false，
     /// 断言它等于断言「菜单打开过」；Available 才是控制该条目能否出现的开关
-    /// （docs/18 §1：暂停全局输入钩子是强制项，不得随宠物数或状态消失）。
+    /// （原规格 18 §1：暂停全局输入钩子是强制项，不得随宠物数或状态消失）。
     /// </summary>
     public bool HookItemVisible => _pauseHooks.Available;
 
-    /// <summary>托盘提示文字随宠物数变化（docs/18 §1）。</summary>
+    /// <summary>托盘提示文字随宠物数变化（原规格 18 §1）。</summary>
     public void SetPetCount(int count) => _icon.Text = I18n.Get("ui.tray.title.running", count);
 
     /// <summary>
-    /// 托盘图标：docs/18 §1 指定 assets/icons/icon-32.png。找不到就用系统默认图标——
+    /// 托盘图标：原规格 18 §1 指定 assets/icons/icon-32.png。找不到就用系统默认图标——
     /// 缺图标不该阻止程序启动，但也不能静默换成自造图标（那会让「发行前替换占位图」这条消失）。
     /// </summary>
     private static Icon LoadIcon()

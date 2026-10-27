@@ -57,7 +57,7 @@ internal static class ModalBandChecks
     private static void BandCompleteness(Report check)
     {
         // 两个有理由的例外：
-        //  · 宠物的分层窗自己就是置顶的（docs/12 §2.1 的 WS_EX_TOPMOST）；
+        //  · 宠物的分层窗自己就是置顶的（原规格 12 §2.1 的 WS_EX_TOPMOST）；
         //  · 控制面板由托盘点击打开，同一次点击给了本进程前台权（UiHost.Panel.cs:25 有 Activate），
         //    而且它是用户可能一直开着的常驻窗 —— 常驻窗跟着置顶会一直压住用户自己的工作。
         var allowed = new HashSet<string>(StringComparer.Ordinal) { nameof(LayeredFrameWindow), nameof(ControlPanel) };

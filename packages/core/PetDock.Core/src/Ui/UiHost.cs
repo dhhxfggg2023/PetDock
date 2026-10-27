@@ -1,17 +1,18 @@
 // 常驻 UI 宿主（RFC-12 §2.2）：把托盘、主控面板、宠物窗口串成一条生命周期。
 // 为什么是 ApplicationContext 而不是 Application.Run(Form)：宠物窗口只是众多窗口之一，
-// 用某个窗体当消息循环的宿主会让「关闭面板 = 退出程序」——docs/18 §2.5 明确禁止这种行为。
+// 用某个窗体当消息循环的宿主会让「关闭面板 = 退出程序」——原规格 18 §2.5 明确禁止这种行为。
 // RFC-13 §2.4 补了一条约束：装载期授权要弹窗，而弹窗只能开在 UI 线程上。所以本文件持有一个
 // 滴答器，每个滴答做三件事：启动宿主（装载必须等消息泵起来）、弹出待答的授权询问、按持权装钩子。
 //
 // 本文件是 partial 的主文件：只留字段、构造、公开读数、滴答与释放。
 // 拆分的理由是 D-03c 的单文件 400 行上限；各半的职责：
 //   UiHost.cs        字段、构造、公开读数、滴答、释放
-//   UiHost.Hook.cs   键盘钩子的安装门（docs/16:56）
+//   UiHost.Hook.cs   键盘钩子的安装门（原规格 16:56）
 //   UiHost.Tray.cs   托盘命令
 //   UiHost.Panel.cs  面板、插件页入口与授权复核
 //   UiHost.Position.cs 窗口位置的恢复与落盘（RFC-22）
 using System;
+using System.IO;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
 using PetDock.Core.Input;
@@ -43,6 +44,12 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>宠物清单（RFC-37 §3.6：托盘的「移除」要能把它从清单里删掉）。</summary>
     private readonly PetDataStore? _store;
 
+    /// <summary>插件管理面（扫描/开关/删除）。没有宿主时为 null（自检形态常常是 null）。</summary>
+    private readonly PluginInventory? _inventory;
+
+    /// <summary>插件安装器（zip/目录 → 用户插件根）。没有宿主时为 null。</summary>
+    private readonly PluginInstaller? _installer;
+
     /// <summary>当前宠物（导入会换它，所以不是 readonly）。</summary>
     private PetInstance? _pet;
 
@@ -53,7 +60,6 @@ internal sealed partial class UiHost : ApplicationContext
     private readonly System.Windows.Forms.Timer _timer;
 
     private ControlPanel? _panel;
-    private PerfSummary _perf = PerfSummary.Empty;
     private bool _hooksPaused;
     private bool _hostStarted;
 
@@ -118,6 +124,23 @@ internal sealed partial class UiHost : ApplicationContext
 
         _store = PetDataStore.Resolve();
 
+        // 用户插件根（2026-10-28）：装在数据区里而不是发行目录里 —— 发行目录可能只读，
+        // 而且「删掉数据区 = 卸载干净」这条要成立。目录不存在就先建一个空的。
+        if (_host is not null)
+        {
+            string userRoot = Path.Combine(_store.Root, PetDataStore.PluginsFolder);
+            try
+            {
+                Directory.CreateDirectory(userRoot);
+                _inventory = new PluginInventory(_host, _settings, userRoot);
+                _installer = new PluginInstaller(userRoot, _store.Root);
+            }
+            catch (Exception error)
+            {
+                KernelLog.Write($"plugin-user-root-failed {error.GetType().Name}: {error.Message}");
+            }
+        }
+
         _tray = new TrayHost(
             BuildPetMenu(),
             ToggleAll,
@@ -160,7 +183,7 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>面板是否打开（自检用）。</summary>
     public bool PanelOpen => _panel is not null && !_panel.IsDisposed;
 
-    /// <summary>全局输入钩子是否已按用户要求停止（docs/18 §1 强制项）。</summary>
+    /// <summary>全局输入钩子是否已按用户要求停止（原规格 18 §1 强制项）。</summary>
     public bool HooksPaused => _hooksPaused;
 
     /// <summary>宿主是否已经由滴答器启动（装载发生在消息泵起来之后，RFC-13 §2.4）。</summary>
@@ -168,6 +191,9 @@ internal sealed partial class UiHost : ApplicationContext
 
     /// <summary>授权端口（自检用；null = 没有 UI 授权端口）。</summary>
     public UiConsentPort? Consent => _consent;
+
+    /// <summary>插件管理面（自检用；null = 没有宿主，也就没有插件可管）。</summary>
+    internal PluginInventory? Inventory => _inventory;
 
     /// <summary>常驻帧循环（自检用；判据要能读到真实的生产对象，而不是自己造一份）。</summary>
     public ResidentFrameLoop Loop => _loop;
@@ -199,7 +225,7 @@ internal sealed partial class UiHost : ApplicationContext
 
     /// <summary>
     /// 探针用的无确认退出（--residenttest，RFC-26 §3 差异②）：托盘那条「退出」会弹一次确认框
-    /// （docs/18 §1 要求有人确认），而门禁里没有人会点那个按钮。只对探针开放，托盘路径不变。
+    /// （原规格 18 §1 要求有人确认），而门禁里没有人会点那个按钮。只对探针开放，托盘路径不变。
     /// </summary>
     internal void ExitForProbe() => ExitThread();
 

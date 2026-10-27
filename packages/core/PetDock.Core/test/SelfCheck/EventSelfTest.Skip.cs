@@ -120,7 +120,7 @@ internal static partial class EventSelfTest
 
     /// <summary>
     /// 目录里登记了、但本自检跑不到端到端的那几个事件 —— 注意**不是**「无生产者」，那件事由
-    /// 扫描判定，这里只登记「这次为什么发不出来」。两条 key.* 的真原因是授权门：docs/16 §3 把
+    /// 扫描判定，这里只登记「这次为什么发不出来」。两条 key.* 的真原因是授权门：原规格 16 §3 把
     /// 它们的 Source 定为 `capability only`，没有插件持 input.keyboardHook 时不装钩子，
     /// 于是无人值守跑不出真实按键。pet.state.migrated 的真原因是需要一份旧版本的状态文件。
     /// </summary>

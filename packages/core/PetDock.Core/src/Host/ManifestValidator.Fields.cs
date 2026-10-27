@@ -11,7 +11,7 @@ namespace PetDock.Hosting;
 
 internal static partial class ManifestValidator
 {
-    // schema 合法、但 docs/14 §2 明令永不发放的两项：声明放行，授予时被 CapabilityGate 跳过并审计。
+    // schema 合法、但 原规格 14 §2 明令永不发放的两项：声明放行，授予时被 CapabilityGate 跳过并审计。
     private static readonly string[] SchemaOnlyCapabilities = { "assets.write:cas", "audio.play" };
 
     private static readonly Regex IdPattern = new("^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$", RegexOptions.Compiled);
@@ -31,6 +31,16 @@ internal static partial class ManifestValidator
             return null;
         }
         return s;
+    }
+
+    private static bool ReadBool(JsonElement value, string field, List<ManifestError> errors)
+    {
+        if (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+        errors.Add(new(field, "must be a boolean"));
+        return true;
     }
 
     /// <summary>ajv 的整数语义：JSON number 且整数值且在 int 范围内（1.0 算整数，true/字符串不算）。</summary>
@@ -152,7 +162,7 @@ internal static partial class ManifestValidator
         return caps;
     }
 
-    /// <summary>docs/21 oneOf：11 固定枚举 + 2 模式项。t3 的 CapabilityIds.IsWellKnown 覆盖
+    /// <summary>原规格 21 oneOf：11 固定枚举 + 2 模式项。t3 的 CapabilityIds.IsWellKnown 覆盖
     /// 8 固定 + 2 模式项；差额恰是两项「schema 合法但永不发放」的能力，单独放行。</summary>
     private static bool IsSchemaValidCapability(string id) =>
         CapabilityIds.IsWellKnown(id) || SchemaOnlyCapabilities.Contains(id);

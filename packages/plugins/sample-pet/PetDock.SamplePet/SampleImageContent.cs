@@ -1,5 +1,5 @@
-// 实现 docs/40 §1.1 的分层归属：素材的寻找、解码、缩放属于 plugins 层（「所有宠物」），
-// 内核只收像素+尺寸（docs/40 §3.1 D-03b）。本类把仓库 assets/sample 下的静态图加载为
+// 实现 原规格 40 §1.1 的分层归属：素材的寻找、解码、缩放属于 plugins 层（「所有宠物」），
+// 内核只收像素+尺寸（原规格 40 §3.1 D-03b）。本类把仓库 assets/sample 下的静态图加载为
 // IFrameContentSource，经注入交给内核 LayeredFrameWindow —— 内核对文件一无所知。
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -8,7 +8,7 @@ using PetDock.Core.Compositor;
 namespace PetDock.SamplePet;
 
 /// <summary>
-/// 示例内容源：定位仓库根（docs/50-roadmap.md 标记），读 assets/sample/pet-sample.png，
+/// 示例内容源：定位仓库根（原规格 50 标记），读 assets/sample/pet-sample.png，
 /// 按帧缓冲尺寸等比放大居中。每帧由内核按需取一次；放大结果按尺寸缓存，帧泵重复取不重采样。
 /// </summary>
 internal sealed class SampleImageContent : IFrameContentSource
@@ -62,14 +62,14 @@ internal sealed class SampleImageContent : IFrameContentSource
         return System.IO.Path.Combine(root, "assets", "sample", "local", "pet-sample.png");
     }
 
-    /// <summary>从 AppContext.BaseDirectory 逐级向上找仓库根：存在 docs/50-roadmap.md 即认为是根。</summary>
+    /// <summary>从 AppContext.BaseDirectory 逐级向上找仓库根：存在 原规格 50 即认为是根。</summary>
     private static string FindRepoRoot()
     {
         // 沙箱 / CI 里 exe 常被建在仓库外的临时目录（obj、bin 都不可写），
         // 逐级向上查不可能命中仓库根；显式覆盖优先，但仍要求标记文件存在，避免指到错目录后被静默接受。
         string? overridden = Environment.GetEnvironmentVariable("PETDOCK_REPO_ROOT");
         if (!string.IsNullOrWhiteSpace(overridden)
-            && File.Exists(System.IO.Path.Combine(overridden, "docs", "50-roadmap.md")))
+            && File.Exists(System.IO.Path.Combine(overridden, "PetDock.sln")))
         {
             return overridden;
         }
@@ -83,7 +83,7 @@ internal sealed class SampleImageContent : IFrameContentSource
         var current = new DirectoryInfo(directory);
         while (current is not null)
         {
-            if (File.Exists(System.IO.Path.Combine(current.FullName, "docs", "50-roadmap.md")))
+            if (File.Exists(System.IO.Path.Combine(current.FullName, "PetDock.sln")))
             {
                 return current.FullName;
             }
@@ -92,7 +92,7 @@ internal sealed class SampleImageContent : IFrameContentSource
         }
 
         throw new DirectoryNotFoundException(
-            $"从 {directory} 向上逐级查找均未找到 docs/50-roadmap.md，无法定位仓库根");
+            $"从 {directory} 向上逐级查找均未找到 原规格 50，无法定位仓库根");
     }
 
     /// <summary>

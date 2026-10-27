@@ -1,4 +1,4 @@
-// docs/20 §2 的能力面 —— 对应 js/capabilities.js。
+// 原规格 20 §2 的能力面 —— 对应 js/capabilities.js。
 import type { CapabilityId } from './common.js';
 
 /** 宿主注入的能力 broker 形状（不是插件 API）。 */

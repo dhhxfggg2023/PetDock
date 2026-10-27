@@ -3,7 +3,7 @@
 // 这一层的职责只有两件：把宿主侧的 ABI 类型写成一行 JSON，以及把客体回的那一行读回成同一批类型。
 // 一切「格式错」都在这里被拒绝，并且**不杀进程**（RFC-27 §3.2：格式错是可恢复的，越限才卸载）。
 //
-// P-05（docs/01 §5）：公共入口一律不外抛，失败只落成错误串。所以每个取值都走 Str/Bool/Number 这三个
+// P-05（原规格 01 §5）：公共入口一律不外抛，失败只落成错误串。所以每个取值都走 Str/Bool/Number 这三个
 // 吃掉类型错的读取器，而不是直接 GetValue<T>()（后者对错类型抛 InvalidOperationException）。
 using System;
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ using PetDock.Core.PetRuntime;
 
 namespace PetDock.Core.Sandbox;
 
-/// <summary>docs/11 §2.1 的 Frame 在 wire 上的形态（RFC-27 §3.2）。</summary>
+/// <summary>原规格 11 §2.1 的 Frame 在 wire 上的形态（RFC-27 §3.2）。</summary>
 public sealed record Tier2Frame(
     long FrameId,
     string? Clip,
@@ -23,7 +23,7 @@ public sealed record Tier2Frame(
     byte[] PremultipliedBgra,
     byte[]? Hitmap)
 {
-    /// <summary>一像素是否命中（docs/11 §2.2 的仲裁：命中图优先，否则看 alpha）。</summary>
+    /// <summary>一像素是否命中（原规格 11 §2.2 的仲裁：命中图优先，否则看 alpha）。</summary>
     public bool Hits(int x, int y)
     {
         if (x < 0 || y < 0 || x >= Width || y >= Height)
@@ -59,7 +59,7 @@ public static partial class Tier2Wire
     /// <summary>单帧字节上限：位图 + 命中图（RFC-27 §3.5）。512×512 位图正好 1 MiB，留一倍余量。</summary>
     public const int MaxFrameBytes = 2 * 1024 * 1024;
 
-    /// <summary>docs/11 §6 的状态键值上限。</summary>
+    /// <summary>原规格 11 §6 的状态键值上限。</summary>
     public const int MaxStateBytes = 8 * 1024;
 
     /// <summary>解析 `abi.hello` 的结果。</summary>
@@ -239,7 +239,7 @@ public static partial class Tier2Wire
         return true;
     }
 
-    /// <summary>`docs/11:143-149` 的 WorldSnapshot 投影（字段名照抄）。</summary>
+    /// <summary>`原规格 11:143-149` 的 WorldSnapshot 投影（字段名照抄）。</summary>
     public static JsonObject WorldJson(WorldSnapshot world) => new()
     {
         ["cursor"] = world.Cursor is PetPoint cursor

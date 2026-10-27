@@ -13,7 +13,7 @@ using System.Windows.Forms;
 namespace PetDock.Core.Ui.Design;
 
 /// <summary>一段的标题 + 行列表；行内左列是标签，右列是控件。</summary>
-internal static class FormGrid
+internal static partial class FormGrid
 {
     /// <summary>标签列宽（逻辑像素）：一屏四个字以内都能放下，超过就换行到控件上方。</summary>
     public const int LabelColumnDip = 132;
@@ -64,7 +64,12 @@ internal static class FormGrid
         int labelWidth = Theme.Dip(dpi, LabelColumnDip);
         int captionHeight = Theme.Dip(dpi, 22);
         int controlHeight = Math.Max(Theme.Dip(dpi, 34), control.Height);
-        int hintHeight = hint is null ? 0 : Theme.Dip(dpi, 14);
+        // 说明行的高度按字体行高量，不能钉死 14dip：144dpi 下 Caption 行高约 24px，
+        // 14dip=21px 的固定高度会把字形上下各裁掉一截（2026-10-28 截图实锤）。
+        // 多出来的 6dip 是上下各 3dip 的呼吸位，避免说明贴着下一行的控件。
+        int hintHeight = hint is null
+            ? 0
+            : Math.Max(Theme.Dip(dpi, 14), Theme.FontFor(owner, TypeRole.Caption).Height + Theme.Dip(dpi, 6));
 
         var row = new Panel
         {

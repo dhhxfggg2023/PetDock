@@ -1,13 +1,13 @@
 // 首次运行引导窗（RFC-16 §3.3 的三步控件树）。
 //
-// 为什么引导是**窗**而不是面板的一页：docs/18 §2.5 把主控面板的四页钉死了（判据 ui-panel-pages），
-// 而引导是**一次性**的、不属于常驻界面的四页。托盘也不能加第六项（docs/18 §1 被 ui-tray-items 钉死）。
+// 为什么引导是**窗**而不是面板的一页：原规格 18 §2.5 把主控面板的四页钉死了（判据 ui-panel-pages），
+// 而引导是**一次性**的、不属于常驻界面的四页。托盘也不能加第六项（原规格 18 §1 被 ui-tray-items 钉死）。
 //
 // 线程：全部在 UI 线程。窗以模态方式打开（ShowDialog），模态窗自带消息循环，
 // 宿主的滴答器在模态期间**仍会触发** —— 所以宿主必须知道引导窗开着（见 UiHost.Onboarding.cs），
 // 期间不泵授权询问（否则两个模态窗叠在一起）。
 //
-// 失败一律走页内内联错误条，不弹模态对话框（docs/18 §5：失败不弹模态框）。
+// 失败一律走页内内联错误条，不弹模态对话框（原规格 18 §5：失败不弹模态框）。
 //
 // 状态一律记在**普通字段**里，公开读数从字段读（不读控件的 Visible）：
 // 窗被关掉之后判据仍要读它的结果（RFC-16 §3.5）。
@@ -34,7 +34,7 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     // 常量是**键名**，不是文案（RFC-42 §3.4 第 3 条）：判据引用键，文案将来在 assets/i18n 的表里；
     // 这一片还没有表，I18n.Get 原样返回键，缺键就显示键名本身。
 
-    /// <summary>第 2 步必须原样出现的标注的键（docs/18 §4 的原话在资源表里，不改写）。</summary>
+    /// <summary>第 2 步必须原样出现的标注的键（原规格 18 §4 的原话在资源表里，不改写）。</summary>
     public const string SampleDisclaimerKey = "ui.onboarding.sample.disclaimer";
 
     /// <summary>第 3 步必须原样出现的说明的键。</summary>
@@ -145,7 +145,7 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     public string NextButtonKey => _index == _steps.Length - 1 ? FinishKey : NextKey;
 
     /// <summary>
-    /// 某一步里所有标签的文案（判据读它断言 docs/18 §4 的两句话**原样出现**在界面上，
+    /// 某一步里所有标签的文案（判据读它断言 原规格 18 §4 的两句话**原样出现**在界面上，
     /// 而不是出现在某个常量里 —— 读常量只能证明常量没被改，证明不了文案真的在窗上）。
     /// </summary>
     public string CollectStepText(int index)

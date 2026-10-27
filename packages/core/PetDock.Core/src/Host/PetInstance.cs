@@ -1,4 +1,4 @@
-// M2 契约 §1/§8：一只宠物实例的宿主侧载体（docs/11 §10 的六阶段 + §9 的降级链 + §7 的帧驱动）。
+// M2 契约 §1/§8：一只宠物实例的宿主侧载体（原规格 11 §10 的六阶段 + §9 的降级链 + §7 的帧驱动）。
 //
 // 它在 core 里做四件事，全部只走 ABI 声明的那四个接口：
 //   1. 状态机：§10 的 discovered → imported → instantiated → running ⇄ suspended → disposed
@@ -9,9 +9,9 @@
 //      Tick 抛异常 → 本 tick 的指令全部作废 + 标记 degraded。
 //
 // 本类是 partial：状态机与诊断在这里，帧与仲裁在 PetInstance.Frames.cs，
-// 下单与打点（§5）在 PetInstance.Pointer.cs —— 三块各自 <400 行（docs/40 D-03c）。
-// 词汇约束（docs/40 D-03b / tools/lint-core.mjs）：需要指「§3 那个实现」时一律说 surface / view，
-// 名字对照表在 docs/handoff/M2-name-map.md（core 之外）。
+// 下单与打点（§5）在 PetInstance.Pointer.cs —— 三块各自 <400 行（原规格 40 D-03c）。
+// 词汇约束（原规格 40 D-03b / tools/lint-core.mjs）：需要指「§3 那个实现」时一律说 surface / view，
+// 名字对照表在 交接档案（core 之外）。
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
@@ -22,7 +22,7 @@ using PetDock.Core.Ui;
 namespace PetDock.Hosting;
 
 /// <summary>
-/// 一只宠物实例（docs/11 §10）。实例身份 = PetInstanceId（docs/11 §2）。
+/// 一只宠物实例（原规格 11 §10）。实例身份 = PetInstanceId（原规格 11 §2）。
 /// M2 由宿主按 manifest id + 素材引用派生（CAS 尚未落地，见任务 output 的未验证项）。
 /// </summary>
 public sealed partial class PetInstance : IDisposable
@@ -59,7 +59,7 @@ public sealed partial class PetInstance : IDisposable
         Suspended += (instance, reason) => instance.SuspendPort.SuspendPlugin(instance.PluginId, reason);
     }
 
-    /// <summary>实例 id（docs/11 §2 PetInstanceId）。</summary>
+    /// <summary>实例 id（原规格 11 §2 PetInstanceId）。</summary>
     public string Id { get; }
 
     /// <summary>提供本实例视图面的插件 id（宿主侧记账用；ABI 里没有这个概念）。</summary>
@@ -75,10 +75,10 @@ public sealed partial class PetInstance : IDisposable
     /// <summary>视图面是怎么来的：声明式 dll 探测（"dll"）或宿主内注册的桩件（"stub"）。</summary>
     public string SourceKind { get; }
 
-    /// <summary>docs/11 §3 的视图接口实现。</summary>
+    /// <summary>原规格 11 §3 的视图接口实现。</summary>
     public IPetView View { get; }
 
-    /// <summary>docs/11 §4 的行为层（可为 null：宿主未装配 brain 插件）。
+    /// <summary>原规格 11 §4 的行为层（可为 null：宿主未装配 brain 插件）。
     /// 生产路径只在构造时注入一次，此后只读；测试要换装走 <see cref="InstallBrain"/>。</summary>
     public IBrain? Brain { get; private set; }
 
@@ -86,7 +86,7 @@ public sealed partial class PetInstance : IDisposable
     /// 换装行为层（测试注入面，契约 §7.4 / §8.4 N4）。
     /// 为什么是一个具名方法而不是 public setter + public 构造器：
     ///   · 构造器保持 <c>internal</c> —— public 化等于给生产路径开一个「谁都能造一只不受 roster 约束的实例」的后门；
-    ///   · 换装能力本身是**真实且必要**的：宿主在 M4 之后要支持热重载 brain（docs/13 §5），
+    ///   · 换装能力本身是**真实且必要**的：宿主在 M4 之后要支持热重载 brain（原规格 13 §5），
     ///     而测试需要「一个 Tick 里抛异常的 brain」这类不可由插件目录构造的实现。
     /// 返回 false = 实例已进入不可换装的终态（Disposed），调用方据此判断而不是靠异常。
     /// 本方法不改变生产路径的任何行为：生产代码从不调用它。
@@ -102,29 +102,29 @@ public sealed partial class PetInstance : IDisposable
         return true;
     }
 
-    /// <summary>docs/11 §5 的交互层（0..n，可叠加）。</summary>
+    /// <summary>原规格 11 §5 的交互层（0..n，可叠加）。</summary>
     public IReadOnlyList<IPointerSurface> Surfaces { get; }
 
-    /// <summary>docs/11 §6 的状态层（可为 null）。
+    /// <summary>原规格 11 §6 的状态层（可为 null）。
     /// 装配期可能被 <see cref="InstallStateLayer"/> 换成落盘层（RFC-24），此后只读。</summary>
     public IPetState? StateLayer { get; private set; }
 
-    /// <summary>docs/11 §9 的降级链（只许向前）。</summary>
+    /// <summary>原规格 11 §9 的降级链（只许向前）。</summary>
     public DegradationChain Display { get; }
 
-    /// <summary>docs/11 §8 的位图 registry（句柄由宿主发放、在帧同步点后释放）。</summary>
+    /// <summary>原规格 11 §8 的位图 registry（句柄由宿主发放、在帧同步点后释放）。</summary>
     public BitmapRegistry Bitmaps { get; }
 
-    /// <summary>docs/11:162 的指令仲裁器。</summary>
+    /// <summary>原规格 11:162 的指令仲裁器。</summary>
     public HostArbiter Arbiter { get; }
 
-    /// <summary>docs/11 §10 的当前阶段。</summary>
+    /// <summary>原规格 11 §10 的当前阶段。</summary>
     public InstanceState State { get; private set; } = InstanceState.Discovered;
 
     /// <summary>状态转移痕迹（自检与审计的可判定面）。</summary>
     public IReadOnlyList<StateTransition> Transitions => _transitions;
 
-    /// <summary>docs/11 §3.1 的描述（attach 时取一次）。</summary>
+    /// <summary>原规格 11 §3.1 的描述（attach 时取一次）。</summary>
     public PetDescription? Description { get; private set; }
 
     /// <summary>画板（attach 时由宿主给出）。</summary>
@@ -137,7 +137,7 @@ public sealed partial class PetInstance : IDisposable
 
     public int ConsecutiveFrameDrops { get; internal set; }
 
-    /// <summary>tick 计数与 brain 故障数（docs/11:259 的 degraded 标记）。</summary>
+    /// <summary>tick 计数与 brain 故障数（原规格 11:259 的 degraded 标记）。</summary>
     public long Ticks { get; internal set; }
 
     public int BrainFaults { get; internal set; }
@@ -146,7 +146,7 @@ public sealed partial class PetInstance : IDisposable
     public bool BrainDegraded { get; internal set; }
 
     /// <summary>挂起事件：宿主在此把「实例挂起」接到插件层（PluginHost.Disable），
-    /// 使 docs/11 §7 的 8 连超时与 M1 的 8 连沙箱故障落到同一个 Suspended 终态（t1 契约 §8.2）。</summary>
+    /// 使 原规格 11 §7 的 8 连超时与 M1 的 8 连沙箱故障落到同一个 Suspended 终态（t1 契约 §8.2）。</summary>
     public event SuspendNotifyDelegate? Suspended;
 
     /// <summary>挂起转发的接缝（默认空实现；宿主接真实 PluginHost 时替换成 <see cref="HostSuspendPort"/>）。</summary>
@@ -155,7 +155,7 @@ public sealed partial class PetInstance : IDisposable
     /// <summary>最近一次失败的原因文本（§9 的如实上报面）。</summary>
     public string LastFailure { get; internal set; } = "(none)";
 
-    /// <summary>上一帧的位图对象（空闲判定：与本帧同一个对象 = 内容未变化，docs/11:225）。</summary>
+    /// <summary>上一帧的位图对象（空闲判定：与本帧同一个对象 = 内容未变化，原规格 11:225）。</summary>
     public System.Drawing.Bitmap? LastFrameBitmap { get; internal set; }
 
     /// <summary>
@@ -168,7 +168,7 @@ public sealed partial class PetInstance : IDisposable
     public (string Clip, bool Restart)? LastSetAnimation { get; internal set; }
 
     /// <summary>
-    /// docs/11 §10 的 instantiated：分配画板、init()、describe()、attach() —— 顺序照 §10 表逐字。
+    /// 原规格 11 §10 的 instantiated：分配画板、init()、describe()、attach() —— 顺序照 §10 表逐字。
     /// **偏离一处并在此写明**：画板尺寸要到帧缓冲就绪（窗口实测尺寸）才知道，所以本步发生在
     /// 首次取帧之前，而不是窗口创建之前（见 PetFrameSource 的注释）。
     /// InitAsync 用同步等待：M2 的视图实现都是进程内的 .NET 实现，Task 同步完成；
@@ -178,7 +178,7 @@ public sealed partial class PetInstance : IDisposable
     {
         if (State == InstanceState.Discovered)
         {
-            // 名册已经做过 Discover + ValidateManifest 这前两步（docs/11 §10 的 discovered → imported），
+            // 名册已经做过 Discover + ValidateManifest 这前两步（原规格 11 §10 的 discovered → imported），
             // 所以到这里直接补记这两段痕迹；再往下才轮到 init/describe/attach。
             MarkImported("manifest-validated-by-roster", atMs);
         }
@@ -214,14 +214,14 @@ public sealed partial class PetInstance : IDisposable
         }
     }
 
-    /// <summary>docs/11 §10：discovered → imported（manifest 已读且校验通过）。</summary>
+    /// <summary>原规格 11 §10：discovered → imported（manifest 已读且校验通过）。</summary>
     public void MarkImported(string reason, long atMs = 0) => Move(InstanceState.Imported, reason, atMs);
 
-    /// <summary>docs/11 §10：instantiated → running（帧循环 + tick + 事件投递）。</summary>
+    /// <summary>原规格 11 §10：instantiated → running（帧循环 + tick + 事件投递）。</summary>
     public void Start(long atMs = 0) => Move(InstanceState.Running, "frame loop started", atMs);
 
     /// <summary>
-    /// 帧间 dt（docs/11:134「须可被累加、可被零化（挂起时）」）。
+    /// 帧间 dt（原规格 11:134「须可被累加、可被零化（挂起时）」）。
     /// 挂起期间不推进 _lastNowMs，所以恢复后的第一帧 dt = 0；时间倒退也一律钳到 0。
     /// </summary>
     public int NextDeltaMs(int nowMs)
@@ -237,7 +237,7 @@ public sealed partial class PetInstance : IDisposable
         return dt < 0 ? 0 : dt;
     }
 
-    /// <summary>docs/11 §10：running → suspended（停帧、停 tick、保留窗口）。幂等。</summary>
+    /// <summary>原规格 11 §10：running → suspended（停帧、停 tick、保留窗口）。幂等。</summary>
     public bool Suspend(string reason, long atMs = 0)
     {
         if (State == InstanceState.Suspended)
@@ -255,7 +255,7 @@ public sealed partial class PetInstance : IDisposable
         return true;
     }
 
-    /// <summary>docs/11 §10：suspended → running（回到帧循环）。</summary>
+    /// <summary>原规格 11 §10：suspended → running（回到帧循环）。</summary>
     public bool Resume(string reason, long atMs = 0)
     {
         if (State == InstanceState.Running)
@@ -268,7 +268,7 @@ public sealed partial class PetInstance : IDisposable
         return true;
     }
 
-    /// <summary>docs/11 §10：→ disposed（detach() → dispose()）。不可逆。</summary>
+    /// <summary>原规格 11 §10：→ disposed（detach() → dispose()）。不可逆。</summary>
     public void Dispose()
     {
         if (_disposed)
@@ -290,7 +290,7 @@ public sealed partial class PetInstance : IDisposable
             KernelLog.Write($"view-detach-failed instance={Id} {error.GetType().Name}: {error.Message}");
         }
 
-        // docs/11 §9：插件 dispose 不返回时宿主在 1000ms 后强杀其执行上下文。
+        // 原规格 11 §9：插件 dispose 不返回时宿主在 1000ms 后强杀其执行上下文。
         // .NET 侧没有可强杀的托管执行上下文（进程内不可终止线程），所以这里用有界等待：
         // 超时不抛、如实记日志 —— M2 声明的边界（已登记为未验证项）。
         try
@@ -324,7 +324,7 @@ public sealed partial class PetInstance : IDisposable
             + $" last={LastFailure}";
     }
 
-    /// <summary>docs/11 §10 的转移痕迹（自检打印用）。</summary>
+    /// <summary>原规格 11 §10 的转移痕迹（自检打印用）。</summary>
     public string DescribeTransitions()
     {
         var parts = new List<string>();

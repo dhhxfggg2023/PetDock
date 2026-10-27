@@ -1,4 +1,4 @@
-# D — Distribution prior art, and the failure-mode evidence base
+﻿# D — Distribution prior art, and the failure-mode evidence base
 
 Research memo for PetDock (Windows desktop-pet platform: microkernel host + everything-is-a-plugin).
 Two halves: **Group 1** surveys how five real distribution channels publish, version, review, trust and
@@ -82,7 +82,7 @@ The generalizable lesson: the *content format* decided the blast radius. A video
 (`windows-beta`, `linux-arm64`, `macos-preview`), and butler uploads only the diff against the previous
 build rather than the whole payload. Flags include `--userversion`, `--hidden`, and `--ifChanged`. The
 itch app (v26.12.0+) exposes the same push flow graphically.
-Sources: [butler manual](https://itch.io/docs/butler), [butler releases](https://github.com/itchio/butler/releases).
+Sources: [butler manual](https://itch.io/docs), [butler releases](https://github.com/itchio/butler/releases).
 
 **Versioning.** The publisher supplies an opaque user version string; there is no semantic versioning and
 no resolver. Retrieving a channel's version *history* is a known gap — the `/wharf/channels` endpoint only
@@ -92,7 +92,7 @@ reports the last version ([itch.io forum](https://itch.io/t/1992105/retrieving-t
 
 **Trust model.** Installing a build runs arbitrary code. The platform's leverage is reputational and
 post-hoc (reports, delisting), plus the fact that butler is open source and built on the openly specified
-[Wharf](https://itch.io/docs/butler) protocol — the delivery mechanism is auditable even though the content
+[Wharf](https://itch.io/docs) protocol — the delivery mechanism is auditable even though the content
 is not.
 
 **Takedown.** Project-level deletion by the author; builds are not retained as a durable public archive.
@@ -341,7 +341,7 @@ refactoring. Two structural drivers make this inevitable rather than accidental:
   2025**; disabled everywhere with no re-enable in **Chrome 138, 24 July 2025**; the enterprise
   `ExtensionManifestV2Availability` policy removed with **Chrome 139**; and all remaining MV2 extensions
   removed from the Web Store on **31 August 2026**
-  ([Chrome for Developers](https://developer.chrome.com/docs/extensions/develop/migrate/mv2-deprecation-timeline)).
+  ([Chrome for Developers](https://developer.chrome.com/docs)).
   Four and a half years from first gate to full removal — and it still disabled working extensions. That is
   the *floor*, not the ceiling, for how expensive a break is.
 - **Blender 2.79 → 2.80 (2019)** — a Python API break that invalidated most addons. Blender's own beta
@@ -398,7 +398,7 @@ user's rational response is to click through. Three measured findings:
 
 **Why the platform's own wording makes it worse.** Chrome's install-time warning for `<all_urls>` or
 `*://*/*` is "Read and change all your data on the websites you visit"
-([Chrome permission warnings](https://developer.chrome.com/docs/extensions/mv2/permission-warnings)).
+([Chrome permission warnings](https://developer.chrome.com/docs)).
 That string is *honest* — and it is also the exact string a malicious extension shows. StayFocusd, a
 legitimate website blocker, needs the same permission and tells users so in its listing
 ([Chrome Web Store](https://chromewebstore.google.com/detail/stayfocusd-%E2%80%93-website-bloc/laankejkbhbdhmipfmgcngdelahlfoji)).
@@ -455,7 +455,7 @@ breaking its users. At that point the plugin *is* the specification.
   it is core's staging ground.
 - **VS Code / Copilot Chat** — the largest extension in the ecosystem is being absorbed: "In the coming
   months, we will bring the relevant components of the Copilot Chat extension into the core VS Code
-  repository" ([VS Code FAQ](https://code.visualstudio.com/docs/supporting/faq)). Note the *direction*: a
+  repository" ([VS Code FAQ](https://code.visualstudio.com/docs)). Note the *direction*: a
   first-party extension was built outside core first, then pulled in — which is the healthy version of the
   pattern, and only works because the API was strong enough to build it outside in the first place.
 

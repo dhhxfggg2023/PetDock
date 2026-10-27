@@ -7,7 +7,7 @@
 // 本类只借它的位置来摆其余几只，并在「显示/隐藏全部」时把它一并算进去（否则托盘的
 // 「切换全部」只切一半，用户看到的那只没反应）。
 //
-// 片 1b 只做窗口层：导入仍然是替换语义（RFC-15，解除它要动 docs/18 §2.1，见 RFC-37 §9 片 2），
+// 片 1b 只做窗口层：导入仍然是替换语义（RFC-15，解除它要动 原规格 18 §2.1，见 RFC-37 §9 片 2），
 // 所以这里只把**清单里已经有的**那几只摆出来 —— 用户导入两只之后就看到两只，不需要再点任何东西。
 using System;
 using System.Collections.Generic;
@@ -117,8 +117,9 @@ internal sealed partial class PetWindowSet : IDisposable
             var window = new LayeredFrameWindow(source);
             source.WindowHandle = window.WindowHandle;
 
-            // 鼠标消息进交互会话：与主窗同一条接线（RFC-35 §3.2）。不接就是「第二只点了没反应」。
-            FrameComposition.WirePointer(window, instance);
+            // 鼠标消息进交互会话 + moveTo 真移窗：与主窗同一条接线（RFC-35 §3.2）。
+            // 不接就是「第二只点了没反应」「第二只不会走」。
+            FrameComposition.WireWindow(window, instance);
             return new Slot(instance, pack.Path, window, source, new ResidentFrameLoop(window), pack.InstanceId);
         }
         catch (Exception error)
@@ -175,43 +176,6 @@ internal sealed partial class PetWindowSet : IDisposable
     }
 
     /// <summary>
-    /// 桌上每只的即时读数（RFC-37 片 4）：主窗一行 + 每条槽位一行，按**归因键**（实例 id）索引。
-    /// 这是性能页逐宠物那一列的唯一来源 —— 每只都有自己的泵（片 1b），所以帧耗时/超限计数
-    /// 可以归属到它自己，而不是像单泵形态那样只能写「(进程共享)」。
-    /// 主窗没有循环（或没有实例）时照样给一行，Frames 为 null，页面写「—」。
-    /// </summary>
-    public IReadOnlyList<PetReading> Readings()
-    {
-        var rows = new List<PetReading>(_slots.Count + 1)
-        {
-            new(
-                Id: _primaryInstance?.Id ?? PrimaryId,
-                Visible: _primary.Visible,
-                Pumping: _primaryLoop?.Pumping ?? false,
-                Frames: FramesOf(_primaryLoop)),
-        };
-
-        foreach (Slot slot in _slots)
-        {
-            rows.Add(new PetReading(
-                Id: slot.Instance?.Id ?? "(slot-" + (rows.Count).ToString(System.Globalization.CultureInfo.InvariantCulture) + ")",
-                Visible: slot.Window.Visible,
-                Pumping: slot.Loop.Pumping,
-                Frames: FramesOf(slot.Loop)));
-        }
-
-        return rows;
-    }
-
-    /// <summary>没有实例可归因时用的键（主窗兜底纯色、或自检造的空槽位）。</summary>
-    private string PrimaryId => _primaryInstance?.Id ?? "(primary)";
-
-    private static PetFrameReadings? FramesOf(ResidentFrameLoop? loop) =>
-        loop is null
-            ? null
-            : new PetFrameReadings(loop.AvgFrameMs, loop.MaxFrameMs, loop.TargetFrameMs, loop.OverBudgetFrames);
-
-    /// <summary>
     /// 把一只**已经活着的**实例摆上桌（RFC-37 §3.5 片 2：导入即追加）。
     /// 与 <see cref="Create"/> 的区别只有一处：实例由调用方建好并初始化过（导入编排里那一步
     /// 决定了失败能否回滚），这里只补窗口、帧源句柄、鼠标接线与帧循环。
@@ -232,8 +196,8 @@ internal sealed partial class PetWindowSet : IDisposable
             window = new LayeredFrameWindow(source);
             source.WindowHandle = window.WindowHandle;
 
-            // 第二只点了必须有反应：与主窗同一条指针接线（RFC-35 §3.2）。
-            FrameComposition.WirePointer(window, instance);
+            // 第二只点了必须有反应、moveTo 必须真挪窗：与主窗同一条接线（RFC-35 §3.2）。
+            FrameComposition.WireWindow(window, instance);
 
             var slot = new Slot(instance, packPath, window, source, new ResidentFrameLoop(window), CatalogIdOf(packPath));
             Add(slot);

@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    内置 NullBrain（贡献点 id "petdock.brain.null"，docs/11 §13：不做任何事）。
-    docs/11:311 的「不做任何事」是可判定形态：Tick 恒返回空 BrainDirective[]。
+    内置 NullBrain（贡献点 id "petdock.brain.null"，原规格 11 §13：不做任何事）。
+    原规格 11:311 的「不做任何事」是可判定形态：Tick 恒返回空 BrainDirective[]。
     ABI 类型经 PetDock.Sdk 类型转发解析到 core 唯一 CLR 类型；本工程不重声明接口。
   -->
   <PropertyGroup>

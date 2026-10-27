@@ -1,8 +1,8 @@
 // 授权询问契约（RFC-13 §2.1/§2.2）：宿主（问）、UI（答）、自检（假答）三方共用的唯一一套类型。
 // 为什么单独一个文件：装载期授权同时被三方引用，各自长一套类型就会变成三个能力所有者。
-// 边界（docs/14 §2「一次断言：安装时一次性提交能力清单；不允许补申请」）：
+// 边界（原规格 14 §2「一次断言：安装时一次性提交能力清单；不允许补申请」）：
 //   授予只发生在装载期；运行期没有补授路径，运行期能做的只有收窄（撤销）。
-// 拒绝的记忆范围：拒绝**总是**被记住（docs/18 §3「拒绝后该插件不允许重试同一能力」）；
+// 拒绝的记忆范围：拒绝**总是**被记住（原规格 18 §3「拒绝后该插件不允许重试同一能力」）；
 // 授予只在「允许（记住这个决定）」下被记住（「仅本次」下次装载再问）。
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace PetDock.Hosting;
 
-/// <summary>一次回答的效力范围（docs/18 §3 的三个按钮）。</summary>
+/// <summary>一次回答的效力范围（原规格 18 §3 的三个按钮）。</summary>
 public enum ConsentScope
 {
     /// <summary>「允许（记住这个决定）」：本会话内不再问。</summary>
@@ -21,9 +21,9 @@ public enum ConsentScope
 }
 
 /// <summary>清单里的一项能力及其既往状态。</summary>
-/// <param name="CapabilityId">docs/14 §2 的能力 ID。</param>
+/// <param name="CapabilityId">原规格 14 §2 的能力 ID。</param>
 /// <param name="PreGranted">此前已授予 —— 默认勾选。</param>
-/// <param name="Denied">此前已拒绝 —— 置灰且不可再勾（docs/18 §3）。</param>
+/// <param name="Denied">此前已拒绝 —— 置灰且不可再勾（原规格 18 §3）。</param>
 public sealed record ConsentItem(string CapabilityId, bool PreGranted, bool Denied);
 
 /// <summary>一次授权询问的完整内容（弹窗按它渲染）。</summary>
@@ -71,7 +71,7 @@ public interface ICapabilityConsentPort
 /// <summary>
 /// 会话内的授权记忆（RFC-13 §2.1）。
 /// 线程安全：装载在宿主调度线程，复核在 UI 线程，两边都会碰它。
-/// 跨进程持久化不在本文件（那属 docs/17 存储层，docs/50:78 已登记为遗留）。
+/// 跨进程持久化不在本文件（那属 原规格 17 存储层，原规格 50:78 已登记为遗留）。
 /// </summary>
 public sealed class ConsentMemory
 {
@@ -101,7 +101,7 @@ public sealed class ConsentMemory
         }
     }
 
-    /// <summary>该能力是否已被拒绝（拒绝后不再询问，docs/18 §3）。</summary>
+    /// <summary>该能力是否已被拒绝（拒绝后不再询问，原规格 18 §3）。</summary>
     public bool IsDenied(string pluginId, string capabilityId)
     {
         lock (_lock)
@@ -115,7 +115,7 @@ public sealed class ConsentMemory
     /// 落账一次回答。
     /// <paramref name="rememberGrants"/>：true = 「允许（记住这个决定）」，授予进记忆；
     /// false = 「仅本次」，授予不记（下次装载再问）。
-    /// 拒绝**总是**进记忆，与范围无关 —— docs/18 §3 的拒绝规则是无条件的。
+    /// 拒绝**总是**进记忆，与范围无关 —— 原规格 18 §3 的拒绝规则是无条件的。
     /// </summary>
     public void Remember(
         string pluginId,
@@ -156,7 +156,7 @@ public sealed class ConsentMemory
 
     /// <summary>
     /// 收窄一次记忆（插件页复核用）：把不再保留的能力从授予记忆里去掉，并记入拒绝集。
-    /// 运行期不能新增授予（docs/14 §2 一次断言），所以这里只减不加。
+    /// 运行期不能新增授予（原规格 14 §2 一次断言），所以这里只减不加。
     /// 方法名的取舍见 .dsh-code/ 下的 D-03b 对照表：原名会让调用点的成员访问形式
     /// 命中黑名单里的文件扩展名条目。
     /// </summary>

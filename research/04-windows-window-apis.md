@@ -1,4 +1,4 @@
-# Windows Window APIs for a Per-Pixel-Transparent Desktop Pet
+﻿# Windows Window APIs for a Per-Pixel-Transparent Desktop Pet
 
 Paper-only research. Every claim carries a URL; unverifiable claims are marked **unverified**.
 
@@ -123,7 +123,7 @@ No Microsoft fps benchmark of `UpdateLayeredWindow` vs a composition swap chain 
 
 - **Chromium pets/overlays (NW.js, Electron, Tauri/WebView2)** historically got OS per-pixel alpha hit testing free via the GDI redirection-bitmap path. **Chromium 139's `RemoveRedirectionBitmap` applies `WS_EX_NOREDIRECTIONBITMAP` to the top-level window**, which "flips the overlay off the classic path onto DirectComposition" so "the OS stops doing per-pixel hit-testing". Reported boundary: NW.js 0.101.2 (Chromium 138.0.7204.97) good → 0.102.0 (Chromium 139.0.7258.66) bad. ([nwjs#8342](https://github.com/nwjs/nw.js/issues/8342))
 - **Tauri/tao** uses `DwmEnableBlurBehindWindow` + empty `(0,0,-1,-1)` region and toggles `WS_EX_TRANSPARENT|WS_EX_LAYERED` at runtime as a "cursor guard"; a `no_redirection_bitmap` option is landing as the structural fix. ([tauri#15410](https://github.com/tauri-apps/tauri/pull/15410))
-- **BongoCat** (Tauri + Live2D, 23.6k★) and **Open-LLM-VTuber** advertise "transparent background; mouse click-through for non-interactive areas" through their window layer. ([BongoCat](https://github.com/ayangweb/bongocat), [Open-LLM-VTuber](https://open-llm-vtuber.github.io/en/docs/user-guide/frontend/electron/))
+- **BongoCat** (Tauri + Live2D, 23.6k★) and **Open-LLM-VTuber** advertise "transparent background; mouse click-through for non-interactive areas" through their window layer. ([BongoCat](https://github.com/ayangweb/bongocat), [Open-LLM-VTuber](https://open-llm-vtuber.github.io/en/docs))
 - **Desktop Mate** — no first-party engineering write-up found → **unverified**. **Wallpaper Engine** — claims a "highly optimized" core and auto-pausing for games, but no evidence of `UpdateLayeredWindow` or DirectComposition use; wallpapers render *behind* icons via a different, undocumented mechanism → **unverified**. ([wallpaperengine.io](https://www.wallpaperengine.io))
 - **Godot/Unity pet tutorials** use per-pixel transparency plus mouse passthrough computed from app geometry — the `WM_NCHITTEST` route. ([Godot](https://forum.godotengine.org/t/how-can-i-click-through-the-screen-while-keeping-a-transparent-screen/64195))
 

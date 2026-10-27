@@ -1,4 +1,4 @@
-// --drivetest 的第三块：命中仲裁（docs/11 §2.2）与状态层语义（docs/11 §6）。
+// --drivetest 的第三块：命中仲裁（原规格 11 §2.2）与状态层语义（原规格 11 §6）。
 // 拆自 PetDriveTest.cs（D-03c：单文件 ≤400 行）；命令形态与总体判据见 PetDriveTest.Run。
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ namespace PetDock.Hosting;
 
 internal static partial class PetDriveTest
 {
-    /// <summary>组 7（docs/11 §2.2）：命中仲裁 hitmap &gt; bitmap alpha，且 alpha===0 永远放行穿透。</summary>
+    /// <summary>组 7（原规格 11 §2.2）：命中仲裁 hitmap &gt; bitmap alpha，且 alpha===0 永远放行穿透。</summary>
     private static int Hitmap()
     {
         int failures = 0;
@@ -45,14 +45,14 @@ internal static partial class PetDriveTest
         }
 
         Check(ref failures, "hitmap-length-refused", lengthRefused, "长度不足的 hitmap 被拒");
-        // 隐藏档一律不可命中（docs/11:190 的穿透优先，也是「隐藏」这条降级档的语义）。
+        // 隐藏档一律不可命中（原规格 11:190 的穿透优先，也是「隐藏」这条降级档的语义）。
         instance.Display.Advance(DisplayTier.Hidden, "drive-hide", 1);
         Check(ref failures, "hitmap-hidden-not-hittable", !instance.HitsAt(4, 4), "Hidden 档不可命中");
         instance.Dispose();
         return failures;
     }
 
-    /// <summary>组 8（docs/11 §6）：write 只在缓冲区、commit 才落盘、rollback 丢未提交、migrate 纯函数、越限拒绝。</summary>
+    /// <summary>组 8（原规格 11 §6）：write 只在缓冲区、commit 才落盘、rollback 丢未提交、migrate 纯函数、越限拒绝。</summary>
     private static int StateSemantics()
     {
         int failures = 0;
@@ -68,7 +68,7 @@ internal static partial class PetDriveTest
         Check(ref failures, "state-commit-persists", state.Disk.Count == 1 && state.Commits == 1,
             $"disk={state.Disk.Count} commits={state.Commits}");
 
-        // rollback 的语义（docs/11:213「崩溃：缓冲区全丢，磁盘无影响」）：丢弃未落盘的修改，
+        // rollback 的语义（原规格 11:213「崩溃：缓冲区全丢，磁盘无影响」）：丢弃未落盘的修改，
         // 已提交的值仍在 —— 不是把缓冲清空（清空会把已落盘的值也一起抹掉）。
         state.Write(new Dictionary<string, System.Text.Json.Nodes.JsonNode?>
         {

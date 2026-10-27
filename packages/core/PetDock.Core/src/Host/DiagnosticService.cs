@@ -80,7 +80,7 @@ internal sealed class DiagnosticService
         try
         {
             // 双参构造默认走系统外壳（等价于「用外壳打开」那个属性），
-            // 所以不需要在 core 源码里写出那个属性名（docs/02 §2 概念黑名单，见 .dsh-code/ 对照表）。
+            // 所以不需要在 core 源码里写出那个属性名（原规格 02 §2 概念黑名单，见 .dsh-code/ 对照表）。
             Process.Start(new ProcessStartInfo("explorer.exe", "\"" + LogsDirectory + "\""));
         }        catch (Exception error)
         {
@@ -333,7 +333,7 @@ internal sealed class DiagnosticService
         }
     }
 
-    /// <summary>进程级私有工作集。内存读数一律是进程级的（docs/10 §3）。</summary>
+    /// <summary>进程级私有工作集。内存读数一律是进程级的（原规格 10 §3）。</summary>
     private static string ProcessMemoryMb()
     {
         try

@@ -1,7 +1,7 @@
-// docs/11 §4「Brain 接口（行为层）」的 C# 绑定。
-// docs/11 的类型名 → 本 namespace 的标识符：IBrain 不变（该词不在术语黑名单内）；
+// 原规格 11 §4「Brain 接口（行为层）」的 C# 绑定。
+// 原规格 11 的类型名 → 本 namespace 的标识符：IBrain 不变（该词不在术语黑名单内）；
 // BrainDirective / WorldSnapshot / BrainContext 同名。
-// 契约核心（docs/11:160-162 逐字）：**指令即返回值**。Brain 不许在回调里直接调宿主 API；
+// 契约核心（原规格 11:160-162 逐字）：**指令即返回值**。Brain 不许在回调里直接调宿主 API；
 // 它只能产出 BrainDirective[]，由宿主统一调度。仲裁顺序是 ABI 语义：
 //   suspend > setAnimation > moveTo > emit > requestCapability
 // 该顺序在此编码为 DirectiveKind 的数值（越大越优先），宿主与仲裁器（HostArbiter）共用它，
@@ -12,9 +12,9 @@ using System.Text.Json.Nodes;
 namespace PetDock.Core.PetRuntime;
 
 /// <summary>
-/// docs/11 §4 的 BrainDirective 判别式。**数值即 docs/11:162 的仲裁优先级**（越大越优先）：
+/// 原规格 11 §4 的 BrainDirective 判别式。**数值即 原规格 11:162 的仲裁优先级**（越大越优先）：
 /// RequestCapability 0 &lt; Emit 1 &lt; MoveTo 2 &lt; SetAnimation 3 &lt; Resume 4 &lt; Suspend 5。
-/// Resume 不在 docs/11:162 逐字列出的五项里（它只列了 suspend），按「生命周期类指令同档」处理，
+/// Resume 不在 原规格 11:162 逐字列出的五项里（它只列了 suspend），按「生命周期类指令同档」处理，
 /// 且档内 Suspend 优先于 Resume；一个实例同时提出两者时宿主按此裁决。
 /// </summary>
 public enum DirectiveKind
@@ -39,7 +39,7 @@ public enum DirectiveKind
 }
 
 /// <summary>
-/// 一条指令（docs/11 §4 的联合类型）。用一个带槽位的 record 表达六种 kind，
+/// 一条指令（原规格 11 §4 的联合类型）。用一个带槽位的 record 表达六种 kind，
 /// 各静态工厂保证「哪种 kind 该填哪些字段」；未用到的槽位为 null。
 /// </summary>
 public sealed record BrainDirective
@@ -52,7 +52,7 @@ public sealed record BrainDirective
     /// <summary>setAnimation 的 clip id（其余 kind 为 null）。</summary>
     public string? Clip { get; private init; }
 
-    /// <summary>setAnimation 的 opts.restart（docs/11:99）。</summary>
+    /// <summary>setAnimation 的 opts.restart（原规格 11:99）。</summary>
     public bool Restart { get; private init; }
 
     /// <summary>setAnimation 的 opts 其余内容（原样透传，宿主不解释）。</summary>
@@ -67,7 +67,7 @@ public sealed record BrainDirective
     /// <summary>emit 的事件包。</summary>
     public PetEvent? Event { get; private init; }
 
-    /// <summary>requestCapability 的能力 id（docs/14 §2 白名单）。</summary>
+    /// <summary>requestCapability 的能力 id（原规格 14 §2 白名单）。</summary>
     public string? Capability { get; private init; }
 
     /// <summary>requestCapability 的理由（必填，供授权 UI 展示）。</summary>
@@ -104,7 +104,7 @@ public sealed record BrainDirective
     public static BrainDirective Emit(PetEvent evt) =>
         new(DirectiveKind.Emit) { Event = evt ?? throw new System.ArgumentNullException(nameof(evt)) };
 
-    /// <summary>requestCapability：申请一项能力（宿主可拒绝，docs/14 §2）。</summary>
+    /// <summary>requestCapability：申请一项能力（宿主可拒绝，原规格 14 §2）。</summary>
     public static BrainDirective RequestCapability(string capability, string justification) =>
         new(DirectiveKind.RequestCapability)
         {
@@ -124,7 +124,7 @@ public sealed record BrainDirective
     };
 }
 
-/// <summary>docs/11 §4 WorldSnapshot：宿主每 tick 交给 Brain 的世界快照（全部由宿主提供）。</summary>
+/// <summary>原规格 11 §4 WorldSnapshot：宿主每 tick 交给 Brain 的世界快照（全部由宿主提供）。</summary>
 public readonly record struct WorldSnapshot(
     PetPoint? Cursor,
     PetRect WindowRect,
@@ -141,7 +141,7 @@ public readonly record struct WorldSnapshot(
 }
 
 /// <summary>
-/// docs/11 §4 `init(ctx: BrainContext)` 的上下文。docs/11 未逐字规定字段，
+/// 原规格 11 §4 `init(ctx: BrainContext)` 的上下文。原规格 11 未逐字规定字段，
 /// 这里只给「宿主必然持有、且不泄漏系统能力」的四项：实例 id、状态层、队列事件、预算。
 /// </summary>
 public sealed class BrainContext
@@ -153,7 +153,7 @@ public sealed class BrainContext
         Budget = budget;
     }
 
-    /// <summary>实例 id（UUIDv5(CAS 内容哈希)，docs/11 §2）。</summary>
+    /// <summary>实例 id（UUIDv5(CAS 内容哈希)，原规格 11 §2）。</summary>
     public string PetInstanceId { get; }
 
     /// <summary>本实例的状态层（可为 null：宿主未装配 state 插件）。</summary>
@@ -164,26 +164,26 @@ public sealed class BrainContext
 }
 
 /// <summary>
-/// docs/11 §4 IBrain（C# 绑定）。实现方必须是纯函数式的：相同 tick 输入 → 相同指令序列（docs/11:161），
+/// 原规格 11 §4 IBrain（C# 绑定）。实现方必须是纯函数式的：相同 tick 输入 → 相同指令序列（原规格 11:161），
 /// 且 tick 内不许做持久化写（持久化写走 IPetState.Commit）。
 /// </summary>
 public interface IBrain
 {
-    /// <summary>docs/11 §4 `readonly meta: { id, version }`。</summary>
+    /// <summary>原规格 11 §4 `readonly meta: { id, version }`。</summary>
     InterfaceMeta Meta { get; }
 
-    /// <summary>初始化（docs/11 §4 init）；失败即抛，宿主按 §9 记 degraded。</summary>
+    /// <summary>初始化（原规格 11 §4 init）；失败即抛，宿主按 §9 记 degraded。</summary>
     System.Threading.Tasks.Task InitAsync(BrainContext ctx);
 
-    /// <summary>下线。宿主按 docs/11 §9 给 1000ms 预算。</summary>
+    /// <summary>下线。宿主按 原规格 11 §9 给 1000ms 预算。</summary>
     System.Threading.Tasks.Task DisposeAsync();
 
     /// <summary>
     /// 宿主每 tick 调用一次；dt 以毫秒计，可累加、可被零化（挂起时）。
-    /// 抛异常 = 本 tick 的 directives 全部作废 + 状态标记 degraded（docs/11:259）。
+    /// 抛异常 = 本 tick 的 directives 全部作废 + 状态标记 degraded（原规格 11:259）。
     /// </summary>
     IReadOnlyList<BrainDirective> Tick(int dtMs, WorldSnapshot world);
 
-    /// <summary>事件注入（docs/11:137：总线顺序 = 到达顺序）。</summary>
+    /// <summary>事件注入（原规格 11:137：总线顺序 = 到达顺序）。</summary>
     void OnEvent(PetEvent ev);
 }

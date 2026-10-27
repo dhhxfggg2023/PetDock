@@ -70,7 +70,7 @@ internal static class ImportProvenance
         var doc = new Dictionary<string, object?>
         {
             ["generator"] = "petdock.importer.dyberpet (M3 t3)",
-            ["contract"] = "docs/handoff/M3-contract-frozen.md",
+            ["contract"] = "M3-contract-frozen",
             ["source"] = new Dictionary<string, object?>
             {
                 ["dir"] = sourceDir,
@@ -78,7 +78,7 @@ internal static class ImportProvenance
                 ["confidence"] = probe.Confidence,
                 ["evidence"] = probe.Evidence,
                 ["readOnly"] = true,
-                ["note"] = "素材只读引用（docs/32 §6）：frames 为绝对路径，无拷贝/哈希/CAS；assets/user/** 被 gitignore 覆盖，零字节入库。",
+                ["note"] = "素材只读引用（原规格 32 §6）：frames 为绝对路径，无拷贝/哈希/CAS；assets/user/** 被 gitignore 覆盖，零字节入库。",
             },
             ["layout"] = new Dictionary<string, object?>
             {
@@ -109,15 +109,15 @@ internal static class ImportProvenance
             {
                 // 契约 §5.4 十条降级登记（stderr 冻结行只取前七条）。
                 ["growth"] = "pet_conf 无对应字段可映射，M3 不做",
-                ["quests"] = "不做（docs/32 §5 不可复现）",
-                ["shop"] = "不做（docs/32 §5 不可复现）",
-                ["aiDialogue"] = "msg_dict/prompt 不消费（docs/32 §5 不可复现）",
+                ["quests"] = "不做（原规格 32 §5 不可复现）",
+                ["shop"] = "不做（原规格 32 §5 不可复现）",
+                ["aiDialogue"] = "msg_dict/prompt 不消费（原规格 32 §5 不可复现）",
                 ["audio"] = "note/*.wav 不消费（presenter 无音频面）",
                 ["liveMovement"] = "need_move/direction/frame_move 不消费（缺 Brain 与 MoveTo 宿主接线）",
                 ["randomAct"] = "random_act[] 留底不消费（需 Brain 定时器）",
                 ["hoverProduction"] = "core 无 hover 事件生产路径（Cursor 从未填充），悬停=自检面交付，M4 补",
                 ["anchor"] = "anchor 偏移不消费（fall:[5,0]/seebook:[0,-35] 留底）",
-                ["importUi"] = "M3 为可命令转换，无 UI（docs/18 §5 UI 提示行属 RFC-C）",
+                ["importUi"] = "M3 为可命令转换，无 UI（原规格 18 §5 UI 提示行属 RFC-C）",
             },
             ["unmappedPetConf"] = unmappedPetConf,
         };

@@ -1,4 +1,4 @@
-// --drivetest 的第二块：帧预算（docs/11 §7 / SM-04）与仲裁顺序（docs/11:162）。
+// --drivetest 的第二块：帧预算（原规格 11 §7 / SM-04）与仲裁顺序（原规格 11:162）。
 // 拆自 PetDriveTest.cs（D-03c：单文件 ≤400 行）；判据与理由见各自方法头。
 // 命令形态与总体判据见 PetDriveTest.Run。
 using System;
@@ -10,7 +10,7 @@ namespace PetDock.Hosting;
 
 internal static partial class PetDriveTest
 {
-    /// <summary>组 1（docs/11 §7）：三个预算常量 + 超时记 skip + **连续 8 次触发挂起**。</summary>
+    /// <summary>组 1（原规格 11 §7）：三个预算常量 + 超时记 skip + **连续 8 次触发挂起**。</summary>
     private static int Budget()
     {
         int failures = 0;
@@ -24,7 +24,7 @@ internal static partial class PetDriveTest
             $"limit={FrameBudgetGuard.ConsecutiveTimeoutLimit}");
 
         // 脚本化时钟：每帧 40ms。为什么必须是 40 而不是「比 8.3 大就行」——
-        // docs/11:225 的空闲档是 33.3ms：桩件按帧索引缓存位图，连续两帧常拿到同一个对象，
+        // 原规格 11:225 的空闲档是 33.3ms：桩件按帧索引缓存位图，连续两帧常拿到同一个对象，
         // 于是宿主判为「无内容变化」，预算自动升到 33.3ms。20ms 的帧因此**合法地**不超预算。
         // 这条正是「同一个数在两档下含义不同」的实例，判据必须跨过两档里更宽的那个。
         var clock = new ScriptedClock();
@@ -60,7 +60,7 @@ internal static partial class PetDriveTest
         Check(ref failures, "budget-suspended-state", instance.State == InstanceState.Suspended,
             $"state={instance.State}");
 
-        // 挂起后不再调用插件：QueryFrame 计数冻结、dt 被零化（docs/11:134）。
+        // 挂起后不再调用插件：QueryFrame 计数冻结、dt 被零化（原规格 11:134）。
         int queriesBefore = view.QueryCalls;
         long ticksBefore = instance.Ticks;
         FrameOutcome after = guard.Drive(instance, 9 * 33, World());
@@ -72,7 +72,7 @@ internal static partial class PetDriveTest
         Check(ref failures, "budget-dt-zero-after-resume", instance.NextDeltaMs(1234) == 0,
             "恢复后第一帧 dt=0");
 
-        // 全局预算（docs/11:226）：M2 只有一个实例，无「合计」可测 —— 它只计数、不阻断。
+        // 全局预算（原规格 11:226）：M2 只有一个实例，无「合计」可测 —— 它只计数、不阻断。
         // 判据：每帧耗时 1ms（远在 8.3ms 内），但帧**起点**之间隔 30ms（宿主循环自身的开销），
         // 于是第 2、3 帧的全局跨度是 31ms > 25ms。**第 1 帧不计入**：它没有上一帧起点，
         // 全局跨度只能取自身耗时 —— 这条差异本身就是判据的一部分（首帧的全局开销无从测量）。
@@ -101,7 +101,7 @@ internal static partial class PetDriveTest
         return failures;
     }
 
-    /// <summary>组 5（docs/11:162）：仲裁顺序就是 ABI 语义 —— 直接断言排序结果，
+    /// <summary>组 5（原规格 11:162）：仲裁顺序就是 ABI 语义 —— 直接断言排序结果，
     /// 且同档必须保持实现方给出的原序（稳定）。</summary>
     private static int Priority()
     {
@@ -120,7 +120,7 @@ internal static partial class PetDriveTest
         Check(ref failures, "arbiter-order",
             order == "Suspend>SetAnimation>MoveTo>Emit>RequestCapability", order);
 
-        // 同档稳定：两条 setAnimation 必须保持给出顺序（docs/11:161 的幂等要求）。
+        // 同档稳定：两条 setAnimation 必须保持给出顺序（原规格 11:161 的幂等要求）。
         var same = new List<BrainDirective>
         {
             BrainDirective.SetAnimation("first"),
@@ -137,11 +137,11 @@ internal static partial class PetDriveTest
         instance.Start();
         // 三条指令、三个裁决点（M4 后逐字写清，避免期望再陈旧）：
         //  · setAnimation → 落地，老 ABI 语义不变；
-        //  · not.a.capability → **必须被拒**：能力清单是白名单，该 id 不在 docs/14 §2 能力全集
-        //    （docs/14-sandbox-security.md:37 清单、:39「插件能被允许的职权范围」）之内，
+        //  · not.a.capability → **必须被拒**：能力清单是白名单，该 id 不在 原规格 14 §2 能力全集
+        //    （原规格 14:37 清单、:39「插件能被允许的职权范围」）之内，
         //    HostArbiter fail-closed 记因拒绝（HostArbiter.cs:306）。夹具刻意保留这个表外 id：
         //    这条检查要证明的正是「未授权能力必须被拒、不许静默授予」，期望 Applied=0 且 Refused=1；
-        //  · pet.drive → **必须被目录守门拒绝**：docs/16:47「本表 + §3 表 = 事件目录（共 14 个
+        //  · pet.drive → **必须被目录守门拒绝**：原规格 16:47「本表 + §3 表 = 事件目录（共 14 个
         //    名字），是『表外事件不得出现』这条硬约束的判定范围」，pet.drive 不在其中，
         //    Publish fail-closed（契约 §2.2：不入 Log、留审计行）。故期望从 M2 的
         //    CountOf=1 改为 CountOf=0 且 OutsideCatalog 恰好 +1。指令层仍记 Applied[Emit]=1：
@@ -166,7 +166,7 @@ internal static partial class PetDriveTest
             instance.Arbiter.LastRefusal.Contains("whitelist", StringComparison.Ordinal),
             instance.Arbiter.LastRefusal);
 
-        // 白名单之外的能力不许被静默授予（docs/14 §2）。
+        // 白名单之外的能力不许被静默授予（原规格 14 §2）。
         brain.Enqueue(BrainDirective.RequestCapability("assets.write:cas", "drive-evil"));
         instance.TickBrain(33, World());
         Check(ref failures, "arbiter-forbidden-capability",
@@ -174,7 +174,7 @@ internal static partial class PetDriveTest
                 && instance.Arbiter.Refused[DirectiveKind.RequestCapability] == 2,
             instance.Arbiter.Describe());
 
-        // brain 抛异常：本 tick 的指令全部作废 + degraded（docs/11:259）。
+        // brain 抛异常：本 tick 的指令全部作废 + degraded（原规格 11:259）。
         brain.ThrowOnTick = true;
         brain.Enqueue(BrainDirective.Emit(PetEvent.Named("pet.never")));
         instance.TickBrain(33, World());

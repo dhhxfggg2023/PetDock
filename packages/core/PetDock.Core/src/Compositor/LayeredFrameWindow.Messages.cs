@@ -60,7 +60,7 @@ internal sealed partial class LayeredFrameWindow
         });
 
     /// <summary>
-    /// 右键 → 宿主弹菜单（docs/18 §1，2026-10-26）。载荷用**屏幕坐标**取光标位置：
+    /// 右键 → 宿主弹菜单（原规格 18 §1，2026-10-26）。载荷用**屏幕坐标**取光标位置：
     /// WM_CONTEXTMENU 的 lParam 键盘唤出时是 (-1,-1)（不可信），WM_RBUTTONUP 的 lParam 又是客户区坐标，
     /// 两条消息取同一个来源才不会一个对一个错。菜单只落在鼠标处，窗口被拖到负坐标也照样对。
     /// 没有订阅者就不做任何事 —— 判据读 ContextMenuWired 能看出「菜单没接上」这种死键状态。

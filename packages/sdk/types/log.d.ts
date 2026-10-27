@@ -1,4 +1,4 @@
-// docs/20 §3 的日志面 —— 对应 js/log.js。
+// 原规格 20 §3 的日志面 —— 对应 js/log.js。
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /** 宿主注入的日志转发器（不是插件 API）。 */

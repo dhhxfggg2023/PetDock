@@ -4,8 +4,8 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Builtins;
 
 /// <summary>
-/// 内置 NullState（贡献点 id "petdock.state.null"，docs/11 §13：「全部状态丢弃」）。
-/// 可判定形态（docs/11:312）：Read 恒 null、ReadAll 恒空、Write 丢弃补丁、
+/// 内置 NullState（贡献点 id "petdock.state.null"，原规格 11 §13：「全部状态丢弃」）。
+/// 可判定形态（原规格 11:312）：Read 恒 null、ReadAll 恒空、Write 丢弃补丁、
 /// CommitAsync 无副作用、Migrate 把迁移前快照一并丢弃——
 /// 宿主持久层可以据此断言「真的什么都不留」。
 /// </summary>

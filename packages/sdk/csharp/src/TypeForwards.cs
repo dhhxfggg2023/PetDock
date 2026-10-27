@@ -13,12 +13,12 @@
 // 类型转发让「插件经 sdk 引用」解析到的仍是 core 里那个唯一类型：编译期签名一致、
 // 运行期 IsAssignableFrom 为真，且将来 Linux/Mac 下由 core 发布的版本改动会自动生效。
 //
-// 依赖方向仍是 docs/40 §2 允许的 sdk→core 一层（RANK 1→0，差值 1），
+// 依赖方向仍是 原规格 40 §2 允许的 sdk→core 一层（RANK 1→0，差值 1），
 // D-02c/D-02d 都不触发；plugins→core 仍无直达边。
 //
-// M2（t3）：ABI 四接口从 M0 的两个内容源接口扩展到 docs/11 §13 的五个类型 ——
+// M2（t3）：ABI 四接口从 M0 的两个内容源接口扩展到 原规格 11 §13 的五个类型 ——
 // IPetView / IBrain / IPointerSurface / IPetState 四个 ABI 角色接口，加上
-// IClipCatalog（可选声明接口，docs/11 的「片段清单」：SpriteSeqView 同时实现它，
+// IClipCatalog（可选声明接口，原规格 11 的「片段清单」：SpriteSeqView 同时实现它，
 // --animtest 的 C1 才能读到实现方声明的帧数）。五个类型**全部声明在 core**
 // （packages/core/PetDock.Core/src/PetRuntime/PetView.cs:60、Brain.cs:170、
 // Interaction.cs:47、State.cs:12、ClipCatalog.cs:15），本工程一条都不重声明。
@@ -38,7 +38,7 @@ using System.Runtime.CompilerServices;
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPetState))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IClipCatalog))]
 
-// RFC-23 / docs/20 §3：插件日志面。插件写 `PluginLog.Info("...")`，归属由宿主开作用域决定。
+// RFC-23 / 原规格 20 §3：插件日志面。插件写 `PluginLog.Info("...")`，归属由宿主开作用域决定。
 // 转发的是 core 里那唯一一份（与上面七个同一模式）：插件经 PetDock.Sdk 解析到的
 // 就是内核实际在用的类型，不是一份同签名的副本。
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.PluginLog))]

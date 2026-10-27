@@ -1,4 +1,4 @@
-// 插件日志面（RFC-23 / docs/20 §3）。插件写 `PluginLog.Info("...")`，归属由宿主给。
+// 插件日志面（RFC-23 / 原规格 20 §3）。插件写 `PluginLog.Info("...")`，归属由宿主给。
 //
 // 为什么是一个**静态门面 + 宿主开作用域**，而不是给插件注入一个 logger 对象：
 // 插件实现类由名册用无参构造造出来（PetSurfaceLoader.cs:279 的 Activator.CreateInstance），
@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace PetDock.Core.PetRuntime;
 
-/// <summary>文档 docs/20 §3 的四个级别。顺序即严重度（数值越大越严重）。</summary>
+/// <summary>文档 原规格 20 §3 的四个级别。顺序即严重度（数值越大越严重）。</summary>
 public enum PluginLogLevel
 {
     Debug = 0,
@@ -32,7 +32,7 @@ public interface IPluginLogSink
 }
 
 /// <summary>
-/// 插件可调的日志门面。四个方法与 docs/20 §3 一一对应。
+/// 插件可调的日志门面。四个方法与 原规格 20 §3 一一对应。
 ///
 /// 没装收口（自检、旧装配）时静默丢弃但**计数**：让「没装」与「插件没调」在读数上分得开，
 /// 这正是 RFC-21 那一轮学到的（空函数体会让两种沉默长得一样）。
@@ -54,7 +54,7 @@ public static class PluginLog
     /// <summary>当前作用域的插件 id（null = 作用域外）。</summary>
     public static string? CurrentPlugin => Current.Value;
 
-    /// <summary>debug 被丢弃的条数（docs/20:50 的「仅开发模式落盘」在无 --dev 开关时的落点）。</summary>
+    /// <summary>debug 被丢弃的条数（原规格 20:50 的「仅开发模式落盘」在无 --dev 开关时的落点）。</summary>
     public static long DebugDropped => Interlocked.Read(ref _debugDropped);
 
     /// <summary>收口自己抛异常的次数（写盘失败等）。业务侧永远看不到这些异常。</summary>
@@ -97,7 +97,7 @@ public static class PluginLog
 
     private static void Emit(PluginLogLevel level, string message)
     {
-        // debug 不落盘：docs/20:50 说「仅开发模式（--dev）落盘」，而本项目没有 --dev 开关
+        // debug 不落盘：原规格 20:50 说「仅开发模式（--dev）落盘」，而本项目没有 --dev 开关
         // （RFC-23 §8 第 1 条）。宁可「接受调用、如实计数」，也不假装写下去。
         if (level == PluginLogLevel.Debug)
         {

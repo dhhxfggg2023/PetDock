@@ -2,7 +2,7 @@
 //
 // 判据走**生产对象**：真的 AuditTrail（真的落盘、真的改名、真的读回）、
 // 真的 DiagnosticService（真的采流水）、真的 DiagnosticBundle（真的装包）。
-// 落盘只碰临时目录（docs/41 D-10b），用完删掉 —— 先例在 DiagnosticChecks.cs。
+// 落盘只碰临时目录（原规格 41 D-10b），用完删掉 —— 先例在 DiagnosticChecks.cs。
 //
 // 覆盖的判据：
 //   ui-audit-trail-file-written        流水真的落成文件

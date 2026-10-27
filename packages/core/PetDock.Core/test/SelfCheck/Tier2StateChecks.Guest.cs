@@ -28,7 +28,7 @@ internal static class Tier2Guest
 
     public static int Run(string mode)
     {
-        // stdin 是重定向管道时同步 ReadLine 会永久挂起（docs/50 的既有实录），一律走异步。
+        // stdin 是重定向管道时同步 ReadLine 会永久挂起（原规格 50 的既有实录），一律走异步。
         using var stdin = new StreamReader(Console.OpenStandardInput());
         long frameId = 0;
         string? line;

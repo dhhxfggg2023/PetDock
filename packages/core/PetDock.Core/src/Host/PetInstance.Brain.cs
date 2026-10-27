@@ -12,10 +12,10 @@ namespace PetDock.Hosting;
 public sealed partial class PetInstance
 {
     /// <summary>
-    /// 行为层的初始化（docs/11 §4 的 init(ctx)）。**M4 修复前这条链上是空的**：
+    /// 行为层的初始化（原规格 11 §4 的 init(ctx)）。**M4 修复前这条链上是空的**：
     /// core 只调了视图面的 InitAsync，行为层从构造到销毁一次都没被初始化过，
     /// 于是插件自己写在 init 里的可见日志永远不出现（M4-VERIFY-r2.md 的 E 号缺口）。
-    /// 失败按 docs/11 §9 处理：记 degraded、不抛 —— 一只坏 brain 不该让整只宠物起不来。
+    /// 失败按 原规格 11 §9 处理：记 degraded、不抛 —— 一只坏 brain 不该让整只宠物起不来。
     /// RFC-23 §3.3 第 3 点：调用进插件之前开日志归属作用域。
     /// </summary>
     private void InitBrain(ResourceBudget budget)
@@ -42,7 +42,7 @@ public sealed partial class PetInstance
     }
 
     /// <summary>
-    /// docs/11 §4 / §9：一次 brain tick。抛异常 → 本 tick 的指令全部作废 + 标记 degraded。
+    /// 原规格 11 §4 / §9：一次 brain tick。抛异常 → 本 tick 的指令全部作废 + 标记 degraded。
     /// dt 由调用方给出（可累加、可被零化），零化规则见 <see cref="NextDeltaMs"/>。
     /// RFC-23 §3.3 第 3 点：`Brain.Tick` 是插件代码，归属作用域包住它。
     /// </summary>
@@ -68,7 +68,7 @@ public sealed partial class PetInstance
             BrainDegraded = true;
             LastFailure = $"brain-tick-failed {error.GetType().Name}: {error.Message}";
             Display.Advance(DisplayTier.ReducedRate, "brain tick failed", 0);
-            return; // 指令全部作废：一条都不落地（docs/11:259）
+            return; // 指令全部作废：一条都不落地（原规格 11:259）
         }
 
         BrainDegraded = false;

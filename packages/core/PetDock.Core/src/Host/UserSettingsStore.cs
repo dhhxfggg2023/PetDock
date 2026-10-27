@@ -1,4 +1,4 @@
-// 设置的落盘与读取（docs/17 §2 schema / §3 两阶段提交 / §4 审计字段）。
+// 设置的落盘与读取（原规格 17 §2 schema / §3 两阶段提交 / §4 审计字段）。
 //
 // 为什么单独一个文件而不是塞进 pets.json：pets.json 是「导入过什么」的清单，
 // settings.json 是「用户偏好」。两种形态、两种生命周期，混在一份文件里，
@@ -17,7 +17,7 @@ using PetDock.Core.Compositor;
 
 namespace PetDock.Hosting;
 
-/// <summary>用户设置的读写（docs/17 §1 的 UserSettings 形态）。</summary>
+/// <summary>用户设置的读写（原规格 17 §1 的 UserSettings 形态）。</summary>
 internal sealed class UserSettingsStore
 {
     /// <summary>设置文件名（与 pets.json 同级，都在数据区根下）。</summary>
@@ -39,7 +39,7 @@ internal sealed class UserSettingsStore
 
     /// <summary>
     /// 读设置。文件缺失、损坏、或值越界，一律回落到默认值——
-    /// 一份坏掉的用户偏好不该让程序起不来（docs/17 §2：宿主返回快照并且阻止加载是 ABI 层的做法，
+    /// 一份坏掉的用户偏好不该让程序起不来（原规格 17 §2：宿主返回快照并且阻止加载是 ABI 层的做法，
     /// 用户偏好没有那种严格性）。
     /// </summary>
     public UserSettings Load()
@@ -153,25 +153,12 @@ internal sealed class UserSettingsStore
 
             // 用户关掉的插件 id（2026-10-26 用户要求「插件可以选择关闭，重启生效」）。
             // 只收字符串；坏条目单独跳过 —— 宁可下一轮多装一只，不要因为一条脏数据启动失败。
-            List<string>? disabledPlugins = null;
-            if (obj["pluginsDisabled"] is JsonArray disabled)
-            {
-                disabledPlugins = new List<string>(disabled.Count);
-                foreach (JsonNode? entry in disabled)
-                {
-                    string? id = entry is JsonValue value && value.TryGetValue(out string? text) ? text : null;
-                    if (!string.IsNullOrWhiteSpace(id) && !disabledPlugins.Contains(id, StringComparer.Ordinal))
-                    {
-                        disabledPlugins.Add(id);
-                    }
-                }
-            }
-            else if (obj["pluginsDisabled"] is JsonNode notArray)
-            {
-                KernelLog.Write($"settings-field-unreadable field=pluginsDisabled reason=not-an-array type={notArray.GetType().Name}");
-            }
+            List<string>? disabledPlugins = ReadStringArray(obj, "pluginsDisabled");
 
-            // 界面材质（docs/18 §2.7）：只认三个名字，其余一律当没设过（回落到不透明）。
+            // 用户显式打开的插件 id（与 pluginsDisabled 同一形态、同一纪律）。
+            List<string>? enabledPlugins = ReadStringArray(obj, "pluginsEnabled");
+
+            // 界面材质（原规格 18 §2.7）：只认三个名字，其余一律当没设过（回落到不透明）。
             // 与上面几个字段同一条纪律：坏值不迁移、不猜测，直接按默认走。
             string? material = null;
             if (obj["material"] is JsonNode materialNode)
@@ -206,7 +193,7 @@ internal sealed class UserSettingsStore
                 }
             }
 
-            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins, material, themeMode).Clamped();
+            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins, material, themeMode, enabledPlugins).Clamped();
         }
         catch (Exception error)
         {
@@ -216,7 +203,7 @@ internal sealed class UserSettingsStore
     }
 
     /// <summary>
-    /// 写设置。两阶段提交 + docs/17 §4 要求的 agent_id 与 timestamp。
+    /// 写设置。两阶段提交 + 原规格 17 §4 要求的 agent_id 与 timestamp。
     /// 写失败抛异常（调用方负责把失败说清楚，不能假装存上了）。
     ///
     /// 整份重写（RFC-16 §3.2 的纪律）：调用方必须**先读出再改一个字段**，
@@ -235,7 +222,7 @@ internal sealed class UserSettingsStore
             ["language"] = value.Language,
         };
 
-        // 界面材质（docs/18 §2.7）：只在不是默认值时写这个键——「没这个键」= 不透明，
+        // 界面材质（原规格 18 §2.7）：只在不是默认值时写这个键——「没这个键」= 不透明，
         // 这样旧文件不需要迁移，而选了磨砂/玻璃的人重开程序还在。
         if (value.Material is { Length: > 0 } material && material != "opaque")
         {
@@ -282,22 +269,9 @@ internal sealed class UserSettingsStore
             doc["petPositions"] = positionDoc;
         }
 
-        // 用户关掉的插件（同上：空表 / null 就不写这个键）。排序后写，字节序稳定。
-        if (value.DisabledPlugins is { Count: > 0 } disabledPlugins)
-        {
-            var ids = new List<string>(disabledPlugins);
-            ids.Sort(StringComparer.Ordinal);
-            var disabledDoc = new JsonArray();
-            foreach (string id in ids)
-            {
-                // 用 JsonValue.Create 而不是 disabledDoc.Add(id)：泛型 Add<T> 会把字符串包成
-                // JsonValueCustomized<string>，写出时要求 JsonSerializerOptions 带 TypeInfoResolver，
-                // 否则运行期抛 InvalidOperationException（与 DiagnosticSections.ToJsonArray 同一个坑）。
-                disabledDoc.Add(JsonValue.Create(id)!);
-            }
-
-            doc["pluginsDisabled"] = disabledDoc;
-        }
+        // 用户关掉 / 打开的插件（空表 / null 就不写这个键）。排序后写，字节序稳定。
+        WriteStringArray(doc, "pluginsDisabled", value.DisabledPlugins);
+        WriteStringArray(doc, "pluginsEnabled", value.EnabledPlugins);
 
         string? dir = System.IO.Path.GetDirectoryName(_path);
         if (!string.IsNullOrEmpty(dir))
@@ -311,5 +285,53 @@ internal sealed class UserSettingsStore
             doc.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
             new UTF8Encoding(false));
         File.Move(temp, _path, overwrite: true);
+    }
+
+    /// <summary>读一个字符串数组字段：只收非空且不重复的字符串，坏条目跳过（同一条「不让脏数据卡启动」纪律）。</summary>
+    private static List<string>? ReadStringArray(JsonObject obj, string key)
+    {
+        if (obj[key] is not JsonArray array)
+        {
+            if (obj[key] is JsonNode notArray)
+            {
+                KernelLog.Write($"settings-field-unreadable field={key} reason=not-an-array type={notArray.GetType().Name}");
+            }
+
+            return null;
+        }
+
+        var ids = new List<string>(array.Count);
+        foreach (JsonNode? entry in array)
+        {
+            string? id = entry is JsonValue value && value.TryGetValue(out string? text) ? text : null;
+            if (!string.IsNullOrWhiteSpace(id) && !ids.Contains(id, StringComparer.Ordinal))
+            {
+                ids.Add(id);
+            }
+        }
+
+        return ids;
+    }
+
+    /// <summary>写一个字符串数组字段（排序后写，字节序稳定；空表不写键）。</summary>
+    private static void WriteStringArray(JsonObject doc, string key, IReadOnlyList<string>? ids)
+    {
+        if (ids is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var sorted = new List<string>(ids);
+        sorted.Sort(StringComparer.Ordinal);
+        var array = new JsonArray();
+        foreach (string id in sorted)
+        {
+            // 用 JsonValue.Create 而不是 array.Add(id)：泛型 Add<T> 会把字符串包成
+            // JsonValueCustomized<string>，写出时要求 JsonSerializerOptions 带 TypeInfoResolver，
+            // 否则运行期抛 InvalidOperationException（与 DiagnosticSections.ToJsonArray 同一个坑）。
+            array.Add(JsonValue.Create(id)!);
+        }
+
+        doc[key] = array;
     }
 }

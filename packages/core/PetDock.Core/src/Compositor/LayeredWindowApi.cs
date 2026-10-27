@@ -1,4 +1,4 @@
-// 实现 docs/12-window-compositor.md §2「规则：一切从 Win32 出发」：透明分层窗所需的 Win32 常量、结构体与 P/Invoke 集合
+// 实现 原规格 12 §2「规则：一切从 Win32 出发」：透明分层窗所需的 Win32 常量、结构体与 P/Invoke 集合
 using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -7,10 +7,10 @@ using System.Text;
 namespace PetDock.Core.Compositor;
 
 /// <summary>
-/// Win32 原始入口集合。命中测试完全由 OS 读取 alpha 完成（docs/12 §2.3），
+/// Win32 原始入口集合。命中测试完全由 OS 读取 alpha 完成（原规格 12 §2.3），
 /// 因此本文件不包含任何命中判定逻辑，只提供取窗口矩形与发送 WM_NCHITTEST 的只读探针。
 /// 诊断探针（ClassNameAtPoint / WindowDescription / ProcessNameOf / SampleScreen）在
-/// LayeredWindowApi.Diagnostics.cs —— docs/40 D-03c 的拆分半边。
+/// LayeredWindowApi.Diagnostics.cs —— 原规格 40 D-03c 的拆分半边。
 /// </summary>
 internal static partial class Win32
 {

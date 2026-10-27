@@ -1,4 +1,4 @@
-// 实现 docs/12 §2.3「命中：交给操作系统」的自检探针：读 alpha 后的 OS 命中结果
+// 实现 原规格 12 §2.3「命中：交给操作系统」的自检探针：读 alpha 后的 OS 命中结果
 using System.Drawing;
 
 namespace PetDock.Core.Compositor;

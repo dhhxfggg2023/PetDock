@@ -1,4 +1,4 @@
-// 实现 docs/12 §4「节流与功耗」：空闲 30fps 帧泵与单帧预算 SM-04 = 8.3ms 统计
+// 实现 原规格 12 §4「节流与功耗」：空闲 30fps 帧泵与单帧预算 SM-04 = 8.3ms 统计
 using System.Diagnostics;
 
 namespace PetDock.Core.Compositor;
@@ -25,7 +25,7 @@ internal sealed class FramePump : IDisposable
 
     /// <summary>
     /// 目标帧周期（毫秒）。默认 30fps（= 1000/30）。
-    /// 可在运行期改（docs/18 §2.3 的「空闲降帧阈值」设置项）：改完立即生效，不用重启。
+    /// 可在运行期改（原规格 18 §2.3 的「空闲降帧阈值」设置项）：改完立即生效，不用重启。
     /// 用 Volatile 读写：设置线程写、帧泵线程读。
     /// </summary>
     private double _targetFrameMs = 1000.0 / 30.0;

@@ -6,7 +6,7 @@
 // 窗口那一条只回答 §4.1 答不了的那个问题：**有人消费这张命中面吗**（RFC-41 §4.2）。
 //
 // 判定通道与 RFC-41 §4.2 的原文不一致，理由来自已定案的排障报告
-// docs/handoff/HTTRANSPARENT-2026-10-25.md §5 第 1、3 条：§4.2 要求用 WindowFromPoint，
+// 交接档案 §5 第 1、3 条：§4.2 要求用 WindowFromPoint，
 // 但那条路只按 alpha == 0 过滤（同报告 §3.2 Phase B vs H：全透明帧落到下层，不透明帧返回自己），
 // 于是 alpha = 8 在它眼里与不透明像素没有区别 —— 阈值在这条通道上**永远判不出来**。
 // 本判据因此用 Win32.HitTest（即 SendMessage(WM_NCHITTEST)）：窗口侧 WndProc 一旦拿到
@@ -115,7 +115,7 @@ internal static class HitThresholdChecks
 
     /// <summary>
     /// 判据 4：阈值不得侵蚀 alpha == 0 的绝对穿透 —— 给一条全 1 的 hitmap，
-    /// (5,5) 仍必须穿透（docs/11:190）。正控 (8,8) 证明这条路真的读了 hitmap。
+    /// (5,5) 仍必须穿透（原规格 11:190）。正控 (8,8) 证明这条路真的读了 hitmap。
     /// </summary>
     private static void AlphaZeroStillPasses(Report check, BitmapHandle handle)
     {
@@ -193,7 +193,7 @@ internal static class HitThresholdChecks
     /// RFC-41 §4.2 的 tier-1 形状桩：左半 alpha = 255、右半 alpha = 8，**都不给 Hitmap**
     /// （于是 Frame.HitsAt 走「Hitmap is null → 阈值化 alpha」那条分支）。
     /// Hits **原样转发** frame.HitsAt —— 桩自己不算命中语义：自算测到的是桩的算法，
-    /// 而 Frame.HitsAt 才是产品的唯一仲裁者（docs/11:56）。
+    /// 而 Frame.HitsAt 才是产品的唯一仲裁者（原规格 11:56）。
     /// </summary>
     private sealed class Tier1Stub : IFrameContentSource, IFrameHitSurface
     {

@@ -1,8 +1,8 @@
 // 授权链路的 UI 侧自检（RFC-13 §3 判据表）。
 // 为什么单独一个文件：UiSelfTest.cs 已经接近 D-03c 的单文件行数上限，而 D-03c 对 test/ 也生效。
 // 判据口径来自文档：
-//   docs/18 §3   弹窗可逐项拒绝；被拒绝的能力在下次打开时置灰且不可勾
-//   docs/18 §2.2 插件页有「授权」与「禁用」两个入口，且作用于**选中**的插件
+//   原规格 18 §3   弹窗可逐项拒绝；被拒绝的能力在下次打开时置灰且不可勾
+//   原规格 18 §2.2 插件页有「授权」与「禁用」两个入口，且作用于**选中**的插件
 // 输出与计数都交给调用方（UiSelfTest 的 emit/check），这样 --log 文件照样能取证。
 using System;
 using System.Collections.Generic;
@@ -31,7 +31,7 @@ internal static class ConsentUiChecks
     }
 
     /// <summary>
-    /// docs/18 §3：「你可以拒绝其中的任何一项」——弹窗必须逐项可选，而不是三个互斥单选。
+    /// 原规格 18 §3：「你可以拒绝其中的任何一项」——弹窗必须逐项可选，而不是三个互斥单选。
     /// 判据：两项能力默认全勾；用户取消勾选其中一项后，SelectedIds 只剩另一项。
     /// </summary>
     private static int DialogItemwise(ConsentEmit emit, ConsentCheck check)
@@ -63,7 +63,7 @@ internal static class ConsentUiChecks
     }
 
     /// <summary>
-    /// docs/18 §3：「被拒绝的能力在下次打开弹窗时置灰」+「拒绝后该插件不允许重试同一能力」。
+    /// 原规格 18 §3：「被拒绝的能力在下次打开弹窗时置灰」+「拒绝后该插件不允许重试同一能力」。
     /// 判据：Denied 项出现在展示清单里，但不在可勾集合里，勾选集合里也没有它。
     /// </summary>
     private static int DialogLockedAfterDeny(ConsentEmit emit, ConsentCheck check)
@@ -92,7 +92,7 @@ internal static class ConsentUiChecks
     }
 
     /// <summary>
-    /// docs/18 §2.2：插件页要有「授权」与「禁用」两个入口，且作用于**选中**的插件。
+    /// 原规格 18 §2.2：插件页要有「授权」与「禁用」两个入口，且作用于**选中**的插件。
     /// 判据：按钮存在；选中一行后回调收到的 id 等于该行的 pluginId。
     /// </summary>
     private static int PluginPageEntries(ConsentEmit emit, ConsentCheck check)
@@ -106,8 +106,7 @@ internal static class ConsentUiChecks
             {
                 new("com.example.alphaplugin", "示例插件", "1.0.0", 1, "Running", 2),
                 new("com.example.betaplugin", "另一个插件", "1.0.0", 0, "Suspended", 0),
-            },
-            PerfSummary.Empty);
+            });
 
         using var panel = new ControlPanel(
             () => snapshot,
@@ -134,7 +133,7 @@ internal static class ConsentUiChecks
         string? strayAuth = null;
         string? strayDisable = null;
         using var emptyPanel = new ControlPanel(
-            () => new UiSnapshot(Array.Empty<PetLine>(), Array.Empty<PluginLine>(), PerfSummary.Empty),
+            () => new UiSnapshot(Array.Empty<PetLine>(), Array.Empty<PluginLine>()),
             showWindow: false,
             authorize: id => strayAuth = id,
             toggleDisabled: id => strayDisable = id);

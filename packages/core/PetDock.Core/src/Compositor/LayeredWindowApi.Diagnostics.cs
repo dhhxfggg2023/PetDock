@@ -1,5 +1,5 @@
-// 诊断探针（docs/12 §2）：把「命中点被谁占了」这类结论落到**具体进程**上的那几个只读辅助。
-// Win32 入口本体（常量、结构体、P/Invoke）在 LayeredWindowApi.cs；本文件是 docs/40 D-03c 的拆分半边，
+// 诊断探针（原规格 12 §2）：把「命中点被谁占了」这类结论落到**具体进程**上的那几个只读辅助。
+// Win32 入口本体（常量、结构体、P/Invoke）在 LayeredWindowApi.cs；本文件是 原规格 40 D-03c 的拆分半边，
 // 与本体同为 partial，直接复用本体的 GetClassName/GetWindowText/GetWindowLongPtr。
 using System.Drawing;
 using System.Text;

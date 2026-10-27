@@ -8,16 +8,16 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Builtins;
 
 /// <summary>
-/// 内置演示视图（贡献点 id "petdock.presenter.sprite-seq"，docs/11 §13）：
-/// 读 docs/31 Sample Pack（fixtures/sample-pet/）的 PNG 序列 + anim/*.json，
+/// 内置演示视图（贡献点 id "petdock.presenter.sprite-seq"，原规格 11 §13）：
+/// 读 原规格 31 Sample Pack（fixtures/sample-pet/）的 PNG 序列 + anim/*.json，
 /// 按 clip 声明的 fps 与 loop 产出帧。
-/// QueryFrame 保持 docs/11:100 的同步纯函数语义：同一 now、同一 clip、同一画板尺寸
-/// → 同一位图对象、同像素（docs/11:120 的可判定基础，也是 --animtest C2/C3 的前提）。
+/// QueryFrame 保持 原规格 11:100 的同步纯函数语义：同一 now、同一 clip、同一画板尺寸
+/// → 同一位图对象、同像素（原规格 11:120 的可判定基础，也是 --animtest C2/C3 的前提）。
 /// </summary>
 public sealed class SpriteSeqView : IPetView, IClipCatalog
 {
-    /// <summary>运行期贡献点 id：逐字等于 docs/11:310（连字符在这里合法；manifest 的 id 字段是另一件事，
-    /// 见 docs/handoff/M2-contract-frozen.md §11.2——本值不是 manifest id，不参与 docs/21 pattern）。</summary>
+    /// <summary>运行期贡献点 id：逐字等于 原规格 11:310（连字符在这里合法；manifest 的 id 字段是另一件事，
+    /// 见 交接档案 §11.2——本值不是 manifest id，不参与 原规格 21 pattern）。</summary>
     public InterfaceMeta Meta => new("petdock.presenter.sprite-seq", "1.0.0");
 
     private PackData? _pack;
@@ -45,7 +45,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
     {
         if (_pack is not null)
         {
-            return Task.CompletedTask; // 幂等：重复 init 不重读盘（docs/11:119 的读盘只发生在 init 侧）
+            return Task.CompletedTask; // 幂等：重复 init 不重读盘（原规格 11:119 的读盘只发生在 init 侧）
         }
 
         // 素材来源先看宿主为本实例解析好的素材根（按实例），再看进程级环境变量与默认探测（按进程）。
@@ -75,7 +75,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
         }
 
         _pack = pack;
-        // RFC-23 / docs/20 §3：插件侧的日志面。以前这里只能写 stderr —— 内核的日志出口是
+        // RFC-23 / 原规格 20 §3：插件侧的日志面。以前这里只能写 stderr —— 内核的日志出口是
         // internal，插件够不着（见下面那段的由来）。现在走 PluginLog：宿主按作用域把这一行
         // 记到本插件头上，常驻形态下落进诊断日志，warn/error 还会进审计流水。
         PluginLog.Info(
@@ -88,7 +88,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
             $"sprite-seq source={located} form={(PackLoader.IsPackRoot(located) ? "pack" : "single-image")}"
             + $" clips={pack.Clips.Count} instance={context.PetInstanceId}"
             + $" source-kind={(explicitRoot is not null ? "explicit" : "env-or-default")}"
-            + $" default={(PackLoader.IsDefaultLocation(located) ? "docs/31-sample-pack" : "explicit")}");
+            + $" default={(PackLoader.IsDefaultLocation(located) ? "default-sample-pack" : "explicit")}");
         return Task.CompletedTask;
     }
 
@@ -96,7 +96,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
     {
         PackData pack = RequirePack();
 
-        // RFC-31 §4 / docs/11:111：RequiresHitmap=true 表示「alpha 不可信、必须给显式命中图」。
+        // RFC-31 §4 / 原规格 11:111：RequiresHitmap=true 表示「alpha 不可信、必须给显式命中图」。
         // sprite-seq 的素材是带边缘抗锯齿与半透明阴影的 PNG：alpha 落在中间值的那一圈不该可点
         // （否则桌宠边缘外 2~3px 也会吃掉鼠标）。所以这一档由插件自己出命中图，逐像素按阈值判，
         // 内核不再替它猜阈值——见 Compose 里的 HitmapFor。
@@ -149,9 +149,9 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
         }
 
         _current = clipId;
-        // restart 不引入「起始时刻」状态：帧相位是 now 的纯函数（docs/11:120），
+        // restart 不引入「起始时刻」状态：帧相位是 now 的纯函数（原规格 11:120），
         // 一旦相位依赖调用历史，「同一 now 同一帧」就要先问调用顺序，C2 判据即失守。
-        // loop 片段的相位天然绕回（docs/31 三片段均为 loop），restart 无可重置之物。
+        // loop 片段的相位天然绕回（原规格 31 三片段均为 loop），restart 无可重置之物。
         return true;
     }
 
@@ -180,7 +180,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
 
     public void OnEvent(PetEvent evt)
     {
-        // sprite-seq 无事件行为（docs/31 §5：交互起步为空）。
+        // sprite-seq 无事件行为（原规格 31 §5：交互起步为空）。
     }
 
     /// <summary>
@@ -188,7 +188,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
     /// 用半帧取整而非 floor 的原因：--animtest 的 C3 在周期边界附近用整毫秒采样，
     /// hover 的 period=2*1000/6≈333.33ms 处，floor 会把采样点 333ms 映到帧 1 而非绕回帧 0；
     /// 半帧取整把它映射到 2→帧 0，对整毫秒采样稳定绕回（边界误差 ≤0.5·fps/1000 ≤ 0.03 帧），
-    /// 且「同一 now 同一帧」不受影响。docs/11:62 只冻结 loop 三值，未冻结相位映射。
+    /// 且「同一 now 同一帧」不受影响。原规格 11:62 只冻结 loop 三值，未冻结相位映射。
     /// </summary>
     internal static int FrameIndexOf(AnimationClip clip, int nowMs)
     {
@@ -218,7 +218,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
     /// <summary>
     /// 合成目标尺寸的帧位图并缓存。1:1 时直接 DrawImageUnscaled（像素与磁盘 PNG 逐位一致，金图取 queryFrame(0)）。
     /// M3 契约 §2.7：帧间尺寸不一（真包 208×224 … 310×289）时**不再缩放居中**——小帧按左上角 (0,0)
-    /// 粘贴、余处保持透明（docs/11:53 alpha=0 穿透语义，悬停命中只看不透明区）；缩放居中会让不同
+    /// 粘贴、余处保持透明（原规格 11:53 alpha=0 穿透语义，悬停命中只看不透明区）；缩放居中会让不同
     /// 动作的角色忽大忽小。大于画板的帧（画板=全包最大帧，理论上不出现）防御性等比缩小，仍左上对齐。
     /// </summary>
     private Bitmap Compose(string clipId, int index, RenderTarget target)
@@ -270,7 +270,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
 
     /// <summary>
     /// 由合成后的帧算命中图（每像素 0|1，尺寸 = 画板物理像素）。
-    /// 只读 alpha 通道、不改像素：docs/11:45「hitmap 只影响命中，不影响外观」。
+    /// 只读 alpha 通道、不改像素：原规格 11:45「hitmap 只影响命中，不影响外观」。
     /// </summary>
     private byte[] HitmapFor(string clipId, int index, Bitmap frame)
     {

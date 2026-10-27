@@ -1,11 +1,11 @@
 // 装配顺序探针（RFC-29 §3.6）：`--composetest [pluginsRoot]`。
 //
-// 为什么需要它：`FrameComposition.Compose` 与 `PluginHandle` 都是 internal，而 tests/m7 是
+// 为什么需要它：`FrameComposition.Compose` 与 `PluginHandle` 都是 internal，而外部测试程序是
 // 独立程序集、core 也没有 InternalsVisibleTo —— 判据无法直接调那个装配点。这里给它一个
 // 与 `--hosttest` / `--perftest` 同族的命令行入口，跑的是**产品那条 Compose**（不是平行实现）：
 // 建宿主 → 发现并装载 manifest → 调 Compose → 打 `COMPOSE …` 与 `COMPOSE-OK|FAIL`。
 //
-// 它不猜插件 id（docs/01 P-02 第 4 条）：期望的 source 由调用方看 `COMPOSE source=` 自己判。
+// 它不猜插件 id（原规格 01 P-02 第 4 条）：期望的 source 由调用方看 `COMPOSE source=` 自己判。
 using System;
 using System.Collections.Generic;
 using System.Linq;

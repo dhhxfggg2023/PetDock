@@ -1,9 +1,9 @@
-// PetInstance 的指针半边（partial 的第三块）：docs/11 §5 的交互层仲裁与 §9:260 的会话超时。
-// 两条语义（docs/11:189-190 逐字）：
+// PetInstance 的指针半边（partial 的第三块）：原规格 11 §5 的交互层仲裁与 §9:260 的会话超时。
+// 两条语义（原规格 11:189-190 逐字）：
 //   1. 多个 surface 叠加时 priority 高的先收到；同优先级按注册顺序（先注册先问）；
 //   2. 命中测试总是先过 hitmap / alpha，再过 surface —— 任何一个 surface 都不能让已经穿透的
 //      区域变成可点。所以本文件的 PointerDown **第一件事**是调 HitsAt，不是问 surface。
-// 以及 docs/11:260：一次交互会话持续 >10s 无 up / cancel → 宿主强制 cancel + 发 host.canceled。
+// 以及 原规格 11:260：一次交互会话持续 >10s 无 up / cancel → 宿主强制 cancel + 发 host.canceled。
 using System;
 using System.Collections.Generic;
 using PetDock.Core.Compositor;
@@ -11,13 +11,13 @@ using PetDock.Core.PetRuntime;
 
 namespace PetDock.Hosting;
 
-/// <summary>一只宠物实例的指针面（docs/11 §5）。</summary>
+/// <summary>一只宠物实例的指针面（原规格 11 §5）。</summary>
 public sealed partial class PetInstance
 {
-    /// <summary>docs/11:260 会话无 up / cancel 的强制取消预算（毫秒）。</summary>
+    /// <summary>原规格 11:260 会话无 up / cancel 的强制取消预算（毫秒）。</summary>
     public const int SessionCancelBudgetMs = 10000;
 
-    /// <summary>宿主强制取消时发的事件类型（docs/11:260 逐字）。</summary>
+    /// <summary>宿主强制取消时发的事件类型（原规格 11:260 逐字）。</summary>
     public const string HostCanceledEventName = "host.canceled";
 
     private IPointerSession? _session;
@@ -39,7 +39,7 @@ public sealed partial class PetInstance
     public string? ActiveSurfaceId => _sessionSurface?.Id;
 
     /// <summary>
-    /// 按 docs/11:189 排好序的 surface 列表：priority 降序，同优先级保持注册顺序。
+    /// 按 原规格 11:189 排好序的 surface 列表：priority 降序，同优先级保持注册顺序。
     /// 排序用插入排序（稳定）——同优先级的相对次序是 ABI 语义，不稳定排序会静默改变它。
     /// </summary>
     public IReadOnlyList<IPointerSurface> SurfacesByPriority
@@ -71,7 +71,7 @@ public sealed partial class PetInstance
     }
 
     /// <summary>
-    /// 一次按下（docs/11 §5:176 的 onPointerDown）。返回是否有人接。
+    /// 一次按下（原规格 11 §5:176 的 onPointerDown）。返回是否有人接。
     /// 顺序：穿透判定（§5:190）→ 按优先级逐个问 surface（HitTest 不过就跳过）→
     /// 返回 null 的实现视为拒绝，转给下一个。
     /// surface 抛异常 = 拒绝并记日志（不许把宿主循环打穿）。
@@ -85,7 +85,7 @@ public sealed partial class PetInstance
 
         if (!HitsAt(pixelX, pixelY))
         {
-            return false; // docs/11:190 穿透区不许被任何 surface 变成可点
+            return false; // 原规格 11:190 穿透区不许被任何 surface 变成可点
         }
 
         PetPoint local = ToLocal(pixelX, pixelY);
@@ -101,7 +101,7 @@ public sealed partial class PetInstance
                 IPointerSession? session = surface.OnPointerDown(local, button);
                 if (session is null)
                 {
-                    continue; // docs/11:176 返回 null = 拒绝，转给下一个
+                    continue; // 原规格 11:176 返回 null = 拒绝，转给下一个
                 }
 
                 _session = session;
@@ -144,7 +144,7 @@ public sealed partial class PetInstance
         CloseSession();
     }
 
-    /// <summary>宿主侧取消（ALT、关机、锁屏；docs/11:183）。</summary>
+    /// <summary>宿主侧取消（ALT、关机、锁屏；原规格 11:183）。</summary>
     public void CancelSession(string why)
     {
         if (_session is null)
@@ -158,7 +158,7 @@ public sealed partial class PetInstance
     }
 
     /// <summary>
-    /// docs/11:260：会话持续超过 10s 没有 up / cancel → 宿主强制 cancel 并发 host.canceled。
+    /// 原规格 11:260：会话持续超过 10s 没有 up / cancel → 宿主强制 cancel 并发 host.canceled。
     /// 帧循环每帧调一次；返回 true 表示本帧发生了一次强制取消。
     /// </summary>
     public bool EnforceSessionBudget(int nowMs)
@@ -187,7 +187,7 @@ public sealed partial class PetInstance
         SessionsEnded++;
     }
 
-    /// <summary>物理像素 → 宠物局部坐标（docs/11 §2 Point：原点在窗口左上，逻辑像素）。</summary>
+    /// <summary>物理像素 → 宠物局部坐标（原规格 11 §2 Point：原点在窗口左上，逻辑像素）。</summary>
     private PetPoint ToLocal(int pixelX, int pixelY)
     {
         double scale = Target is null || Target.Scale <= 0 ? 1.0 : Target.Scale;

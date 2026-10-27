@@ -5,7 +5,7 @@
 // （petdock.portable）时改落程序目录的 data\，让「一个文件夹」自包含、删目录即卸载。
 // 仓库内不放：那里是源码，用户自己的东西不该混进源码树。测试与开发用 PETDOCK_DATA_ROOT 显式覆盖。
 //
-// 为什么不按内容寻址存（docs/15 §2 的那一套）：内容寻址要配套 CAS 引用与引用反查表，
+// 为什么不按内容寻址存（原规格 15 §2 的那一套）：内容寻址要配套 CAS 引用与引用反查表，
 // 而引用方（视图实现）今天只认路径。v1 用「复制进用户数据区 + 按路径引用」近似，
 // 代价与欠账记在 RFC-15 §7，不假装已经合规。
 using System;
@@ -21,7 +21,7 @@ using PetDock.Core.Ui;
 namespace PetDock.Hosting;
 
 /// <summary>
-/// 用户数据区（docs/17 §1 的数据形态落点）。
+/// 用户数据区（原规格 17 §1 的数据形态落点）。
 /// 只管三件事：素材包目录、清单文件、当前选中项。
 /// </summary>
 internal sealed partial class PetDataStore
@@ -48,10 +48,13 @@ internal sealed partial class PetDataStore
     /// <summary>状态文件子目录名（RFC-24 §6.1）。目录归本类所有，<see cref="Host.StateStore"/> 只管文件。</summary>
     public const string StateFolder = "state";
 
+    /// <summary>用户插件子目录名（2026-10-28）：装进数据区的插件住在这里，删目录即卸载。</summary>
+    public const string PluginsFolder = "plugins";
+
     /// <summary>清单文件名（记录导入过什么、当前选中哪个）。</summary>
     public const string CatalogFile = "pets.json";
 
-    /// <summary>清单的 schema 版本（docs/17 §1 的规矩：只许加可空字段，版本只向前）。</summary>
+    /// <summary>清单的 schema 版本（原规格 17 §1 的规矩：只许加可空字段，版本只向前）。</summary>
     public const int SchemaVersion = 1;
 
     /// <summary>单文件上限（字节）：超过就是「这不是一份素材包，是别的东西」。</summary>
@@ -107,7 +110,7 @@ internal sealed partial class PetDataStore
 
     /// <summary>
     /// 把用户选中的目录**复制**进数据区，返回（实例 id、目录名、素材根路径）。
-    /// 复制而不是引用：docs/15 §1 说「宿主不提供绕过通道」，直接引用用户原目录等于给了通道；
+    /// 复制而不是引用：原规格 15 §1 说「宿主不提供绕过通道」，直接引用用户原目录等于给了通道；
     /// 复制也让「用户把原目录删了，宠物还在」成立。
     /// 同名目录不覆盖：加了序号另起一个，导入历史因此不会互相踩。
     /// 失败一律抛（调用方把异常转成界面上的内联错误条）。
@@ -165,7 +168,7 @@ internal sealed partial class PetDataStore
 
     /// <summary>
     /// 写清单：登记一个导入物并把它设为当前选中。
-    /// 写含 docs/17 §4 要求的两个字段（agent_id 与 timestamp）。
+    /// 写含 原规格 17 §4 要求的两个字段（agent_id 与 timestamp）。
     /// </summary>
     public void RegisterActive(string instanceId, string folder)
     {
@@ -210,7 +213,7 @@ internal sealed partial class PetDataStore
     }
 
     /// <summary>
-    /// 落盘清单：两阶段提交（docs/17 §3 的形状）—— 先写临时文件，再整文件替换。
+    /// 落盘清单：两阶段提交（原规格 17 §3 的形状）—— 先写临时文件，再整文件替换。
     /// 清单写到一半断电的话，旧清单还在，不会留下半个文件。
     /// </summary>
     private void SaveCatalog(JsonObject catalog)

@@ -1,4 +1,4 @@
-// docs/20 §5 的六个错误类 —— 对应 js/errors.js。
+// 原规格 20 §5 的六个错误类 —— 对应 js/errors.js。
 export declare class CapabilityDeniedError extends Error {
   readonly capability: string;
   readonly capabilityId: string;

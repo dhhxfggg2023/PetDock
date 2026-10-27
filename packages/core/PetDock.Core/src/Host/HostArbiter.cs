@@ -1,4 +1,4 @@
-// docs/11:162 的指令仲裁器（宿主侧）。
+// 原规格 11:162 的指令仲裁器（宿主侧）。
 // 逐字规则：**指令即返回值**；多条指令冲突时按
 //   [suspend > setAnimation > moveTo > emit > requestCapability]
 // 的顺序裁决，且宿主可以最终拒绝 ——「这些优先级是 ABI 语义，不是事件级 overlay」。
@@ -7,10 +7,10 @@
 //   1. 优先级数值就是 DirectiveKind 的枚举数值（见 src/PetRuntime/Brain.cs 文件头），
 //      顺序**只在这一处**编码，仲裁器不重复写一遍数值表；
 //   2. 排序用**插入排序（稳定）**：同档必须保持实现方给出的原顺序，否则同一 tick 两次可能
-//      给出不同结果，直接破坏 docs/11:161 的幂等要求；
-//   3. 本类任何方法都不抛：仲裁与落地属于宿主健康线（docs/11:220「宿主不可被插件拒绝」），
+//      给出不同结果，直接破坏 原规格 11:161 的幂等要求；
+//   3. 本类任何方法都不抛：仲裁与落地属于宿主健康线（原规格 11:220「宿主不可被插件拒绝」），
 //      一条坏指令把宿主循环打穿就违背了这条。被拒绝的指令一律留计数与原因，不许静默吞掉
-//      （docs/11:254「插件错误必须表达为 ABI 的返回值或异常，不许静默吞掉」）。
+//      （原规格 11:254「插件错误必须表达为 ABI 的返回值或异常，不许静默吞掉」）。
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -22,7 +22,7 @@ using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
-/// <summary>宿主征询回调：suspend 指令落地前先过 host.suspend 的 bail 派发（docs/16:41 逐字）。</summary>
+/// <summary>宿主征询回调：suspend 指令落地前先过 host.suspend 的 bail 派发（原规格 16:41 逐字）。</summary>
 public delegate bool SuspendVetoDelegate(string reason);
 
 /// <summary>宿主窗口迁移回调：moveTo 指令由窗口持有者真移窗（契约 §6）。</summary>
@@ -31,7 +31,7 @@ public delegate bool WindowMoveDelegate(int x, int y);
 /// <summary>指令落地输出行（契约 §6 DIRECTIVE 行）。</summary>
 public delegate void DirectiveLineDelegate(string line);
 
-/// <summary>docs/11:162 的指令仲裁器。</summary>
+/// <summary>原规格 11:162 的指令仲裁器。</summary>
 public sealed class HostArbiter
 {
     private readonly PetInstance _instance;
@@ -52,7 +52,7 @@ public sealed class HostArbiter
     /// <summary>被宿主拒绝的指令按 kind 计数。</summary>
     public IReadOnlyDictionary<DirectiveKind, int> Refused => _refused;
 
-    /// <summary>已授予的能力请求数（走 docs/14 §2 白名单判定）。</summary>
+    /// <summary>已授予的能力请求数（走 原规格 14 §2 白名单判定）。</summary>
     public int GrantedCapabilities { get; private set; }
 
     /// <summary>emit 落地的事件口（判据读它证明事件真的发出去了）。</summary>
@@ -73,7 +73,7 @@ public sealed class HostArbiter
     /// <summary>宿主窗口迁移：moveTo 由窗口持有者真移窗并回执成功与否。</summary>
     public WindowMoveDelegate? WindowMover { get; set; }
 
-    /// <summary>能力裁决 broker（注入时钟；null 时维持 docs/14 白名单判定）。</summary>
+    /// <summary>能力裁决 broker（注入时钟；null 时维持 原规格 14 白名单判定）。</summary>
     public CapabilityBroker? Capabilities { get; set; }
 
     /// <summary>指令落地输出行（契约 §6 DIRECTIVE 行格式；自检与常驻共用，每条指令一行）。</summary>
@@ -90,7 +90,7 @@ public sealed class HostArbiter
     }
 
     /// <summary>
-    /// 落地一批指令。顺序已按 docs/11:162 排好；同批里的一条把实例挂起之后，
+    /// 落地一批指令。顺序已按 原规格 11:162 排好；同批里的一条把实例挂起之后，
     /// 后续条目仍在同一次调用里落地（它们是同一 tick 的产物），但任何试图调用插件的条目
     /// 在挂起态下会被拒绝 —— 那正是「宿主可以最终拒绝」的落点。
     /// </summary>
@@ -129,7 +129,7 @@ public sealed class HostArbiter
         }
     }
 
-    /// <summary>宿主自身补发一条事件（如 docs/11:260 的 host.canceled）。</summary>
+    /// <summary>宿主自身补发一条事件（如 原规格 11:260 的 host.canceled）。</summary>
     public void NoteHostEvent(string type)
     {
         Events.Publish(PetEvent.Named(type));
@@ -142,7 +142,7 @@ public sealed class HostArbiter
         {
             case DirectiveKind.Suspend:
                 string reason = directive.Reason ?? "brain-suspend";
-                // docs/16:41 逐字：挂起先过 host.suspend 的 bail 派发，插件可否决。
+                // 原规格 16:41 逐字：挂起先过 host.suspend 的 bail 派发，插件可否决。
                 if (SuspendVeto is not null && SuspendVeto(reason))
                 {
                     LastRefusal = "suspend blocked by plugin";
@@ -195,16 +195,24 @@ public sealed class HostArbiter
                 }
 
                 LastMoveTo = at;
+
                 // 契约 §6：真移窗；成功发 core.window.moved，失败记因不发事件。
-                if (WindowMover is not null)
+                // 没有窗口持有者 = 这条指令在生产链上没接线。以前这里继续往下走，
+                // 于是「没挪」也会发一条 core.window.moved（位置是目标坐标），
+                // 位置持久化还会把它当成真的落盘。拒绝比撒谎诚实。
+                if (WindowMover is null)
                 {
-                    bool moved = WindowMover((int)at.X, (int)at.Y);
-                    if (!moved)
-                    {
-                        LastRefusal = "moveTo win32-failed err=SetWindowPos";
-                        EmitDirectiveLine($"DIRECTIVE moveTo x={(int)at.X} y={(int)at.Y} moved=false event=none");
-                        return false;
-                    }
+                    LastRefusal = "moveTo no-window-mover";
+                    EmitDirectiveLine($"DIRECTIVE moveTo x={(int)at.X} y={(int)at.Y} moved=false event=none reason=no-window-mover");
+                    return false;
+                }
+
+                bool moved = WindowMover((int)at.X, (int)at.Y);
+                if (!moved)
+                {
+                    LastRefusal = "moveTo win32-failed err=SetWindowPos";
+                    EmitDirectiveLine($"DIRECTIVE moveTo x={(int)at.X} y={(int)at.Y} moved=false event=none");
+                    return false;
                 }
 
                 // 契约 §5.1：同一批里只发一条 core.window.moved（后者 = 最终位姿）。
@@ -243,7 +251,7 @@ public sealed class HostArbiter
                     return false;
                 }
 
-                // docs/14 §2：白名单之外的能力一律拒绝并记因（不许静默授予）。
+                // 原规格 14 §2：白名单之外的能力一律拒绝并记因（不许静默授予）。
                 if (!CapabilityIds.IsWellKnown(directive.Capability))
                 {
                     LastRefusal = $"capability not in whitelist: {directive.Capability}";
@@ -277,7 +285,7 @@ public sealed class HostArbiter
     private static string FlagOf(bool value) => value ? "true" : "false";
 
     /// <summary>
-    /// docs/11:162 的排序结果（纯函数）。自检直接断言它，而不是靠「落地副作用」反推顺序 ——
+    /// 原规格 11:162 的排序结果（纯函数）。自检直接断言它，而不是靠「落地副作用」反推顺序 ——
     /// 副作用能证明「都落地了」，证明不了「谁先被裁决」，而后者正是这条 ABI 语义本身。
     /// </summary>
     public static IReadOnlyList<BrainDirective> Sorted(IReadOnlyList<BrainDirective>? directives)

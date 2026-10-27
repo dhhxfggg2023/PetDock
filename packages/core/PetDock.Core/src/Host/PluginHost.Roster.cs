@@ -34,7 +34,7 @@ public sealed record PluginRow(
 public sealed partial class PluginHost
 {
     /// <summary>会话内的授权记忆（RFC-13 §2.1）：装载期询问的落账处。
-    /// 拒绝**总是**被记住（docs/18 §3）；授予只在「允许（记住这个决定）」下被记住。</summary>
+    /// 拒绝**总是**被记住（原规格 18 §3）；授予只在「允许（记住这个决定）」下被记住。</summary>
     internal ConsentMemory Consent { get; } = new();
 
     /// <summary>
@@ -91,7 +91,7 @@ public sealed partial class PluginHost
         _ => state.ToString(),
     };
 
-    /// <summary>声明 ∩ 白名单的能力 ID，顺序 = manifest 声明顺序（docs/14 §2 一次断言）。
+    /// <summary>声明 ∩ 白名单的能力 ID，顺序 = manifest 声明顺序（原规格 14 §2 一次断言）。
     /// 非白名单项不在这里 —— 它们由 CapabilityGate 自己记 not-in-whitelist 审计。</summary>
     internal static IReadOnlyList<string> DeclaredCapabilities(PluginManifest manifest)
     {
@@ -131,6 +131,21 @@ public sealed partial class PluginHost
     internal IReadOnlyList<string> ResolveGranted(PluginManifest manifest)
     {
         IReadOnlyList<string> candidates = DeclaredCapabilities(manifest);
+
+        // 静默授予：随包发行 + 能力全无害。别的生态适配器要键盘/落盘能力，仍然照常询问；
+        // 用户装进来的插件也永远询问（安装动作不是授权）。仍然落一条 audit：静默 ≠ 不留痕。
+        if (_trustBuiltins && IsBuiltin(manifest.Id) && PluginPolicy.CanGrantSilently(candidates))
+        {
+            RecordConsentDecision(
+                manifest.Id,
+                candidates,
+                candidates,
+                Array.Empty<string>(),
+                "trusted");
+            KernelLog.Write($"consent-trusted plugin={manifest.Id} granted={candidates.Count}");
+            return candidates;
+        }
+
         if (_consent is null)
         {
             return candidates; // 无人值守路径：不弹窗、不落账（语义 4）
@@ -144,7 +159,7 @@ public sealed partial class PluginHost
         IReadOnlyCollection<string> remembered = Consent.Granted(manifest.Id);
         IReadOnlyCollection<string> denied = Consent.Denied(manifest.Id);
 
-        // 有效授予 = 记得被授予、且没被拒绝过（两者同时出现时以拒绝为准：docs/18 §3 的拒绝无条件）
+        // 有效授予 = 记得被授予、且没被拒绝过（两者同时出现时以拒绝为准：原规格 18 §3 的拒绝无条件）
         var effective = new List<string>();
         foreach (string id in candidates)
         {
@@ -160,7 +175,7 @@ public sealed partial class PluginHost
             items.Add(new ConsentItem(id, effective.Contains(id), denied.Contains(id)));
         }
 
-        // 全部候选都被拒绝过 → 不再问（docs/18 §3：拒绝后不允许重试同一能力）
+        // 全部候选都被拒绝过 → 不再问（原规格 18 §3：拒绝后不允许重试同一能力）
         if (candidates.All(id => denied.Contains(id)))
         {
             return Array.Empty<string>();
@@ -181,7 +196,7 @@ public sealed partial class PluginHost
 
         // 没有回答 = 全拒（端口契约：「返回 null 表示没有回答 —— 按拒绝处理」），
         // 与 ConsentAnswer.Reject 同义：本次一项不给，且这些能力被记住为已拒绝
-        // （docs/18 §3：拒绝后该插件不允许重试同一能力）。
+        // （原规格 18 §3：拒绝后该插件不允许重试同一能力）。
         if (answer is null)
         {
             answer = ConsentAnswer.Reject;
@@ -206,7 +221,7 @@ public sealed partial class PluginHost
             }
         }
 
-        // 没勾 = 拒绝（docs/18 §3：用户没给的能力下次不该再问）
+        // 没勾 = 拒绝（原规格 18 §3：用户没给的能力下次不该再问）
         var declined = new List<string>();
         foreach (string id in candidates)
         {
@@ -216,7 +231,7 @@ public sealed partial class PluginHost
             }
         }
 
-        // 拒绝**总是**进记忆；授予只在「允许（记住这个决定）」下进记忆（docs/18 §3）
+        // 拒绝**总是**进记忆；授予只在「允许（记住这个决定）」下进记忆（原规格 18 §3）
         bool remember = answer.Scope == ConsentScope.Session;
         Consent.Remember(manifest.Id, granted, declined, rememberGrants: remember);
 
@@ -238,7 +253,7 @@ public sealed partial class PluginHost
 
     /// <summary>
     /// 收窄某插件的授权（插件页复核用，RFC-13 §2.6）：把不在 keep 里的能力撤销掉。
-    /// **只能收窄，不能新增授予**（docs/14 §2「一次断言：不允许补申请」）——
+    /// **只能收窄，不能新增授予**（原规格 14 §2「一次断言：不允许补申请」）——
     /// keep 里没被授予过的能力不会因此拿到授予。
     /// 在调度线程上执行（与 tick、重载同一条线，绝不并发改闸门）；
     /// 返回 true = 确实有变化（至少撤销或停用了一项）；找不到该插件返回 false。
@@ -300,7 +315,7 @@ public sealed partial class PluginHost
                     continue;
                 }
 
-                gate.Revoke(id); // 自带审计（docs/14 §2：每次撤销都记）
+                gate.Revoke(id); // 自带审计（原规格 14 §2：每次撤销都记）
                 changed = true;
             }
         }
@@ -309,7 +324,7 @@ public sealed partial class PluginHost
         {
             if (lease.Active && !keepSet.Contains(lease.Id))
             {
-                lease.Active = false; // 记录保留，只停用（docs/14 §2「能力是句柄，不是开关」）
+                lease.Active = false; // 记录保留，只停用（原规格 14 §2「能力是句柄，不是开关」）
                 changed = true;
             }
         }

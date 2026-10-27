@@ -1,4 +1,4 @@
-// RFC-35 §4：交互层（docs/11 §5）真的接到窗口鼠标消息上的判据。
+// RFC-35 §4：交互层（原规格 11 §5）真的接到窗口鼠标消息上的判据。
 //
 // 为什么值得单独立一片：`PetInstance.PointerDown/Move/Up` 在接线之前**全仓零调用方**——
 // 优先级仲裁、命中性判定、10 秒会话预算三样都实现了，却一次也没在真实链路上跑过。
@@ -80,7 +80,7 @@ internal static class PointerWiringChecks
         }
     }
 
-    /// <summary>失焦 = 宿主取消（docs/11:183）；10 秒预算 = 强制取消（docs/11:260）。</summary>
+    /// <summary>失焦 = 宿主取消（原规格 11:183）；10 秒预算 = 强制取消（原规格 11:260）。</summary>
     private static void CancelsAndBudget(PointerCheck check)
     {
         var log = new List<string>();

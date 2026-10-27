@@ -1,6 +1,6 @@
 // PluginHost 的生命周期半边（partial 的另一半在 PluginHost.cs）：
 // 调度循环、装载/禁用/热重载/恢复的核心逻辑。契约 §5.3 的 11 行转移表在此落地。
-// 单文件 <400 行（docs/40 D-03c）。
+// 单文件 <400 行（原规格 40 D-03c）。
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +15,7 @@ namespace PetDock.Hosting;
 public sealed partial class PluginHost
 {
     private const int ConsecutiveFaultLimit = 8; // 契约 §5.3：连续 8 次失败 → 自动挂起
-    private const int LifecycleDisposeBudgetMs = 1000; // docs/11 §9：dispose 预算，超时记日志
+    private const int LifecycleDisposeBudgetMs = 1000; // 原规格 11 §9：dispose 预算，超时记日志
     private const int MaxEntryBytes = 64 * 1024 * 1024;
     private const string HostSliceEventName = "host.slice";
 
@@ -59,7 +59,7 @@ public sealed partial class PluginHost
         IReadOnlyList<string> resolved = ResolveGranted(manifest);
         if (manifest.Tier == 2)
         {
-            // docs/13 §1 法则二 / docs/14 §1/§4/§5：tier 2 独立进程，M7 起真 spawn（RFC-10）。
+            // 原规格 13 §1 法则二 / 原规格 14 §1/§4/§5：tier 2 独立进程，M7 起真 spawn（RFC-10）。
             // wire 契约（帧/命中图/事件包）未定，子进程当前只承载握手与 tick 往返。
             CapabilityGate gate2 = new(manifest.Capabilities, grantedIds: resolved, sink: sink);
             Tier2Sandbox tier2 = LoadTier2Sandbox(id, pluginDir, manifest, gate2, sink);
@@ -98,9 +98,9 @@ public sealed partial class PluginHost
         }
         else
         {
-            // tier 0：声明式资源包（docs/13 §2）—— 无执行体，登记即 Instantiated。
-            // 但仍建能力闸门并产租约（RFC-13 §2.5）：docs/14 §2 明写 input.mousePosition
-            // 「Tier 0 可请求」，不产租约则 docs/16:56 的设备钩子门对 tier 0 声明者永远不成立。
+            // tier 0：声明式资源包（原规格 13 §2）—— 无执行体，登记即 Instantiated。
+            // 但仍建能力闸门并产租约（RFC-13 §2.5）：原规格 14 §2 明写 input.mousePosition
+            // 「Tier 0 可请求」，不产租约则 原规格 16:56 的设备钩子门对 tier 0 声明者永远不成立。
             CapabilityGate gate0 = new(manifest.Capabilities, grantedIds: resolved, sink: sink);
             handle.Gate = gate0;
             handle.State = PluginLifecycleState.Instantiated;
@@ -154,7 +154,7 @@ public sealed partial class PluginHost
             return known;
         }
         // 回退：调用方可能直接持 manifest 调 Load（未经本宿主 ValidateManifest）
-        foreach (string dir in Discover(_pluginsRoot))
+        foreach (string dir in DiscoverAllDirs())
         {
             Result<PluginManifest, IReadOnlyList<ManifestError>> result = ValidateManifest(dir);
             if (result.IsOk && result.Ok!.Id == pluginId)
@@ -185,7 +185,7 @@ public sealed partial class PluginHost
         }
 
         // 1) 事件订阅吊销：Deliver 只对 Running 生效 → 状态切换即停送达
-        // 2) 能力句柄吊销（docs/14 §2）：gate 逐项 Revoke（带审计）+ 宿主侧 lease 置 Inactive（记录保留）
+        // 2) 能力句柄吊销（原规格 14 §2）：gate 逐项 Revoke（带审计）+ 宿主侧 lease 置 Inactive（记录保留）
         if (handle.Gate is not null)
         {
             foreach (string granted in handle.Gate.Granted.ToArray())
@@ -197,7 +197,7 @@ public sealed partial class PluginHost
         {
             lease.Active = false;
         }
-        // 3) 状态保留（docs/13 §3）：不卸载 —— 沙箱、计数、manifest 全部保留，仅 Suspended
+        // 3) 状态保留（原规格 13 §3）：不卸载 —— 沙箱、计数、manifest 全部保留，仅 Suspended
         handle.State = PluginLifecycleState.Suspended;
 
         // 4) RFC-34 §3.1：tier-2 禁用 = 暂停会话。进程留着（再启用不必重握手），但不再为
@@ -230,7 +230,7 @@ public sealed partial class PluginHost
         }
         if (!File.Exists(handle.ManifestPath))
         {
-            // manifest 被删：不卸载正在运行的实例，等它回来（docs/13 §3：热重载是替换，不是卸载）
+            // manifest 被删：不卸载正在运行的实例，等它回来（原规格 13 §3：热重载是替换，不是卸载）
             KernelLog.Write($"reload-skip manifest-gone plugin={handle.Manifest.Id}");
             return;
         }
@@ -315,7 +315,7 @@ public sealed partial class PluginHost
             else
             {
                 // tier 0 也要建闸门并产租约（RFC-13 §2.5）：与 tier 1/2 同形，
-                // 否则 docs/16:56 的设备钩子门对 tier 0 声明者永远不成立。
+                // 否则 原规格 16:56 的设备钩子门对 tier 0 声明者永远不成立。
                 CapabilityGate gate0 = new(newManifest.Capabilities, grantedIds: resolved, sink: handle.Sink);
                 handle.Gate = gate0;
                 handle.Leases.Clear();
@@ -344,25 +344,25 @@ public sealed partial class PluginHost
     /// <summary>Suspended → Running（契约 §5.3）：重新分配句柄、重新订阅。
     /// 注：沙箱层 gate 无公开 Grant（t3 API），重绑 gate 属 M2 沙箱 API 工作 —— M1 的恢复在
     /// 宿主侧完成（lease 置回 Active + 补审计），事件订阅随状态恢复自动生效。</summary>
-    internal void ResumeHandle(PluginHandle handle)
+    internal void ResumeHandle(PluginHandle handle) => RunOnScheduler(() => ResumeHandleCore(handle));
+
+    /// <summary>已在调度线程上时的恢复本体（EnableById 不许再封送一次 —— 那会自己等自己）。</summary>
+    private void ResumeHandleCore(PluginHandle handle)
     {
-        RunOnScheduler(() =>
+        if (handle.State != PluginLifecycleState.Suspended)
         {
-            if (handle.State != PluginLifecycleState.Suspended)
-            {
-                throw new InvalidOperationException($"resume requires Suspended (current {handle.State})");
-            }
-            foreach (CapabilityLease lease in handle.Leases)
-            {
-                lease.Active = true;
-                handle.Sink.EmitRegrant(lease.Id);
-            }
-            handle.State = PluginLifecycleState.Running;
-            Publish("pluginResume", handle.Manifest.Id);
-        });
+            throw new InvalidOperationException($"resume requires Suspended (current {handle.State})");
+        }
+        foreach (CapabilityLease lease in handle.Leases)
+        {
+            lease.Active = true;
+            handle.Sink.EmitRegrant(lease.Id);
+        }
+        handle.State = PluginLifecycleState.Running;
+        Publish("pluginResume", handle.Manifest.Id);
     }
 
-    /// <summary>宿主侧事件分发入口（docs/13 §4 订阅面）：仅 Running 句柄收到。
+    /// <summary>宿主侧事件分发入口（原规格 13 §4 订阅面）：仅 Running 句柄收到。
     /// 在调度线程上串行投递 —— 与 tick 同一队列，绝不并发。</summary>
     public void PostPluginEvent(string name)
     {
@@ -379,7 +379,7 @@ public sealed partial class PluginHost
     internal IReadOnlyList<PluginHandle> HandlesSnapshot() => Snapshot(() => _handles.ToList());
 
     /// <summary>
-    /// docs/14 §5 CPU 预算 8.3ms/片 → 燃料刻度的 M1 标定（SandboxBudgets 注释：宿主在 Load 时标定）。
+    /// 原规格 14 §5 CPU 预算 8.3ms/片 → 燃料刻度的 M1 标定（SandboxBudgets 注释：宿主在 Load 时标定）。
     /// 燃料与毫秒无通用换算，取 8.3ms × ~120M 指令/秒 ≈ 1M 燃料/片：对 M1 载体模块（空 tick）
     /// 极其宽裕，同时保持「每片有界」的语义。FuelPerSlice=0（未标定）会让任何执行立即
     /// trap（all fuel consumed），故宿主必须显式给正值。

@@ -286,7 +286,7 @@ internal static partial class ThrottleChecks
             + " where=" + string.Join(",", producing));
     }
 
-    /// <summary>⑬ 不新增事件名：docs/16 的封闭清单仍是 14 个。</summary>
+    /// <summary>⑬ 不新增事件名：原规格 16 的封闭清单仍是 14 个。</summary>
     private static void NoNewEvents(Check done)
     {
         int names = EventCatalog.Names.Count;

@@ -8,7 +8,7 @@ using PetDock.Core.Sandbox;
 
 namespace PetDock.Hosting;
 
-/// <summary>能力句柄（docs/14 §2「能力是句柄，不是开关」）。
+/// <summary>能力句柄（原规格 14 §2「能力是句柄，不是开关」）。
 /// 禁用 → 吊销（Active=false）但保留记录 —— 「状态保留、不卸载」的一部分。
 /// M1 硬编码测试能力集 = 声明 ∩ 白名单（契约 §5.4），授权 UI 属 M5。</summary>
 internal sealed class CapabilityLease
@@ -19,7 +19,7 @@ internal sealed class CapabilityLease
     public CapabilityLease(string id)
     {
         Id = id;
-        Active = true; // 装载即授予（docs/14 §2）：句柄生而有效，禁用才吊销
+        Active = true; // 装载即授予（原规格 14 §2）：句柄生而有效，禁用才吊销
     }
 }
 
@@ -69,7 +69,7 @@ internal sealed class PluginHandle : IPluginHandle
     internal int ReloadChecks;
     internal bool ReloadPending;
 
-    /// <summary>事件投递（docs/13 §4 订阅面）：仅 Running 接收 —— 禁用后即停止送达。</summary>
+    /// <summary>事件投递（原规格 13 §4 订阅面）：仅 Running 接收 —— 禁用后即停止送达。</summary>
     internal void Deliver(string eventName)
     {
         if (State != PluginLifecycleState.Running)

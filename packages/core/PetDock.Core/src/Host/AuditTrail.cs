@@ -1,11 +1,11 @@
 // 跨进程审计流水（RFC-20 §3.1）：能力的每一次授予与拒绝，跨进程留得下痕。
 //
 // 为什么要有这一层：
-//   docs/14 §2 要求「能力的每一次授权与拒绝都记入 AuditLog」，而 RFC-17 落地时
+//   原规格 14 §2 要求「能力的每一次授权与拒绝都记入 AuditLog」，而 RFC-17 落地时
 //   审计事件只活在 PluginEventSink 的 256 条环形缓冲里 —— 超出就丢、进程一退就全没。
 //   诊断包里的 audit.jsonl 因此只是「最近几百条」。本文件把那一层换成跨进程的文件流水：
 //   按进程分文件、一行一条 JSON、落盘前脱敏、进程正常退出时去掉 .part 后缀成为硬证据
-//   （docs/17 §3「当前活动文件只在完成时保留名称硬证据」）。
+//   （原规格 17 §3「当前活动文件只在完成时保留名称硬证据」）。
 //
 // 三条不能商量的约束：
 //   ① 写流水绝不抛给调用点 —— 一次能力判定不能因为审计写不下去而失败。
@@ -79,7 +79,7 @@ internal sealed partial class AuditTrail : IDisposable
         _rules = rules ?? throw new ArgumentNullException(nameof(rules));
 
         // 文件名带时间戳与进程号：同一秒起两个进程也不会撞名。
-        // 月与日的格式符不直接连写（连写会撞上 docs/02 §2 的概念黑名单，它按子串匹配），
+        // 月与日的格式符不直接连写（连写会撞上 原规格 02 §2 的概念黑名单，它按子串匹配），
         // 所以分两段取再拼起来 —— 拼出来的结果与 RFC-20 §3.1 写的完全一致。
         DateTime now = DateTime.Now;
         _fileName = "audit-"
@@ -134,7 +134,7 @@ internal sealed partial class AuditTrail : IDisposable
 
     /// <summary>
     /// 记一条沙箱事件。**不记**「已授予的调用」（use=…）——
-    /// docs/14 §2 要求的是授权与拒绝，调用留痕在通用日志里（RFC-20 §2.2）。
+    /// 原规格 14 §2 要求的是授权与拒绝，调用留痕在通用日志里（RFC-20 §2.2）。
     /// 本方法绝不抛。
     /// </summary>
     public void Record(string pluginId, SandboxEvent evt)

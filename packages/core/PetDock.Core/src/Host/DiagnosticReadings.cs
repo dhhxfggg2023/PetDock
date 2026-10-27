@@ -4,8 +4,8 @@
 // 于是「组装」这一侧可以被判据单独验证（造一份读数 → 装包 → 逐条断言），
 // 而不必真的把宿主跑起来。
 //
-// 诚实性纪律（docs/18 §2.4「不得编造数字」）：
-//   内存读数一律是**进程级**的（宠物与内核同进程，docs/10 §3，单只宠物的独占内存不存在）；
+// 诚实性纪律（原规格 18 §2.4「不得编造数字」）：
+//   内存读数一律是**进程级**的（宠物与内核同进程，原规格 10 §3，单只宠物的独占内存不存在）；
 //   帧耗时取自帧泵的**累计值**（累计平均），不是性能页那次 60 秒采样；
 //   没有宠物时实例一节就是空的，不填任何占位数字。
 using System.Collections.Generic;
@@ -69,7 +69,7 @@ internal sealed record DiagnosticTrailSummary(
 }
 
 /// <summary>
-/// 插件日志的读数（RFC-23 / docs/20 §3）：写了多少条、其中多少条进了审计流水、
+/// 插件日志的读数（RFC-23 / 原规格 20 §3）：写了多少条、其中多少条进了审计流水、
 /// 以及**按插件**的错误条数。计数来自唯一的收口实例（<see cref="HostPluginLog"/>），
 /// 诊断包不另起一份计数 —— 两份计数迟早会不一致，而不一致时没人知道信哪一份。
 /// </summary>
@@ -112,7 +112,7 @@ internal sealed record DiagnosticReadings(
     DiagnosticPluginLog? PluginLogSummary = null)
 {
     /// <summary>
-    /// RFC-21 §3.4 / docs/12 §4：当前档位是否是「真的读过」。
+    /// RFC-21 §3.4 / 原规格 12 §4：当前档位是否是「真的读过」。
     /// 空串 = 没有帧循环（诊断包要写「未接」，绝不能把空串当 active）。
     /// </summary>
     public bool HasThrottle => ThrottleTier.Length > 0;

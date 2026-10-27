@@ -8,7 +8,7 @@ namespace PetDock.Builtins;
 /// <summary>一个动画片段：ABI 侧的 AnimationClip（帧数/fps/loop）+ 磁盘上的帧文件相对路径序列。</summary>
 internal sealed record ClipData(AnimationClip Clip, IReadOnlyList<string> FramePaths);
 
-/// <summary>docs/31 Sample Pack 解析结果（petdock-sample.json + anim/*.json 的内存形态）。</summary>
+/// <summary>原规格 31 Sample Pack 解析结果（petdock-sample.json + anim/*.json 的内存形态）。</summary>
 internal sealed record PackData(
     PetSize NaturalSize,
     double PreferredFps,
@@ -23,15 +23,15 @@ internal sealed record PackData(
 }
 
 /// <summary>
-/// docs/31 Sample Pack 的定位与解析。定位是插件侧自己的事：
-/// core 不认识任何素材格式（docs/01 P-02 第 2 条），也不特判插件 id（P-02 第 4 条），
+/// 原规格 31 Sample Pack 的定位与解析。定位是插件侧自己的事：
+/// core 不认识任何素材格式（原规格 01 P-02 第 2 条），也不特判插件 id（P-02 第 4 条），
 /// 所以「素材在哪」由实现方以环境变量 + 向上探测解决，失败时把试过的路径说清楚。
 ///
 /// 三条优先级（2026-10-16 所有者最终口径：鲸鱼娘是静态图，暂用可动的示例宠物作默认可见宠物
 /// 是可以的 —— 原话「鲸鱼娘不是动图，你暂时用可动的桌宠例子也是可以的，刚才我说的不好」）：
 ///   1. `PETDOCK_SAMPLE_PACK` —— 显式请求某个 pack 目录，必须含 petdock-sample.json；
 ///   2. `PETDOCK_PET_IMAGE` —— 显式请求单张贴图（所有者鲸鱼娘），合成一片段 pack；
-///   3. 默认 —— 向上探测 assets/sample-pet（docs/31 Sample Pack，仓库内 CC0 素材）。
+///   3. 默认 —— 向上探测 assets/sample-pet（原规格 31 Sample Pack，仓库内 CC0 素材）。
 /// 自检相位（PetViewContext.PetInstanceId 以 "animtest" 开头）与默认同解，不特判：
 /// 「桌面上是哪一只」必须是可指名的事实，而不是相位副作用。
 /// 旧实现里那条「默认回落到仓库内程序化蓝团」的路径已删除（t8 验收 3）：
@@ -39,14 +39,14 @@ internal sealed record PackData(
 /// </summary>
 internal static class PackLoader
 {
-    private const string ManifestName = "petdock-sample.json"; // docs/31 §1
+    private const string ManifestName = "petdock-sample.json"; // 原规格 31 §1
     private const string PackEnvVar = "PETDOCK_SAMPLE_PACK";
     private const string ImageEnvVar = "PETDOCK_PET_IMAGE";
     private const string SelfTestPhase = "animtest";
     private const string PackRel = "assets/sample-pet";
     private const string OwnerImageRel = "assets/sample/local/pet-sample.png";
 
-    /// <summary>一个来源是不是「默认」解：默认解就是 docs/31 Sample Pack，没有任何环境变量参与。</summary>
+    /// <summary>一个来源是不是「默认」解：默认解就是 原规格 31 Sample Pack，没有任何环境变量参与。</summary>
     public static bool IsDefaultLocation(string? located) =>
         !string.IsNullOrEmpty(located)
         && located!.EndsWith(PackRel, StringComparison.OrdinalIgnoreCase);
@@ -57,7 +57,7 @@ internal static class PackLoader
 
     /// <summary>
     /// 按三条优先级定位素材来源，返回**包目录**（含 petdock-sample.json）或**单图路径**（.png）。
-    /// 调用方用 <see cref="IsPackRoot"/> 区分两种形态：目录走 docs/31 的 pack 解析，
+    /// 调用方用 <see cref="IsPackRoot"/> 区分两种形态：目录走 原规格 31 的 pack 解析，
     /// 单图合成为一片段（idle，1 帧）的 pack —— 所有者贴图是静态图，本就不该有动画。
     /// </summary>
     public static string Locate(string petInstanceId)
@@ -86,7 +86,7 @@ internal static class PackLoader
             throw new FileNotFoundException($"{ImageEnvVar}={fromImage} 不存在");
         }
 
-        // 默认：docs/31 Sample Pack。先从 exe 基目录向上找（仓库内 / 发布物同构的位置都命中），
+        // 默认：原规格 31 Sample Pack。先从 exe 基目录向上找（仓库内 / 发布物同构的位置都命中），
         // 再退回所有者本机贴图这一条**已知路径**之外不猜任何位置；两条都找不到才抛。
         for (DirectoryInfo? dir = new(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
@@ -175,7 +175,7 @@ internal static class PackLoader
             + $"；可用形态为含 {ManifestName} 的目录，或单个 .png 文件");
     }
 
-    /// <summary>定位到的是 docs/31 pack 目录（含 petdock-sample.json）还是单张贴图。</summary>
+    /// <summary>定位到的是 原规格 31 pack 目录（含 petdock-sample.json）还是单张贴图。</summary>
     public static bool IsPackRoot(string located) =>
         Directory.Exists(located) && File.Exists(Path.Combine(located, ManifestName));
 
@@ -202,7 +202,7 @@ internal static class PackLoader
         int schemaVersion = root.GetProperty("schemaVersion").GetInt32();
         if (schemaVersion != 1)
         {
-            throw new InvalidDataException($"{ManifestName} schemaVersion={schemaVersion}，本实现只读 1（docs/31）");
+            throw new InvalidDataException($"{ManifestName} schemaVersion={schemaVersion}，本实现只读 1（原规格 31）");
         }
 
         var naturalSize = new PetSize(
@@ -241,7 +241,7 @@ internal static class PackLoader
         double fps = root.GetProperty("fps").GetDouble();
         if (fps <= 0)
         {
-            throw new InvalidDataException($"{clipFile}: fps={fps} 必须为正（docs/11 §2.3）");
+            throw new InvalidDataException($"{clipFile}: fps={fps} 必须为正（原规格 11 §2.3）");
         }
 
         var frames = new List<string>();
@@ -259,7 +259,7 @@ internal static class PackLoader
 
         if (frames.Count == 0)
         {
-            throw new InvalidDataException($"{clipFile}: frames 为空（docs/31 §3 每片段至少一帧）");
+            throw new InvalidDataException($"{clipFile}: frames 为空（原规格 31 §3 每片段至少一帧）");
         }
 
         string loopRaw = root.GetProperty("loop").GetString()
@@ -269,7 +269,7 @@ internal static class PackLoader
             "once" => ClipLoop.Once,
             "loop" => ClipLoop.Loop,
             "pingpong" => ClipLoop.PingPong,
-            _ => throw new InvalidDataException($"{clipFile}: loop \"{loopRaw}\" 不是 docs/11:62 的 once|loop|pingpong"),
+            _ => throw new InvalidDataException($"{clipFile}: loop \"{loopRaw}\" 不是 原规格 11:62 的 once|loop|pingpong"),
         };
 
         var clip = new AnimationClip(id, frames.Count, fps, loop, Anchor: null);

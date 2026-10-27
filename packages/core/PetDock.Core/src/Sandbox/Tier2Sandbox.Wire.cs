@@ -3,7 +3,7 @@
 // 分开的理由是文件行数判据（D-03c 400 行），与本仓其它 partial 同一个理由。
 // 两类失败在这里被刻意分开（RFC-27 §3.2）：
 //   格式错 → 返回 false + 错误串，进程留存（客体写错包不该等于崩溃）；
-//   越限   → BudgetExceeded + 杀进程（docs/14 §5 的「越限 = 卸载」）。
+//   越限   → BudgetExceeded + 杀进程（原规格 14 §5 的「越限 = 卸载」）。
 using System;
 using System.Collections.Generic;
 using System.Text;

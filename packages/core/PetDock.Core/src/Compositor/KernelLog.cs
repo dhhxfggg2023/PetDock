@@ -1,4 +1,4 @@
-// 实现 docs/12 §6「可执行检查」所需的诊断输出：无控制台时静默丢弃，有控制台时写一行
+// 实现 原规格 12 §6「可执行检查」所需的诊断输出：无控制台时静默丢弃，有控制台时写一行
 using System.Runtime.InteropServices;
 
 namespace PetDock.Core.Compositor;

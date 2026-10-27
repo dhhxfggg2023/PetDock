@@ -1,4 +1,4 @@
-// docs/11 §2.1 / §3.2 / §8：帧（宿主与 IPetView 之间传递的唯一绘制单元）与资源所有权。
+// 原规格 11 §2.1 / §3.2 / §8：帧（宿主与 IPetView 之间传递的唯一绘制单元）与资源所有权。
 // 位图句柄由宿主（core 的 registry）发放、宿主在帧同步点释放；插件从不 new 窗口、不自己发句柄。
 // 预乘 alpha 的 32bpp：GDI+ 的 Format32bppPArgb 就是预乘格式，registry 只接受它，
 // 非预乘输入在 Acuire 处立即被拒（拒规则见 GetFrameContent 的调用方：一帧都没有）。
@@ -10,7 +10,7 @@ using System.Drawing.Imaging;
 namespace PetDock.Core.PetRuntime;
 
 /// <summary>
-/// docs/11 §2.1 `Frame.bitmapHandle` 的宿主侧形态：一张已登记的位图 + 它的物理像素尺寸。
+/// 原规格 11 §2.1 `Frame.bitmapHandle` 的宿主侧形态：一张已登记的位图 + 它的物理像素尺寸。
 /// 句柄存活到宿主下一次 Release 为止；帧同步点之后引用它就废（宿主拥有所有权）。
 /// </summary>
 public sealed class BitmapHandle
@@ -27,19 +27,19 @@ public sealed class BitmapHandle
     /// <summary>位图本体。格式恒为 Format32bppPArgb（构造处强制）。</summary>
     public Bitmap Bitmap { get; }
 
-    /// <summary>物理像素尺寸（帧缓冲取图的尺寸，不是 docs/11 的逻辑像素 Size）。</summary>
+    /// <summary>物理像素尺寸（帧缓冲取图的尺寸，不是 原规格 11 的逻辑像素 Size）。</summary>
     public int PixelWidth => Bitmap.Width;
 
     public int PixelHeight => Bitmap.Height;
 
-    /// <summary>物理像素总数——hitmap 的长度必须是它（docs/11 §2.2 与位图同尺寸）。</summary>
+    /// <summary>物理像素总数——hitmap 的长度必须是它（原规格 11 §2.2 与位图同尺寸）。</summary>
     public int PixelCount => Bitmap.Width * Bitmap.Height;
 
     public override string ToString() => $"bitmap#{Id} {PixelWidth}x{PixelHeight}";
 }
 
 /// <summary>
-/// docs/11 §2.1 Frame。Size 是逻辑像素，scale 是 DPI 缩放；
+/// 原规格 11 §2.1 Frame。Size 是逻辑像素，scale 是 DPI 缩放；
 /// hitmap 是与位图同尺寸的每像素 0|1（1 = 可命中）。clearRect 缺省 = 整帧重绘。
 /// </summary>
 public sealed record Frame(
@@ -57,9 +57,9 @@ public sealed record Frame(
     public const int HitAlphaThreshold = 16;
 
     /// <summary>
-    /// docs/11 §2.2 的命中仲裁：hitmap &gt; bitmap alpha，且 **alpha === 0 永远放行穿透**。
+    /// 原规格 11 §2.2 的命中仲裁：hitmap &gt; bitmap alpha，且 **alpha === 0 永远放行穿透**。
     /// 两个方向都定性：
-    /// - alpha === 0 时永远返回 false（不可命中），无论 hitmap 说什么——穿透区不许被任何 surface 变可点（docs/11:190）；
+    /// - alpha === 0 时永远返回 false（不可命中），无论 hitmap 说什么——穿透区不许被任何 surface 变可点（原规格 11:190）；
     /// - hitmap 缺失时退回读预乘位图的 alpha 通道，并按 <see cref="HitAlphaThreshold"/> 阈值化
     ///   （RFC-41 §3.3：`alpha ∈ [1,15]` 由「命中」改为「穿透」，这是一次语义变更）；
     /// - hitmap 存在时先按 alpha===0 放行，其余按 hitmap 的 0|1 判定（hitmap 仍然优先于阈值）。
@@ -125,7 +125,7 @@ public sealed record Frame(
 }
 
 /// <summary>
-/// docs/11 §7 背压通道：宿主交给 IPetView 的自愿降级预算
+/// 原规格 11 §7 背压通道：宿主交给 IPetView 的自愿降级预算
 /// （`ctx.resources.budget` 允许它降帧、减分辨率）。只读快照。
 /// </summary>
 public readonly record struct ResourceBudget(double TargetFrameMs, double IdleFrameMs, int MaxFramePixels)
@@ -135,8 +135,8 @@ public readonly record struct ResourceBudget(double TargetFrameMs, double IdleFr
 }
 
 /// <summary>
-/// docs/11 §3 `attach(target: RenderTarget)`：宿主给插件的画板。
-/// 宿主拥有 RenderTarget 与桌面窗口（docs/11 §8），插件只拿它的引用。
+/// 原规格 11 §3 `attach(target: RenderTarget)`：宿主给插件的画板。
+/// 宿主拥有 RenderTarget 与桌面窗口（原规格 11 §8），插件只拿它的引用。
 /// </summary>
 public sealed class RenderTarget
 {
@@ -169,7 +169,7 @@ public sealed class RenderTarget
 }
 
 /// <summary>
-/// 宿主侧位图 registry（docs/11 §8 的资源所有权表：位图句柄由宿主分配、宿主在帧同步点后释放）。
+/// 宿主侧位图 registry（原规格 11 §8 的资源所有权表：位图句柄由宿主分配、宿主在帧同步点后释放）。
 /// 单线程使用（宿主帧循环线程）。每个 acquire 换一个句柄编号；release 之后句柄失效。
 /// </summary>
 public sealed class BitmapRegistry
@@ -187,7 +187,7 @@ public sealed class BitmapRegistry
     public long Released { get; private set; }
 
     /// <summary>
-    /// 登记一张位图并返回句柄。只接受预乘 32bpp（docs/11:49 硬要求）；
+    /// 登记一张位图并返回句柄。只接受预乘 32bpp（原规格 11:49 硬要求）；
     /// 其他格式立即抛出——接受一张非预乘位图会让整只宠物在屏幕上变成错误亮度，
     /// 而且不报任何错（UpdateLayeredWindow 按 AC_SRC_ALPHA 解释，非预乘图直接偏色）。
     /// </summary>
@@ -197,7 +197,7 @@ public sealed class BitmapRegistry
         if (bitmap.PixelFormat != PixelFormat.Format32bppPArgb)
         {
             throw new ArgumentException(
-                $"docs/11 §2.1 要求预乘 alpha 的 32bpp，实际 {bitmap.PixelFormat}", nameof(bitmap));
+                $"帧位图必须是预乘 alpha 的 32bpp，实际 {bitmap.PixelFormat}", nameof(bitmap));
         }
 
         long id = _next++;

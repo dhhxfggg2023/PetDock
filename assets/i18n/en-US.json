@@ -8,6 +8,5 @@
   "ui.tray.pet.move": "Move",
   "ui.tray.pet.pause": "Pause",
   "ui.tray.pet.hide": "Hide",
-  "ui.tray.pet.remove": "Remove",
-  "ui.perf.notSampled": "(not sampled)"
+  "ui.tray.pet.remove": "Remove"
 }

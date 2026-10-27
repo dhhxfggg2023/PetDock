@@ -1,6 +1,6 @@
 using PetDock.DyberPet;
 
-// DyberPet importer CLI（M3：可命令的转换入口，契约 §3——不做 UI/CLI 工程，那是 M5/docs/18 §5 的范围）。
+// DyberPet importer CLI（M3：可命令的转换入口，契约 §3——不做 UI/CLI 工程，那是 M5/原规格 18 §5 的范围）。
 //   --probe <dir>   只探测布局并打印审计行（t4 夹具联调用）
 //   --in <dir>      真包目录（只读）；产物 = petdock-sample.json + anim/*.json + dyberpet-provenance.json
 //   --out <dir>     产物目录；缺省 = <仓库根>/artifacts/dyberpet/<包名>（artifacts/ 已被 gitignore）

@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 namespace PetDock.Core.PetRuntime;
 
 /// <summary>Event catalog: the only event names the bus will ever dispatch (M4 contract §2).</summary>
-/// <remarks>Authoritative list lives in docs/16 §2-§3. Outside-catalog names are rejected fail-closed.</remarks>
+/// <remarks>Authoritative list lives in 原规格 16 §2-§3. Outside-catalog names are rejected fail-closed.</remarks>
 public static class EventCatalog
 {
     public const string ClockTick = "core.clock.tick";

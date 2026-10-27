@@ -1,11 +1,11 @@
-// UI 母体自检（RFC-12 §3，docs/18 §1/§2/§2.4/§2.5）。
+// UI 母体自检（RFC-12 §3，原规格 18 §1/§2/§2.4/§2.5）。
 // 命令形态：`--uitest`，每行 `CHECK ui-<name> PASS|FAIL|SKIP <detail>`，统计行 `STAT uitest …`，
 // 末行 `UI-OK skipped=<s>` / `UI-FAIL n=<fail+unowned> skipped=<s>`。
 // 判据口径来自文档，不由实现自证：
-//   docs/18 §1     托盘恰有五个顶层项，顺序固定，「暂停全局输入钩子」是强制项不可隐藏
-//   docs/18 §2/§2.5 主控面板四页齐全、面板单实例、关闭面板不退出进程
-//   docs/18 §2.4   无宠物时性能页显示「尚无类似」而不是编造数字
-//   docs/18 §3     授权弹窗三选一，Tier 2 的「仅本次」置灰
+//   原规格 18 §1     托盘恰有五个顶层项，顺序固定，「暂停全局输入钩子」是强制项不可隐藏
+//   原规格 18 §2/§2.5 主控面板四页齐全、面板单实例、关闭面板不退出进程
+//   原规格 18 §2.4   无宠物时性能页显示「尚无类似」而不是编造数字
+//   原规格 18 §3     授权弹窗三选一，Tier 2 的「仅本次」置灰
 // 无人值守：全部控件树只 CreateControl 不 Show，任何一步失败都落成 FAIL 行而不抛。
 // 第三种结局（跳过）在 SkipLedger.cs：2026-10-25 判据体检 S2 之前，`…(skipped)` 只能塞进 ok=true
 // 一起算 PASS，三种结局里两种是绿的。现在 SKIP 只从 Check 这一个收尾出，且没人接的 SKIP 判红。
@@ -29,7 +29,7 @@ internal static class UiSelfTest
         int logIdx = Array.FindIndex(args, a => string.Equals(a, "--log", StringComparison.Ordinal));
         _logPath = logIdx >= 0 && args.Length > logIdx + 1 ? args[logIdx + 1] : null;
 
-        // 人眼验收的截图工件（docs/18 §7.1）：--uitest --shots <目录>。
+        // 人眼验收的截图工件（原规格 18 §7.1）：--uitest --shots <目录>。
         int shotIdx = Array.FindIndex(args, a => string.Equals(a, "--shots", StringComparison.Ordinal));
         _shotsDir = shotIdx >= 0 && args.Length > shotIdx + 1 ? args[shotIdx + 1] : null;
 
@@ -45,7 +45,7 @@ internal static class UiSelfTest
             PanelSingleton();
             RosterReadOnly();
             AuthorizationDialogCheck();
-            // 2026-10-28：外观母体（docs/18 §2.6）的机器判据 —— 裸色/控件种类/四档缩放令牌/文字放得下。
+            // 2026-10-28：外观母体（原规格 18 §2.6）的机器判据 —— 裸色/控件种类/四档缩放令牌/文字放得下。
             AppearanceChecks.Run(Check);
             // 2026-10-26 真机故障（弹窗被压在宠物下面/后面）的反向门禁：模态窗必须在置顶档，
             // 且真的压在宠物上面。见 ModalBandChecks.cs。
@@ -53,18 +53,17 @@ internal static class UiSelfTest
             ConsentUiChecks.Run(Emit, Check);
             // 2026-10-26：同批授权请求合进一个窗、按插件分段的判据（ui-auth-batch-*）。
             ConsentBatchChecks.Run(Check);
-            PerfEmptyHonest();
-            PerfPageSample();
-            // RFC-30 §4：逐宠物行、归属规则、超限计数是否真的会动。
-            PerfChecks.Run(Check);
+            FramePumpOverruns();
             KeyboardHookContract();
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
             SettingsChecks.Run(Check);
-            // 2026-10-28：审计流水的只读视图（docs/18 §2.8，ui-audit-view-*）。
+            // 2026-10-28：审计流水的只读视图（原规格 18 §2.8，ui-audit-view-*）。
             AuditChecks.Run(Check);
             // 2026-10-26：插件开关落盘 + 右键宠物弹菜单的接线（ui-plugins-* / ui-pet-context-menu-*）。
             PluginToggleChecks.Run(Check);
+            // 2026-10-28：管理面（策略默认 / 清单视图 / 开关落盘 / 安装器护栏）的判据。
+            PluginManageChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。
@@ -80,8 +79,6 @@ internal static class UiSelfTest
             PetWindowChecks.Run(Check);
             // RFC-37 §7 第 4 条：位置按宠物持久化（ui-pet-position-persist-*）。
             PetPositionChecks.Run(Check);
-            // RFC-37 §4（片 4）：性能页的帧读数按宠物归属（ui-perf-*-per-pet / per-pet-frames）。
-            PerfPetChecks.Run(Check);
             TrayPetChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
@@ -182,11 +179,10 @@ internal static class UiSelfTest
         int failures = 0;
         using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
         IReadOnlyList<string> ids = panel.PageIds;
-        bool ok = ids.Count == 4
+        bool ok = ids.Count == 3
             && ids[0] == PanelPages.Pets
             && ids[1] == PanelPages.Plugins
-            && ids[2] == PanelPages.Perf
-            && ids[3] == PanelPages.Settings;
+            && ids[2] == PanelPages.Settings;
         Check("ui-panel-pages", ok, "pages=" + string.Join(",", ids));
 
         // 切页：每一页都必须真的存在（未知页 → 显式异常，不是静默失败）
@@ -227,10 +223,10 @@ internal static class UiSelfTest
     private static int RosterReadOnly()
     {
         int failures = 0;
-        UiSnapshot snapshot = UiRoster.Build(null, null, PerfSummary.Empty);
+        UiSnapshot snapshot = UiRoster.Build(null, null);
         Check("ui-roster-readonly",
-            snapshot.Pets.Count == 0 && snapshot.Plugins.Count == 0 && snapshot.Perf.IsEmpty,
-            $"pets={snapshot.Pets.Count} plugins={snapshot.Plugins.Count} perf-empty={snapshot.Perf.IsEmpty}");
+            snapshot.Pets.Count == 0 && snapshot.Plugins.Count == 0,
+            $"pets={snapshot.Pets.Count} plugins={snapshot.Plugins.Count}");
         return failures;
     }
 
@@ -251,41 +247,29 @@ internal static class UiSelfTest
         return failures;
     }
 
-    /// <summary>§2.4：无宠物时性能页必须明说「尚无宠物运行」，不得编造数字（断常量，不断中文原文）。</summary>
-    private static int PerfEmptyHonest()
-    {
-        int failures = 0;
-        using var page = new PerfPage(() => UiSnapshot.Empty);
-        page.Bind(PerfSummary.Empty);
-        Check("ui-perf-empty-honest",
-            page.RowCount == 0 && page.SummaryText.Contains(I18n.Get(PerfPage.NoPetRunning), StringComparison.Ordinal),
-            $"rows={page.RowCount} summary={page.SummaryText}");
-        return failures;
-    }
-
     /// <summary>
-    /// §2.4：有数据时行数与摘要如实反映快照。
-    /// RFC-30 §3.4 之前这一条断的是「降级 1」——那个 1 是判据自己塞进 PerfSummary 的，
-    /// 面板当时**没有任何接收口**能拿到降级数，所以那条断言其实在给「编造的数字」盖章。
-    /// 现在降级/隔离区没有接收口就写「未接」，本判据改成断这一条。
+    /// 帧泵的超限计数真的会动（原性能页那一列的来源，页面删掉后判据留下 ——
+    /// 它验的是泵，不是页）。超限口径是固定预算 8.3ms，所以这里每帧睡 20ms。
     /// </summary>
-    private static int PerfPageSample()
+    private static int FramePumpOverruns()
     {
         int failures = 0;
-        using var page = new PerfPage(() => UiSnapshot.Empty);
-        var rows = new List<PerfLine>
+        using var pump = new FramePump();
+        pump.SetTargetFrameMs(1.0);
+        pump.Start(() =>
         {
-            new("sample-pet", "0.05 %", "12.0 MB", "1.2 ms", 3),
-        };
-        page.Bind(new PerfSummary("60.0s", 1, 0, rows));
-        Check("ui-perf-rows", page.RowCount == 1
-            && page.SummaryText.Contains(I18n.Get(PerfPage.NotWired), StringComparison.Ordinal),
-            $"rows={page.RowCount} summary={page.SummaryText}");
+            Thread.Sleep(20);
+            return true;
+        });
+        Thread.Sleep(300);
+        pump.Stop();
+        Check("ui-frame-pump-overruns", pump.OverBudgetFrames > 0,
+            $"over={pump.OverBudgetFrames} frames={pump.Frames}");
         return failures;
     }
 
     /// <summary>
-    /// docs/14:110 + docs/16:56：键盘钩子的两条硬约束。
+    /// 原规格 14:110 + 原规格 16:56：键盘钩子的两条硬约束。
     /// ① 没有插件持权时**不安装**（一个装了却没人要的全局钩子只是白拿用户的每一次按键）；
     /// ② 安装后必须能被托盘固定项停止，且停止后不再向外发事件。
     /// 不测「真的敲键盘」——那需要交互式桌面会话与外部输入，无人值守跑不出来；

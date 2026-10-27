@@ -1,18 +1,18 @@
-// --perftest：把 docs/41 §6 的 D-14 功耗门禁从「判据写在文档里」变成「一条命令能测、
-// 能量、能拦」。判定依据与阈值逐条对照 docs/41:122-128：
+// --perftest：把 原规格 41 §6 的 D-14 功耗门禁从「判据写在文档里」变成「一条命令能测、
+// 能量、能拦」。判定依据与阈值逐条对照 原规格 41:122-128：
 //   D-14a 空闲 CPU ≤0.5% 单核（M-02）        → CHECK perf-cpu-idle
 //   D-14b 常驻内存 ≤150MB 私有工作集（M-04） → CHECK perf-private-ws
 //   D-14c 唤醒首帧 ≤1.5s（M-03）             → CHECK perf-first-frame
 //   D-14d 8h 泄漏 ≤5%（M-09）                → --soak 长跑模式 + 句柄计数
 //   D-14e 相对基线（RFC-40 改语义）           → perf-relative-diagnostic（永远打印、永不失败）
 //                                              + perf-relative-gated（仅前提全等时是硬门）
-//   D-14f 基线钉死 tests/perf.baseline.json   → --write-baseline --note "<为什么变了>"，连同 premise
+//   D-14f 基线钉死旧性能基线   → --write-baseline --note "<为什么变了>"，连同 premise
 //
-// 与 docs/50:93「仪表盘读数与 D-14 门禁命令一致」的关系：**本文件就是那个「门禁命令」**。
-// M8 的内置性能面板（docs/18 未定义，需先走 RFC）今后的读数必须由同一套采样函数产出，
+// 与 原规格 50:93「仪表盘读数与 D-14 门禁命令一致」的关系：**本文件就是那个「门禁命令」**。
+// M8 的内置性能面板（原规格 18 未定义，需先走 RFC）今后的读数必须由同一套采样函数产出，
 // 而不是各算各的——所以采样逻辑集中在这里，面板只做展示。
 //
-// 单机单环境（docs/41:129）：基线里记 premise（机器三段 + 整机负载 + 帧率档 + 花名册 + 采样窗），
+// 单机单环境（原规格 41:129）：基线里记 premise（机器三段 + 整机负载 + 帧率档 + 花名册 + 采样窗），
 // 换了机器**或**换了安静程度/花名册/采样窗，相对比较就不可比 —— 那时只打印，不判红（RFC-40 §3.2）。
 using System;
 using System.Diagnostics;
@@ -248,7 +248,7 @@ internal static partial class PerfGate
         }
     }
 
-    /// <summary>私有工作集（docs/41:123 的字面量）。Process 类没有这个读数，走 psapi EX2。</summary>
+    /// <summary>私有工作集（原规格 41:123 的字面量）。Process 类没有这个读数，走 psapi EX2。</summary>
     internal static long PrivateWorkingSetBytes(Process p)
     {
         var counters = new PROCESS_MEMORY_COUNTERS_EX2();

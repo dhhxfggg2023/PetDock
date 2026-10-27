@@ -2,7 +2,7 @@
   "name": "@petdock/sdk",
   "private": true,
   "version": "0.1.0",
-  "description": "PetDock Tier 1 plugin SDK — the only surface a plugin may import (docs/20).",
+  "description": "PetDock Tier 1 plugin SDK — the only surface a plugin may import (原规格 20).",
   "type": "module",
   "engines": {
     "node": ">=20"

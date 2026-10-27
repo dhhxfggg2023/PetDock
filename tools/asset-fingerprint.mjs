@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// tools/asset-fingerprint.mjs —— docs/41 D-13a「零真实素材入库」的机器门禁。
+// tools/asset-fingerprint.mjs —— 原规格 41 D-13a「零真实素材入库」的机器门禁。
 //
-// 为什么需要它：docs/41:105 写明「CI 对仓库做素材指纹扫描（已知生态素材目录结构、
+// 为什么需要它：原规格 41:105 写明「CI 对仓库做素材指纹扫描（已知生态素材目录结构、
 // *.moc3 / *.model3.json 等扩展名 + 已知版权文件的哈希），命中即失败，直接服务 M-12」，
 // 但 tools/ 下从来没有这个脚本 —— 规格里有一条门禁，实现里没有，等于没有门禁。
-// 它同时是 docs/52 §6 发布前合规清单第 2、3 条的机器判据。
+// 它同时是 原规格 52 §6 发布前合规清单第 2、3 条的机器判据。
 //
 // 扫描范围 = **git 跟踪的文件**。这不是偷懒：`assets/user/` 与 `assets/sample/local/`
-// 是所有者本机自用素材（.gitignore 整目录排除，docs/52 §5），它们永远不会进仓库、
+// 是所有者本机自用素材（.gitignore 整目录排除，原规格 52 §5），它们永远不会进仓库、
 // 也不会进安装包，把它们判成违规只会训练人忽略告警。要连磁盘一起查时用 `--all`。
 //
 // 判据三类（任一类命中即失败）：
@@ -36,12 +36,12 @@ const KNOWN_HASHES = path.join(REPO_ROOT, 'tools', 'fingerprint-known.json');
 
 /** 商业 SDK / 生态素材的二进制扩展名。命中即失败，无一例外。 */
 const FORBIDDEN_EXT = new Map([
-  ['.moc3', 'Live2D Cubism 模型（docs/52 §3：永不打包）'],
-  ['.model3.json', 'Live2D Cubism 元数据（docs/52 §3）'],
-  ['.motion3.json', 'Live2D Cubism 动作（docs/52 §3）'],
-  ['.skel', 'Spine 骨架（docs/52 §3）'],
-  ['.atlas', 'Spine 图集（docs/52 §3）'],
-  ['.mtn', 'Shimeji 动作（v1 范围外，见 docs/50 推迟清单）'],
+  ['.moc3', 'Live2D Cubism 模型（原规格 52 §3：永不打包）'],
+  ['.model3.json', 'Live2D Cubism 元数据（原规格 52 §3）'],
+  ['.motion3.json', 'Live2D Cubism 动作（原规格 52 §3）'],
+  ['.skel', 'Spine 骨架（原规格 52 §3）'],
+  ['.atlas', 'Spine 图集（原规格 52 §3）'],
+  ['.mtn', 'Shimeji 动作（v1 范围外，见 原规格 50 推迟清单）'],
 ]);
 
 /**
@@ -165,7 +165,7 @@ function main() {
   //
   // 这里的每一条都**必须目录内判定**。曾经写成全局 `endsWith('/info/info.json')`，
   // 结果仓库里任何一处出现该路径，就会把命中报给**每一个**目录 —— 实测把自家的合成夹具
-  // tests/fixtures/dyberpet-min/dyberpet-flat（它根本没有 info/ 目录）判成了真实角色包。
+  // 早先的扁平角色包夹具（它根本没有 info/ 目录）判成了真实角色包。
   // 一个会误报自家夹具的门禁，唯一的作用是训练人忽略告警。
   const dirFiles = new Map();
   const dirSubdirs = new Map();
@@ -235,7 +235,7 @@ function main() {
   const scope = ROOT_OVERRIDE ? `root=${ROOT_OVERRIDE}` : SCAN_ALL ? 'all-files' : 'git-tracked';
   console.log(`STAT fingerprint scanned=${files.length} scope=${scope} known-hashes=${known.length} hits=${seen.size}`);
   if (seen.size > 0) {
-    console.log('FINGERPRINT-FAIL 真实素材/商业 SDK 二进制不得入库，见 docs/41 D-13a 与 docs/52 §5');
+    console.log('FINGERPRINT-FAIL 真实素材/商业 SDK 二进制不得入库，见 原规格 41 D-13a 与 原规格 52 §5');
     process.exit(1);
   }
   console.log('FINGERPRINT-PASS');

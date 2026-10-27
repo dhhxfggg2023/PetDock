@@ -8,6 +8,5 @@
   "ui.tray.pet.move": "移动",
   "ui.tray.pet.pause": "暂停",
   "ui.tray.pet.hide": "隐藏",
-  "ui.tray.pet.remove": "移除",
-  "ui.perf.notSampled": "(未采样)"
+  "ui.tray.pet.remove": "移除"
 }

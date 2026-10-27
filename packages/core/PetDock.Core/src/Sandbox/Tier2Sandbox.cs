@@ -1,7 +1,7 @@
-// RFC-10 §2：Tier-2 进程外沙箱（docs/14 §1：独立进程 + stdio JSON-RPC + 会话 quota/等待上限）。
+// RFC-10 §2：Tier-2 进程外沙箱（原规格 14 §1：独立进程 + stdio JSON-RPC + 会话 quota/等待上限）。
 // 范围 = 进程边界（spawn、行分隔 JSON-RPC、每请求等待上限、崩溃检测、有序关闭）；包形状与会话
 // quota 在 Tier2Wire.cs / Tier2Sandbox.Wire.cs，会话状态在 Tier2Sandbox.Session.cs。
-// 本文件只留边界骨架（spawn / 往返 / 关闭）与记账。P-05（docs/01 §5）：公共方法一律不外抛。
+// 本文件只留边界骨架（spawn / 往返 / 关闭）与记账。P-05（原规格 01 §5）：公共方法一律不外抛。
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -19,10 +19,10 @@ public sealed partial class Tier2Sandbox : IDisposable
     /// <summary>握手方法名；不回它就装载失败。</summary>
     public const string HandshakeMethod = "ping";
 
-    /// <summary>docs/14 §5 的会话 wire 字节预算默认值（RFC-27 §3.5）。</summary>
+    /// <summary>原规格 14 §5 的会话 wire 字节预算默认值（RFC-27 §3.5）。</summary>
     public const long DefaultSessionBytes = 32L * 1024 * 1024;
 
-    /// <summary>连续多少次「等到上限也不回」才算卡死（docs/14 §5.1）：慢是慢，连续不回才是死。</summary>
+    /// <summary>连续多少次「等到上限也不回」才算卡死（原规格 14 §5.1）：慢是慢，连续不回才是死。</summary>
     public const int MaxConsecutiveTimeouts = 3;
 
     private readonly ISandboxEventSink _sink;
@@ -83,7 +83,7 @@ public sealed partial class Tier2Sandbox : IDisposable
     /// <summary>通知条数（`abi.event`，不应答所以不占 <see cref="Requests"/>）。</summary>
     public long Notifications { get; private set; }
 
-    /// <summary>会话预算被用尽的次数（docs/14 §5 的越限）。</summary>
+    /// <summary>会话预算被用尽的次数（原规格 14 §5 的越限）。</summary>
     public long QuotaExceeded { get; private set; }
 
     /// <summary>最近一次成功解码的帧号（RFC-27 §3.2 的严格递增要求）。</summary>
@@ -159,7 +159,7 @@ public sealed partial class Tier2Sandbox : IDisposable
                 ("pid", process.Id),
                 ("rpc", HandshakeMethod),
                 ("hello", Hello?.Id ?? "<none>"),
-                // 渲染预算从这里起只是**宣告**（docs/14 §5.1）：读数是给帧泵与日志看的，不裁决等待。
+                // 渲染预算从这里起只是**宣告**（原规格 14 §5.1）：读数是给帧泵与日志看的，不裁决等待。
                 ("frameBudgetMs", _frameBudgetMs));
             _session = Tier2SessionState.Running;
             _restartWindowStartMs = Environment.TickCount64;
@@ -220,7 +220,7 @@ public sealed partial class Tier2Sandbox : IDisposable
             return new Tier2Reply(false, null, $"write-failed: {ex.GetType().Name}");
         }
 
-        // ReadLine 是阻塞的，所以异步读 + 有界等待。等到上限不回**不等于**进程死了（docs/14 §5.1）：
+        // ReadLine 是阻塞的，所以异步读 + 有界等待。等到上限不回**不等于**进程死了（原规格 14 §5.1）：
         // 计一次超时、交回「这次没有」，让帧泵自己决定下一帧；连续 MaxConsecutiveTimeouts 次都不回才当卡死。
         try
         {

@@ -1,16 +1,16 @@
-// docs/11 §7「垃圾回收、帧预算与背压」的 C# 落地（SM-04）。
+// 原规格 11 §7「垃圾回收、帧预算与背压」的 C# 落地（SM-04）。
 // 三个常量与一条超时规则，出处逐条写在这里（数值不许在别处再写一遍）：
-//   FrameBudget      = 8.3 ms   每宠物上限（docs/11:224）
-//   IdleFrameBudget  = 33.3 ms  无内容变化时（docs/11:225；= 1000/30，与 Compositor/FramePump.cs:13 同一值）
-//   GlobalFrameBudget= 25 ms    所有宠物合计（docs/11:226）
-//   连续 8 次超时 → suspend（docs/11:230）
+//   FrameBudget      = 8.3 ms   每宠物上限（原规格 11:224）
+//   IdleFrameBudget  = 33.3 ms  无内容变化时（原规格 11:225；= 1000/30，与 Compositor/FramePump.cs:13 同一值）
+//   GlobalFrameBudget= 25 ms    所有宠物合计（原规格 11:226）
+//   连续 8 次超时 → suspend（原规格 11:230）
 //
 // **它与 M1 已落地的「沙箱 8 连故障挂起」是同一条路径，不是两条**（t1 契约 §8.2 定案）：
 //   两个计数源各自独立可测，但汇到同一个终态 —— 宠物实例被挂起，且宿主随后调用
 //   PluginHost.Disable 让插件层也落到 PluginLifecycleState.Suspended：
 //     计数源 A（本文件）：帧循环里 QueryFrame+Tick 的墙钟耗时 > 8.3ms，连续 8 帧 → FrameTimeoutSuspend。
 //     计数源 B（M1）：Sandbox/PluginHost.Loop.cs:81-98 的 sandbox trap 计数，连续 8 片 → auto-suspend。
-//   为什么必须共用终态：docs/11:220 逐字「宿主的健康线是唯一裁决者」，再造第二条 Suspended
+//   为什么必须共用终态：原规格 11:220 逐字「宿主的健康线是唯一裁决者」，再造第二条 Suspended
 //   判定点就会出现第二个魔数 8 与第二个终态（t1 契约 §8.2 依据 1）。
 //   两条路径各自可测：A 见 --drivetest（超时用注入时钟确定性制造）；B 见
 //   --hosttest 的预算探针（HostBudgetProbe.RunConsecutiveFaultDrive，M1 已有判据）。
@@ -28,16 +28,16 @@ public enum FrameOutcome
     /// <summary>QueryFrame + Tick 都在预算内返回（超预算但未到 8 连时不改判据，只看计数）。</summary>
     Completed,
 
-    /// <summary>本帧 QueryFrame 抛异常 → 该帧 dropped（docs/11:258），帧内容落在降级链上。</summary>
+    /// <summary>本帧 QueryFrame 抛异常 → 该帧 dropped（原规格 11:258），帧内容落在降级链上。</summary>
     Dropped,
 
     /// <summary>本帧没有调用插件：实例不处于 Running（挂起或已释放）。</summary>
     NotRunning,
 
-    /// <summary>本帧超预算，记一次 skip（docs/11:230「超时一次：宿主 skip 该帧并记录」）。</summary>
+    /// <summary>本帧超预算，记一次 skip（原规格 11:230「超时一次：宿主 skip 该帧并记录」）。</summary>
     Skipped,
 
-    /// <summary>连续 8 次超预算 → 本帧触发挂起（docs/11:230）。</summary>
+    /// <summary>连续 8 次超预算 → 本帧触发挂起（原规格 11:230）。</summary>
     SuspendedByTimeout,
 }
 
@@ -48,16 +48,16 @@ public enum FrameOutcome
 /// </summary>
 public sealed class FrameBudgetGuard
 {
-    /// <summary>docs/11:224 每宠物每帧上限（毫秒），= SM-04。</summary>
+    /// <summary>原规格 11:224 每宠物每帧上限（毫秒），= SM-04。</summary>
     public const double FrameBudgetMs = 8.3;
 
-    /// <summary>docs/11:225 无内容变化时的周期（毫秒）。</summary>
+    /// <summary>原规格 11:225 无内容变化时的周期（毫秒）。</summary>
     public const double IdleFrameBudgetMs = 1000.0 / 30.0;
 
-    /// <summary>docs/11:226 所有宠物合计上限（毫秒）。</summary>
+    /// <summary>原规格 11:226 所有宠物合计上限（毫秒）。</summary>
     public const double GlobalFrameBudgetMs = 25.0;
 
-    /// <summary>docs/11:230 连续超时次数上限，达到即挂起。</summary>
+    /// <summary>原规格 11:230 连续超时次数上限，达到即挂起。</summary>
     public const int ConsecutiveTimeoutLimit = 8;
 
     private readonly Func<double> _clock;
@@ -85,16 +85,16 @@ public sealed class FrameBudgetGuard
     /// 这条契约写在注释里是因为判据要靠它做确定性时钟：读几次是行为的一部分，不是实现细节。</summary>
     public const int ClockReadsPerFrame = 2;
 
-    /// <summary>累计 skip 帧数（超预算的帧各记一次，docs/11:230）。</summary>
+    /// <summary>累计 skip 帧数（超预算的帧各记一次，原规格 11:230）。</summary>
     public int FrameSkips { get; private set; }
 
     /// <summary>累计因连续超时而挂起的次数。</summary>
     public int TimeoutSuspends { get; private set; }
 
-    /// <summary>累计 dropped 帧数（QueryFrame 抛异常，docs/11:258）。</summary>
+    /// <summary>累计 dropped 帧数（QueryFrame 抛异常，原规格 11:258）。</summary>
     public int DroppedFrames { get; private set; }
 
-    /// <summary>累计全局超预算帧数（docs/11:226；M2 单实例，只计数不阻断）。</summary>
+    /// <summary>累计全局超预算帧数（原规格 11:226；M2 单实例，只计数不阻断）。</summary>
     public int GlobalOverBudgetFrames { get; private set; }
 
     /// <summary>上一帧耗时（毫秒）。</summary>
@@ -106,7 +106,7 @@ public sealed class FrameBudgetGuard
     /// <summary>上一帧的全局跨度（毫秒）：本实例帧 + 宿主自身开销。</summary>
     public double LastGlobalMs => _lastGlobalMs;
 
-    /// <summary>上一次驱动的帧是否被判为「无内容变化」（docs/11:225 的空闲档）。</summary>
+    /// <summary>上一次驱动的帧是否被判为「无内容变化」（原规格 11:225 的空闲档）。</summary>
     public bool LastFrameIdle { get; private set; }
 
     /// <summary>当前档位对应的预算（毫秒）：空闲 33.3，否则 8.3。</summary>
@@ -117,10 +117,10 @@ public sealed class FrameBudgetGuard
 
     /// <summary>
     /// 驱动一只宠物实例的一帧：
-    /// 1. 非 Running → 不调用插件（挂起时 dt 可被零化，docs/11:134）；
+    /// 1. 非 Running → 不调用插件（挂起时 dt 可被零化，原规格 11:134）；
     /// 2. QueryFrame(now) —— 抛异常即 dropped，本帧内容走降级链；
     /// 3. Brain.Tick(dt, world) —— 抛异常即本 tick 的 directives 全部作废 + degraded；
-    /// 4. 交给 HostArbiter 按 docs/11:162 的优先级落地；
+    /// 4. 交给 HostArbiter 按 原规格 11:162 的优先级落地；
     /// 5. 计墙钟：超预算记一次 skip，连续 8 次 → 挂起。
     /// </summary>
     public FrameOutcome Drive(PetInstance instance, int nowMs, WorldSnapshot world)
@@ -144,16 +144,16 @@ public sealed class FrameBudgetGuard
         }
         catch (Exception error)
         {
-            // docs/11:258：当前帧标记 dropped；连续 8 次 → 降级到占位图。
+            // 原规格 11:258：当前帧标记 dropped；连续 8 次 → 降级到占位图。
             dropped = true;
             DroppedFrames++;
             instance.NoteFrameDropped(error);
         }
 
-        // 空闲档判据（docs/11:225「无内容变化时」）：本帧与上一帧是同一个位图对象。
+        // 空闲档判据（原规格 11:225「无内容变化时」）：本帧与上一帧是同一个位图对象。
         LastFrameIdle = instance.LastFrameBitmap is not null && instance.LastFrameReused;
 
-        // dt：以 now 与上一帧 now 之差累加；处于挂起态的帧 dt 被零化（docs/11:134）。
+        // dt：以 now 与上一帧 now 之差累加；处于挂起态的帧 dt 被零化（原规格 11:134）。
         instance.TickBrain(instance.NextDeltaMs(nowMs), world);
         instance.EnforceSessionBudget(nowMs);
 

@@ -1,0 +1,320 @@
+// 插件安装（2026-10-28）：把用户选的**目录或 zip** 变成用户插件根下的一份可装载插件。
+//
+// 参考 PCL2 的做法不是抄界面，而是抄它的顺序：先解到临时区 → 校验 → 确认 → 再落到正式位置。
+// 校验不过时正式位置一个字节都没被碰过；覆盖安装先备份，换不上去再把备份搬回来。
+//
+// 护栏（用户装的是别人给的文件，默认不可信）：
+//   · zip 条目路径不许逃出 staging（zip-slip），不许是符号链接；
+//   · 条目数与总字节有上限；单个文件也有上限；
+//   · 清单必须能被 ManifestValidator 全语义校验通过，入口文件必须在插件目录内；
+//   · 目标只落在 <data>/plugins/<id>，id 受清单正则约束（不会带路径分隔符）。
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using PetDock.Core.Ui;
+using System.Linq;
+using PetDock.Core.Compositor;
+
+namespace PetDock.Hosting;
+
+/// <summary>一次待确认的安装：已经落到临时区、校验通过、等待提交或丢弃。</summary>
+public sealed record InstallPlan(
+    string Id,
+    string Name,
+    string Version,
+    string StagingRoot,
+    string PluginDir,
+    string TargetDir,
+    bool Replaces,
+    int Files,
+    long Bytes);
+
+internal sealed class PluginInstaller
+{
+    private const int MaxEntries = 5000;
+    private const long MaxFileBytes = 64L * 1024 * 1024;
+    private const long MaxTotalBytes = 256L * 1024 * 1024;
+
+    private readonly string _userRoot;
+    private readonly string _stageRoot;
+
+    public PluginInstaller(string userRoot, string dataRoot)
+    {
+        _userRoot = Path.GetFullPath(userRoot);
+        _stageRoot = Path.Combine(Path.GetFullPath(dataRoot), "plugins", ".staging");
+    }
+
+    /// <summary>解包/复制到临时区并校验。返回 false 时 error 是给人看的一句话，临时区已清掉。</summary>
+    public bool TryPrepare(string source, out InstallPlan? plan, out string? error)
+    {
+        plan = null;
+        error = null;
+        string staging = Path.Combine(_stageRoot, Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(staging);
+            if (Directory.Exists(source))
+            {
+                CopyDirectory(source, staging);
+            }
+            else if (File.Exists(source))
+            {
+                ExtractZip(source, staging);
+            }
+            else
+            {
+                error = I18n.Get("cp.plugins.install.missing");
+                return false;
+            }
+
+            (int files, long bytes) = Measure(staging);
+            if (files > MaxEntries)
+            {
+                error = I18n.Get("cp.plugins.install.tooManyFiles", files, MaxEntries);
+                return false;
+            }
+            if (bytes > MaxTotalBytes)
+            {
+                error = I18n.Get("cp.plugins.install.tooLarge", bytes / (1024 * 1024), MaxTotalBytes / (1024 * 1024));
+                return false;
+            }
+
+            string? pluginDir = FindPluginDir(staging);
+            if (pluginDir is null)
+            {
+                error = I18n.Get("cp.plugins.install.noManifest", ManifestValidator.ManifestFileName);
+                return false;
+            }
+
+            Result<PluginManifest, IReadOnlyList<ManifestError>> result = ManifestValidator.Validate(pluginDir);
+            if (!result.IsOk)
+            {
+                error = I18n.Get("cp.plugins.install.badManifest")
+                    + " " + string.Join("; ", result.Error!.Select(e => $"{e.Field}: {e.Message}"));
+                return false;
+            }
+
+            PluginManifest manifest = result.Ok!;
+            string declaredEntry = Path.GetFullPath(Path.Combine(pluginDir, manifest.Entry));
+            string pluginDirFull = Path.GetFullPath(pluginDir) + Path.DirectorySeparatorChar;
+            if (!declaredEntry.StartsWith(pluginDirFull, StringComparison.OrdinalIgnoreCase))
+            {
+                error = I18n.Get("cp.plugins.install.entryOutside");
+                return false;
+            }
+            if (!File.Exists(declaredEntry))
+            {
+                error = I18n.Get("cp.plugins.install.entryMissing", manifest.Entry);
+                return false;
+            }
+
+            string target = Path.Combine(_userRoot, manifest.Id);
+            plan = new InstallPlan(
+                manifest.Id,
+                manifest.Name,
+                manifest.Version,
+                staging,
+                pluginDir,
+                target,
+                Directory.Exists(target),
+                files,
+                bytes);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = I18n.Get("cp.plugins.install.failed", ex.Message);
+            TryDelete(staging);
+            return false;
+        }
+    }
+
+    /// <summary>提交：目标存在就先搬到备份，再把新目录搬进去；失败尽量把备份搬回来。</summary>
+    public bool TryCommit(InstallPlan plan, out string? error)
+    {
+        error = null;
+        string? backup = null;
+        try
+        {
+            Directory.CreateDirectory(_userRoot);
+            if (Directory.Exists(plan.TargetDir))
+            {
+                backup = plan.TargetDir + ".bak-" + DateTime.Now.ToString("yyyy-MM-dd-HHmmss");
+                Directory.Move(plan.TargetDir, backup);
+            }
+
+            Directory.Move(plan.PluginDir, plan.TargetDir);
+            if (backup is not null)
+            {
+                TryDelete(backup);
+            }
+
+            KernelLog.Write(
+                $"plugin-installed id={plan.Id} version={plan.Version} replaces={(plan.Replaces ? 1 : 0)}"
+                + $" files={plan.Files} bytes={plan.Bytes}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (backup is not null && Directory.Exists(backup) && !Directory.Exists(plan.TargetDir))
+            {
+                try
+                {
+                    Directory.Move(backup, plan.TargetDir);
+                }
+                catch (Exception restoreError)
+                {
+                    KernelLog.Write($"plugin-install-restore-failed id={plan.Id} {restoreError.Message}");
+                }
+            }
+
+            error = I18n.Get("cp.plugins.install.commitFailed", ex.Message);
+            return false;
+        }
+        finally
+        {
+            TryDelete(plan.StagingRoot);
+        }
+    }
+
+    /// <summary>丢弃一次未提交的安装（用户取消确认）。</summary>
+    public void Discard(InstallPlan plan) => TryDelete(plan.StagingRoot);
+
+    private static string? FindPluginDir(string staging)
+    {
+        if (File.Exists(Path.Combine(staging, ManifestValidator.ManifestFileName)))
+        {
+            return staging;
+        }
+
+        var matches = new List<string>();
+        foreach (string dir in Directory.GetDirectories(staging))
+        {
+            if (File.Exists(Path.Combine(dir, ManifestValidator.ManifestFileName)))
+            {
+                matches.Add(dir);
+            }
+        }
+
+        // 多个候选 = 这个包里装了不止一只插件：v1 不猜，直接让人打包一份一个。
+        return matches.Count == 1 ? matches[0] : null;
+    }
+
+    private static void ExtractZip(string zipPath, string staging)
+    {
+        using ZipArchive archive = ZipFile.OpenRead(zipPath);
+        if (archive.Entries.Count > MaxEntries)
+        {
+            throw new IOException(I18n.Get("cp.plugins.install.tooManyFiles", archive.Entries.Count, MaxEntries));
+        }
+
+        string rootFull = Path.GetFullPath(staging) + Path.DirectorySeparatorChar;
+        long total = 0;
+        foreach (ZipArchiveEntry entry in archive.Entries)
+        {
+            string relative = entry.FullName.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+            if (relative.Length == 0)
+            {
+                continue;
+            }
+
+            if (Path.IsPathRooted(relative))
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", entry.FullName));
+            }
+
+            string dest = Path.GetFullPath(Path.Combine(staging, relative));
+            if (!dest.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", entry.FullName));
+            }
+
+            if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", entry.FullName));
+            }
+
+            if (entry.Name.Length == 0)
+            {
+                Directory.CreateDirectory(dest);
+                continue;
+            }
+
+            if (entry.Length > MaxFileBytes)
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.fileTooLarge", entry.FullName));
+            }
+
+            total += entry.Length;
+            if (total > MaxTotalBytes)
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.tooLarge", total / (1024 * 1024), MaxTotalBytes / (1024 * 1024)));
+            }
+
+            string? parent = Path.GetDirectoryName(dest);
+            if (!string.IsNullOrEmpty(parent))
+            {
+                Directory.CreateDirectory(parent);
+            }
+
+            using Stream input = entry.Open();
+            using var output = new FileStream(dest, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            input.CopyTo(output);
+        }
+    }
+
+    private static void CopyDirectory(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+        foreach (string file in Directory.GetFiles(from))
+        {
+            var info = new FileInfo(file);
+            if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", file));
+            }
+            if (info.Length > MaxFileBytes)
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.fileTooLarge", file));
+            }
+            File.Copy(file, Path.Combine(to, info.Name), overwrite: false);
+        }
+
+        foreach (string dir in Directory.GetDirectories(from))
+        {
+            if ((File.GetAttributes(dir) & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", dir));
+            }
+            CopyDirectory(dir, Path.Combine(to, Path.GetFileName(dir)));
+        }
+    }
+
+    private static (int Files, long Bytes) Measure(string dir)
+    {
+        int files = 0;
+        long bytes = 0;
+        foreach (string file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        {
+            files++;
+            bytes += new FileInfo(file).Length;
+        }
+        return (files, bytes);
+    }
+
+    private static void TryDelete(string dir)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            KernelLog.Write($"plugin-install-cleanup-failed dir={dir} {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+}

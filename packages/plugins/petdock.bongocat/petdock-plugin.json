@@ -10,6 +10,7 @@
     "input.mousePosition",
     "input.keyboardHook"
   ],
+  "defaultEnabled": false,
   "license": { "spdx": "CC0-1.0" },
   "events": [
     "core.clock.tick",

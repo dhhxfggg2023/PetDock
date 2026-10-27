@@ -1,4 +1,4 @@
-// 把一只宠物实例接成分层窗的内容源（docs/11 §3 的视图接口 → M0 的 IFrameContentSource）。
+// 把一只宠物实例接成分层窗的内容源（原规格 11 §3 的视图接口 → M0 的 IFrameContentSource）。
 //
 // 这是 t1 契约 §4.2 要求的那一步的落点：**内容源的发现统一到 PluginHost**，
 // 而 M0 的两个接口（IFrameContentProvider / IFrameContentSource）**保留、不改名**。
@@ -36,7 +36,7 @@ public sealed class PetFrameSource
         // 总线挂在实例自己的事件口上：仲裁器记账、事件目录守门、观察者投递共用同一个 Log，
         // 于是「发出去的事件」与「自检读到的 Log」是同一份事实，不是两套。
         _bus = new EventBus(instance.Arbiter.Events);
-        // 行为层的事件入口（docs/11:137 总线顺序 = 到达顺序）。M4 修复前这条订阅不存在，
+        // 行为层的事件入口（原规格 11:137 总线顺序 = 到达顺序）。M4 修复前这条订阅不存在，
         // 插件实现的 OnEvent 在整个进程生命周期里一次都没被调用过。
         instance.Arbiter.Events.Published += OnBusEvent;
     }
@@ -59,7 +59,7 @@ public sealed class PetFrameSource
     /// <summary>
     /// 现在交付的是不是真内容。降级链走到占位图档之后，本源交出的就是**内核占位帧**，
     /// 那不是视图实现画出来的 —— 这时必须自述为「不是真内容」，
-    /// 否则外面会把占位帧当成「宠物还在动」（docs/11 §9 的降级语义）。
+    /// 否则外面会把占位帧当成「宠物还在动」（原规格 11 §9 的降级语义）。
     /// </summary>
     public bool DeliversRealContent => _instance.Display.Tier < DisplayTier.Placeholder;
 
@@ -88,7 +88,7 @@ public sealed class PetFrameSource
 
     /// <summary>
     /// 取当前帧内容。返回 null = 本帧无内容（宿主回退到不透明占位帧），
-    /// 这与 docs/11 §9「QueryFrame 抛异常 → 该帧 dropped」是同一条语义的两种表达：
+    /// 这与 原规格 11 §9「QueryFrame 抛异常 → 该帧 dropped」是同一条语义的两种表达：
     /// dropped 的帧在这里就是 null，合成器据此不写像素。
     /// </summary>
     public Bitmap? GetFrameContent(Size frameSize)
@@ -133,13 +133,13 @@ public sealed class PetFrameSource
 
             // 契约 §1.3 第 4 步：输入事件（固定类型序 pointer.move → down → up → key.*）。
             // M4 里 down/up 由指针会话那条链发（PetInstance.PointerDown/Up），key.* 因未授权无源；
-            // 这里补的是 pointer.move —— 它的源是帧泵对光标的采样，不是 OS 钩子（docs/16 §3）。
+            // 这里补的是 pointer.move —— 它的源是帧泵对光标的采样，不是 OS 钩子（原规格 16 §3）。
             // 用 LastScreenCursor（原始屏幕坐标）而不是 world.Cursor：后者按契约 §7.1 在窗口外是 null，
             // 用它会让「鼠标还没移到宠物身上」这段最需要反应的时间窗里一条事件都发不出去。
             PublishPointerMove(_probe.LastScreenCursor);
 
             _instance.TickBrain(frameDt, world);
-            // RFC-35 §3.3：docs/11:260 的 10 秒会话预算要有人每帧问一次 —— 此前 EnforceSessionBudget
+            // RFC-35 §3.3：原规格 11:260 的 10 秒会话预算要有人每帧问一次 —— 此前 EnforceSessionBudget
             // 在全仓零调用方，卡住的会话永远不会被宿主取消。
             _instance.EnforceSessionBudget(nowMs);
             Frame frame = _instance.QueryFrame(nowMs);
@@ -157,10 +157,10 @@ public sealed class PetFrameSource
     }
 
     /// <summary>
-    /// 发一条 input.key.down / up（emit，`{vkey, modifiers}`，docs/16 §3）。
+    /// 发一条 input.key.down / up（emit，`{vkey, modifiers}`，原规格 16 §3）。
     /// 与 pointer.move 的区别：那条由帧泵采样光标得到（host-generated），这条必须来自**真实的
-    /// 设备钩子**——docs/16 §3 把 key 事件的 Source 定为 `capability only`，轮询或伪造都不成立。
-    /// 钩子本身在 UiHost 里，只有插件持 `input.keyboardHook` 时才装（docs/16:56）。
+    /// 设备钩子**——原规格 16 §3 把 key 事件的 Source 定为 `capability only`，轮询或伪造都不成立。
+    /// 钩子本身在 UiHost 里，只有插件持 `input.keyboardHook` 时才装（原规格 16:56）。
     /// </summary>
     public void PublishKeyStroke(int vkey, int modifiers, bool down)
     {
@@ -239,7 +239,7 @@ public sealed class PetFrameSource
     /// 发一条 input.pointer.move（serial，`{pos, velocity?}`）。**只在光标真的动了才发**：
     /// 每帧都发会把一条「指针移动」事件变成「帧心跳」的别名，行为层就没法区分
     /// 「鼠标在动」与「时间在走」——而 M4 的判据正是要区分这两类。
-    /// velocity 只在两次采样都有值时给（docs/16 §3 的 `velocity?: f64` 可选语义）。
+    /// velocity 只在两次采样都有值时给（原规格 16 §3 的 `velocity?: f64` 可选语义）。
     /// </summary>
     private void PublishPointerMove(PetPoint? cursor)
     {
@@ -279,7 +279,7 @@ public sealed class PetFrameSource
     }
 
     /// <summary>
-    /// 事件观察者：把落地的每条事件交给行为层（docs/11:137）。
+    /// 事件观察者：把落地的每条事件交给行为层（原规格 11:137）。
     /// 目录守门已在 HostEventDispatch.Publish 里做过，到这里的一定是表内事件。
     /// 行为层抛异常不许打穿宿主循环 —— 记一行日志后继续。
     /// </summary>

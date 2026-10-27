@@ -55,7 +55,7 @@ internal static class ConsentBatchChecks
         check("ui-auth-batch-per-request-selection", perRequest,
             $"a={string.Join(",", dialog.SelectedIdsFor(0))} b={string.Join(",", dialog.SelectedIdsFor(1))}");
 
-        // 批里只要有一份 Tier 2，「仅本次」就不可选（docs/18 §3 的规则按整批统一）。
+        // 批里只要有一份 Tier 2，「仅本次」就不可选（原规格 18 §3 的规则按整批统一）。
         check("ui-auth-batch-once-disabled", !dialog.OnceEnabled, $"once={dialog.OnceEnabled}");
 
         // 取消甲的一项不牵连乙 —— 否则「一份回答」会变成「一锅端」。

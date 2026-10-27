@@ -114,7 +114,7 @@ internal static partial class ThrottleChecks
         /// <summary>
         /// 造一台真窗口。<paramref name="transparentField"/> 决定帧里的不透明区在哪：
         /// false = 整帧不透明（默认）；true = **只有右下角那块不透明，其余全透明** ——
-        /// 这正是 docs/12 的「小帧按左上角粘贴、余处保持透明」（t2 审计的实测条件），
+        /// 这正是 原规格 12 的「小帧按左上角粘贴、余处保持透明」（t2 审计的实测条件），
         /// 它让「探针取样点」与「被盖住的点」可以分开摆，是「透明点不算遮挡」那条唯一有效的构造。
         /// <para>
         /// <paramref name="clipFrames"/> = 1 时交付**永远同一个位图对象**（帧号恒为 0）——

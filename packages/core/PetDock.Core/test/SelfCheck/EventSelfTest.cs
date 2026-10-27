@@ -1,4 +1,4 @@
-// --eventtest：M4（行为与事件）的可判定判据（docs/handoff/M4-contract-frozen.md §4/§5/§6/§7）。
+// --eventtest：M4（行为与事件）的可判定判据（交接档案 §4/§5/§6/§7）。
 // 命令形态：`--eventtest`，每行 `CHECK <key> PASS|FAIL|SKIP <detail>`，统计行 `STAT eventtest …`，
 // 末行 `EVENT-OK skipped=<s>` / `EVENT-FAIL n=<fail+unowned> skipped=<s>`，退出码 0 / n
 // —— 与 --animtest / --drivetest 同构（契约 §7.5）。
@@ -215,7 +215,7 @@ internal static partial class EventSelfTest
     {
         int failures = 0;
         PetInstance instance = PetDriveTest.MakeInstance(out StubView view, out StubBrain brain);
-        // 生命周期推到 running：Suspend/Resume 只在 running ⇄ suspended 之间有语义（docs/11 §10）。
+        // 生命周期推到 running：Suspend/Resume 只在 running ⇄ suspended 之间有语义（原规格 11 §10）。
         instance.AttachAndStart(32, 32, 1.0);
         instance.Start();
         var lines = new List<string>();
@@ -306,7 +306,7 @@ internal static partial class EventSelfTest
         // 静态面：全局钩子必须有且只有一个安装点。
         // 2026-10-19 之前这里是硬编码 `true` + "sites=0"，因为当时内核确实一个钩子都不装；
         // 那种写法在钩子接上之后会变成一条恒真断言（它不读任何东西，永远不会红）。
-        // 现在改成真扫一遍源码：多出一个安装点就意味着有一条绕过 UiHost 授权门（docs/16:56）的路径。
+        // 现在改成真扫一遍源码：多出一个安装点就意味着有一条绕过 UiHost 授权门（原规格 16:56）的路径。
         int sites = CountHookInstallSites();
         Check(ref failures, "hook-single-install-site", sites == 1, $"setwindowshookex-sites={sites}");
         Check(ref failures, "hook-gated-by-grant", !granted, "reason=no-hook-installed-without-grant");

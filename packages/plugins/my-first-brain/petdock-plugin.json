@@ -7,5 +7,6 @@
   "tier": 1,
   "entry": "main.js",
   "capabilities": ["input.mousePosition", "persist.write:self"],
+  "defaultEnabled": false,
   "license": { "spdx": "MIT" }
 }

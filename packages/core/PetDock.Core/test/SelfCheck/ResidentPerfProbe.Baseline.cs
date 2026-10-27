@@ -3,7 +3,7 @@
 // 与 `--perftest` 的差别只有三处，且都不是语义差别：
 //   ① 采样窗与预热窗**是命令行参数**（--seconds / --warmup），所以它们必须入 premise ——
 //      常驻侧的那次假红（ws 23.7~30.6MB vs 基线 19.6MB）就是「拿默认 20s + 8 目录花名册
-//      去比 10s + 5 插件基线」造成的接线错，不是内存变胖（docs/handoff/VERIFY-2026-10-24.md 红一）。
+//      去比 10s + 5 插件基线」造成的接线错，不是内存变胖（交接档案 红一）。
 //   ② 内存一侧比的字段叫 private_ws_mb（毛私有工作集），不是 perftest 的 retained_heap_mb。
 //   ③ 花名册的取值同样是「插件根 + 目录数」，但常驻侧的装载由 PluginHost 自己做；
 //      这里读的是同一个探针口径（PluginHost.ProbePluginsRoot + 带清单的目录数），不另算一份。

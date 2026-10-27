@@ -1,6 +1,6 @@
-// 实现 docs/40 §1.1 的分层归属与 docs/10「内核白名单」里的插件宿主接入口：
+// 实现 原规格 40 §1.1 的分层归属与 原规格 10「内核白名单」里的插件宿主接入口：
 // 「这一帧的像素是什么」由 plugins 层决定并实现 IFrameContentProvider；内核只按契约调用，
-// 既不认识素材文件，也不认识本类型（docs/40 §3.1 D-03b：内核零上层概念）。
+// 既不认识素材文件，也不认识本类型（原规格 40 §3.1 D-03b：内核零上层概念）。
 using PetDock.Core.Compositor;
 
 namespace PetDock.SamplePet;

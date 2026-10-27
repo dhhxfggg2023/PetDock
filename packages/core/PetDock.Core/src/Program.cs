@@ -1,4 +1,4 @@
-// 实现 docs/12 §6「可执行检查」的进程入口：DPI 感知设置、常驻运行与 --selftest 自检
+// 实现 原规格 12 §6「可执行检查」的进程入口：DPI 感知设置、常驻运行与 --selftest 自检
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -29,7 +29,7 @@ internal static partial class Program
             return Tier2Guest.Run(guestAt + 1 < args.Length ? args[guestAt + 1] : string.Empty);
         }
 
-        // 开机第一件事，在任何窗口创建之前把进程钉成 Per-Monitor V2（docs/12 §3）。
+        // 开机第一件事，在任何窗口创建之前把进程钉成 Per-Monitor V2（原规格 12 §3）。
         // 这是进程级设置，窗口一被创建就锁死，之后再设也无效——所以必须在 Main 最前面。
         if (!Win32.SetProcessDpiAwarenessContext(Win32.DpiPerMonitorAwareV2))
         {
@@ -62,7 +62,16 @@ internal static partial class Program
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
-        // 静止档的确定性探针（先例 tests/m7 的 --timing-probe）：只跑那一层。放在单实例之前：
+        // 清单静态校验（2026-10-28）：门禁与 petdock CLI 共用**内核那份** ManifestValidator，
+        // 不在 tools/ 里再维持第二份 schema（原规格 21 删除后，第二份已经没有权威可依）。
+        int validateAt = Array.IndexOf(args, "--validate-plugins");
+        if (validateAt >= 0)
+        {
+            AttachConsole();
+            return RunManifestValidate(args[(validateAt + 1)..]);
+        }
+
+        // 静止档的确定性探针（先例：早先的 --timing-probe）：只跑那一层。放在单实例之前：
         // 它要真窗口，也不该抢用户形态的锁。
         int throttleProbeAt = Array.IndexOf(args, "--throttle-probe");
         if (throttleProbeAt >= 0)
@@ -102,7 +111,7 @@ internal static partial class Program
 
     /// <summary>常驻：内容链与 --selftest 完全相同（唯一装配入口），但消息循环的宿主是 UiHost
     /// —— 宠物窗口只是众多窗口之一，用窗体当 Application.Run 的宿主会让「关主控面板=退程序」，
-    /// docs/18 §2.5 明确禁止。托盘与面板的生命周期由此统一管理。</summary>
+    /// 原规格 18 §2.5 明确禁止。托盘与面板的生命周期由此统一管理。</summary>
     /// <param name="probe">--residenttest 的探针参数（null = 正常常驻，见 ResidentPerfProbe）。</param>
     private static int RunResident(ResidentPerfProbe.Options? probe = null)
     {
@@ -115,7 +124,7 @@ internal static partial class Program
             AttachConsole();
         }
 
-        // 常驻也起插件宿主（docs/13 §3：内核宿主插件是常驻行为的一部分）：
+        // 常驻也起插件宿主（原规格 13 §3：内核宿主插件是常驻行为的一部分）：
         // 根目录探测失败 → 空根空转，不影响窗口；1Hz tick 对常驻 CPU 的影响可忽略。
         // 授权端口先建：装载期要弹窗，而弹窗只能开在 UI 线程上（RFC-13 §2.4）。
         var port = new UiConsentPort();
@@ -135,7 +144,19 @@ internal static partial class Program
             KernelLog.Write($"startup-plugins-disabled count={disabledIds.Count}");
         }
 
-        // 界面材质（docs/18 §2.7）：必须在任何窗口构造之前设好 —— Theme.Apply 在窗口
+        // 用户插件根（2026-10-28）：插件装进数据区而不是发行目录。装载顺序里它排在
+        // packages/plugins 之后 —— 同 id 时内置那份先被扫到，用户改的那份不悄悄顶掉内置实现。
+        string userPlugins = Path.Combine(dataStore.Root, PetDataStore.PluginsFolder);
+        try
+        {
+            Directory.CreateDirectory(userPlugins);
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"plugin-user-root-failed {error.GetType().Name}: {error.Message}");
+        }
+
+        // 界面材质（原规格 18 §2.7）：必须在任何窗口构造之前设好 —— Theme.Apply 在窗口
         // 建句柄时就把材质落上去，晚一步就会先闪一帧不透明窗。
         PetDock.Core.Ui.Design.Theme.Material = PetDock.Core.Ui.Design.Theme.ParseMaterial(startupSettings.Material);
         KernelLog.Write($"startup-material {PetDock.Core.Ui.Design.Theme.MaterialToken(PetDock.Core.Ui.Design.Theme.Material)}");
@@ -148,7 +169,10 @@ internal static partial class Program
             PluginHost.ResidentTickMs,
             autoLoad: true,
             consent: pluginPort,
-            disabledPlugins: startupSettings.DisabledPlugins);
+            disabledPlugins: startupSettings.DisabledPlugins,
+            enabledPlugins: startupSettings.EnabledPlugins,
+            extraRoots: new[] { userPlugins },
+            trustBuiltins: true);
 
         // 跨进程授权记忆（RFC-19 §2.3 第 1 点）：把上次进程记住的授予灌进会话记忆，
         // 于是「允许（记住这个决定）」过的插件这次启动不再被问。
@@ -164,7 +188,7 @@ internal static partial class Program
         auditTrail.Start();
         pluginHost.AttachAuditTrail(auditTrail);
         // 内容装配走**唯一**的发现路径（PluginHost 名册，t1 契约 §3.2）：
-        // 名册里有视图实现（docs/11 §3）就用它出帧；否则退回 M0 的内容源工厂；
+        // 名册里有视图实现（原规格 11 §3）就用它出帧；否则退回 M0 的内容源工厂；
         // 再没有就退回内核纯色兜底 —— 常驻形态下兜底是合法的（窗口仍可见可命中）。
         //
         // 窗口持有的是**可替换内容源代理**（RFC-15 §3.3）：换宠物时换的是代理里面那一份，
@@ -197,7 +221,7 @@ internal static partial class Program
         }
 
         // 帧源要交给 UiHost：键盘钩子的事件必须走帧源才能进总线
-        // （docs/16 §3 的 input.key.* 是 capability only，没有第二条合法生产路径）。
+        // （原规格 16 §3 的 input.key.* 是 capability only，没有第二条合法生产路径）。
         //
         // 宿主**不在这里启动**：装载期的授权弹窗需要一个活着的消息泵，而消息泵由
         // Application.Run 起来 —— 装载因此推迟到 UiHost 的第一个滴答（RFC-13 §2.4）。
@@ -216,7 +240,7 @@ internal static partial class Program
         KernelLog.Sink = residentLog;
         KernelLog.Write("resident-log-started");
 
-        // 插件日志面（RFC-23 / docs/20 §3）：装上收口，于是插件写 PluginLog.* 有地方去。
+        // 插件日志面（RFC-23 / 原规格 20 §3）：装上收口，于是插件写 PluginLog.* 有地方去。
         // 必须在窗口装好内容之后、任何插件代码跑起来之前装（init 阶段就打日志的插件要留得下痕）。
         var pluginLog = new HostPluginLog(auditTrail);
         PluginLog.Sink = pluginLog;
@@ -259,7 +283,7 @@ internal static partial class Program
         }
 
         // 进程正常退出：落盘剩余的行、关掉活动文件、去掉 .part 后缀
-        // （写完才算硬证据，docs/17 §3）。
+        // （写完才算硬证据，原规格 17 §3）。
         KernelLog.Sink = null;
         residentLog.Complete();
         residentLog.Dispose();
@@ -272,83 +296,43 @@ internal static partial class Program
         return probe is null || !ResidentPerfProbe.Failed ? ExitOk : ExitFail;
     }
 
-    /// <summary>插件宿主自检入口（--hosttest [expectedPluginId]）：
-    /// 期望插件 id 由命令行传入 —— core 源码不写插件名特判（docs/01 P-02 第 4 条）。</summary>
-    private static int RunHostTest(string[] args)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return PluginHostSelfTest.Run(args.Where(a => !string.Equals(a, "--hosttest", StringComparison.Ordinal)).ToArray());
-    }
 
-    /// <summary>动画循环自检入口（--animtest clipA clipB ...）：判据与命令形态见
-    /// docs/handoff/M2-contract-frozen.md §3.3（C1 clip-frames / C2 同 now 同帧 / C3 周期绕回）。</summary>
-    private static int RunAnimTest(string[] args)
+    /// <summary>递归找带清单的目录（跳过构建产物与 node_modules —— 那不是发行内容）。</summary>
+    private static void CollectManifestDirs(string dir, List<string> found)
     {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return PetAnimTest.Run(args.Where(a => !string.Equals(a, "--animtest", StringComparison.Ordinal)).ToArray());
-    }
-
-    /// <summary>宿主帧驱动自检入口（--drivetest）：生命周期 §10、降级链 §9、帧预算 §7 的判据面。</summary>
-    private static int RunDriveTest(string[] args)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return PetDriveTest.Run(args.Where(a => !string.Equals(a, "--drivetest", StringComparison.Ordinal)).ToArray());
-    }
-
-    /// <summary>事件总线自检入口（--eventtest，M4 契约 §7.5）：判据行 `CHECK <key> PASS|FAIL <detail>`，
-    /// 末行 EVENT-OK / EVENT-FAIL n=<k>，退出码 0/n；SKIP 行不算 PASS（契约 §7.5）。</summary>
-    private static int RunEventTest(string[] args)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return EventSelfTest.Run(args.Where(a => !string.Equals(a, "--eventtest", StringComparison.Ordinal)).ToArray());
-    }
-
-    /// <summary>功耗门禁入口（--perftest，docs/41 D-14）：判据行 `CHECK perf-<name> PASS|FAIL`，
-    /// 末行 PERF-OK / PERF-FAIL。采样逻辑在 test/SelfCheck/PerfGate.cs（不计入 D-03a 预算）。</summary>
-    private static int RunPerfTest(string[] args)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return PerfGate.Run(args.Where(a => !string.Equals(a, "--perftest", StringComparison.Ordinal)).ToArray());
-    }
-
-    /// <summary>装配顺序探针入口（--composetest [pluginsRoot]，RFC-29 §3.6）：
-    /// 打 `COMPOSE …` 与 `COMPOSE-OK|FAIL`，退出码 0/1。判据体在 Host/ComposeProbe.cs。</summary>
-    private static int RunComposeTest(string[] args)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return ComposeProbe.Run(args.Where(a => !string.Equals(a, "--composetest", StringComparison.Ordinal)).ToArray());
-    }
-
-    /// <summary>UI 母体自检入口（--uitest，RFC-12 §3）：判据行 `CHECK ui-<name> PASS|FAIL`，
-    /// 末行 UI-OK / UI-FAIL n=&lt;k&gt;。判据体在 test/SelfCheck/UiSelfTest.cs（不计入 D-03a 预算）。</summary>
-    private static int RunUiTest(string[] args)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        return UiSelfTest.Run(args.Where(a => !string.Equals(a, "--uitest", StringComparison.Ordinal)).ToArray());
-    }
-
-    /// <summary>金图基准生成入口（--golden-baseline outdir）：渲染示例宠物三 clip 首帧到基准 PNG，
-    /// 供 tests/PetDock.Golden.Tests 逐像素比对。走与 --animtest 完全相同的链，不另造渲染入口。</summary>
-    private static int RunGoldenBaseline(string[] args, int flagIdx)
-    {
-        AttachConsole();
-        KernelLog.ConsoleAttached = true;
-        string outdir = args.Length > flagIdx + 1 ? args[flagIdx + 1] : string.Empty;
-        if (string.IsNullOrWhiteSpace(outdir))
+        if (File.Exists(Path.Combine(dir, ManifestValidator.ManifestFileName)))
         {
-            Console.Error.WriteLine("GOLDEN-FAIL usage: --golden-baseline <outdir>");
-            return ExitFail;
+            found.Add(dir);
+            return;
         }
 
-        return GoldenBaselineGen.Run(outdir);
+        IEnumerable<string> subdirs;
+        try
+        {
+            subdirs = Directory.EnumerateDirectories(dir);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return;
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        foreach (string sub in subdirs)
+        {
+            string name = Path.GetFileName(sub);
+            if (string.Equals(name, "bin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "obj", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(name, "node_modules", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            CollectManifestDirs(sub, found);
+        }
     }
+
 
     /// <summary>
     /// 内容装配的唯一入口：见 FrameComposition。装配结果连同实例一起返回，
@@ -380,12 +364,12 @@ internal static partial class Program
             KernelLog.Write($"frame-source-bound window=0x{window.WindowHandle.ToInt64():X}");
         }
 
-        // RFC-35 §3.2：窗口鼠标消息 → 实例的交互会话（docs/11 §5）。接线只在 FrameComposition
+        // RFC-35 §3.2：窗口鼠标消息 → 实例的交互会话（原规格 11 §5）。接线只在 FrameComposition
         // 一处（自检也调它），免得「生产接上了、判据测的是另一份接线」。
         if (outcome.Instance is PetInstance pet)
         {
-            FrameComposition.WirePointer(window, pet);
-            KernelLog.Write($"pointer-wiring instance={pet.Id} surfaces={pet.SurfacesByPriority.Count}");
+            FrameComposition.WireWindow(window, pet);
+            KernelLog.Write($"window-wiring instance={pet.Id} surfaces={pet.SurfacesByPriority.Count} mover=true");
         }
 
         return window;

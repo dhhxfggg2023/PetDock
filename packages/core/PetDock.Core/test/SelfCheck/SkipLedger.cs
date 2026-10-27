@@ -19,7 +19,7 @@
 // 还是又一句自称」这一层挡不住 —— 挡得住的是**读数必须原样打进行里**：每一行 SKIP 都带着它，
 // 读的人自己看得到它是量出来的还是编出来的。
 //
-// 行形态沿用本仓既有先例 tests/fixtures/PetDock.EventReplay.Tests/Runner.cs：
+// 行形态沿用本仓既有先例（旧事件回放夹具的 Runner）：
 //   CHECK <name> SKIP <读数>              ← 第三种结局，与 PASS/FAIL 同一行形态
 //   STAT <command> pass=<p> skip=<s> unowned=<u> fail=<f> keys=<…>
 //   <CMD>-OK skipped=<s>   /   <CMD>-FAIL n=<fail+unowned> skipped=<s>

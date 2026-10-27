@@ -1,4 +1,4 @@
-// 实现 docs/12 §2.2「GDI+ + UpdateLayeredWindow」：32 位自上而下 DIB section + 预乘 alpha 帧缓冲
+// 实现 原规格 12 §2.2「GDI+ + UpdateLayeredWindow」：32 位自上而下 DIB section + 预乘 alpha 帧缓冲
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -114,8 +114,8 @@ internal sealed class DibFrame : IDisposable
     /// <summary>
     /// <summary>
     /// 把一张 32bpp 位图以预乘方式写入 DIB（尺寸必须一致；逐像素 LockBits + unsafe 循环）。
-    /// **接受两种 32bpp 输入，因为上游有两层各自合法的约定**（docs/11:49 与 M0 的过渡面）：
-    ///   - `Format32bppPArgb`（**预乘** alpha）：docs/11 §2.1 对帧的硬要求（ABI 视图实现交付的就是它）；
+    /// **接受两种 32bpp 输入，因为上游有两层各自合法的约定**（原规格 11:49 与 M0 的过渡面）：
+    ///   - `Format32bppPArgb`（**预乘** alpha）：原规格 11 §2.1 对帧的硬要求（ABI 视图实现交付的就是它）；
     ///   - `Format32bppArgb`（直通 alpha）：M0 的 `IFrameContentSource` 交付的形态（sample-pet 走这条）。
     /// 本方法本来就是「按 a 逐通道相乘」写进 DIB，所以：
     /// PArgb 输入**直接用**（已是预乘值，再乘一次会二次变暗 —— 这是必须区分的根本原因）；

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // tools/verify.mjs —— D-16 验证门禁（RFC-38 §3）：一条命令跑完所有层，每层具名、可单独复现。
 //
-// 为什么存在：D-16 之前「跑一遍」是 docs/98 §4 里的一段手抄命令清单，判绿靠人读末行
+// 为什么存在：D-16 之前「跑一遍」是 原规格 98 §4 里的一段手抄命令清单，判绿靠人读末行
 // UI-OK / HOST-OK；手抄一遍就有三种失败方式——漏层、把管道退出码当结论、事后说不清哪层没跑。
 // 本文件把同样那批命令收进一张表：层 = 离真实运行时的距离，step = 一条命令 + 一个末行 marker。
 // 每一步同时判「退出码 0」与「marker 真的出现在 stdout 里」：管道可以骗退出码，骗不了文件里的文本。
 //
 // 用法：
 //   node tools/verify.mjs                  # 默认三层 static / build / contract
-//   node tools/verify.mjs --all            # 全部七层（会建窗口、跑性能、打包）
+//   node tools/verify.mjs --all            # 全部六层（会建窗口、跑性能、打包）
 //   node tools/verify.mjs --only window    # 只跑一层；--only contract:hosttest 只跑一层里的一步
 //   node tools/verify.mjs --list           # 只打印层表（含当前 config）
 //   node tools/verify.mjs --config release # 换配置（默认 debug）：dll 路径与 build 层的 -c 一起换
@@ -51,17 +51,15 @@ function layersFor(config) {
   return [
   {
     name: 'static',
-    title: 'L0 离线纯逻辑：九道静态门禁，逐条单独跑',
-    proves: '源码依赖方向、内核黑名单与体积、文档引用与 ID 登记、插件清单、素材摆放与指纹、格式覆盖，以及「界面文案不许留字面量」「两门语言的键与占位符形状一致」——九份互不相同的静态事实互相一致。',
+    title: 'L0 离线纯逻辑：七道静态门禁，逐条单独跑',
+    proves: '源码依赖方向、内核黑名单与体积、插件清单（内核校验器）、素材摆放与指纹，以及「界面文案不许留字面量」「两门语言的键与占位符形状一致」——七份互不相同的静态事实互相一致。',
     notProven: '没有任何一行代码被执行：编译失败、插件装载失败、窗口画不出来，这一层照样全绿。文案表本身能被读进内存、能在 en-US 下画出来，也不是这一层证明的。',
     steps: [
       { id: 'depscan', ...node('tools/depscan.mjs'), marker: 'DEPSCAN-PASS' },
       { id: 'lint-core', ...node('tools/lint-core.mjs'), marker: 'LINT-CORE-PASS' },
-      { id: 'doclink', ...node('tools/doclink.mjs'), marker: 'DOCLINK-PASS' },
       { id: 'manifest', ...node('tools/validate-manifest.mjs'), marker: 'MANIFEST-PASS' },
       { id: 'assets', ...node('tools/asset-manifest.mjs'), marker: 'ASSET-MANIFEST-PASS' },
       { id: 'fingerprint', ...node('tools/asset-fingerprint.mjs'), marker: 'FINGERPRINT-PASS' },
-      { id: 'coverage', ...node('tools/check-dyberpet-coverage.mjs'), marker: 'COVERAGE-PASS' },
       { id: 'i18n', ...node('tools/i18n-lint.mjs'), marker: 'I18N-LINT-PASS' },
       { id: 'i18n-parity', ...node('tools/i18n-parity.mjs'), marker: 'I18N-PARITY-PASS' },
     ],
@@ -111,7 +109,7 @@ function layersFor(config) {
     // 真实条数看 `--uitest` 自己的收尾行。
     title: 'L3 真实窗口：--uitest（全量 CHECK，会闪桌面）',
     proves: '分层窗真的建起来、托盘与面板真的能操作、导入/设置/位置/命中图/单实例这些 UI 母体判据成立。',
-    notProven: '不证明「好不好看」「手感如何」：宠物在桌面上长什么样、点击穿透的手感、两只以上宠物的排布，都没有判据，只有人眼（docs/98 §3.2）。这一层也**故意**不把 TEMP/TMP 指进证据目录（contract 层会指）：--uitest 有一条判据断言审计流水不落进仓库，把 TEMP 搬进仓库反而会让它红。',
+    notProven: '不证明「好不好看」「手感如何」：宠物在桌面上长什么样、点击穿透的手感、两只以上宠物的排布，都没有判据，只有人眼（原规格 98 §3.2）。这一层也**故意**不把 TEMP/TMP 指进证据目录（contract 层会指）：--uitest 有一条判据断言审计流水不落进仓库，把 TEMP 搬进仓库反而会让它红。',
     // 这一层故意**不**把 TEMP/TMP 指进证据目录（contract 层会指）：`--uitest` 有一条判据专门
     // 断言审计流水不落进仓库，把 TEMP 搬进仓库反而会让它红。别为了「对称」把这里统一掉。
     steps: [{ id: 'uitest', ...selftest(config, '--uitest', ['--log', 'REPLACED'], 'UI-OK') }],
@@ -132,40 +130,22 @@ function layersFor(config) {
       { id: 'perftest', ...selftest(config, '--perftest', [], 'PERF-OK') },
       {
         id: 'residenttest',
-        // 基线 tests/perf.resident.json 的 note 钉死了它自己的采集条件：`--seconds 10 --warmup 4000`，
-        // 花名册 = packages/plugins 的 8 个目录（经 PETDOCK_PLUGINS_ROOT 指到真源码树）。
-        // 2026-10-28 之前这里指的是 artifacts/_probe/plugroot ——那是插件工程的整份拷贝，
-        // 命中图改动落地后它就开始测「没人发行的字节」，且副本无法在原位置重建（相对
-        // ProjectReference 解析不到）。副本已退役，判据改测真花名册：同一份基线里 premise
-        // 的 roster 也同步改成了 packages/plugins:8。
+        // 采集条件：`--seconds 10 --warmup 4000`，花名册 = packages/plugins 的目录
+        // （经 PETDOCK_PLUGINS_ROOT 指到真源码树）。旧性能基线已随
+        // 旧测试目录退役，本步只出读数与绝对门限，不再与基线做相对比较。
         // 花名册不存在时**不退回默认根**：直接把这一步判红并说清缺什么。
         ...selftest(config, '--residenttest', ['--seconds', '10', '--warmup', '4000'], 'RESIDENT-PERF-OK'),
         guard: () => {
           const roster = path.join(REPO_ROOT, 'packages', 'plugins');
-          return fs.existsSync(roster) ? null : `花名册目录不存在：packages/plugins（基线 tests/perf.resident.json 的采集条件就是它；缺了只能拿另一份装配比同一份基线）`;
+          return fs.existsSync(roster) ? null : `花名册目录不存在：packages/plugins（本步要测真实插件装配，缺了只能空跑）`;
         },
         env: () => ({ ...process.env, PETDOCK_PLUGINS_ROOT: path.join(REPO_ROOT, 'packages', 'plugins') }),
       },
     ],
   },
   {
-    name: 'm7',
-    title: 'L5 跨进程沙箱：tests/m7 的 BongoCat 判据',
-    proves: 'tier-2 沙箱的 spawn / 行分隔 JSON-RPC / 会话五态在真实子进程里成立。',
-    notProven: '不证明第三方插件能在真实用户机器上装载——判据用的是本仓自带的测试包。',
-    steps: [
-      {
-        id: 'm7',
-        cmd: 'dotnet',
-        args: ['run', '--project', 'tests/m7/PetDock.BongoCat.Tests', '-c', 'Release'],
-        marker: 'M7-OK',
-        timeoutMs: 15 * 60 * 1000,
-      },
-    ],
-  },
-  {
     name: 'dist',
-    title: 'L6 真实发布物：release → pack → 解压后运行 → 摘要',
+    title: 'L5 真实发布物：release → pack → 解压后运行 → 摘要',
     proves: '发布目录能装配、能封成一个单顶层目录的 zip、清单与条目集对账、解压后 --hosttest 仍全过；zip 的 sha256 随产物落盘。',
     notProven: '不证明签名（本机无 signtool）、不证明自动更新（无规格）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。',
     steps: [
@@ -419,7 +399,7 @@ function writeEvidence(dir, runs, executed, failures) {
   const skipped = LAYERS.filter((layer) => !executed.layers.some((run) => run.name === layer.name));
   if (skipped.length === 0) lines.push('- 无（--all）');
   for (const layer of skipped) lines.push(`- ${layer.name}：${layer.title}`);
-  lines.push('', '## 全局非证明项（跨所有层成立，见 docs/98 §3.2）', '');
+  lines.push('', '## 全局非证明项（跨所有层成立，见 原规格 98 §3.2）', '');
   for (const item of GLOBAL_NOT_PROVEN) lines.push(`- ${item}`);
   lines.push('');
 

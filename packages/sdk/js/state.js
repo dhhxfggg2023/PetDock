@@ -1,5 +1,5 @@
-// @petdock/sdk/state — docs/20 模块面的 state 位。
-// M1 占位：形状对应 docs/11 的 IPetState（schemaVersion/readAll/read/write/commit/rollback/migrate）。
+// @petdock/sdk/state — 原规格 20 模块面的 state 位。
+// M1 占位：形状对应 原规格 11 的 IPetState（schemaVersion/readAll/read/write/commit/rollback/migrate）。
 
 /** @typedef {object} PetState */
 

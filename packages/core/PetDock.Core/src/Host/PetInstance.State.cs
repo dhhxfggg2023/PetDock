@@ -14,7 +14,7 @@ public sealed partial class PetInstance
     /// <summary>
     /// 换上落盘层（RFC-24 §6.3）：装配期由 roster 调用一次，之后只有本实例自己用它提交。
     /// 为什么不是 public setter：状态层的归属必须是「每实例恰好一个」，多一个写入口就有
-    /// 两个缓冲同时声称自己是真身（这正是 docs/11 §6 三条约束要防的事）。
+    /// 两个缓冲同时声称自己是真身（这正是 原规格 11 §6 三条约束要防的事）。
     /// </summary>
     internal void InstallStateLayer(IPetState? layer) => StateLayer = layer;
 
@@ -52,7 +52,7 @@ public sealed partial class PetInstance
 
     /// <summary>
     /// 读上一次落盘的位置（窗口重建时用）。读不到 / 没接落盘层 → null。
-    /// 读走内存缓冲区，不碰磁盘（docs/11:201 的读语义）。
+    /// 读走内存缓冲区，不碰磁盘（原规格 11:201 的读语义）。
     /// </summary>
     public JsonNode? ReadState(string key) => StateLayer?.Read(key);
 }

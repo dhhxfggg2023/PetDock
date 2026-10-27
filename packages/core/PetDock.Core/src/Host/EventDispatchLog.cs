@@ -14,9 +14,9 @@ namespace PetDock.Hosting;
 
 /// <summary>
 /// 已落地事件与宿主自身补发事件的分发口（M2 的最小面）。
-/// 总线路由（docs/16 的 emit / parallel / serial / bail / waterfall 五种分发模式）属 M3/M4；
+/// 总线路由（原规格 16 的 emit / parallel / serial / bail / waterfall 五种分发模式）属 M3/M4；
 /// M2 只提供「记账 + 可注入的观察者」两个能力，好让判据（t4/t5）能读到 emit 真的落地了。
-/// 事件信封（docs/02 §1.4）不在此解释载荷语义 —— 总线不解释载荷（同条款）。
+/// 事件信封（原规格 02 §1.4）不在此解释载荷语义 —— 总线不解释载荷（同条款）。
 /// </summary>
 public sealed class HostEventDispatch
 {

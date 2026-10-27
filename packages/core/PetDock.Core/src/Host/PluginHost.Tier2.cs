@@ -1,4 +1,4 @@
-// RFC-10 §2：Tier 2 生命周期接线（M7）。docs/13 §1 法则二 / docs/14 §1/§4/§5：
+// RFC-10 §2：Tier 2 生命周期接线（M7）。原规格 13 §1 法则二 / 原规格 14 §1/§4/§5：
 // tier 2 = 独立进程 + stdio JSON-RPC + quota/timeout，越限后果是卸载。
 // 这里做两件事：① 把 PluginHost 的两个 tier-2 拒载点换成真 spawn + 握手 + 挂到 handle；
 // ② RFC-28：把句柄的帧面/头脑面交成内核已知的两个类型（IFrameContentSource / IBrain）。
@@ -12,7 +12,7 @@ namespace PetDock.Hosting;
 public sealed partial class PluginHost
 {
     /// <summary>
-    /// tier 2 装载：docs/21 §3.4 的 entry = 相对插件根的外部可执行文件（无参数位），
+    /// tier 2 装载：原规格 21 §3.4 的 entry = 相对插件根的外部可执行文件（无参数位），
     /// 子进程协议自证——<see cref="Tier2Sandbox.Start"/> 先握手 ping、再取一次 meta（RFC-27 §3.1），
     /// 不回即装载失败。失败路径先把半个进程收干净再抛 PluginLoadException（与 tier 1 的装载失败同形）。
     /// </summary>

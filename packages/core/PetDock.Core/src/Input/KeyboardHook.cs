@@ -1,5 +1,5 @@
-// docs/16 §3：`input.key.down` / `up` 的 Source 是 `capability only`，前置资格 `input.keyboardHook`。
-// docs/14:110：涉及输入钩子的能力必须在托盘菜单带「停止全局钩子」固定项——那一条已由 TrayHost
+// 原规格 16 §3：`input.key.down` / `up` 的 Source 是 `capability only`，前置资格 `input.keyboardHook`。
+// 原规格 14:110：涉及输入钩子的能力必须在托盘菜单带「停止全局钩子」固定项——那一条已由 TrayHost
 // 的 pause-hooks 项实现，本文件是它背后真正被停掉的那个东西。
 //
 // 为什么是低级钩子（WH_KEYBOARD_LL）而不是 RegisterHotKey 或 GetAsyncKeyState 轮询：
@@ -12,7 +12,7 @@
 //      一个吞掉用户按键的桌宠是不可接受的缺陷，而不是配置项。
 //   2. **委托必须被字段持有**：`SetWindowsHookEx` 只存函数指针，不持有托管委托；委托被 GC
 //      回收后 OS 回调到已释放的 thunk 会直接崩进程（这是该 API 最经典的坑）。
-//   3. **钩子只在有插件持权时安装**：docs/16:56「设备钩子只在插件拥有权限后激活；宿主不默认钩住」。
+//   3. **钩子只在有插件持权时安装**：原规格 16:56「设备钩子只在插件拥有权限后激活；宿主不默认钩住」。
 //      所以 Install 是显式动作，构造函数不装任何东西。
 
 using System.Diagnostics;
@@ -46,7 +46,7 @@ internal sealed class KeyboardHook : IDisposable
     private const int VK_CONTROL = 0x11;
     private const int VK_MENU = 0x12;
 
-    /// <summary>修饰键位掩码（与 docs/16 §3 的 `modifiers` 字段同义，宿主自定义编码）。</summary>
+    /// <summary>修饰键位掩码（与 原规格 16 §3 的 `modifiers` 字段同义，宿主自定义编码）。</summary>
     internal const int ModShift = 1;
     internal const int ModControl = 2;
     internal const int ModAlt = 4;

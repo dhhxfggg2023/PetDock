@@ -1,11 +1,11 @@
-// --animtest：docs/50:21「动画可循环」的可判定判据（t1 契约 §3.3 冻结的 C1/C2/C3）。
+// --animtest：原规格 50:21「动画可循环」的可判定判据（t1 契约 §3.3 冻结的 C1/C2/C3）。
 // 命令形态：`--animtest idle walk hover`，期望三行 + ANIM-OK + exit 0。expected clip 列表只从命令行来
-// （docs/01 P-02：core 不写素材/插件名，也不读任何素材文件）。
+// （原规格 01 P-02：core 不写素材/插件名，也不读任何素材文件）。
 // 三断言：C1 clip-frames = 一个周期内实际观察到的不同帧数 == 声明帧数（声明值来自可选 IClipCatalog，
 //   不实现它时按「不可判定」FAIL，绝不默认通过）；C2 frame-stable = 同一 now 连调两次像素签名相同
-//   （docs/11:120 逐字）；C3 loop-wrap = now+period 的签名 == now 的签名且中途出现过不同签名
+//   （原规格 11:120 逐字）；C3 loop-wrap = now+period 的签名 == now 的签名且中途出现过不同签名
 //   （防「永远第 0 帧」假 PASS）。帧索引用整帧像素哈希表达：帧号是实现方私有状态，
-//   像素相同才是 docs/11:120 的可观察等价物。无视图实现 → ANIM-FAIL 非零退出（M0 教训）。
+//   像素相同才是 原规格 11:120 的可观察等价物。无视图实现 → ANIM-FAIL 非零退出（M0 教训）。
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -174,7 +174,7 @@ internal static class PetAnimTest
         Check(ref failures, $"clip-frames[{clip}]", distinct == declared.Frames,
             $"declared={declared.Frames} distinct={distinct}");
 
-        // —— C2：同一 now 必须返回同一帧（docs/11:120）——
+        // —— C2：同一 now 必须返回同一帧（原规格 11:120）——
         int probeNow = (int)Math.Round(periodMs / 3.0);
         long first = SignatureOf(view.QueryFrame(probeNow));
         long second = SignatureOf(view.QueryFrame(probeNow));
@@ -215,7 +215,7 @@ internal static class PetAnimTest
         catalog?.Clips.FirstOrDefault(candidate =>
             string.Equals(candidate.Id, clip, StringComparison.Ordinal));
 
-    /// <summary>整帧像素的 64 位签名（FNV-1a）：像素相同才是 docs/11:120 的可观察等价物。</summary>
+    /// <summary>整帧像素的 64 位签名（FNV-1a）：像素相同才是 原规格 11:120 的可观察等价物。</summary>
     private static long SignatureOf(Frame frame)
     {
         System.Drawing.Bitmap bitmap = frame.BitmapHandle.Bitmap;

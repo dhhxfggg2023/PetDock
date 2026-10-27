@@ -1,4 +1,4 @@
-// 设计令牌（docs/18 §2.6「外观」）：全产品唯一的配色、字号阶梯、间距刻度与圆角来源。
+// 设计令牌（原规格 18 §2.6「外观」）：全产品唯一的配色、字号阶梯、间距刻度与圆角来源。
 //
 // 为什么要一个集中文件：用户对界面的判词是「难看、复古」（2026-10-27），根因不是某几个颜色不对，
 // 而是每个窗口各自用 SystemColors 和默认控件外观，彼此不成体系。所以颜色、字号、间距、圆角
@@ -64,7 +64,7 @@ internal static partial class Theme
     public const int RadiusMd = 10;
     public const int RadiusLg = 14;
 
-    // ---- 材质（docs/18 §2.7）：实现与令牌在 Theme.Material.cs（本文件只管配色/字号/间距） ----
+    // ---- 材质（原规格 18 §2.7）：实现与令牌在 Theme.Material.cs（本文件只管配色/字号/间距） ----
 
     // ---- 字号阶梯（点） ----
 
@@ -199,7 +199,7 @@ internal static partial class Theme
         form.Font = Font(TypeRole.Body);
         form.AutoScaleMode = AutoScaleMode.None;
 
-        // 材质（docs/18 §2.7）：不透明时这一步只是把窗口恢复成实心；
+        // 材质（原规格 18 §2.7）：不透明时这一步只是把窗口恢复成实心；
         // 磨砂/玻璃在这一步要到系统模糊并把整窗按比例透过去。
         ApplyMaterial(form);
 

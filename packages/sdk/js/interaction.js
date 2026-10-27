@@ -1,5 +1,5 @@
-// @petdock/sdk/interaction — docs/20 模块面的 interaction 位。
-// M1 占位：形状对应 docs/11 的 IInteractionSurface（id/priority/hitTest/onPointerDown→InteractionSession?）。
+// @petdock/sdk/interaction — 原规格 20 模块面的 interaction 位。
+// M1 占位：形状对应 原规格 11 的 IInteractionSurface（id/priority/hitTest/onPointerDown→InteractionSession?）。
 
 /** @typedef {object} InteractionSurface */
 

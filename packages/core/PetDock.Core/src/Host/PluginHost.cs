@@ -1,10 +1,10 @@
-// 插件宿主（docs/01 P-01 内核六能力表第 2 项；M1 契约 §5.2/§5.3 的实现）。
+// 插件宿主（原规格 01 P-01 内核六能力表第 2 项；M1 契约 §5.2/§5.3 的实现）。
 // 线程模型：单一后台调度线程串行执行「命令 → tick 全体 → 处理重载意图」——沙箱基座要求
 // 单线程使用（t3 契约），而重载只可能发生在片与片之间：不存在绘制/执行中途换实例的窗口
-// （docs/13 §3「绝不替换正在绘制的帧」）。外部调用（Load/Disable/Reload/Snapshot）全部
+// （原规格 13 §3「绝不替换正在绘制的帧」）。外部调用（Load/Disable/Reload/Snapshot）全部
 // 封送到调度线程执行。
 // 本文件是 partial 的基础设施半边；生命周期核心（装载/禁用/热重载/恢复）在
-// PluginHost.Lifecycle.cs。两半各 <400 行（docs/40 D-03c）。
+// PluginHost.Lifecycle.cs。两半各 <400 行（原规格 40 D-03c）。
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -24,6 +24,16 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
     private const int SchedulerStallMs = 10000;
 
     private readonly string _pluginsRoot;
+
+    /// <summary>本宿主实际扫描的插件根：主根在前，用户根与 extraRoots 依次跟上（重复路径只留一份）。</summary>
+    private readonly IReadOnlyList<string> _roots;
+
+    /// <summary>是否按 <see cref="PluginPolicy"/> 决定默认装载。生产为 true；自检默认 false（保持显式驱动）。</summary>
+    private readonly bool _trustBuiltins;
+
+    /// <summary>用户显式打开的插件 id（settings.json 的 pluginsEnabled）。</summary>
+    private readonly HashSet<string> _enabledIds = new(StringComparer.Ordinal);
+
     private readonly int _tickIntervalMs;
     private readonly bool _autoLoad;
     private readonly ICapabilityConsentPort? _consent;
@@ -40,8 +50,8 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
     /// <summary>调度线程命令（D-03b：系统自带泛型委托名含黑名单子串，自声明代替）。</summary>
     private delegate void HostCommand();
 
-    /// <summary>生命周期事件（docs/13 §4 六事件：Discovered 由 Discover 隐式给出，其余五者由本宿主发）。
-    /// 回调在宿主调度线程上触发：观察者必须快速返回并自行保证线程安全（docs/13 §4：事件不得阻塞宿主）。</summary>
+    /// <summary>生命周期事件（原规格 13 §4 六事件：Discovered 由 Discover 隐式给出，其余五者由本宿主发）。
+    /// 回调在宿主调度线程上触发：观察者必须快速返回并自行保证线程安全（原规格 13 §4：事件不得阻塞宿主）。</summary>
     public event LifecycleEventDelegate? LifecycleEvent;
 
     /// <summary>构造即持有根目录与节奏；Start() 之前不占线程、不碰文件系统。
@@ -53,12 +63,26 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
         int tickIntervalMs = ResidentTickMs,
         bool autoLoad = true,
         ICapabilityConsentPort? consent = null,
-        IReadOnlyCollection<string>? disabledPlugins = null)
+        IReadOnlyCollection<string>? disabledPlugins = null,
+        IReadOnlyCollection<string>? enabledPlugins = null,
+        IEnumerable<string>? extraRoots = null,
+        bool trustBuiltins = false)
     {
         _pluginsRoot = pluginsRoot ?? string.Empty;
         _tickIntervalMs = Math.Max(10, tickIntervalMs);
         _autoLoad = autoLoad;
         _consent = consent;
+        _trustBuiltins = trustBuiltins;
+        var roots = new List<string>();
+        AddRoot(roots, _pluginsRoot);
+        if (extraRoots is not null)
+        {
+            foreach (string root in extraRoots)
+            {
+                AddRoot(roots, root);
+            }
+        }
+        _roots = roots;
         if (disabledPlugins is not null)
         {
             foreach (string id in disabledPlugins)
@@ -66,6 +90,16 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
                 if (!string.IsNullOrWhiteSpace(id))
                 {
                     _skipIds.Add(id);
+                }
+            }
+        }
+        if (enabledPlugins is not null)
+        {
+            foreach (string id in enabledPlugins)
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                {
+                    _enabledIds.Add(id);
                 }
             }
         }
@@ -82,6 +116,31 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
 
     /// <summary>该 id 是否已被用户关掉（面板把「关掉」与「运行时禁用」区分开，判据也读它）。</summary>
     public bool IsDisabledByUser(string pluginId) => _skipIds.Contains(pluginId);
+
+    /// <summary>该 id 是否被用户显式打开（settings.json 的 pluginsEnabled）。</summary>
+    public bool IsEnabledByUser(string pluginId) => _enabledIds.Contains(pluginId);
+
+    /// <summary>把根目录收进扫描表：去重、取全名、忽略空值（坏路径不让构造失败）。</summary>
+    private static void AddRoot(List<string> roots, string? root)
+    {
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            return;
+        }
+        string full;
+        try
+        {
+            full = Path.GetFullPath(root);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+        if (!roots.Contains(full, StringComparer.OrdinalIgnoreCase))
+        {
+            roots.Add(full);
+        }
+    }
 
 
     /// <summary>自检用确定性驱动：true 时调度循环不再自行 tick / 应用重载，
@@ -100,113 +159,6 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
         }
     }
 
-    /// <summary>发现（契约 §5.3）：非递归扫描，只认目录与 manifest 文件的存在，不解析内容。</summary>
-    public IReadOnlyList<string> Discover(string pluginsRoot)
-    {
-        var dirs = new List<string>();
-        try
-        {
-            foreach (string dir in Directory.EnumerateDirectories(pluginsRoot))
-            {
-                if (File.Exists(Path.Combine(dir, ManifestValidator.ManifestFileName)))
-                {
-                    dirs.Add(Path.GetFullPath(dir));
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            KernelLog.Write($"discover-failed {ex.GetType().Name}: {ex.Message}");
-        }
-        dirs.Sort(StringComparer.OrdinalIgnoreCase);
-        return dirs;
-    }
-
-    /// <summary>校验（契约 §5.2）：docs/21 全语义，错误逐条返回；成功即登记 id → 目录。</summary>
-    public Result<PluginManifest, IReadOnlyList<ManifestError>> ValidateManifest(string pluginDir)
-    {
-        Result<PluginManifest, IReadOnlyList<ManifestError>> result = ManifestValidator.Validate(pluginDir);
-        if (result.IsOk)
-        {
-            _dirById[result.Ok!.Id] = Path.GetFullPath(pluginDir);
-        }
-        return result;
-    }
-
-    private void AutoLoadAll()
-    {
-        if (string.IsNullOrWhiteSpace(_pluginsRoot))
-        {
-            KernelLog.Write("host auto-load skipped: no plugins root");
-            return;
-        }
-        foreach (string dir in Discover(_pluginsRoot))
-        {
-            Result<PluginManifest, IReadOnlyList<ManifestError>> result = ValidateManifest(dir);
-            if (!result.IsOk)
-            {
-                foreach (ManifestError error in result.Error!)
-                {
-                    KernelLog.Write($"manifest-error {error.Field}: {error.Message}");
-                }
-                continue;
-            }
-            PluginManifest manifest = result.Ok!;
-            if (_skipIds.Contains(manifest.Id))
-            {
-                // 用户在上一轮把它关掉了：这次进程不装载它（重启生效这件事就落在这里）。
-                KernelLog.Write($"plugin-skipped-disabled plugin={manifest.Id}");
-                continue;
-            }
-
-            try
-            {
-                LoadCore(manifest, CancellationToken.None);
-            }
-            catch (PluginLoadException ex)
-            {
-                KernelLog.Write($"load-reject {manifest.Id}: {ex.Message}");
-            }
-        }
-    }
-
-    /// <summary>探测插件根目录：环境变量 PETDOCK_PLUGINS_ROOT 优先（须存在），
-    /// 否则从 AppContext.BaseDirectory 逐级向上找 packages/plugins 或 plugins。
-    /// 失败返回 null —— 宿主空转不致命（部署形态可能不带插件目录）。</summary>
-    public static string? ProbePluginsRoot()
-    {
-        string? env = Environment.GetEnvironmentVariable(PluginsRootEnv);
-        if (!string.IsNullOrWhiteSpace(env) && Directory.Exists(env))
-        {
-            return env;
-        }
-        string? baseDir = AppContext.BaseDirectory;
-        if (string.IsNullOrWhiteSpace(baseDir))
-        {
-            return null;
-        }
-        try
-        {
-            for (DirectoryInfo? dir = new DirectoryInfo(baseDir); dir is not null; dir = dir.Parent)
-            {
-                string packagesPlugins = Path.Combine(dir.FullName, "packages", "plugins");
-                if (Directory.Exists(packagesPlugins))
-                {
-                    return packagesPlugins;
-                }
-                string plain = Path.Combine(dir.FullName, "plugins");
-                if (Directory.Exists(plain))
-                {
-                    return plain;
-                }
-            }
-        }
-        catch (ArgumentException)
-        {
-            // 路径形态异常（如已到 UNC 根）—— 放弃向上探测
-        }
-        return null;
-    }
 
     /// <summary>对插件目录挂 manifest 文件监听：文件一被触碰就置重载意图，
     /// 真正的重载在调度线程片间执行（绝不会在执行/绘制中途换实例）。</summary>
@@ -232,7 +184,7 @@ public sealed partial class PluginHost : IPetDockPluginHost, IDisposable
         }
     }
 
-    /// <summary>停机：停监听、停调度线程（Join 3s）、随后按 docs/11 §9 预算释放全部沙箱。
+    /// <summary>停机：停监听、停调度线程（Join 3s）、随后按 原规格 11 §9 预算释放全部沙箱。
     /// 重复 Dispose 为无害 no-op。</summary>
     public void Dispose()
     {

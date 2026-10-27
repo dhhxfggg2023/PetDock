@@ -1,4 +1,4 @@
-# Prior art: four extension platforms
+﻿# Prior art: four extension platforms
 
 Research for **PetDock** (microkernel + everything-is-a-plugin). Scope: VS Code extensions, Obsidian
 plugins, Figma plugins, Chrome Manifest V3 extensions. For each: **isolation**, **API versioning**,
@@ -238,7 +238,7 @@ get a UI or browser APIs you create an iframe via `figma.showUI()`. The split is
 as such: "The main thread can access the Figma 'scene' … but not the browser APIs. Conversely, the
 iframe can access the browser APIs, but not the Figma scene. The main thread and the iframe can
 communicate with each other through **message passing**"
-([How plugins run](https://developers.figma.com/docs/plugins/how-plugins-run)).
+([How plugins run](https://developers.figma.com/docs)).
 
 So the design is **two mutually-exclusive capability domains** — scene access XOR DOM access — rather
 than a trust boundary around a single domain. Network egress is separately mediated by the manifest: if
@@ -252,7 +252,7 @@ third-party site loaded inside the plugin's own iframe.
 as it's a serializable object… You can send objects, arrays, numbers, strings, booleans, null,
 undefined, Date objects and Uint8Array objects. However, **functions and prototype chains of objects
 will not be sent**", with the same restrictions as the browser's structured-clone algorithm
-([postMessage](https://developers.figma.com/docs/plugins/api/properties/figma-ui-postmessage/)).
+([postMessage](https://developers.figma.com/docs)).
 
 **Verified**: the structured-clone restriction, the two-domain split, and the message-passing-only
 bridge. **Unverified**: the commonly-repeated framing that "plugin API objects are proxies over a
@@ -262,7 +262,7 @@ reasonable mental model, not a citation.
 
 ### 3.3 Manifest — capability declarations, version pinning, staged APIs
 
-`manifest.json` ([Plugin Manifest](https://developers.figma.com/docs/plugins/manifest)):
+`manifest.json` ([Plugin Manifest](https://developers.figma.com/docs)):
 
 | Field | Meaning |
 |---|---|
@@ -284,7 +284,7 @@ VS Code's proposed track, but enforced by the *runtime* rather than the marketpl
 
 A plugin must call `figma.closePlugin()`; otherwise "the plugin runs indefinitely and the user sees a
 'Running [your plugin name]' toast notification". The user can cancel at any time, in which case Figma
-itself calls `closePlugin()` ([How plugins run](https://developers.figma.com/docs/plugins/how-plugins-run)).
+itself calls `closePlugin()` ([How plugins run](https://developers.figma.com/docs)).
 **The host always retains a kill switch** — a plugin cannot hold the session hostage.
 
 The breaking change: in 2023 Figma started **dynamically loading pages**, so a plugin could no longer
@@ -295,7 +295,7 @@ synchronous accessor **throws**: `figma.getNodeById()` → `getNodeByIdAsync()`,
 `await node.setFillStyleAsync(x)`. `PageNode.children` throws unless `PageNode.loadAsync()` was called;
 `figma.root.findAll()` requires `figma.loadAllPagesAsync()`. Without the manifest field, legacy plugins
 trigger a full-file load that "can take around **20 to 30 seconds**" on large files
-([Migrating Plugins to Dynamically Load Pages](https://developers.figma.com/docs/plugins/migrating-to-dynamic-loading)).
+([Migrating Plugins to Dynamically Load Pages](https://developers.figma.com/docs)).
 
 Two migration affordances are worth copying: Figma shipped **TypeScript typings + a purpose-built
 ESLint plugin that auto-fixes many of the changes**, and published a regex for JS-only codebases to
@@ -320,7 +320,7 @@ MV3 replaces persistent background pages with an **extension service worker**. C
 
 "Any global variables you set will be lost if the service worker shuts down" — state must go to
 `browser.storage`, IndexedDB, or CacheStorage
-([Service worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)).
+([Service worker lifecycle](https://developer.chrome.com/docs)).
 Google's own guidance: "you should design your service worker to be resilient against unexpected
 termination… avoid keeping your service worker alive indefinitely if possible."
 
@@ -337,7 +337,7 @@ extension depends on any of these.
 `declarativeNetRequest` "is used to block or modify network requests by specifying declarative rules.
 This lets extensions modify network requests **without intercepting them and viewing their content**,
 thus providing more privacy"
-([declarativeNetRequest](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest)).
+([declarativeNetRequest](https://developer.chrome.com/docs)).
 The API is *data*, not code: rulesets are JSON, and three kinds exist — **static** (packaged, declared
 under `declarative_net_request.rule_resources`), **dynamic** (persist across sessions and updates), and
 **session** (cleared on browser shutdown/update). Rule actions: `block`, `redirect`, `allow`,
@@ -350,7 +350,7 @@ other extensions, queryable via `getAvailableStaticRuleCount()`), **5,000** sess
 shared a 5,000 cap), and **1,000** regex rules with each compiled rule <2KB.
 
 Permission split — the detail that makes the warning UX work
-([declarativeNetRequest](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest)):
+([declarativeNetRequest](https://developer.chrome.com/docs)):
 
 | Permission | Install-time warning | Grants |
 |---|---|---|
@@ -364,13 +364,13 @@ Permission split — the detail that makes the warning UX work
 `optional_permissions` / `optional_host_permissions`; `content_scripts.matches` also grants host access.
 Google's framing: "Permissions help to limit damage if your extension is compromised by malware", and
 "Consider using optional permissions wherever the functionality of your extension permits"
-([Declare permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions)).
+([Declare permissions](https://developer.chrome.com/docs)).
 Adding or changing `host_permissions` or `content_scripts.matches` **triggers a new warning on update** —
 so broadening access is a visible, user-facing event, not a silent update.
 
 `minimum_chrome_version` gates installs ("Not compatible" replaces the install button) and, critically,
 "Existing users of your extension won't receive updates when the `minimum_chrome_version` is higher than
-their current browser version. **This happens silently**" ([Minimum Chrome Version](https://developer.chrome.com/docs/extensions/reference/manifest/minimum-chrome-version)).
+their current browser version. **This happens silently**" ([Minimum Chrome Version](https://developer.chrome.com/docs)).
 
 ### 4.4 Review and the MV2→MV3 deprecation
 
@@ -381,9 +381,9 @@ also make reviewing extension code more difficult." Enforcement escalates: **rej
 unchanged, users not notified), **warning** (7–30 days to fix), **takedown** (removed from the Store,
 users not notified immediately; Chrome auto-disables after several weeks of unresolved violation), and
 **malware/extreme** (no developer notification at all, disabled on all devices, **cannot be
-re-enabled**) ([Chrome Web Store review process](https://developer.chrome.com/docs/webstore/review-process)).
+re-enabled**) ([Chrome Web Store review process](https://developer.chrome.com/docs)).
 
-**The deprecation timeline** ([MV2 support timeline](https://developer.chrome.com/docs/extensions/develop/migrate/mv2-deprecation-timeline)):
+**The deprecation timeline** ([MV2 support timeline](https://developer.chrome.com/docs)):
 
 | Date | Event |
 |---|---|
@@ -405,7 +405,7 @@ Extensions in Manifest V3" ([Chromium Blog, 12 Jun 2019](https://blog.chromium.o
   security extensions ([EFF, Dec 2021](https://www.eff.org/deeplinks/2021/12/googles-manifest-v3-still-hurts-privacy-security-innovation)).
   Mozilla's own documentation frames DNR as the more private option because "extensions do not read the
   network requests made on the user's behalf"
-  ([MDN](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/declarativeNetRequest)).
+  ([MDN](https://developer.mozilla.org/en-US/docs)).
   Both can be true; the disagreement is about *who* holds the filtering logic.
 - **uBlock Origin.** Raymond Hill declined to port the original uBlock Origin to MV3, citing its
   limitations; users are pointed to **uBlock Origin Lite**, which drops dynamic filtering and

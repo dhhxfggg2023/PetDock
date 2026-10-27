@@ -1,10 +1,10 @@
-// 宠物页的导入入口（RFC-15 §3.5，docs/18 §2.1）。
+// 宠物页的导入入口（RFC-15 §3.5，原规格 18 §2.1）。
 //
 // 面板在这里**只做两件事**：给用户一个「导入」入口，以及把失败原因显示成一条内联错误条。
-// 面板**不解析素材**（docs/18:35「导入必须走 docs/15 的管线，面板本身不做解析」）——
+// 面板**不解析素材**（原规格 18:35「导入必须走 原规格 15 的管线，面板本身不做解析」）——
 // 真正的复制、登记、换源都在宿主编排里（PetImportService）。
 //
-// 为什么用内联错误条而不是 MessageBox：docs/18 §5 明写「插件崩溃也不弹模态框」，
+// 为什么用内联错误条而不是 MessageBox：原规格 18 §5 明写「插件崩溃也不弹模态框」，
 // RFC-15 §3.5 把导入失败也归到同一类 —— 失败信息出现在宠物页里，用户当场看得见。
 using System;
 using System.Windows.Forms;
@@ -97,7 +97,7 @@ internal sealed partial class ControlPanel
         int dpi = Theme.DpiOf(page);
         _importButton.FitToText();
 
-        // 错误条：赤陶字压在压暗的赤陶底上（docs/18 §2.6 的失败色对）。
+        // 错误条：赤陶字压在压暗的赤陶底上（原规格 18 §2.6 的失败色对）。
         _importError.Font = Theme.FontFor(page, TypeRole.Body);
         _importError.ForeColor = Theme.Bad;
         _importError.BackColor = Theme.BadSurface;
@@ -105,7 +105,7 @@ internal sealed partial class ControlPanel
         _importError.Padding = new Padding(
             Theme.Dip(dpi, Theme.SpaceMd), Theme.Dip(dpi, Theme.SpaceXs), Theme.Dip(dpi, Theme.SpaceMd), Theme.Dip(dpi, Theme.SpaceXs));
 
-        FlowLayoutPanel bar = ThemedBar(page);
+        FlowLayoutPanel bar = FormGrid.Bar(page);
         bar.Controls.Add(_importButton);
 
         page.Controls.Add(_importError);

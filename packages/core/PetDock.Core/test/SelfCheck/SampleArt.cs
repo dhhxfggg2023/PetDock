@@ -22,7 +22,7 @@ internal static class SampleArt
     /// <summary>
     /// 本机素材指针（可选）：`assets/sample/local/sample-art.txt` 第一行写一张图的路由。
     /// 为什么用文件而不是把路径写进源码：更完整的本机素材包不可入库（授权不明），
-    /// 而它的目录名/格式名进了内核源码就会撞 docs/02 §2 的黑名单。
+    /// 而它的目录名/格式名进了内核源码就会撞 原规格 02 §2 的黑名单。
     /// 指针文件在 .gitignore 的目录里，只有这台机器读得到。
     /// </summary>
     private const string PointerPath = "assets/sample/local/sample-art.txt";

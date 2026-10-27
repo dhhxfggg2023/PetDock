@@ -1,4 +1,4 @@
-// --drivetest：把 docs/11 §10（生命周期）、§9（降级链）、§7（帧预算）、§5（会话预算）
+// --drivetest：把 原规格 11 §10（生命周期）、§9（降级链）、§7（帧预算）、§5（会话预算）
 // 与 §2.2（命中仲裁）从「代码里写了」变成「一条命令能观察到」。
 // 用桩件 + 脚本化时钟把每一条做成确定性事件（不靠把机器跑爆），输出 `CHECK <name> PASS/FAIL <证据>`，
 // 末尾 DRIVE-OK / DRIVE-FAIL + 退出码。
@@ -52,7 +52,7 @@ internal static partial class PetDriveTest
         }
 
         // 已知的文档越界必须**显式可见**（队长 2026-10-16 要求：不许让它看起来像合规）：
-        // tier 0 + entry 是托管 .dll 与 docs/13 §2「Tier 0 = 声明式资源包，无展开代码」字面冲突。
+        // tier 0 + entry 是托管 .dll 与 原规格 13 §2「Tier 0 = 声明式资源包，无展开代码」字面冲突。
         // 这条**不是 FAIL**（方向未定，由 t6 按 D-08c 判），而是每次跑都打印出来的实况计数 ——
         // 判据 FAIL 会误导人以为实现坏了；静默会让人以为它合规。两者之间只有「显式记账」这一条路。
         foreach (string overrun in roster.Overruns)
@@ -60,11 +60,11 @@ internal static partial class PetDriveTest
             Console.WriteLine($"CHECK-DISPLAY drive-overrun {overrun} t6-D-08c-pending");
         }
 
-        Console.WriteLine($"CHECK-DISPLAY drive-overrun-count {roster.Overruns.Count} (tier0-with-managed-entry; docs13§2 conflict; t6 decides)");
+        Console.WriteLine($"CHECK-DISPLAY drive-overrun-count {roster.Overruns.Count} (tier0-with-managed-entry; spec13§2 conflict; t6 decides)");
         return failures;
     }
 
-    /// <summary>组 2（docs/11 §10）：六阶段可达；转移痕迹逐段可读；**非法转移被拒**。</summary>
+    /// <summary>组 2（原规格 11 §10）：六阶段可达；转移痕迹逐段可读；**非法转移被拒**。</summary>
     private static int Lifecycle()
     {
         int failures = 0;
@@ -81,7 +81,7 @@ internal static partial class PetDriveTest
         bool illegalRefused = false;
         try
         {
-            // Running → Running 不在 docs/11 §10 的箭头集合里，必须被拒（乱序当场暴露）。
+            // Running → Running 不在 原规格 11 §10 的箭头集合里，必须被拒（乱序当场暴露）。
             instance.MarkImported("illegal-second-import");
         }
         catch (InvalidOperationException)
@@ -106,7 +106,7 @@ internal static partial class PetDriveTest
                 && instance.DescribeTransitions().Contains("Running->Disposed", StringComparison.Ordinal),
             instance.DescribeTransitions());
 
-        // 转移表本身就是 docs/11 §10 的箭头集合，逐条对账。
+        // 转移表本身就是 原规格 11 §10 的箭头集合，逐条对账。
         Check(ref failures, "lifecycle-table",
             InstanceStateMachine.Order.Count == 6
                 && InstanceStateMachine.CanTransition(InstanceState.Discovered, InstanceState.Imported)
@@ -118,7 +118,7 @@ internal static partial class PetDriveTest
         return failures;
     }
 
-    /// <summary>组 3（docs/11 §9）：降级链只许向前、逆序被拒且留证；QueryFrame 抛异常 → 该帧
+    /// <summary>组 3（原规格 11 §9）：降级链只许向前、逆序被拒且留证；QueryFrame 抛异常 → 该帧
     /// dropped；连续 8 次 → 降级到占位图，且占位帧的像素与真内容不同。</summary>
     private static int Degradation()
     {
@@ -193,7 +193,7 @@ internal static partial class PetDriveTest
         instance.Suspend("drive-forward-check");
         Check(ref failures, "suspend-port-called", port.Calls == 1, port.LastCall);
 
-        // 重复挂起是幂等的：计数不该涨（docs/11 §10 的 suspended 只有一个态）。
+        // 重复挂起是幂等的：计数不该涨（原规格 11 §10 的 suspended 只有一个态）。
         instance.Suspend("drive-forward-check-again");
         Check(ref failures, "suspend-idempotent", port.Calls == 1, $"calls={port.Calls}");
 
@@ -204,7 +204,7 @@ internal static partial class PetDriveTest
         return failures;
     }
 
-    /// <summary>组 6（docs/11 §5 + §9:260）：优先级顺序、穿透优先、拒绝转下一个、会话 10s 强制取消。</summary>
+    /// <summary>组 6（原规格 11 §5 + §9:260）：优先级顺序、穿透优先、拒绝转下一个、会话 10s 强制取消。</summary>
     private static int Pointer()
     {
         int failures = 0;
@@ -236,7 +236,7 @@ internal static partial class PetDriveTest
             instance.ActiveSession is null && instance.SessionsEnded == 1,
             $"ended={instance.SessionsEnded}");
 
-        // 穿透优先：alpha=0 的点不许被任何 surface 变成可点（docs/11:190）。
+        // 穿透优先：alpha=0 的点不许被任何 surface 变成可点（原规格 11:190）。
         bool transparentTaken = instance.PointerDown(0, 0, PointerButton.Left, 0);
         Check(ref failures, "pointer-alpha-zero-passes-through", !transparentTaken,
             "alpha=0 的点即使 surface 命中也不开会话");
@@ -250,7 +250,7 @@ internal static partial class PetDriveTest
         low.Hits = true;
         high.Hits = true;
 
-        // 会话超过 10s 无 up / cancel → 强制取消（docs/11:260）。
+        // 会话超过 10s 无 up / cancel → 强制取消（原规格 11:260）。
         instance.PointerDown(32, 32, PointerButton.Left, 1000);
         bool forced = instance.EnforceSessionBudget(1000 + PetInstance.SessionCancelBudgetMs + 1);
         Check(ref failures, "pointer-session-budget",
@@ -288,8 +288,8 @@ internal static partial class PetDriveTest
 }
 
 /// <summary>
-/// ABI 类型面的自述（--drivetest 的对照行）：四接口在哪个命名空间、以及**哪个名字对应 docs/11 的哪个接口**。
-/// 对照表的完整版在 docs/handoff/M2-name-map.md（core 之外，因为那几行本身会撞 D-03b 黑名单）。
+/// ABI 类型面的自述（--drivetest 的对照行）：四接口在哪个命名空间、以及**哪个名字对应 原规格 11 的哪个接口**。
+/// 对照表的完整版在 交接档案（core 之外，因为那几行本身会撞 D-03b 黑名单）。
 /// </summary>
 internal static class PetRuntimeAbiTypes
 {
@@ -304,7 +304,7 @@ internal static class PetRuntimeAbiTypes
 
 /// <summary>
 /// 判据共用的像素签名（--animtest 与 --drivetest 都读「帧内容变了没有」）。
-/// 用整帧像素的 FNV-1a 而不是实现方的私有帧号：像素相同才是 docs/11:120 的可观察等价物。
+/// 用整帧像素的 FNV-1a 而不是实现方的私有帧号：像素相同才是 原规格 11:120 的可观察等价物。
 /// </summary>
 internal static class PetCheckSupport
 {

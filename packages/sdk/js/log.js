@@ -1,4 +1,4 @@
-// @petdock/sdk/log — docs/20 §3 的日志面。
+// @petdock/sdk/log — 原规格 20 §3 的日志面。
 // 插件不得直接用 console：日志要经宿主转发，宿主才知道是哪个插件、哪一帧打的。
 //
 // 实现策略：和 capabilities.js 同一个模式 —— 宿主用 `__bind(sink)` 注入转发器；

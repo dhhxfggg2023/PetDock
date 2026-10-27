@@ -184,7 +184,7 @@ internal static class DiagnosticSections
         return rules.Text(doc.ToJsonString(Indented));
     }
 
-    /// <summary>插件读数（JSON）。能力 id 必须落在 docs/14 §2 集合内。</summary>
+    /// <summary>插件读数（JSON）。能力 id 必须落在 原规格 14 §2 集合内。</summary>
     public static string BuildPlugins(DiagnosticReadings readings, RedactRules rules)
     {
         var array = new JsonArray();

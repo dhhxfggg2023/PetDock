@@ -2,12 +2,12 @@
 //
 // 退役了什么（§4.2）：旧 FrameContentLoader 的「逐级向上找仓库根、扫 packages/plugins 下
 // 所有 bin/*.dll、按 OrdinalIgnoreCase 排序取第一个能构造的工厂」这套 dll 反射发现**已删除**。
-// 它和 docs/13 §3 的「扫描 plugins/ 目录」（即 PluginHost.Discover：非递归、只认 manifest）
+// 它和 原规格 13 §3 的「扫描 plugins/ 目录」（即 PluginHost.Discover：非递归、只认 manifest）
 // 是两套发现语义；且「取排序第一个」意味着多个插件同时实现时的选中结果不是仲裁结果。
 //
 // 保留了什么（§4.2 理由 1/2）：IFrameContentProvider 与 IFrameContentSource 两个接口
 // **保留、不改名、不删除**。装配逻辑因此变成两步：
-//   1. 名册里有视图实现（docs/11 §3 那个）→ 用 PetFrameSource 包它（帧循环走 ABI）；
+//   1. 名册里有视图实现（原规格 11 §3 那个）→ 用 PetFrameSource 包它（帧循环走 ABI）；
 //   2. 否则名册里有 M0 的内容源工厂 → 用它的 Create()（M0 的过渡装配面，仍然在役）；
 //   3. 都没有 → 返回 null，调用方退回内核纯色兜底 —— 但**自检会把这一步判成失败**
 //      （见 Program.cs 的 frame-content 判据：source 必须是一个具体的、非兜底的内容源）。
@@ -76,7 +76,7 @@ internal static class FrameComposition
 
             if (instance is not null)
             {
-                // 行为层选了谁必须可见：docs/11:308 让默认实现优先，任何「第三方 brain 被静默忽略」
+                // 行为层选了谁必须可见：原规格 11:308 让默认实现优先，任何「第三方 brain 被静默忽略」
                 // 都会在屏幕上看成「宠物不动」，而在日志里查不出来。
                 KernelLog.Write($"surface-brain instance={instance.Id}"
                     + $" selected={(instance.Brain?.Meta.Id ?? "(none)")}"
@@ -124,7 +124,7 @@ internal static class FrameComposition
     /// <summary>
     /// tier-2 客体（RFC-29 §3.3）：已装载、且应答过 `abi.hello` 的句柄里选一个 ——
     /// `PETDOCK_BRAIN` 命中谁就取谁，否则按 manifest id 的 Ordinal 序取首。
-    /// 与名册「取首」同一规则，且不特判任何插件 id（docs/01 P-02 第 4 条）。
+    /// 与名册「取首」同一规则，且不特判任何插件 id（原规格 01 P-02 第 4 条）。
     /// </summary>
     private static (string Id, IFrameContentSource Content, string Note)? Tier2Content(PluginHost host)
     {
@@ -175,10 +175,19 @@ internal static class FrameComposition
     }
 
     /// <summary>
-    /// RFC-35 §3.2：把窗口的鼠标消息接到实例的交互会话上（docs/11 §5）。
+    /// RFC-35 §3.2：把窗口的鼠标消息接到实例的交互会话上（原规格 11 §5）。
     /// 生产入口与自检共用这一处 —— 接之前 PetInstance.PointerDown/Move/Up 在全仓零调用方，
     /// 仲裁/优先级/10 秒预算写好了却一次也没在真实链路上跑过。
     /// </summary>
+    /// <summary>窗口 ↔ 实例的完整接线：指针消息 + moveTo 的真移窗回调。
+    /// 生产装配（Program.ComposeWindow）与多宠物集合（PetWindowSet）都必须走这一处 ——
+    /// 只接指针不接 mover 的那一版，让 moveTo 在生产链上成了装饰。</summary>
+    internal static void WireWindow(LayeredFrameWindow window, PetInstance instance)
+    {
+        WirePointer(window, instance);
+        instance.Arbiter.WindowMover = window.MoveTo;
+    }
+
     internal static void WirePointer(LayeredFrameWindow window, PetInstance instance)
     {
         // 时钟必须与帧源同一个（PetFrameSource.ClockMs）：预算判定在帧源里做，
@@ -196,8 +205,8 @@ internal static class FrameComposition
 
     /// <summary>
     /// 行为层选择器的环境变量名（与 PETDOCK_PLUGINS_ROOT 同一形态）。
-    /// 值是一个插件 id；未设置或匹配不到时退回「取首」（= docs/11:308 的默认实现优先）。
-    /// 为什么用环境变量而不是写死：docs/01 P-02 第 4 条禁止 core 代码里特判任何插件 id，
+    /// 值是一个插件 id；未设置或匹配不到时退回「取首」（= 原规格 11:308 的默认实现优先）。
+    /// 为什么用环境变量而不是写死：原规格 01 P-02 第 4 条禁止 core 代码里特判任何插件 id，
     /// 但允许「内核通过插件 ID 引用配置条目」—— 这条就是那个配置条目。
     /// </summary>
     public const string BrainSelectorEnv = "PETDOCK_BRAIN";

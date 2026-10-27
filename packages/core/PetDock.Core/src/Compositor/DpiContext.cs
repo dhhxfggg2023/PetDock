@@ -1,4 +1,4 @@
-// 实现 docs/12 §3「尺寸 / 坐标 / DPI」：进程感知等级与窗口 DPI 的只读查询
+// 实现 原规格 12 §3「尺寸 / 坐标 / DPI」：进程感知等级与窗口 DPI 的只读查询
 using System.Runtime.InteropServices;
 
 namespace PetDock.Core.Compositor;

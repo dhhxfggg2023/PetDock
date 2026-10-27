@@ -7,7 +7,7 @@
 //   ② 写失败绝不抛给调用点 —— 日志失败不该带走业务。commit 失败时这批行退回缓冲。
 //   ③ 脱敏在落盘前做 —— 落盘的是脱敏后的文本，用户直接把 logs 目录打包发出去也是安全的。
 //
-// 活动文件带 .part 后缀：docs/17 §3「当前活动文件只在完成时保留名称硬证据」——
+// 活动文件带 .part 后缀：原规格 17 §3「当前活动文件只在完成时保留名称硬证据」——
 // 没写完的文件不算证据。进程正常退出时去掉 .part 变成硬证据；被强杀留下的 .part
 // 在导出时会被收进包里，但必须标注它未完成。
 //
@@ -74,7 +74,7 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
         _directory = logDirectory ?? throw new ArgumentNullException(nameof(logDirectory));
         _rules = rules ?? throw new ArgumentNullException(nameof(rules));
         // RFC-17 §3.1 规定的文件名：kernel- 加上「年+月+日-时分秒」这一串数字，再加 .log。
-        // 月与日的格式符不直接连写（连写会撞上 docs/02 §2 的概念黑名单，它按子串匹配），
+        // 月与日的格式符不直接连写（连写会撞上 原规格 02 §2 的概念黑名单，它按子串匹配），
         // 所以这里分两段取再拼起来——拼出来的结果与 RFC 写的完全一致。
         DateTime now = DateTime.Now;
         _baseName = "kernel-" + now.ToString("yyyy", CultureInfo.InvariantCulture)

@@ -1,14 +1,14 @@
-// M1 契约 §5（docs/handoff/M1-contract-frozen.md）：能力句柄 = docs/14 §2 的白名单 ID 模型。
+// M1 契约 §5（交接档案）：能力句柄 = 原规格 14 §2 的白名单 ID 模型。
 // 白名单而非黑名单；安装期一次性声明；每次授予/拒绝记审计。本文件只负责「ID 的合法性」，
 // 不负责「是否授予」——授予判定在 CapabilityGate。
-// 注意：docs/14 §2 中的 assets.write:cas 与 audio.play 是「明令禁止项」，
+// 注意：原规格 14 §2 中的 assets.write:cas 与 audio.play 是「明令禁止项」，
 // 它们出现在白名单文档里只是为了说明永不发放，因此本枚举不含它们。
 using System.Text.RegularExpressions;
 
 namespace PetDock.Core.Sandbox;
 
 /// <summary>
-/// 一条能力授权。Id 必须与 docs/14 §2 白名单匹配（含两个带参数的模式）。
+/// 一条能力授权。Id 必须与 原规格 14 §2 白名单匹配（含两个带参数的模式）。
 /// </summary>
 public readonly record struct CapabilityGrant
 {
@@ -19,7 +19,7 @@ public readonly record struct CapabilityGrant
         if (!CapabilityIds.IsWellKnown(id))
         {
             throw new ArgumentException(
-                $"capability id '{id}' is not in the docs/14 §2 whitelist", nameof(id));
+                $"capability id '{id}' is not in the 原规格 14 §2 whitelist", nameof(id));
         }
         Id = id;
     }
@@ -28,7 +28,7 @@ public readonly record struct CapabilityGrant
 }
 
 /// <summary>
-/// docs/14 §2 能力 ID 全集（M1 冻结版）。两个带参数项用正则表达。
+/// 原规格 14 §2 能力 ID 全集（M1 冻结版）。两个带参数项用正则表达。
 /// </summary>
 public static class CapabilityIds
 {

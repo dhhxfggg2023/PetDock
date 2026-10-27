@@ -1,12 +1,12 @@
 // 插件日志的宿主侧路由（RFC-23 §3.2）。
 //
-// 四行规格照 docs/20 §3 分流：
+// 四行规格照 原规格 20 §3 分流：
 //   info  → 通用日志（KernelLog → 常驻形态落 logs/kernel-*.log）
 //   warn  → 跨进程审计流水（kind=log, level=warn）+ 通用日志
 //   error → 同 warn（level=error）+ 按插件累计的错误数（诊断包摘要读它）
 //   debug → 门面层就不落盘（只计数），到不了这里
 //
-// 为什么 warn/error 要进审计流水：docs/20:52-53 明写这两级进审计日志；而审计流水是本项目里
+// 为什么 warn/error 要进审计流水：原规格 20:52-53 明写这两级进审计日志；而审计流水是本项目里
 // 唯一跨进程、脱敏、有容量上限的证据层（RFC-20）。info 不进 —— 它量大且不是「一次决定」。
 using System;
 using System.Collections.Generic;
@@ -122,7 +122,7 @@ internal sealed class HostPluginLog : IPluginLogSink
         }
     }
 
-    /// <summary>级别的字面值（与 docs/20 §3 的方法名一致，小写）。</summary>
+    /// <summary>级别的字面值（与 原规格 20 §3 的方法名一致，小写）。</summary>
     public static string Token(PluginLogLevel level) => level switch
     {
         PluginLogLevel.Debug => "debug",

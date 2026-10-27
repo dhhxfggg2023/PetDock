@@ -1,6 +1,6 @@
 // 「实例挂起 → 插件层禁用」的接缝（t1 契约 §8.2 的落点）。
 //
-// 为什么需要它：docs/11 §7 的「连续 8 次帧超时 → suspend」与 M1 的「连续 8 次沙箱故障 → suspend」
+// 为什么需要它：原规格 11 §7 的「连续 8 次帧超时 → suspend」与 M1 的「连续 8 次沙箱故障 → suspend」
 // 必须是**同一条挂起路径的两个计数源**，共用同一个 Suspended 终态 —— 所以实例层挂起时必须
 // 把插件层也带到 PluginLifecycleState.Suspended，而不是各自留一个「挂起」的记号。
 // core 里实例挂在 Host，插件宿主也在 Host，但本文件不直接引用 PluginHost：

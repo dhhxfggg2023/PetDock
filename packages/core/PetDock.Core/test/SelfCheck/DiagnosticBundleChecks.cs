@@ -9,7 +9,7 @@
 // 这正是它被设计成纯数据的原因：组装这一侧可以脱离宿主单独验证。
 //
 // 覆盖的判据：
-//   ui-diag-capability-ids-well-known  能力 id 全在 docs/14 §2 集合内
+//   ui-diag-capability-ids-well-known  能力 id 全在 原规格 14 §2 集合内
 //   ui-diag-forbidden-capability-absent 禁止项绝不出现
 //   ui-diag-bundle-excludes-user-activity 包里没有用户使用数据
 //   ui-diag-bundle-zip-roundtrip       zip 能被读回来且 sha256 对得上
@@ -51,7 +51,7 @@ internal static class DiagnosticBundleChecks
     private const string ProbeUser = "testuser";
     private const string ProbeMachine = "PROBEMACHINE";
 
-    /// <summary>包内不该出现的用户使用数据键名（docs/18 §2.4：不收集使用数据）。</summary>
+    /// <summary>包内不该出现的用户使用数据键名（原规格 18 §2.4：不收集使用数据）。</summary>
     private static readonly string[] UserActivityKeys =
     {
         "输入强度", "在线时间", "语音", "inputIntensity", "onlineTime", "voiceInput",

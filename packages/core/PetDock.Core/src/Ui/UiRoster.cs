@@ -1,5 +1,5 @@
 // 快照装配（RFC-12 §2.2）：把宿主与实例的**只读**读数变成面板能直接摆放的行。
-// 这里不做任何判定、不改任何状态——判定在宿主，展示在面板（docs/18 §2.5）。
+// 这里不做任何判定、不改任何状态——判定在宿主，展示在面板（原规格 18 §2.5）。
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,9 +13,13 @@ internal static class UiRoster
 {
     /// <summary>
     /// 装配一次快照。pets 允许为空（常驻路径只装配一个实例，且装配失败时确实没有宠物）；
-    /// plugins 来自宿主只读花名册；perf 由调用方给出（采样是显式动作，不在重绘里偷偷做）。
+    /// plugins 来自宿主只读花名册；settings 与 inventory 由调用方给出。
     /// </summary>
-    public static UiSnapshot Build(PetInstance? pet, PluginHost? host, PerfSummary perf, SettingsView? settings = null)
+    public static UiSnapshot Build(
+        PetInstance? pet,
+        PluginHost? host,
+        SettingsView? settings = null,
+        PluginInventory? inventory = null)
     {
         var pets = new List<PetLine>(1);
         if (pet is not null)
@@ -30,9 +34,37 @@ internal static class UiRoster
         }
 
         var plugins = new List<PluginLine>();
+        var loaded = new Dictionary<string, PluginRow>(StringComparer.Ordinal);
         if (host is not null)
         {
             foreach (PluginRow row in host.Roster())
+            {
+                loaded[row.Id] = row;
+            }
+        }
+
+        if (inventory is not null)
+        {
+            // 管理视角：装了但没开的插件也要出现在表里，否则用户没有入口把它打开。
+            foreach (PluginEntry entry in inventory.Rows())
+            {
+                loaded.TryGetValue(entry.Id, out PluginRow? row);
+                plugins.Add(new PluginLine(
+                    Id: entry.Id,
+                    Name: entry.Name,
+                    Version: entry.Version,
+                    Tier: entry.Tier,
+                    State: DescribePluginState(row, entry),
+                    Granted: row?.Granted ?? 0,
+                    Source: I18n.Get(entry.Origin == "user" ? "cp.plugins.origin.user" : "cp.plugins.origin.builtin"),
+                    Enabled: entry.Enabled,
+                    Loaded: entry.Loaded,
+                    Removable: entry.Removable));
+            }
+        }
+        else if (host is not null)
+        {
+            foreach (PluginRow row in loaded.Values)
             {
                 plugins.Add(new PluginLine(
                     Id: row.Id,
@@ -44,11 +76,30 @@ internal static class UiRoster
             }
         }
 
-        return new UiSnapshot(pets, plugins, perf, settings);
+        return new UiSnapshot(pets, plugins, settings);
     }
 
     /// <summary>
-    /// 进程级私有工作集。宠物与内核同进程（docs/10 §3），所以面板上写「进程」不是我偷懒——
+    /// 插件页「状态」列的文案：已装载的看生命周期，未装载的看用户开关。
+    /// 不直接显示枚举名 —— 用户读不懂 Running / Suspended。
+    /// </summary>
+    private static string DescribePluginState(PluginRow? row, PluginEntry entry)
+    {
+        if (row is null)
+        {
+            return entry.Enabled ? I18n.Get("cp.plugins.state.pending") : I18n.Get("cp.plugins.state.off");
+        }
+
+        return row.State switch
+        {
+            PluginLifecycleState.Running => I18n.Get("cp.plugins.state.running"),
+            PluginLifecycleState.Suspended => I18n.Get("cp.plugins.state.suspended"),
+            _ => row.State.ToString(),
+        };
+    }
+
+    /// <summary>
+    /// 进程级私有工作集。宠物与内核同进程（原规格 10 §3），所以面板上写「进程」不是我偷懒——
     /// 单只宠物的独占内存根本不存在，把它拆成「每宠物内存」会是一个编造的数字。
     /// </summary>
     public static string ProcessMemoryMb()

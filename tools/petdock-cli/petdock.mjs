@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// petdock CLI —— docs/23-cli-tooling.md 的 6 条最小命令集。
+// petdock CLI —— 原规格 23 的 6 条最小命令集。
 //
 // 为什么放在仓库根的 tools/ 而不是 packages/cli：
 //   tools/depscan.mjs 的 D-01b 把 packages/ 的顶层目录白名单钉死为 core/sdk/plugins
-//   （新增顶层目录须走 RFC）。本 CLI 是**面向插件作者的产品面**（docs/23 的 `petdock` 命令），
+//   （新增顶层目录须走 RFC）。本 CLI 是**面向插件作者的产品面**（原规格 23 的 `petdock` 命令），
 //   不是仓库门禁，但把它做成 packages/cli 需要先改一条宪法级规则；而它的零依赖自包含形态
-//   让位置不影响正确性。这条错位在 docs/50 M5 收口时应由一次 RFC 决定（要么放宽 D-01b，
+//   让位置不影响正确性。这条错位在 原规格 50 M5 收口时应由一次 RFC 决定（要么放宽 D-01b，
 //   要么把它正式登记为 tools/ 下的第二个产品）。
 //
 // 零 npm 依赖：只用 Node 内置模块。schema 校验与仓库门禁**共用同一份权威实现**
-//   （tools/validate-manifest.mjs，它从 docs/21 的 markdown 里抽 schema），
+//   （tools/validate-manifest.mjs，它从 原规格 21 的 markdown 里抽 schema），
 //   所以 CLI 不会自己复制第二份 schema。
 //
 // 用法：
@@ -33,7 +33,7 @@ const VALIDATOR = path.join(REPO_ROOT, 'tools', 'validate-manifest.mjs');
 
 const VERSION = '1.0.0';
 
-// ABI 版本从内核源码读，不写死：docs/21 §2 的 api 兼容判据以 docs/11 ABI 为准，
+// ABI 版本从内核源码读，不写死：原规格 21 §2 的 api 兼容判据以 原规格 11 ABI 为准，
 // 而 AbiVersion 的真值只在 PetDock.Core 的 PetRuntimeAbi 里（Major/Minor 两个常量）。
 const ABI_SOURCE = path.join(REPO_ROOT, 'packages', 'core', 'PetDock.Core', 'src', 'PetRuntime', 'PetTypes.cs');
 
@@ -56,7 +56,7 @@ function usage() {
   console.log('  lint [dir]                  校验 manifest 与入口文件（机器门禁）');
   console.log('  check [dir]                 插件 api 与宿主 ABI 的兼容性');
   console.log('  doctor                      诊断本机环境');
-  console.log('  pack [dir] [--out dist/]    打包清单（不写文件：签名位未实现，见 docs/23 §9）');
+  console.log('  pack [dir] [--out dist/]    打包清单（不写文件：签名位未实现，见 原规格 23 §9）');
 }
 
 /** 从内核源码读 ABI 版本；读不到就报错而不是猜（猜出来的版本号会让 check 撒谎）。 */
@@ -78,9 +78,9 @@ function abiVersion() {
 }
 
 /**
- * 校验一份 manifest 是否符合 docs/21 的 schema。
+ * 校验一份 manifest 是否符合 原规格 21 的 schema。
  *
- * 判定逻辑与 tools/validate-manifest.mjs **共用同一份实现**（它从 docs/21 的 markdown 里抽
+ * 判定逻辑与 tools/validate-manifest.mjs **共用同一份实现**（它从 原规格 21 的 markdown 里抽
  * schema，schema 只有一份）：这里用动态 import 在**同进程内**调它的具名导出，
  * 而不是 spawn 一个子进程 —— 因为管道捕获子进程输出在受限通道里会静默失败
  * （实测 code_verify 通道里 spawnSync 报 `status=null out=undefined`，pwsh 通道正常；
@@ -116,7 +116,7 @@ function readManifest(file) {
 // ---------- lint ----------
 
 async function cmdLint(argv) {
-  // 默认目标是**当前目录**，不是仓库根：docs/23 §4 的用法是「在插件目录里直接 petdock lint」，
+  // 默认目标是**当前目录**，不是仓库根：原规格 23 §4 的用法是「在插件目录里直接 petdock lint」，
   // 作者照文档做时 cwd 就是插件根。指到仓库根会让作者看到一句莫名其妙的「找不到 manifest」。
   const target = argv[0] ? path.resolve(argv[0]) : process.cwd();
   const manifestFile = fs.existsSync(target) && fs.statSync(target).isDirectory()
@@ -148,11 +148,11 @@ async function cmdLint(argv) {
 
   const manifest = readManifest(manifestFile);
 
-  // capabilities 白名单已在 schema 里判定（docs/21 definitions.capabilityId），此处只复述结论。
+  // capabilities 白名单已在 schema 里判定（原规格 21 definitions.capabilityId），此处只复述结论。
   console.log(`✓ capabilities all whitelisted (${manifest.capabilities.length})`);
   console.log(`✓ license declared (${manifest.license.spdx})`);
 
-  // entry 存在性：schema 表达不了「文件真的在磁盘上」，而这正是 docs/23 §4 示例里
+  // entry 存在性：schema 表达不了「文件真的在磁盘上」，而这正是 原规格 23 §4 示例里
   // 唯一一条 ✗ 行（`entry file missing: src/main.js`）。
   const entry = manifest.entry;
   if (typeof entry === 'string' && entry.length > 0) {
@@ -164,7 +164,7 @@ async function cmdLint(argv) {
     }
     console.log(`✓ entry file present (${entry})`);
 
-    // 下面是 M-07 走查暴露出来的三类漏检。它们全部是 docs/20 §1 与 docs/21 §2 明确
+    // 下面是 M-07 走查暴露出来的三类漏检。它们全部是 原规格 20 §1 与 原规格 21 §2 明确
     // 要求「构建期失败」的判据，而早期 cmdLint 只做了 File.Exists —— 于是语法错的 entry、
     // import 了内核内部的 entry、tier=0 却给 JS entry 的插件，全都 LINT-PASS exit 0。
     const entryIssues = checkEntry(pluginRoot, entry, manifest);
@@ -181,7 +181,7 @@ async function cmdLint(argv) {
   return 0;
 }
 
-/** docs/20 §1 允许插件 import 的模块白名单（其余一律构建期拒绝，D-02）。 */
+/** 原规格 20 §1 允许插件 import 的模块白名单（其余一律构建期拒绝，D-02）。 */
 const ALLOWED_IMPORT = /^@petdock\/sdk(\/[a-z-]+)?$/;
 
 /**
@@ -199,11 +199,11 @@ function checkEntry(pluginRoot, entry, manifest) {
   const entryPath = path.join(pluginRoot, entry);
   const ext = path.extname(entry).toLowerCase();
 
-  // 1) tier 0 是「声明式包」，不该带可执行入口（docs/21 §2 / docs/13 §2）。
+  // 1) tier 0 是「声明式包」，不该带可执行入口（原规格 21 §2 / 原规格 13 §2）。
   //    早期 lint 把 tier=0 + JS entry 也放行，作者会以为自己的代码会被执行。
   if (manifest.tier === 0 && (ext === '.js' || ext === '.mjs')) {
     issues.push(`tier 0 是声明式包，不能有 JS 入口 '${entry}'`
-      + '（docs/13 §2：tier 0 只读声明；要跑代码请把 tier 改成 1）');
+      + '（原规格 13 §2：tier 0 只读声明；要跑代码请把 tier 改成 1）');
     return issues;
   }
 
@@ -225,7 +225,7 @@ function checkEntry(pluginRoot, entry, manifest) {
     return issues;
   }
 
-  // 3) import 白名单（docs/20 §1 / D-02）：只允许 @petdock/sdk 及其子模块。
+  // 3) import 白名单（原规格 20 §1 / D-02）：只允许 @petdock/sdk 及其子模块。
   //    这里做的是**静态文本扫描**，不解析 AST —— 它要挡住的是「作者手写时顺手 import 了
   //    内核内部包或 Node 内置模块」这类显眼错误，不是对抗混淆。
   //
@@ -241,11 +241,11 @@ function checkEntry(pluginRoot, entry, manifest) {
     if (!specifier || specifier.startsWith('.')) continue;
     if (specifier.startsWith('node:')) {
       issues.push(`entry 引用了 Node 内置模块 '${specifier}'`
-        + '（插件跑在沙箱里，没有 Node 内置模块；docs/13 §2）');
+        + '（插件跑在沙箱里，没有 Node 内置模块；原规格 13 §2）');
       continue;
     }
     if (!ALLOWED_IMPORT.test(specifier)) {
-      issues.push(`entry 引用了非 SDK 模块 '${specifier}'（docs/20 §1：只允许 @petdock/sdk/*，D-02）`);
+      issues.push(`entry 引用了非 SDK 模块 '${specifier}'（原规格 20 §1：只允许 @petdock/sdk/*，D-02）`);
     }
   }
 
@@ -279,14 +279,14 @@ function cmdCheck(argv) {
 
   if (plugin.major !== host.major) {
     console.log(`✗ major mismatch: 插件声明 ${plugin.major}，宿主为 ${host.major}`
-      + '（docs/20 §4：major 不匹配即拒绝加载，须把 api.major 改到宿主的主版本）');
+      + '（原规格 20 §4：major 不匹配即拒绝加载，须把 api.major 改到宿主的主版本）');
     console.log('CHECK-FAIL');
     return 1;
   }
 
   if (plugin.minor > host.minor) {
     console.log(`✗ 插件声明 minor ${plugin.minor} 高于宿主 ${host.minor}`
-      + '（docs/20 §4：minor 不一致应警告但加载；此处判为不一致以防作者以为新 API 可用）');
+      + '（原规格 20 §4：minor 不一致应警告但加载；此处判为不一致以防作者以为新 API 可用）');
     console.log('CHECK-FAIL');
     return 1;
   }
@@ -395,8 +395,8 @@ function cmdDoctor() {
   console.log(`plugins dir writable ${writable ? '✓' : '✗'} (${path.relative(REPO_ROOT, pluginsDir)})`);
   if (!writable) failures += 1;
 
-  // Tier 1 沙箱基座：本项目用 Wasmtime（docs/14 §4 白名单首项），不是 QuickJS。
-  // docs/23 §7 的示例行写的是 `quickjs sandbox OK` —— 那是规格里的旧措辞，此处如实报实际基座。
+  // Tier 1 沙箱基座：本项目用 Wasmtime（原规格 14 §4 白名单首项），不是 QuickJS。
+  // 原规格 23 §7 的示例行写的是 `quickjs sandbox OK` —— 那是规格里的旧措辞，此处如实报实际基座。
   // 判据是**直接读还原产物**（obj/project.assets.json 的 libraries），不 spawn 子进程：
   // 早期版本用 `node -e` 探针并把仓库根当 argv[1] 传，而 `node -e` 的 argv[1] 其实是
   // 第一个位置参数之前的占位，探针读到 undefined，于是机器上明明有 Wasmtime 也报 ✗。
@@ -454,8 +454,8 @@ function cmdPack(argv) {
   const files = collectPackFiles(pluginRoot);
   const bytes = files.reduce((sum, file) => sum + fs.statSync(file).size, 0);
 
-  // docs/52 §5 / docs/23 §6：pack 绝不打包素材。这里只能核对「包里没有已知素材扩展名」，
-  // 真正的素材指纹扫描是 docs/41 D-13a（tools/asset-manifest.mjs）的职责。
+  // 原规格 52 §5 / 原规格 23 §6：pack 绝不打包素材。这里只能核对「包里没有已知素材扩展名」，
+  // 真正的素材指纹扫描是 原规格 41 D-13a（tools/asset-manifest.mjs）的职责。
   const mediaRe = /\.(png|jpe?g|webp|gif|wav|mp3|moc3|model3\.json|vrm|pmx|ase)$/i;
   const media = files.filter((file) => mediaRe.test(file));
 
@@ -463,14 +463,14 @@ function cmdPack(argv) {
   console.log(`  files ${files.length} bytes ${bytes} (${(bytes / 1024).toFixed(1)} KiB)`);
   console.log(`  out   ${outDir}${manifest.id}-${manifest.version}.petpack`);
   if (media.length > 0) {
-    console.log(`✗ ${media.length} 个素材文件会被打进包（docs/23 §6 禁止）：`);
+    console.log(`✗ ${media.length} 个素材文件会被打进包（原规格 23 §6 禁止）：`);
     for (const file of media.slice(0, 10)) console.log(`    ${path.relative(pluginRoot, file)}`);
     console.log('PACK-FAIL');
     return 1;
   }
 
-  console.log('✓ 无素材文件（docs/23 §6 / docs/52 §5）');
-  console.log('PACK-DRY-RUN （不写文件：.petpack 的签名位与格式未定，见 docs/23 §9 推迟项）');
+  console.log('✓ 无素材文件（原规格 23 §6 / 原规格 52 §5）');
+  console.log('PACK-DRY-RUN （不写文件：.petpack 的签名位与格式未定，见 原规格 23 §9 推迟项）');
   return 0;
 }
 
@@ -484,11 +484,11 @@ function sanitizeToId(name) {
 /**
  * 生成插件骨架。
  *
- * **kind / tier 必须可选**：docs/22 §2 与 docs/23 §2 都写着「选择 kind 与 tier」，
+ * **kind / tier 必须可选**：原规格 22 §2 与 原规格 23 §2 都写着「选择 kind 与 tier」，
  * 而早期实现把 `kind='brain'`、`tier=1` 写死 —— M-07 冷启动走查里，作者想做一个
- * importer（docs/22 §4 整节都在讲 importer），却只能得到 brain 骨架，只能手改 manifest。
+ * importer（原规格 22 §4 整节都在讲 importer），却只能得到 brain 骨架，只能手改 manifest。
  *
- * 用命令行参数而不是交互式提问：CLI 要被脚本与 CI 调用（docs/23 §8），
+ * 用命令行参数而不是交互式提问：CLI 要被脚本与 CI 调用（原规格 23 §8），
  * 交互式提问在非 TTY 下会挂住；参数化既能被脚本用，也能被人在终端里用。
  */
 function cmdCreatePlugin(argv) {
@@ -536,7 +536,7 @@ function cmdCreatePlugin(argv) {
   const srcDir = path.join(target, 'src');
   fs.mkdirSync(srcDir, { recursive: true });
 
-  // tier 0 是声明式包（docs/13 §2），不该带可执行入口 —— 与 lint 的判据同源。
+  // tier 0 是声明式包（原规格 13 §2），不该带可执行入口 —— 与 lint 的判据同源。
   const entry = tier === 0 ? '' : 'src/main.js';
 
   const manifest = {
@@ -577,17 +577,17 @@ function cmdCreatePlugin(argv) {
  * 骨架代码模板。按 kind 分叉，而不是给所有人一个 brain 模板。
  *
  * 为什么值得分叉：M-07 走查里作者做的是 importer，拿到的却是 `export const brain = {…}`，
- * 而 docs/22 §4 讲的是 `export const importer = { probe, import }` —— 骨架与它自己引用的
+ * 而 原规格 22 §4 讲的是 `export const importer = { probe, import }` —— 骨架与它自己引用的
  * 文档互相矛盾，作者只能猜。模板是这个项目里唯一「一定会被逐字复制」的代码。
  */
 function MAIN_JS_TEMPLATE(kind) {
   if (kind === 'importer') {
-    return `// src/main.js —— Tier 1 importer 插件入口（docs/22 §4）。
+    return `// src/main.js —— Tier 1 importer 插件入口（原规格 22 §4）。
 //
 // 宿主调用 probe 判断「这份素材我认不认得」，认得才调 import。
 // 两者都收到 fileTree：一个只读的目录视图（has(path) / readJson(path) / list(dir)）。
 //
-// 只允许 import docs/20 §1 登记的模块；不要 import 内核内部包或 Node 内置模块
+// 只允许 import 原规格 20 §1 登记的模块；不要 import 内核内部包或 Node 内置模块
 // （petdock lint 会在构建期拒绝）。
 
 export const importer = {
@@ -619,7 +619,7 @@ export default importer
 // 仓库里 ${kind} 的常用形态是 tier 0（声明式 + 内建实现），
 // 只有需要自定义行为时才写代码。本文件由 create-plugin 生成，可直接改。
 //
-// 只允许 import docs/20 §1 登记的模块（petdock lint 会拒绝其它 import）。
+// 只允许 import 原规格 20 §1 登记的模块（petdock lint 会拒绝其它 import）。
 
 export const ${kind} = {
   id: 'com.example.my${kind}',
@@ -629,7 +629,7 @@ export const ${kind} = {
   },
 
   async dispose() {
-    // 释放资源；宿主给 1000ms 上限（docs/13 §8 第 4 条）。
+    // 释放资源；宿主给 1000ms 上限（原规格 13 §8 第 4 条）。
   },
 }
 
@@ -637,15 +637,15 @@ export default ${kind}
 `;
   }
 
-  return `// src/main.js —— Tier 1 brain 插件入口（docs/11 §4 的 IBrain）。
+  return `// src/main.js —— Tier 1 brain 插件入口（原规格 11 §4 的 IBrain）。
 //
-// 宿主把本文件当模块加载，取它导出的 \`brain\` 对象。四个方法对应 docs/11 §4 的
-// init / tick / onEvent / dispose；tick 返回 docs/16 §5 的 BrainDirective 数组。
+// 宿主把本文件当模块加载，取它导出的 \`brain\` 对象。四个方法对应 原规格 11 §4 的
+// init / tick / onEvent / dispose；tick 返回 原规格 16 §5 的 BrainDirective 数组。
 //
-// 只允许 import docs/20 §1 登记的模块；不要 import 内核内部包或 Node 内置模块
+// 只允许 import 原规格 20 §1 登记的模块；不要 import 内核内部包或 Node 内置模块
 // （petdock lint 会在构建期拒绝）。
 
-/** 本插件要订阅的事件名，必须是 docs/16 的 14 个之一；不声明就在这里留空数组。 */
+/** 本插件要订阅的事件名，必须是 原规格 16 的 14 个之一；不声明就在这里留空数组。 */
 export const events = ['core.clock.tick']
 
 let elapsedMs = 0
@@ -671,7 +671,7 @@ export const brain = {
   },
 
   async dispose() {
-    // 释放资源。宿主给 1000ms 上限（docs/13 §8 第 4 条）。
+    // 释放资源。宿主给 1000ms 上限（原规格 13 §8 第 4 条）。
   },
 }
 
@@ -693,15 +693,15 @@ PetDock ${kind} 插件（Tier ${tier}），由 \`petdock create-plugin\` 生成�
 
 ## 参考
 
-- 插件契约：docs/11-pet-runtime-abi.md（ABI）、docs/13-plugin-system.md（生命周期）
-- SDK 模块面：docs/20-plugin-sdk-spec.md
-- manifest 字段：docs/21-manifest-schema.md
-- 作者走查：docs/22-adapter-authoring-guide.md
+- 插件契约：原规格 11（ABI）、原规格 13（生命周期）
+- SDK 模块面：原规格 20
+- manifest 字段：原规格 21
+- 作者走查：原规格 22
 
 ## 素材许可
 
 本插件不携带任何第三方素材。若你的插件需要素材，请让用户从本地导入
-（素材零分发，docs/52 §5）——不要把它们提交进本仓库。
+（素材零分发，原规格 52 §5）——不要把它们提交进本仓库。
 `;
 }
 
@@ -710,7 +710,7 @@ PetDock ${kind} 插件（Tier ${tier}），由 \`petdock create-plugin\` 生成�
 /**
  * 本地开发循环：校验 → 监听 → 打印宿主会怎么处理这次改动。
  *
- * **能力边界（docs/23 §3 的规格 vs 宿主的实际行为）**：规格写的是「起 dev server + 通知宿主
+ * **能力边界（原规格 23 §3 的规格 vs 宿主的实际行为）**：规格写的是「起 dev server + 通知宿主
  * 热重载」，但宿主侧的监听只挂在一个文件上 —— `PluginHost.cs:179` 的 FileSystemWatcher 过滤
  * 模式是 `petdock-plugin.json` 一个名字，`PluginHost.Lifecycle.cs:207` 在 manifest 内容哈希
  * 未变时直接返回。所以：
@@ -746,7 +746,7 @@ function cmdDev(argv) {
   console.log(`[dev] manifest OK (id=${manifest.id}, tier=${manifest.tier})`);
 
   if (manifest.api?.major !== host.major) {
-    console.log(`[dev] ✗ api.major ${manifest.api?.major} ≠ host ${host.major}（docs/20 §4：major 不匹配即拒绝加载）`);
+    console.log(`[dev] ✗ api.major ${manifest.api?.major} ≠ host ${host.major}（原规格 20 §4：major 不匹配即拒绝加载）`);
     console.log('DEV-FAIL');
     return 1;
   }
@@ -769,7 +769,7 @@ function cmdDev(argv) {
     console.log(`[dev] entry OK (${entry})`);
   }
 
-  console.log('[dev] hot-reload: manifest only（宿主只监听 petdock-plugin.json，见 docs/23 §3 的已知差距）');
+  console.log('[dev] hot-reload: manifest only（宿主只监听 petdock-plugin.json，见 原规格 23 §3 的已知差距）');
   console.log('[dev] 改 src/** 不会触发热重载，需重启宿主；改 manifest 会。');
   console.log('[dev] 宿主启动：dotnet run --project packages/core/PetDock.Core -c Release');
   console.log('DEV-OK');

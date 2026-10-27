@@ -1,6 +1,6 @@
-// @petdock/sdk/brain — docs/20 模块面的 brain 位。
-// M1 占位：形状对应 docs/11 的 IBrain（meta/init/dispose/tick(dt,world)→BrainDirective[]/onEvent）。
-// 真正的沙箱化宿主与 tick 循环在 M2+（docs/50）。
+// @petdock/sdk/brain — 原规格 20 模块面的 brain 位。
+// M1 占位：形状对应 原规格 11 的 IBrain（meta/init/dispose/tick(dt,world)→BrainDirective[]/onEvent）。
+// 真正的沙箱化宿主与 tick 循环在 M2+（原规格 50）。
 
 /** @typedef {{ name: string, version: string }} Meta */
 /** @typedef {{ kind: string, payload?: unknown }} BrainDirective */

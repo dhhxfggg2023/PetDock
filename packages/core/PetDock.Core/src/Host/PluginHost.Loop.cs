@@ -60,7 +60,7 @@ public sealed partial class PluginHost
         }
         catch (Exception ex)
         {
-            // 单条命令失败绝不杀调度线程（docs/13 §4：回调不得拖垮宿主）
+            // 单条命令失败绝不杀调度线程（原规格 13 §4：回调不得拖垮宿主）
             KernelLog.Write($"command-failed {ex.GetType().Name}: {ex.Message}");
         }
     }
@@ -76,7 +76,7 @@ public sealed partial class PluginHost
             PluginSandbox? sandbox = handle.Sandbox;
             if (sandbox is null)
             {
-                continue; // tier 0：声明式资源包，无执行体（docs/13 §2）
+                continue; // tier 0：声明式资源包，无执行体（原规格 13 §2）
             }
             int faultsBefore = handle.Sink.GuestFaultCount + handle.Sink.BudgetCount;
             sandbox.Tick(); // t3 契约 P-05：沙箱对外不抛

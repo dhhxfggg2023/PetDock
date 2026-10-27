@@ -1,5 +1,5 @@
 // --golden-baseline <outdir>：把示例宠物（fixtures/sample-pet，D-13a）三个 clip 的首帧
-// 渲染成基准 PNG（frame-000.png），供 tests/PetDock.Golden.Tests 的逐像素比对用。
+// 渲染成基准 PNG（frame-000.png），供逐像素比对用。
 //
 // 为什么不进测试工程（vstest testhost）渲染：testhost.exe 是 GUI 子系统进程，要对它的父
 // （vstest.console）注册退出回调；本机 vstest.console 跑在 DSH harness 的 Session-0 无桌面

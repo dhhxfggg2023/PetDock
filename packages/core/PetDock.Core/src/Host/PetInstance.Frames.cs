@@ -1,10 +1,10 @@
 // PetInstance 的帧半边（partial 的第二块）：取帧、占位图降级、命中判定、帧超时挂起。
 // 判据与出处：
-//   docs/11 §2.1 Frame（预乘 32bpp、hitmap 可选）
-//   docs/11 §2.2 命中仲裁：hitmap > bitmap alpha，且 alpha===0 永远放行穿透
-//   docs/11 §7   帧预算（8.3 / 33.3 / 25ms）与「连续 8 次超时 → suspend」
-//   docs/11 §8   资源所有权：宿主在帧同步点后释放句柄
-//   docs/11 §9   QueryFrame 抛异常 → 该帧 dropped；连续 8 次 → 降级占位图
+//   原规格 11 §2.1 Frame（预乘 32bpp、hitmap 可选）
+//   原规格 11 §2.2 命中仲裁：hitmap > bitmap alpha，且 alpha===0 永远放行穿透
+//   原规格 11 §7   帧预算（8.3 / 33.3 / 25ms）与「连续 8 次超时 → suspend」
+//   原规格 11 §8   资源所有权：宿主在帧同步点后释放句柄
+//   原规格 11 §9   QueryFrame 抛异常 → 该帧 dropped；连续 8 次 → 降级占位图
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -24,14 +24,14 @@ public sealed partial class PetInstance
     public long TotalFrames => Frames;
 
     /// <summary>
-    /// 本帧与上一帧是否**同一个位图对象** —— docs/11:225「无内容变化时」的空闲档判据。
+    /// 本帧与上一帧是否**同一个位图对象** —— 原规格 11:225「无内容变化时」的空闲档判据。
     /// 判据是对象身份而不是像素比较：像素比较要逐像素扫全帧（8.3ms 预算里做不起），
     /// 而「实现方复用了同一张位图」正是「内容没变」可判定、且零成本的等价条件。
     /// </summary>
     public bool LastFrameReused { get; private set; }
 
     /// <summary>
-    /// docs/11 §3.2 / §7：取这一帧。抛异常 = 该帧 dropped —— 调用方**必须**随后调
+    /// 原规格 11 §3.2 / §7：取这一帧。抛异常 = 该帧 dropped —— 调用方**必须**随后调
     /// <see cref="NoteFrameDropped"/>，否则「连续 8 次」的计数无处累加，降级链永远不推进。
     /// 降级到占位图之后本方法改由内核占位帧回答（真实内容已不可信，不再向实现方取帧）。
     /// </summary>
@@ -70,7 +70,7 @@ public sealed partial class PetInstance
     }
 
     /// <summary>
-    /// 本帧是否命中某点（docs/11 §2.2 仲裁 + §5:190 的穿透优先）。
+    /// 本帧是否命中某点（原规格 11 §2.2 仲裁 + §5:190 的穿透优先）。
     /// 隐藏档一律 false（隐藏的宠物不该被点到）；没有帧时也 false（无内容 = 穿透）。
     /// </summary>
     public bool HitsAt(int x, int y)
@@ -84,7 +84,7 @@ public sealed partial class PetInstance
     }
 
     /// <summary>
-    /// docs/11 §9：`QueryFrame` 抛异常 → 当前帧标记 dropped；连续 8 次 → 降级到占位图。
+    /// 原规格 11 §9：`QueryFrame` 抛异常 → 当前帧标记 dropped；连续 8 次 → 降级到占位图。
     /// 「dropped」的语义是**这一帧没有内容**（调用方据此不合成），不是「沿用上一帧」——
     /// 后者会让「内容早就坏了」在屏幕上看起来完全正常。
     /// </summary>
@@ -110,7 +110,7 @@ public sealed partial class PetInstance
 
     private void Swap(Bitmap bitmap, Frame frame)
     {
-        // docs/11 §8 的所有权表：宿主在**帧同步点之后**释放上一帧的句柄。
+        // 原规格 11 §8 的所有权表：宿主在**帧同步点之后**释放上一帧的句柄。
         // registry 只注销句柄，不 Dispose 位图对象 —— 位图归资源库/实现方所有（ABI 不给宿主处置权）。
         LastFrameReused = bitmap is not null && ReferenceEquals(bitmap, LastFrameBitmap);
         Bitmaps.Release(_previousHandle);
@@ -138,9 +138,9 @@ public sealed partial class PetInstance
 }
 
 /// <summary>
-/// docs/11 §9 的占位图落点：档位 ≥ Placeholder 时宿主用内核占位帧回答。
+/// 原规格 11 §9 的占位图落点：档位 ≥ Placeholder 时宿主用内核占位帧回答。
 /// 复用内核兜底图形的像素（SolidFrameContent），只做一次格式转换：
-/// 兜底图是 Format32bppArgb，而 docs/11:49 要求 ABI 位图是预乘的 ——
+/// 兜底图是 Format32bppArgb，而 原规格 11:49 要求 ABI 位图是预乘的 ——
 /// 转换交给 GDI+（Clone 到 Format32bppPArgb），不自己逐像素乘。
 /// </summary>
 internal static class PlaceholderFrame

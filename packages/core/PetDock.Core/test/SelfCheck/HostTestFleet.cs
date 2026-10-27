@@ -52,7 +52,7 @@ internal static class HostTestFleet
 
     /// <summary>
     /// 投放一个合法 tier 0 插件（声明式资源包，无执行体）。
-    /// 存在的理由：docs/14 §2 明写 input.mousePosition「Tier 0 可请求」，所以 tier 0 必须
+    /// 存在的理由：原规格 14 §2 明写 input.mousePosition「Tier 0 可请求」，所以 tier 0 必须
     /// 也有能力闸门与租约；仓库里的插件以 tier 0 为主，但夹具要给一个**确定的** id 与
     /// **确定的**能力集，自检才能断言授予子集。
     /// </summary>
@@ -63,7 +63,7 @@ internal static class HostTestFleet
         File.WriteAllText(Path.Combine(dir, ManifestValidator.ManifestFileName), Tier0Manifest);
     }
 
-    /// <summary>递归复制：源插件的 entry 可能是子目录（docs/21 允许 `src/main.js` 这类相对路径），
+    /// <summary>递归复制：源插件的 entry 可能是子目录（原规格 21 允许 `src/main.js` 这类相对路径），
     /// 只拷顶层文件会让合法插件在临时根里变成 entry-not-found。
     /// 跳过构建产物目录（bin/obj），它们不是插件内容且体量大。</summary>
     private static void CopyPluginFiles(string sourceDir, string targetDir)
@@ -102,7 +102,7 @@ internal static class HostTestFleet
         }
         """;
 
-    // schema 合法但 tier=2：装载期按 docs/13 §1 法则二 / docs/14 §4 拒绝（M1 不做进程外沙箱）。
+    // schema 合法但 tier=2：装载期按 原规格 13 §1 法则二 / 原规格 14 §4 拒绝（M1 不做进程外沙箱）。
     private const string Tier2Manifest = """
         {
           "id": "com.example.heavybrain",
@@ -132,7 +132,7 @@ internal static class HostTestFleet
         """;
 
     // tier 0：声明式资源包，无执行体。带一项能力，用来断言 tier 0 也建闸门也产租约
-    // （docs/14 §2 明写 input.mousePosition「Tier 0 可请求」）。
+    // （原规格 14 §2 明写 input.mousePosition「Tier 0 可请求」）。
     private const string Tier0Manifest = """
         {
           "id": "com.example.zerobrain",

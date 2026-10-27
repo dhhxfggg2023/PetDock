@@ -1,7 +1,7 @@
 // 授权弹窗的**合批**那一半（2026-10-26）：一个窗承载多份请求、按插件分段、按段分别落账。
 // 与 AuthorizationDialog.cs 是同一个类（partial）：单请求弹窗走老路径（不分段、旧标题文案），
 // 批请求才分段。分文件的原因只有一个：D-03c 的单文件行数上限。
-// 契约来源：docs/18 §3「合批（2026-10-26）」。
+// 契约来源：原规格 18 §3「合批（2026-10-26）」。
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -61,7 +61,7 @@ internal sealed partial class AuthorizationDialog
         return true;
     }
 
-    /// <summary>把能力 ID 说成人话（docs/14 §2 的描述列）。未知能力原样显示 ——
+    /// <summary>把能力 ID 说成人话（原规格 14 §2 的描述列）。未知能力原样显示 ——
     /// 猜一个友好的说法比显示原始 ID 更危险：用户会以为他知道自己授权了什么。</summary>
     public static string PlainTalk(string capabilityId) => capabilityId switch
     {
@@ -161,7 +161,7 @@ internal sealed partial class AuthorizationDialog
             }
             else
             {
-                // 默认全勾（docs/18 §3：只有被拒绝的项才默认不勾）。
+                // 默认全勾（原规格 18 §3：只有被拒绝的项才默认不勾）。
                 _checked.Add(true);
             }
         }

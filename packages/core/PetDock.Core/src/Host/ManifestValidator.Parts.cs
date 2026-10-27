@@ -243,6 +243,8 @@ internal static partial class ManifestValidator
         {
             capabilities.Add(item.GetString()!);
         }
+        bool defaultEnabled = !root.TryGetProperty("defaultEnabled", out JsonElement defaultEl)
+            || defaultEl.GetBoolean();
         return new PluginManifest(
             Id: root.GetProperty("id").GetString()!,
             Name: root.GetProperty("name").GetString()!,
@@ -256,6 +258,7 @@ internal static partial class ManifestValidator
             LicenseSpdx: spdx,
             Contributes: contributes,
             Events: events,
-            PosePriority: posePriority);
+            PosePriority: posePriority,
+            DefaultEnabled: defaultEnabled);
     }
 }

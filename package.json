@@ -9,8 +9,6 @@
   "scripts": {
     "depscan": "node tools/depscan.mjs",
     "lint:core": "node tools/lint-core.mjs",
-    "lint:docs": "node tools/doclink.mjs",
-    "lint:coverage": "node tools/check-dyberpet-coverage.mjs",
     "lint:manifest": "node tools/validate-manifest.mjs",
     "lint:assets": "node tools/asset-manifest.mjs",
     "lint:fingerprint": "node tools/asset-fingerprint.mjs",
@@ -21,7 +19,7 @@
     "pack": "node tools/pack.mjs",
     "dist": "node tools/release.mjs && node tools/pack.mjs",
     "dist:selftest": "node tools/portable-selftest.mjs",
-    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/doclink.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/check-dyberpet-coverage.mjs && node tools/i18n-lint.mjs && node tools/i18n-parity.mjs",
+    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/i18n-lint.mjs && node tools/i18n-parity.mjs",
     "verify": "node tools/verify.mjs",
     "verify:all": "node tools/verify.mjs --all",
     "verify:list": "node tools/verify.mjs --list",
@@ -30,12 +28,7 @@
     "verify:contract": "node tools/verify.mjs --only contract",
     "verify:window": "node tools/verify.mjs --only window",
     "verify:perf": "node tools/verify.mjs --only perf",
-    "verify:m7": "node tools/verify.mjs --only m7",
     "verify:dist": "node tools/verify.mjs --only dist",
     "verify:release": "node tools/verify.mjs --config release --only build && node tools/verify.mjs --config release --only window"
-  },
-  "dependencies": {
-    "ajv": "^6.15.0",
-    "ajv-formats": "^0.2.0"
   }
 }

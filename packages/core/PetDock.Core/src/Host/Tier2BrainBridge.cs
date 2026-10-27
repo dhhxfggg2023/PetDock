@@ -1,9 +1,9 @@
 // RFC-28 §3.4：把一个 tier-2 句柄的头脑面变成宿主仲裁器能吃的 IBrain。
 //
 // 桥接而非重写：指令回读成内核已有的 BrainDirective（RFC-27 §3.3），所以仲裁器
-// （docs/11:162 的 suspend > setAnimation > moveTo > emit > requestCapability）不需要第二套实现。
+// （原规格 11:162 的 suspend > setAnimation > moveTo > emit > requestCapability）不需要第二套实现。
 //
-// P-05（docs/01 §5）：Tick/OnEvent 不外抛 —— 失败返回空列表（本 tick 的指令作废，Brain.cs:182-184 的同一语义）。
+// P-05（原规格 01 §5）：Tick/OnEvent 不外抛 —— 失败返回空列表（本 tick 的指令作废，Brain.cs:182-184 的同一语义）。
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;

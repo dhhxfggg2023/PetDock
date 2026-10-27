@@ -100,7 +100,7 @@ internal static class SettingsChecks
             && string.Equals(loaded.Language, UserSettings.DefaultLanguage, StringComparison.Ordinal);
         check("ui-settings-round-trip", roundTrip, loaded.Describe());
 
-        // ②b 材质往返（docs/18 §2.7）：认得的值读回来一样，认不得的值当没设过。
+        // ②b 材质往返（原规格 18 §2.7）：认得的值读回来一样，认不得的值当没设过。
         store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, Material: "glass"));
         string? glassBack = store.Load().Material;
         store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, Material: "bogus"));

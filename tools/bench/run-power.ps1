@@ -1,6 +1,6 @@
 <#
     tools/bench/run-power.ps1 -- resident power / leak benchmark
-    (docs/12 section 4 / docs/41 D-14)
+    (原规格 12 section 4 / 原规格 41 D-14)
 
     Gate: single pet idle CPU <= 0.5% (one core), memory <= 150 MB,
           8h resident memory growth <= 5% (D-14d), no handle leak (M-09).
@@ -37,7 +37,7 @@
         program's output through Select-Object -First or Where-Object: that
         swallows error lines and corrupts the reported exit code.
       - Fixed sample interval. CPU = delta(TotalProcessorTime) / delta(wall) /
-        logical cores * 100, i.e. "relative to one core", matching docs/41.
+        logical cores * 100, i.e. "relative to one core", matching 原规格 41.
       - Leak growth is FIRST vs LAST working set, not peak vs peak: D-14d asks
         whether memory grows over 8h, and a peak-only view cannot answer that.
       - ASCII only. This file is executed by powershell 5.1, which reads a

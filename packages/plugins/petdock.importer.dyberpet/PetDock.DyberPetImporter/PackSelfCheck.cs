@@ -5,7 +5,7 @@ namespace PetDock.DyberPet;
 /// <summary>
 /// 导入收尾自检（契约 §4.3 B 路径的插件侧证据；canonical 悬停驱动面归 t2/t6 的 --drivetest）：
 ///   1. 产出的每一帧路径都存在（PackLoader.LoadClip 会逐帧 File.Exists，提前在这里失败更可读）；
-///   2. 悬停命中前提（docs/11:53 alpha 语义）：focus 帧 0 粘到 naturalSize 画板上后，
+///   2. 悬停命中前提（原规格 11:53 alpha 语义）：focus 帧 0 粘到 naturalSize 画板上后，
 ///      画板里同时存在不透明像素（可命中）与透明像素（可穿透）——没有这一对，悬停反应不可能发生。
 /// 审计行一律 `selfcheck-…`，与 importer 的 `dyberpet-…`、core 的 `CHECK-…` 三个前缀互不混用。
 /// </summary>
@@ -110,7 +110,7 @@ internal static class PackSelfCheck
                 if (opaqueX < 0 || clearX < 0)
                 {
                     throw new InvalidDataException(
-                        $"悬停命中前提不成立（focus={clip.Name} 帧全透或画板无透明位），docs/11:53 语义下悬停反应不可能发生");
+                        $"悬停命中前提不成立（focus={clip.Name} 帧全透或画板无透明位），原规格 11:53 语义下悬停反应不可能发生");
                 }
             }
         }

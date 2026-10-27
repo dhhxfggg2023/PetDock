@@ -1,6 +1,6 @@
-// RFC-24（docs/17）的存储层：每实例一个 state/<key>.json + 提交锁 + 原子替换。
+// RFC-24（原规格 17）的存储层：每实例一个 state/<key>.json + 提交锁 + 原子替换。
 // 分层：本文件只管「字节怎么安全落盘」；缓冲区、迁移、上限判定在 PersistentPetState。
-// 调用纪律（docs/11:168）：不在 tick 内做持久化写 —— 调用点是装载 / 挂起 / 释放这类生命周期边界。
+// 调用纪律（原规格 11:168）：不在 tick 内做持久化写 —— 调用点是装载 / 挂起 / 释放这类生命周期边界。
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -57,7 +57,7 @@ internal sealed class StateStore
 {
     public const string FileSuffix = ".json";
 
-    /// <summary>docs/11:212 的单键上限；主机层与 ABI 声明的是同一个数。</summary>
+    /// <summary>原规格 11:212 的单键上限；主机层与 ABI 声明的是同一个数。</summary>
     public const int PerKeyLimitBytes = 8 * 1024;
 
     /// <summary>读取护栏：超过它的文件按「坏文件」处理（状态文件正常是几百字节）。</summary>

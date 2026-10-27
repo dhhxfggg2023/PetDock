@@ -1,6 +1,6 @@
 // 授权记忆的跨进程判据（RFC-19 §3）。
 // 为什么单独一个文件：PluginHostSelfTest.cs 已接近 D-03c 的单文件行数上限。
-// 判据全部对着 RFC-19 §2 与 docs/18 §3 的字面要求写：
+// 判据全部对着 RFC-19 §2 与 原规格 18 §3 的字面要求写：
 //   RFC-19 §2.1   落盘往返、审计字段齐全、损坏回落
 //   RFC-19 §2.2   「仅本次」不落盘、拒绝不落盘
 //   RFC-19 §2.3   「允许（记住这个决定）」落盘、播种后不再问、收窄后落盘
@@ -78,7 +78,7 @@ internal static class ConsentPersistChecks
         }
     }
 
-    /// <summary>审计字段齐全（docs/17 §4：任何写必须含 agent_id 与 timestamp；§2：显式 schemaVersion）。</summary>
+    /// <summary>审计字段齐全（原规格 17 §4：任何写必须含 agent_id 与 timestamp；§2：显式 schemaVersion）。</summary>
     private static int AuditFields(HostCheck check)
     {
         string root = NewRoot("audit");

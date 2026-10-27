@@ -1,4 +1,4 @@
-// 设置页的可写形态（docs/18 §2.3）。
+// 设置页的可写形态（原规格 18 §2.3）。
 //
 // 之前这一页是纯只读 ListView（诊断两项还写着「(未接线)」）。本文件把它变成可写：
 //   开机自启（CheckBox）—— 事实源是注册表，不是设置文件；
@@ -7,7 +7,7 @@
 //
 // 面板只**收集意图**并交给宿主侧的回调（与插件页「授权」入口同款）：
 // 面板不碰注册表、不碰文件、不碰帧泵。宿主侧做完了，把结果回来说一句，
-// 面板把这句话显示成内联状态标签 —— 不弹 MessageBox（docs/18 §5）。
+// 面板把这句话显示成内联状态标签 —— 不弹 MessageBox（原规格 18 §5）。
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -45,7 +45,7 @@ internal sealed partial class ControlPanel
         Primary = true,
     };
 
-    /// <summary>界面材质三选一（docs/18 §2.7）。键落盘，文案给人看。</summary>
+    /// <summary>界面材质三选一（原规格 18 §2.7）。键落盘，文案给人看。</summary>
     private readonly ThemedSegmented _materialSwitch = new()
     {
         Name = "material-picker",
@@ -184,15 +184,8 @@ internal sealed partial class ControlPanel
         });
 
         // 底栏：状态 + 唯一的保存按钮。设置页只有这一个提交口，其它控件改的只是草稿。
-        var bar = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = Theme.Dip(dpi, 56),
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            BackColor = Theme.Bg,
-            Padding = new Padding(0, Theme.Dip(dpi, Theme.SpaceMd), Theme.Dip(dpi, Theme.SpaceXl), 0),
-        };
+        // 用 FormGrid.Bar（宠物页/插件页同款），不再在页面里手写一遍 FlowLayoutPanel 的 padding。
+        FlowLayoutPanel bar = FormGrid.Bar(page);
         bar.Controls.Add(_applyButton);
 
         _settingsStatus.Font = Theme.FontFor(page, TypeRole.Body);

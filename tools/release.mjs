@@ -5,7 +5,7 @@
 // 没有图标、没有 LICENSE/NOTICE —— 直接发出去的东西装完是打不开宠物的。发布物必须
 // 由一处**可重复**的脚本装配，而不是靠人记得拷哪几个目录。
 //
-// 它同时是 docs/52 §6「发布前合规清单」的机器判据：清单是七条勾选，勾选靠人，判据靠它。
+// 它同时是 原规格 52 §6「发布前合规清单」的机器判据：清单是七条勾选，勾选靠人，判据靠它。
 // 出口再扫一次（而不是只信入口的 lint）是关键——lint 扫的是**仓库**，这里扫的是
 // **真正要发出去的那棵树**，两者的差别正是「仓库干净但打包时多拷了一个目录」。
 //
@@ -64,7 +64,7 @@ function plan(version) {
       from: path.join('assets', 'icons'),
       to: path.join('assets', 'icons'),
       kind: 'tree',
-      why: '托盘与窗口图标（docs/18 §1 指定 icon-32.png）',
+      why: '托盘与窗口图标（原规格 18 §1 指定 icon-32.png）',
     },
     {
       from: path.join('assets', 'sample-pet'),
@@ -76,13 +76,13 @@ function plan(version) {
       from: 'LICENSE',
       to: 'LICENSE',
       kind: 'file',
-      why: 'docs/52 §6 第 5 条：Apache-2.0 正文',
+      why: '原规格 52 §6 第 5 条：Apache-2.0 正文',
     },
     {
       from: 'NOTICE',
       to: 'NOTICE',
       kind: 'file',
-      why: 'docs/52 §6 第 5 条：第三方声明',
+      why: '原规格 52 §6 第 5 条：第三方声明',
     },
     {
       from: 'README.md',
@@ -207,7 +207,7 @@ function auditOutput(outDir, version) {
     console.log(`RELEASE-CHECK-FAIL ${msg}`);
   };
 
-  // ① 商业 SDK / 生态素材二进制（docs/52 §6 第 3 条，R-03）
+  // ① 商业 SDK / 生态素材二进制（原规格 52 §6 第 3 条，R-03）
   const forbidden = ['.moc3', '.model3.json', '.motion3.json', '.skel', '.atlas', '.mtn'];
   for (const file of walkFiles(outDir)) {
     const lower = file.toLowerCase();
@@ -216,7 +216,7 @@ function auditOutput(outDir, version) {
     }
   }
 
-  // ② LICENSE / NOTICE 必须在（docs/52 §6 第 5 条）
+  // ② LICENSE / NOTICE 必须在（原规格 52 §6 第 5 条）
   for (const name of ['LICENSE', 'NOTICE']) {
     if (!fs.existsSync(path.join(outDir, name))) {
       fail(`发布物缺 ${name}`);
@@ -229,7 +229,7 @@ function auditOutput(outDir, version) {
     fail('发布物缺 PetDock.Core.exe（publish 没跑或输出目录不对）');
   }
 
-  // ④ 插件 manifest 必须声明 license（docs/52 §6 第 6 条）
+  // ④ 插件 manifest 必须声明 license（原规格 52 §6 第 6 条）
   const pluginsDir = path.join(outDir, 'plugins');
   let manifestCount = 0;
   for (const file of walkFiles(pluginsDir)) {
@@ -254,7 +254,7 @@ function auditOutput(outDir, version) {
     fail('发布物里没有任何插件 manifest —— 装完不会有宠物');
   }
 
-  // ⑤ 图标必须在（docs/18 §1 托盘指定 icon-32.png）
+  // ⑤ 图标必须在（原规格 18 §1 托盘指定 icon-32.png）
   const icon = path.join(outDir, 'assets', 'icons', 'icon-32.png');
   if (!fs.existsSync(icon)) {
     fail('发布物缺 assets/icons/icon-32.png（托盘图标）');

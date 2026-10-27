@@ -1,4 +1,4 @@
-// 键盘钩子的安装门（docs/16:56「设备钩子只在插件拥有权限后激活；宿主不默认钩住」）。
+// 键盘钩子的安装门（原规格 16:56「设备钩子只在插件拥有权限后激活；宿主不默认钩住」）。
 // 为什么单独一个文件：这段逻辑有它自己的难点（读租约要过宿主调度线程，而调度线程会阻塞在
 // 授权询问上），单独成文件好读也好改；顺带让主文件守住 D-03c 的 400 行上限。
 //
@@ -42,12 +42,12 @@ internal sealed partial class UiHost
     private string _hookSkipReason = string.Empty;
 
     /// <summary>
-    /// 按 docs/16:56 安装键盘钩子：只有插件真的持着 `input.keyboardHook` 的活动租约才装。
+    /// 按 原规格 16:56 安装键盘钩子：只有插件真的持着 `input.keyboardHook` 的活动租约才装。
     /// 现在是**周期性**调用（原先只在构造期调一次，那早于插件装载 → 永远无持权者）。
     /// </summary>
     private void InstallKeyboardHookIfGranted()
     {
-        // 用户停过钩子之后不可恢复（docs/18 §1「不可由插件恢复」）：这里直接不再看。
+        // 用户停过钩子之后不可恢复（原规格 18 §1「不可由插件恢复」）：这里直接不再看。
         if (_hooksPaused)
         {
             return;
@@ -155,7 +155,7 @@ internal sealed partial class UiHost
         var hook = new KeyboardHook(stroke => source.PublishKeyStroke(stroke.VKey, stroke.Modifiers, stroke.Down));
         if (!hook.Install())
         {
-            KernelLog.Write("key-hook-install-failed docs/14:110-pinned-item-still-present");
+            KernelLog.Write("key-hook-install-failed pinned-item-still-present");
             hook.Dispose();
             return false;
         }

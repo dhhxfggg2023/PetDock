@@ -1,5 +1,5 @@
 // lint-core.mjs - machine gates D-03a / D-03b / D-03c / D-04a
-// Spec: docs/40-development-paradigm.md sections 3-4 (rules D-03, D-04a).
+// Spec: 原规格 40 sections 3-4 (rules D-03, D-04a).
 // Zero npm dependencies, Node built-ins only. Run: node tools/lint-core.mjs
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { extname, join, relative, resolve, sep } from 'node:path';
@@ -16,7 +16,7 @@ const LOC_BASELINE_FILE = join(ROOT, 'tools', 'core-loc-baseline.json');
 const MAX_FILE_LINES = 400; // D-03c (unchanged by RFC-11; adjusting it still needs an RFC)
 const TEMP_MARKERS = ['TODO', 'FIXME', 'HACK', 'XXX']; // D-04a
 
-// D-03b word list: docs/01-principles.md P-02 plus docs/02-glossary.md section 2.
+// D-03b word list: 原规格 01 P-02 plus 原规格 02 section 2.
 // These entries are the gate input data, never a reference to any ecosystem.
 const BLACKLIST = [
   'DyberPet', 'BongoCat', 'Shimeji', 'Ukagaka', 'SSP', 'Live2D', 'VRM',

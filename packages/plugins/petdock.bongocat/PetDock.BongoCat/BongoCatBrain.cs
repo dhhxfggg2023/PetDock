@@ -6,12 +6,12 @@ using System.Text.Json.Nodes;
 namespace PetDock.Plugins.BongoCat
 {
     /// <summary>
-    /// BongoCat 交互重写（docs/33）：用 ABI 的 <see cref="IBrain"/> 重新表达原应用的三类交互，
-    /// **不嵌入**原 Tauri 应用、不引用它的任何素材（docs/33 §6）。
+    /// BongoCat 交互重写（原规格 33）：用 ABI 的 <see cref="IBrain"/> 重新表达原应用的三类交互，
+    /// **不嵌入**原 Tauri 应用、不引用它的任何素材（原规格 33 §6）。
     ///
     /// 三条交互各自的实现方式，以及**为什么是这样**：
     ///
-    /// ① 眼睛/头部跟随鼠标（docs/33 §2 第一条）。docs/33 §4 原设想是
+    /// ① 眼睛/头部跟随鼠标（原规格 33 §2 第一条）。原规格 33 §4 原设想是
     ///    `kind=interaction` + `input.mousePosition` + 一个算朝向的 Interaction surface。
     ///    这条路在当前 ABI 下走不通，理由是结构性的而不是实现偷懒：
     ///      - `PetSurfaceLoader` 对 `entry` 不是 `.dll` 的包直接 `surface-skip`，不登记任何实现；
@@ -20,25 +20,25 @@ namespace PetDock.Plugins.BongoCat
     ///    而 `IBrain` 每 tick 都能拿到 `WorldSnapshot`，并且能发 `SetAnimation`。所以朝向用 Brain 表达。
     ///
     ///    光标的来源刻意是 `input.pointer.move` 事件而不是 `world.Cursor`：
-    ///    `WorldSnapshot.Cursor` 按 docs/11 §7.1 在光标离开窗口时是 **null**，
+    ///    `WorldSnapshot.Cursor` 按 原规格 11 §7.1 在光标离开窗口时是 **null**，
     ///    而「猫看着远处移动的鼠标」恰恰要求光标在窗口外时也继续跟。
     ///    `input.pointer.move` 的 `pos` 是宿主采样的**原始屏幕坐标**（PetFrameSource.PublishPointerMove
     ///    用的是 WorldProbe.LastScreenCursor），不受窗口边界限制。两者都用：事件优先，没有事件时退回
     ///    `world.Cursor`（窗口内局部坐标，换算到屏幕要加窗口原点）。
     ///
-    /// ② 敲键盘猫爪敲击（docs/33 §2 第二条）。docs/33 §4 设想 `input.keyboardHook`。
+    /// ② 敲键盘猫爪敲击（原规格 33 §2 第二条）。原规格 33 §4 设想 `input.keyboardHook`。
     ///    **2026-10-19 起这条事件有生产源了**：内核的 `KeyboardHook`（WH_KEYBOARD_LL）在
-    ///    **有插件持有 `input.keyboardHook` 时**才安装（docs/16:56），本插件的 manifest 已声明
-    ///    该能力。托盘上那个不可隐藏的「暂停全局输入钩子」固定项（docs/14:110 / docs/18:22）
+    ///    **有插件持有 `input.keyboardHook` 时**才安装（原规格 16:56），本插件的 manifest 已声明
+    ///    该能力。托盘上那个不可隐藏的「暂停全局输入钩子」固定项（原规格 14:110 / 原规格 18:22）
     ///    是它的安全阀，暂停后钩子不再向外发事件。
     ///    仍然保留 `_pawSourceSeen`：**事件到达就响应，不到达就不假装** —— 钩子装不上
     ///    （无交互桌面会话、被安全软件拦、或用户已暂停）时，「爪子一次都没抬过」必须
     ///    在诊断行里可分辨，而不是看起来像实现坏了。
     ///
-    /// ③ 闲置呼吸/眨眼（docs/33 §2 第三条）。素材侧已经有 idle 4 帧（第 4 帧是眨眼），
+    /// ③ 闲置呼吸/眨眼（原规格 33 §2 第三条）。素材侧已经有 idle 4 帧（第 4 帧是眨眼），
     ///    Brain 只要在没有任何输入时保持 `idle` 即可 —— 不需要额外代码。
     ///
-    /// **素材**：本插件不自带素材，读的是 docs/31 Sample Pack 形态的
+    /// **素材**：本插件不自带素材，读的是 原规格 31 Sample Pack 形态的
     /// `assets/bongocat-pack/`（由 `tools/gen-bongocat-pack.mjs` 程序化生成，CC0）。
     /// 片名表由 `ClipNames` 给出，因为 Brain 只能切到呈现层真的有的片段：
     /// `SetAnimation` 对不存在的片段返回 false，仲裁器记 refused，屏幕上什么都不变。
@@ -80,7 +80,7 @@ namespace PetDock.Plugins.BongoCat
         public Task InitAsync(BrainContext context)
         {
             Console.Error.WriteLine(
-                $"[PetDock] BongoCatBrain instantiated (tier 0, docs/33 rewrite)."
+                $"[PetDock] BongoCatBrain instantiated (tier 0, 原规格 33 rewrite)."
                 + $" clips={ClipIdle},{ClipLookUp},{ClipLookDown},{ClipLookLeft},{ClipLookRight},{ClipPawLeft},{ClipPawRight}"
                 + $" instance={context.PetInstanceId}");
             return Task.CompletedTask;
@@ -157,7 +157,7 @@ namespace PetDock.Plugins.BongoCat
         {
             if (evt.Type == EventCatalog.PointerMove)
             {
-                // payload 的 pos 是 [x, y] 屏幕坐标（docs/16 §3 / PetFrameSource.PublishPointerMove）。
+                // payload 的 pos 是 [x, y] 屏幕坐标（原规格 16 §3 / PetFrameSource.PublishPointerMove）。
                 if (evt.Payload?["pos"] is JsonArray pos && pos.Count >= 2)
                 {
                     double? x = AsDouble(pos[0]);
@@ -175,7 +175,7 @@ namespace PetDock.Plugins.BongoCat
             {
                 _pawSourceSeen = true;
 
-                // docs/33 §2「敲键盘猫爪敲击」+ §4 的 map {left: pawL, right: pawR}。
+                // 原规格 33 §2「敲键盘猫爪敲击」+ §4 的 map {left: pawL, right: pawR}。
                 // 「对侧」的判定：按键落在键盘左半区就抬右爪，反之抬左爪 —— 这是猫爪敲键盘的
                 // 真实观感（左手按左区、右手抬起来敲）。vkey 的左右半区用两个已知分界：
                 // 数字行/字母左半区（A..L, 0x41..0x4C）与 0x30..0x39 视为左，其余视为右。

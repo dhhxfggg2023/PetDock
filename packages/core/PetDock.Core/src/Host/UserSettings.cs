@@ -1,4 +1,4 @@
-// 用户设置（docs/17 §1 的 UserSettings 形态；docs/18 §2.3 设置页）。
+// 用户设置（原规格 17 §1 的 UserSettings 形态；原规格 18 §2.3 设置页）。
 //
 // 这里只管**两项**：空闲降帧阈值（帧周期）与语言。
 // 开机自启不在这里：它的事实源是注册表（StartupRegistration）。
@@ -13,7 +13,7 @@ using PetDock.Core.Ui;
 namespace PetDock.Hosting;
 
 /// <summary>
-/// 用户设置快照。字段可空性：docs/17 §2 说「只许加可空字段」，所以新增项一律带默认值，
+/// 用户设置快照。字段可空性：原规格 17 §2 说「只许加可空字段」，所以新增项一律带默认值，
 /// 旧文件缺字段时读出来就是默认值，不需要迁移代码。
 ///
 /// 第三个字段（OnboardingCompletedVersion）是 RFC-16 §3.1 加的一次性判定：null = 没做过引导，
@@ -28,9 +28,10 @@ internal sealed record UserSettings(
     IReadOnlyDictionary<string, Point>? PetPositions = null,
     IReadOnlyList<string>? DisabledPlugins = null,
     string? Material = null,
-    string? ThemeMode = null)
+    string? ThemeMode = null,
+    IReadOnlyList<string>? EnabledPlugins = null)
 {
-    /// <summary>清单版本（docs/17 §2：显式版本，只向前）。</summary>
+    /// <summary>清单版本（原规格 17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
 
     /// <summary>默认语言。</summary>
@@ -81,6 +82,7 @@ internal sealed record UserSettings(
         + $" position={DescribePosition()}"
         + $" pet-positions={(PetPositions is null ? 0 : PetPositions.Count)}"
         + " plugins-disabled=" + (DisabledPlugins is null ? 0 : DisabledPlugins.Count)
+        + " plugins-enabled=" + (EnabledPlugins is null ? 0 : EnabledPlugins.Count)
         + " material=" + (Material ?? "opaque")
         + " start-with-windows=" + I18n.Get("host.settings.start-with-windows");
 
