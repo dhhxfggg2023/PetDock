@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "agent_id": "host",
-  "timestamp": "2026-10-26T12:01:41.5022500Z",
-  "idleFrameBudgetMs": 33.333333333333336,
-  "language": "zh-CN",
-  "onboardingCompletedVersion": 1
-}

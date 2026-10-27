@@ -70,3 +70,4 @@ tools/probes/*
 # 不再放任何素材；根目录若又出现未登记的媒体文件，`node tools/asset-manifest.mjs` 会把它
 # 报成 UNREGISTERED 并以 exit 1 结束——所以这里不需要逐文件写忽略规则。
 assets/sample/local/
+rel-x/
