@@ -71,6 +71,7 @@
   "host.arbiter.refusal.no-capability": "requestCapability 缺能力 id",
   "host.pet.err.query-needs-running": "queryFrame 需要 running（当前 {0}）",
   "host.pet.err.attach-needs-imported": "attach 需要 Imported（当前 {0}）",
+  "host.pet.err.retarget-needs-running": "重挂画板需要 running（当前 {0}）",
   "host.pet.err.empty-bitmap": "视图实现交付了空位图：{0}",
   "host.pet.err.frame-size-mismatch": "frame {0} 与画板尺寸不一致，画板为",
   "host.startup.err.no-exe": "找不到当前程序的路径，未能设置开机自启。",

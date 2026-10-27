@@ -19,7 +19,8 @@ internal static class UiRoster
         PetInstance? pet,
         PluginHost? host,
         SettingsView? settings = null,
-        PluginInventory? inventory = null)
+        PluginInventory? inventory = null,
+        IReadOnlyList<PetLine>? extraPets = null)
     {
         var pets = new List<PetLine>(1);
         if (pet is not null)
@@ -31,6 +32,12 @@ internal static class UiRoster
                 State: PluginHost.DescribeInstanceState(pet.State)
                     + (pet.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty),
                 Memory: ProcessMemoryMb()));
+        }
+
+        // 主窗之外的那几只（多宠物）：行由宿主侧按槽位装配，这里只追加，不重新判定。
+        if (extraPets is not null)
+        {
+            pets.AddRange(extraPets);
         }
 
         var plugins = new List<PluginLine>();

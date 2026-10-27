@@ -121,6 +121,12 @@ internal sealed partial class ThemedList : ListView
             needed[0] += CheckGutter;
         }
 
+        // 末列是开关列：只画一枚胶囊，不画文字；宽度按胶囊 + 两侧留白量。
+        if (RowSwitches && Columns.Count > 0)
+        {
+            needed[Columns.Count - 1] = Math.Max(needed[Columns.Count - 1], SwitchSlotWidth());
+        }
+
         int total = 0;
         foreach (int n in needed)
         {
@@ -287,6 +293,12 @@ internal sealed partial class ThemedList : ListView
             color = Theme.Text;
         }
 
+        // 末列：整格画一枚开关，不画文字（开关状态由页面给，列表不自己存）。
+        if (DrawRowSwitch(e.Graphics, e, dpi))
+        {
+            return;
+        }
+
         // 第一列：先画勾选框，再把文字右移一个留白。
         if (_rowChecks && e.ColumnIndex == 0 && e.Item is ListViewItem row)
         {
@@ -320,6 +332,14 @@ internal sealed partial class ThemedList : ListView
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+
+        // 开关列的点击只翻开关，不改变选中行（用户点的是「这一只现在开不开」）。
+        if (RowSwitches && e.Button == MouseButtons.Left
+            && HitRowSwitch(e.X, e.Y, out ListViewItem? switched) && TryToggleRowSwitch(switched))
+        {
+            return;
+        }
+
         if (!_rowChecks || e.Button != MouseButtons.Left || e.X > CheckGutter + Theme.Dip(this, Theme.SpaceMd))
         {
             return;

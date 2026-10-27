@@ -307,6 +307,16 @@ public sealed class PetFrameSource
     {
         if (_instance.State == InstanceState.Running)
         {
+            // 预挂接（导入/恢复要在换源前验素材）用的是 128 逻辑尺寸；窗口实测尺寸在 150% DPI
+            // 下是 192。画板与帧缓冲必须严格同尺寸，否则 DrawBitmap 拒帧——按实测值重挂一次。
+            if (_instance.Target is { } target
+                && target.PixelWidth == frameSize.Width
+                && target.PixelHeight == frameSize.Height)
+            {
+                return;
+            }
+
+            _instance.Retarget(frameSize.Width, frameSize.Height, _instance.Target?.Scale ?? 1.0);
             return;
         }
 

@@ -57,6 +57,8 @@ internal static class UiSelfTest
             KeyboardHookContract();
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
+            // 2026-10-28：宠物页要能列出「主窗之外还有几只」，并逐只移除（ui-pet-*）。
+            PetPanelChecks.Run(Check);
             SettingsChecks.Run(Check);
             // 2026-10-28：审计流水的只读视图（原规格 18 §2.8，ui-audit-view-*）。
             AuditChecks.Run(Check);

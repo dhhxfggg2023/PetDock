@@ -188,6 +188,36 @@ public sealed partial class PetInstance : IDisposable
             throw new InvalidOperationException(I18n.Get("host.pet.err.attach-needs-imported", State));
         }
 
+        AttachView(pixelWidth, pixelHeight, scale);
+        InitBrain(new ResourceBudget(
+            FrameBudgetGuard.FrameBudgetMs, FrameBudgetGuard.IdleFrameBudgetMs, pixelWidth * pixelHeight));
+
+        if (State == InstanceState.Imported)
+        {
+            Move(InstanceState.Instantiated, "init/describe/attach done", atMs);
+        }
+    }
+
+    /// <summary>
+    /// 已经跑起来的实例换一个画板尺寸（窗口实测尺寸比预挂接时大/小）。
+    /// 为什么需要它：画板尺寸的唯一权威是窗口的物理尺寸，而导入/恢复路径必须在窗口存在之前
+    /// 先挂接一次（否则坏素材包会在换源之后才炸，旧宠物已经没了）。150% DPI 下预挂接的 128
+    /// 与窗口实测的 192 会不一致，DrawBitmap 会拒绝整帧 —— 这不是可忽略的缩放问题，而是
+    /// 「第二只宠物窗口构造时抛异常并弹出模态框」的实际故障。只重挂视图，不动行为层与状态机。
+    /// </summary>
+    public void Retarget(int pixelWidth, int pixelHeight, double scale)
+    {
+        if (State != InstanceState.Running)
+        {
+            throw new InvalidOperationException(I18n.Get("host.pet.err.attach-needs-running", State));
+        }
+
+        AttachView(pixelWidth, pixelHeight, scale);
+    }
+
+    /// <summary>init/describe/attach 三段（RFC-23 §3.3 的插件代码归属作用域）。</summary>
+    private void AttachView(int pixelWidth, int pixelHeight, double scale)
+    {
         var budget = new ResourceBudget(
             FrameBudgetGuard.FrameBudgetMs, FrameBudgetGuard.IdleFrameBudgetMs, pixelWidth * pixelHeight);
         Target = new RenderTarget(pixelWidth, pixelHeight, scale, budget, Bitmaps);
@@ -198,7 +228,6 @@ public sealed partial class PetInstance : IDisposable
             Description?.Assets ?? Array.Empty<string>(),
             budget,
             AssetRoots);
-        // RFC-23 §3.3 第 1 点：init/describe/attach 算插件代码的一段，整段一个归属作用域。
         using (PluginLog.Scope(PluginId))
         {
             View.InitAsync(ctx).GetAwaiter().GetResult();
@@ -206,12 +235,6 @@ public sealed partial class PetInstance : IDisposable
             View.Attach(Target);
         }
         Bitmaps.ReleaseAll(); // init 之前的任何句柄都不该留在 registry 里
-        InitBrain(budget);
-
-        if (State == InstanceState.Imported)
-        {
-            Move(InstanceState.Instantiated, "init/describe/attach done", atMs);
-        }
     }
 
     /// <summary>原规格 11 §10：discovered → imported（manifest 已读且校验通过）。</summary>

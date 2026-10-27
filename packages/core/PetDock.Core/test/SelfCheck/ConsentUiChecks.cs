@@ -115,13 +115,18 @@ internal static class ConsentUiChecks
             toggleDisabled: id => disabledId = id);
 
         bool hasButtons = panel.PluginButtonNames.Contains("authorize")
-            && panel.PluginButtonNames.Contains("disable");
+            && panel.PluginButtonNames.Contains("install");
         check("ui-plugin-page-entries", hasButtons,
             $"buttons={string.Join(",", panel.PluginButtonNames)}");
 
         bool selected = panel.SelectPlugin("com.example.betaplugin");
         check("ui-plugin-page-select", selected && panel.SelectedPluginId == "com.example.betaplugin",
             $"selected={panel.SelectedPluginId} ok={selected}");
+
+        // 启停是列表最右边那枚开关，不是第四个按钮（2026-10-28 用户要求）。
+        check("ui-plugin-page-switch-column",
+            panel.PluginSwitchColumnShown && panel.PluginSwitchColumnTitle == I18n.Get("cp.plugins.col.enabled"),
+            $"shown={panel.PluginSwitchColumnShown} title={panel.PluginSwitchColumnTitle}");
 
         panel.AuthorizeSelected();
         panel.ToggleSelectedDisabled();

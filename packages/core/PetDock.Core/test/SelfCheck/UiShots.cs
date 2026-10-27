@@ -122,6 +122,16 @@ internal static class UiShots
                     }
                 }
 
+                // 空表拍不出行内控件（开关、来源、移除按钮），用一组假数据补两张「有行」的证据。
+                // 这不是产品数据，只回答「行里的东西画对了没有」——文件名带 demo，别当运行截图。
+                using (var demo = new ControlPanel(DemoSnapshot, showWindow: false))
+                {
+                    demo.ShowPage(PanelPages.Plugins);
+                    count += Save(demo, Path.Combine(dir, $"panel-plugins-demo@{dpi}.png"), emit, revealHidden: false);
+                    demo.ShowPage(PanelPages.Pets);
+                    count += Save(demo, Path.Combine(dir, $"panel-pets-demo@{dpi}.png"), emit, revealHidden: false);
+                }
+
                 // 两套色板各留证据（2026-10-28 第二版）：亮/暗都显式设定，不靠系统默认——
                 // 否则「跟随系统」的机器上两张图会一模一样，等于没有证据。
                 if (dpi == 96)
@@ -157,12 +167,11 @@ internal static class UiShots
                     count += Save(quit, Path.Combine(dir, $"quit@{dpi}.png"), emit);
                 }
 
-                using (var onboarding = new OnboardingWindow(() => null, WriteNothing, hasPet: true))
+                using (var onboarding = new OnboardingWindow(WriteNothing, hasPet: true))
                 {
                     for (int step = 0; step < onboarding.StepCount; step++)
                     {
-                        // 先确认「要拍的是第几步」，再拍：2026-10-28 首版只前进一次，
-                        // 结果 onboarding-2 与 -3 是同一张图（哈希相同），截图给不出证据。
+                        // 先确认「要拍的是第几步」，再拍：循环对一页/多页都成立。
                         emit($"SHOTINFO onboarding step={onboarding.StepIndex + 1}/{onboarding.StepCount}");
                         count += Save(onboarding, Path.Combine(dir, $"onboarding-{step + 1}@{dpi}.png"), emit, revealHidden: false);
                         if (step < onboarding.StepCount - 1)
@@ -179,6 +188,28 @@ internal static class UiShots
         }
 
         return count;
+    }
+
+    /// <summary>截图专用的假快照：两行插件（开/关、内置/用户）+ 两只宠物，只为让行内控件有东西可画。</summary>
+    private static UiSnapshot DemoSnapshot()
+    {
+        string running = I18n.Get("cp.plugins.state.running");
+        string suspended = I18n.Get("cp.plugins.state.suspended");
+        string builtin = I18n.Get("cp.plugins.origin.builtin");
+        string user = I18n.Get("cp.plugins.origin.user");
+        return new UiSnapshot(
+            new[]
+            {
+                new PetLine("demo.primary", "示例宠物", I18n.Get("cp.pets.source.imported"), "运行中", "18.4 MB"),
+                new PetLine("demo.second", "第二只示例宠物", I18n.Get("cp.pets.source.imported"), "运行中", "22.1 MB"),
+            },
+            new[]
+            {
+                new PluginLine("com.example.demo.brain", "示例脑", "1.2.0", 1, running, 1, builtin, true, true, false),
+                new PluginLine("com.example.demo.hover", "示例互动", "0.9.0", 0, suspended, 0, builtin, false, false, false),
+                new PluginLine("com.example.custombrain", "我的脑", "0.1.0", 1, running, 2, user, true, true, true),
+            },
+            null);
     }
 
     private static int Save(Control root, string path, ShotLog emit, bool revealHidden = true)

@@ -76,6 +76,9 @@ internal sealed partial class ControlPanel : Form
     /// <summary>插件页「删除」入口的回调（pluginId；返回 null = 成功，否则是失败原因）。</summary>
     private readonly Func<string, string?>? _removePlugin;
 
+    /// <summary>宠物页「移除」入口的回调（宠物 id；返回 null = 成功，否则是失败原因）。</summary>
+    private readonly Func<string, string?>? _removePet;
+
     private string _current = PanelPages.Pets;
 
     public ControlPanel(
@@ -84,13 +87,15 @@ internal sealed partial class ControlPanel : Form
         PluginCommand? authorize = null,
         PluginCommand? toggleDisabled = null,
         Func<string, bool, string?>? installPlugin = null,
-        Func<string, string?>? removePlugin = null)
+        Func<string, string?>? removePlugin = null,
+        Func<string, string?>? removePet = null)
     {
         _snapshot = snapshot ?? (() => UiSnapshot.Empty);
         _authorize = authorize;
         _toggleDisabled = toggleDisabled;
         _installPlugin = installPlugin;
         _removePlugin = removePlugin;
+        _removePet = removePet;
 
         Text = I18n.Get("cp.title");
         StartPosition = FormStartPosition.CenterScreen;
@@ -278,6 +283,7 @@ internal sealed partial class ControlPanel : Form
 
     private void BindPets(UiSnapshot snapshot)
     {
+        _selectedPetId = null;
         _list.Columns.Clear();
         _list.Items.Clear();
         _list.Columns.Add(I18n.Get("cp.pets.col.name"));
@@ -287,11 +293,15 @@ internal sealed partial class ControlPanel : Form
 
         foreach (PetLine line in snapshot.Pets)
         {
-            _list.Items.Add(new ListViewItem(new[] { line.Name, line.Source, line.State, line.Memory }));
+            _list.Items.Add(new ListViewItem(new[] { line.Name, line.Source, line.State, line.Memory })
+            {
+                Tag = line.Id,
+            });
         }
 
         _list.FitColumns();
         BindListOn(PageOf(PanelPages.Pets));
+        UpdatePetButtons();
         _status.Text = snapshot.Pets.Count == 0
             ? I18n.Get("cp.pets.empty")
             : I18n.Get("cp.pets.count", snapshot.Pets.Count);

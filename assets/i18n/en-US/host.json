@@ -71,6 +71,7 @@
   "host.arbiter.refusal.no-capability": "requestCapability is missing its capability id",
   "host.pet.err.query-needs-running": "queryFrame requires running (currently {0})",
   "host.pet.err.attach-needs-imported": "attach requires Imported (currently {0})",
+  "host.pet.err.retarget-needs-running": "re-attaching the canvas requires running (currently {0})",
   "host.pet.err.empty-bitmap": "The view implementation delivered an empty bitmap: {0}",
   "host.pet.err.frame-size-mismatch": "frame {0} does not match the canvas size",
   "host.startup.err.no-exe": "Cannot find the path of the current program, so the Windows startup entry was not set.",

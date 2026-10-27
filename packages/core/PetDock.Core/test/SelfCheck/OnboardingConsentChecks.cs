@@ -83,7 +83,7 @@ internal static class OnboardingConsentChecks
         bool queued = answered.Wait(EnqueueWaitMs) == false && port.PendingCount == 1;
 
         // 挂一个**不显示**的真引导窗上去：模拟「引导窗在管事」。
-        using var onboarding = new OnboardingWindow(() => null, AcceptSettings, hasPet: true);
+        using var onboarding = new OnboardingWindow(AcceptSettings, hasPet: true);
         host.AttachOnboarding(onboarding);
 
         int pumpsBefore = host.ConsentPumpCount;

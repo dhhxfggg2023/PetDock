@@ -50,7 +50,8 @@ internal sealed partial class UiHost
             AuthorizePlugin,
             TogglePluginDisabled,
             InstallPluginFromPanel,
-            RemovePluginFromPanel);
+            RemovePluginFromPanel,
+            RemovePetFromPanel);
         _panel.SetImportCommand(RunImportFromPanel);
         _panel.SetSettingsCommand(ApplySettings);
         _panel.SetDiagnosticCommand(RunDiagnosticOp);
@@ -65,7 +66,12 @@ internal sealed partial class UiHost
 
     /// <summary>取一次快照（面板每次重绘都调用它，不缓存）。</summary>
     public UiSnapshot Snapshot() =>
-        UiRoster.Build(_pet, _host, SettingsView(), _inventory);
+        UiRoster.Build(
+            _primaryRemoved ? null : _pet,
+            _host,
+            SettingsView(),
+            _inventory,
+            BuildExtraPetLines());
 
     /// <summary>
     /// 设置页的当前状态（读数来源：设置文件 + 注册表）。
@@ -158,7 +164,7 @@ internal sealed partial class UiHost
         message = result.Message;
         if (result.Ok)
         {
-            _tray.SetPetCount(1);
+            RefreshTrayPets();
         }
 
         return result.Ok;

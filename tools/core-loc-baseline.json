@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 28380,
+  "budget": 28800,
   "history": [
     {
       "date": "2026-10-18",
@@ -309,8 +309,7 @@
           "slice": "RFC-16 A 引导窗（三步控件树 + 示意动画 + 页内错误条 + 公开读数）",
           "files": [
             "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
-            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs",
-            "packages/core/PetDock.Core/src/Ui/ThroughHintPanel.cs"
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs"
           ],
           "lines": 563
         },
@@ -1548,14 +1547,13 @@
           "lines": 25
         },
         {
-          "slice": "三个弹窗与穿透示意面板的主题化（授权/确认/引导 + ThroughHintPanel + 托盘菜单挂渲染器）",
+          "slice": "三个弹窗的主题化（授权/确认/引导 + 托盘菜单挂渲染器）",
           "files": [
             "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs",
             "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.Batch.cs",
             "packages/core/PetDock.Core/src/Ui/ConfirmDialog.cs",
             "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
             "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs",
-            "packages/core/PetDock.Core/src/Ui/ThroughHintPanel.cs",
             "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
           ],
           "lines": -22
@@ -1730,6 +1728,63 @@
             "packages/core/PetDock.Core/src/Host/PluginHost.cs"
           ],
           "lines": 104
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28726,
+      "budget": 28800,
+      "note": "行内开关与多宠物面板（+411 净值）：插件页把「禁用选中插件」按钮换成列表末列的自绘开关（ThemedList.Switch），宠物页列出主窗之外的全部宠物并支持逐只移除，另加有行截图样例与四条宠物面板判据。抬到 28800（余量 74）。",
+      "attribution": [
+        {
+          "slice": "列表末列开关（自绘、命中翻译、插件页接线）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.Switch.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.Manage.cs"
+          ],
+          "lines": 240
+        },
+        {
+          "slice": "多宠物面板（快照合并、逐只移除、托盘计数）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
+            "packages/core/PetDock.Core/test/SelfCheck/PetPanelChecks.cs"
+          ],
+          "lines": 130
+        },
+        {
+          "slice": "有行截图样例（开关与多宠页面的人眼证据）",
+          "files": [
+            "packages/core/PetDock.Core/test/SelfCheck/UiShots.cs"
+          ],
+          "lines": 41
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28476,
+      "budget": 28800,
+      "note": "引导收成一页 + 多宠物画板按窗口实测尺寸重挂（净值 -250）：删掉独立的穿透说明页与示意动画面板（用户问的「第二个选择框」）、删掉放置示例宠物步；槽位不再在 128 逻辑尺寸上预挂接，由 PetFrameSource 首次取帧按窗口实测尺寸 init/attach，已运行的导入/恢复实例在尺寸不符时 Retarget。",
+      "attribution": [
+        {
+          "slice": "一页引导、槽位实测尺寸挂接、失效面板退役",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Onboarding.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/PetFrameSource.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": -250
         }
       ]
     }

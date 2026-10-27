@@ -118,7 +118,7 @@ internal static partial class AppearanceChecks
             Inspect("quit", quit);
         }
 
-        using (var onboarding = new OnboardingWindow(() => null, WriteNothing, hasPet: true))
+        using (var onboarding = new OnboardingWindow(WriteNothing, hasPet: true))
         {
             ForceLayout(onboarding);
             Inspect("onboarding", onboarding);
@@ -241,7 +241,7 @@ internal static partial class AppearanceChecks
                     Measure($"quit@{dpi}", quit);
                 }
 
-                using (var onboarding = new OnboardingWindow(() => null, WriteNothing, hasPet: true))
+                using (var onboarding = new OnboardingWindow(WriteNothing, hasPet: true))
                 {
                     Measure($"onboarding@{dpi}", onboarding);
                 }

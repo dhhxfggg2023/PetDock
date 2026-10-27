@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
+using PetDock.Hosting;
 
 namespace PetDock.Core.Ui;
 
@@ -73,6 +74,57 @@ internal sealed partial class UiHost
 
     /// <summary>桌面上还剩几只（主窗那只被移除后不算）。</summary>
     private int LivePetCount() => (_primaryRemoved ? 0 : 1) + (_petSet?.Slots.Count ?? 0);
+
+    /// <summary>
+    /// 主窗之外那几只的只读行（面板的宠物页用）。来源写「已导入」而不是插件 id：
+    /// 用户认的是「我从哪装进来的」，不是内部实例标识。
+    /// </summary>
+    private IReadOnlyList<PetLine> BuildExtraPetLines()
+    {
+        var lines = new List<PetLine>();
+        if (_petSet is null)
+        {
+            return lines;
+        }
+
+        foreach (PetWindowSet.Entry entry in _petSet.Entries())
+        {
+            PetInstance? instance = entry.Slot.Instance;
+            string state = instance is null
+                ? I18n.Get("cp.plugins.state.off")
+                : PluginHost.DescribeInstanceState(instance.State)
+                    + (instance.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty);
+            lines.Add(new PetLine(
+                Id: entry.Id,
+                Name: entry.Title,
+                Source: I18n.Get("cp.pets.source.imported"),
+                State: state,
+                Memory: UiRoster.ProcessMemoryMb()));
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// 面板「移除选中宠物」的宿主侧执行体（UI 线程）。
+    /// 只把这一只从桌上与清单里拿掉；素材文件留在数据目录里，用户还能再导入。
+    /// </summary>
+    internal string? RemovePetFromPanel(string petId)
+    {
+        if (IsPrimary(petId) || string.Equals(petId, PrimaryPetId, System.StringComparison.Ordinal))
+        {
+            RemovePetById(petId);
+            return null;
+        }
+
+        if (_petSet?.Find(petId) is null)
+        {
+            return I18n.Get("cp.pets.remove.missing");
+        }
+
+        RemovePetById(petId);
+        return null;
+    }
 
     /// <summary>把这一只挪回屏幕正中。</summary>
     private void MovePetById(string id)

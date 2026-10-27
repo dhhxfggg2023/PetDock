@@ -34,7 +34,7 @@ internal static class ModalBandChecks
     /// <summary>①：三个模态窗显示一次，读它们的原生 exstyle。</summary>
     private static void TopmostBitOnEachModal(Report check)
     {
-        using (var onboarding = new OnboardingWindow(() => null, WriteNothing, hasPet: true))
+        using (var onboarding = new OnboardingWindow(WriteNothing, hasPet: true))
         {
             check("ui-modal-topmost-onboarding", BandOf(onboarding, out string detail), detail);
         }

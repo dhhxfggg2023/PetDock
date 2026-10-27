@@ -11,9 +11,9 @@ namespace PetDock.Core.Ui;
 internal sealed partial class ControlPanel
 {
 
-    /// <summary>安装入口的名字（自检断言四个入口都在）。</summary>
+    /// <summary>插件页动作按钮的名字（自检断言三个入口都在；启停是行内开关，不是按钮）。</summary>
     public IReadOnlyList<string> ManageButtonNames =>
-        new[] { _installButton.Name, _removeButton.Name, _authorizeButton.Name, _disableButton.Name };
+        new[] { _installButton.Name, _removeButton.Name, _authorizeButton.Name };
 
     private ToolStripMenuItem InstallMenuItem(string text, bool folder)
     {

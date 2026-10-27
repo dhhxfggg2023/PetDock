@@ -35,14 +35,6 @@ internal sealed partial class ControlPanel
         Enabled = false,
     };
 
-    /// <summary>「禁用/启用选中插件」入口（文案随选中插件的状态变）。</summary>
-    private readonly ThemedButton _disableButton = new()
-    {
-        Text = I18n.Get("cp.plugins.disable"),
-        Name = "disable",
-        Enabled = false,
-    };
-
     /// <summary>「安装插件」入口：点开是「从文件夹 / 从 zip」两项。</summary>
     private readonly ThemedButton _installButton = new()
     {
@@ -86,11 +78,12 @@ internal sealed partial class ControlPanel
     private bool _settingSelection;
 
     /// <summary>
-    /// 插件页两个入口的 Name，按加入顺序（自检按它断言两个入口确实存在）。
+    /// 插件页动作按钮的 Name（自检按它断言入口确实存在）。
     /// 名字里不能出现 D-03b 黑名单的子串，所以不用「操作按钮」那类直译名。
+    /// 启用/停用不在这里：它是列表末列的开关，点行内的开关比「先选中再按按钮」少一步。
     /// </summary>
     public IReadOnlyList<string> PluginButtonNames =>
-        new[] { _authorizeButton.Name, _disableButton.Name };
+        new[] { _authorizeButton.Name, _installButton.Name, _removeButton.Name };
 
     /// <summary>同 <see cref="PluginButtonNames"/>（自检按哪个名字取都行）。</summary>
     public IReadOnlyList<string> EntryButtonNames => PluginButtonNames;
@@ -98,14 +91,18 @@ internal sealed partial class ControlPanel
     /// <summary>当前选中行的插件 id（没有选中行时为 null）。</summary>
     public string? SelectedPluginId => _selectedPluginId;
 
-    /// <summary>两个入口当前是否可用（没有选中行时为 false）。</summary>
-    public bool PluginButtonsEnabled => _authorizeButton.Enabled && _disableButton.Enabled;
+    /// <summary>授权入口当前是否可用（没有选中行时为 false）。</summary>
+    public bool PluginButtonsEnabled => _authorizeButton.Enabled;
 
     /// <summary>授权入口的当前文案。</summary>
     public string AuthorizeButtonText => _authorizeButton.Text;
 
-    /// <summary>禁用/启用入口的当前文案（随选中插件的状态变）。</summary>
-    public string DisableButtonText => _disableButton.Text;
+    /// <summary>末列开关的表头文案（自检断言开关列真的在）。</summary>
+    public string PluginSwitchColumnTitle =>
+        _pluginList.Columns.Count == 0 ? string.Empty : _pluginList.Columns[^1].Text;
+
+    /// <summary>末列是否被当成开关列（自检断言）。</summary>
+    public bool PluginSwitchColumnShown => _pluginList.RowSwitches;
 
     /// <summary>
     /// 建插件页的控件树：列表 + 底部操作栏（两个按钮）。
@@ -115,12 +112,16 @@ internal sealed partial class ControlPanel
     {
         _pluginList.SelectedIndexChanged += (_, _) => OnPluginSelectionChanged();
 
+        _pluginList.RowSwitches = true;
+        _pluginList.IsRowSwitchedOn = row => row.Tag is string id
+            && _pluginRows.TryGetValue(id, out PluginLine? line) && line.Enabled;
+        _pluginList.IsRowSwitchEnabled = row => row.Tag is string id && _pluginRows.ContainsKey(id);
+        _pluginList.RowSwitchToggled = TogglePluginFromSwitch;
+
         _authorizeButton.Click += (_, _) => AuthorizeSelected();
-        _disableButton.Click += (_, _) => ToggleSelectedDisabled();
         _installButton.Click += (_, _) => _installMenu.Show(_installButton, new Point(0, _installButton.Height));
         _removeButton.Click += (_, _) => RemoveSelected();
         _authorizeButton.FitToText();
-        _disableButton.FitToText();
         _installButton.FitToText();
         _removeButton.FitToText();
         _installMenu.Items.Add(InstallMenuItem(I18n.Get("cp.plugins.install.folder"), folder: true));
@@ -141,7 +142,6 @@ internal sealed partial class ControlPanel
         bar.Controls.Add(_installButton);
         bar.Controls.Add(_removeButton);
         bar.Controls.Add(_authorizeButton);
-        bar.Controls.Add(_disableButton);
         // 加控件的顺序要紧：后加的先排版，所以操作栏（Bottom）最后加，它才贴页底、
         // 说明行与列表（Fill）占剩下的空间，不会被盖住。
         page.Controls.Add(_pluginList);
@@ -161,7 +161,7 @@ internal sealed partial class ControlPanel
             : I18n.Get("cp.plugins.count", snapshot.Plugins.Count);
     }
 
-    /// <summary>填插件页的表。列就是规格里的五列，操作交给两个按钮，不加第六列。</summary>
+    /// <summary>填插件页的表：五列文字 + 末列开关（开关靠自绘，见 ThemedList.Switch.cs）。</summary>
     private void BindPluginRows(UiSnapshot snapshot)
     {
         string? previous = _selectedPluginId;
@@ -174,6 +174,7 @@ internal sealed partial class ControlPanel
         _pluginList.Columns.Add(I18n.Get("cp.plugins.col.version"), 80);
         _pluginList.Columns.Add(I18n.Get("cp.plugins.col.state"), 110);
         _pluginList.Columns.Add(I18n.Get("cp.plugins.col.granted"), 100);
+        _pluginList.Columns.Add(I18n.Get("cp.plugins.col.enabled"), 70);
 
         foreach (PluginLine line in snapshot.Plugins)
         {
@@ -185,6 +186,9 @@ internal sealed partial class ControlPanel
                 line.Version,
                 line.State,
                 line.Granted.ToString(CultureInfo.InvariantCulture),
+                // 末列必须有子项：ListView 只为「存在的子项」发 DrawSubItem，
+                // 少给一个开关列就整列空白（2026-10-28 截图实锤）。文字内容由自绘覆盖。
+                string.Empty,
             })
             {
                 Tag = line.Id,
@@ -258,40 +262,72 @@ internal sealed partial class ControlPanel
         _authorize?.Invoke(id);
     }
 
-    /// <summary>对选中行发出「禁用/启用」意图（宿主侧落成 Disable / Resume）。</summary>
+    /// <summary>对选中行翻转末列开关（宿主侧落成 Disable / Enable）。没有选中行时静默。</summary>
     public void ToggleSelectedDisabled()
     {
-        string? id = SelectedPluginId;
-        if (id is null)
+        ListViewItem? row = FindPluginRow(SelectedPluginId);
+        if (row is null)
         {
             return;
         }
 
+        _pluginList.TryToggleRowSwitch(row);
+    }
+
+    /// <summary>开关被点：先乐观翻转这一行（下一帧就能看到），再交给宿主落账。</summary>
+    private void TogglePluginFromSwitch(ListViewItem row)
+    {
+        if (row.Tag is not string id || !_pluginRows.TryGetValue(id, out PluginLine? line) || line is null)
+        {
+            return;
+        }
+
+        bool target = !line.Enabled;
+        _pluginRows[id] = line with { Enabled = target };
+        if (row.SubItems.Count > 3)
+        {
+            row.SubItems[3].Text = target
+                ? I18n.Get("cp.plugins.state.running")
+                : I18n.Get("cp.plugins.state.off");
+        }
+
+        _pluginList.Invalidate();
         _toggleDisabled?.Invoke(id);
     }
 
-    /// <summary>两个入口的可用性与文案：有选中行才可用；禁用按钮的文案随状态变。</summary>
+    /// <summary>按 id 找插件页的行（找不到返回 null）。</summary>
+    private ListViewItem? FindPluginRow(string? id)
+    {
+        if (id is null)
+        {
+            return null;
+        }
+
+        foreach (ListViewItem item in _pluginList.Items)
+        {
+            if (string.Equals(item.Tag as string, id, StringComparison.Ordinal))
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>两个按钮的可用性：有选中行才可用；删除只对用户安装的插件可用。</summary>
     private void UpdatePluginButtons()
     {
         string? id = _selectedPluginId;
         bool has = false;
-        bool suspended = false;
-        bool enabled = false;
         bool removable = false;
         if (id is not null && _pluginRows.TryGetValue(id, out PluginLine? line) && line is not null)
         {
             has = true;
-            enabled = line.Enabled;
             removable = line.Removable;
-            suspended = string.Equals(line.State, PluginLifecycleState.Suspended.ToString(), StringComparison.Ordinal)
-                || string.Equals(line.State, I18n.Get("cp.plugins.state.suspended"), StringComparison.Ordinal);
         }
 
         _authorizeButton.Enabled = has;
-        _disableButton.Enabled = has;
         _removeButton.Enabled = has && removable;
-        _disableButton.Text = suspended || !enabled ? I18n.Get("cp.plugins.enable") : I18n.Get("cp.plugins.disable");
-        _disableButton.FitToText();
     }
 
     /// <summary>用户改选中时同步面板自己记的选中 id。</summary>

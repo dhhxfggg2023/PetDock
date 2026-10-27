@@ -10,8 +10,8 @@ namespace PetDock.Core.Ui;
 
 internal sealed partial class OnboardingWindow
 {
-    /// <summary>第 1 步：语言选择（只持久化选择，文案不随选择变化）。</summary>
-    private Panel BuildLanguageStep()
+    /// <summary>唯一一页：语言选择 + 使用提示（只持久化选择，文案不随选择变化）。</summary>
+    private Panel BuildLanguageStep(bool hasPet)
     {
         var step = new Panel { Name = "onboarding-step-language", BackColor = Theme.Bg };
         var title = new Label
@@ -39,89 +39,16 @@ internal sealed partial class OnboardingWindow
         _zh.FitToText();
         _en.FitToText();
 
-        step.Controls.Add(_en);
-        step.Controls.Add(_zh);
-        step.Controls.Add(note);
-        step.Controls.Add(title);
-        return step;
-    }
-
-    /// <summary>第 2 步：放置示例宠物（标注必须原样出现）。</summary>
-    private Panel BuildSampleStep()
-    {
-        var step = new Panel { Name = "onboarding-step-sample", BackColor = Theme.Bg };
-        var title = new Label
+        // 提示直接排在同一页：第二页只有一个空框和一句「透明区能点穿」，
+        // 用户已经问过「第二个选择框是干嘛的」——它是示意框，不是可选项，删掉。
+        var tip = new Label
         {
-            Text = I18n.Get("ui.onboarding.sample.title"),
+            Text = I18n.Get("ui.onboarding.through.tip"),
             Dock = DockStyle.Top,
-            Height = Theme.Dip(this, 36),
-            Font = Theme.FontFor(this, TypeRole.Heading),
-            ForeColor = Theme.Text,
-            BackColor = Color.Transparent,
-        };
-        var note = new Label
-        {
-            Text = I18n.Get("ui.onboarding.sample.note"),
-            Dock = DockStyle.Top,
-            Height = Theme.Dip(this, 52),
+            Height = Theme.Dip(this, 56),
+            AutoSize = false,
             Font = Theme.FontFor(this, TypeRole.Body),
             ForeColor = Theme.TextDim,
-            BackColor = Color.Transparent,
-        };
-        var disclaimer = new Label
-        {
-            Text = I18n.Get(SampleDisclaimerKey),
-            Dock = DockStyle.Top,
-            Height = Theme.Dip(this, 32),
-            Font = Theme.FontFor(this, TypeRole.Body),
-            ForeColor = Theme.Warn,
-            BackColor = Color.Transparent,
-        };
-
-        _placed.Dock = DockStyle.Top;
-        _placed.Height = Theme.Dip(this, 32);
-        _placed.Font = Theme.FontFor(this, TypeRole.Body);
-        _placed.ForeColor = Theme.Good;
-        _placed.BackColor = Color.Transparent;
-        _placed.Text = string.Empty;
-
-        _place.Click += (_, _) => TryPlaceSample();
-        _place.FitToText();
-
-        // 宿主条：Dock=Bottom 直接作用在按钮上会把它拉成整行宽的色块
-        // （2026-10-28 截图实测），所以按钮在宿主条里按自身尺寸左对齐。
-        var placeHost = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = Theme.Dip(this, 56),
-            BackColor = Theme.Bg,
-            Name = "onboarding-place-host",
-        };
-        placeHost.Controls.Add(_place);
-        placeHost.Resize += (_, _) =>
-            _place.Location = new Point(
-                Theme.Dip(placeHost, Theme.SpaceSm),
-                Math.Max(0, (placeHost.Height - _place.Height) / 2));
-
-        step.Controls.Add(placeHost);
-        step.Controls.Add(_placed);
-        step.Controls.Add(disclaimer);
-        step.Controls.Add(note);
-        step.Controls.Add(title);
-        return step;
-    }
-
-    /// <summary>第 3 步：穿透说明（说明必须原样出现 + 示意动画）。</summary>
-    private Panel BuildThroughStep()
-    {
-        var step = new Panel { Name = "onboarding-step-through", BackColor = Theme.Bg };
-        var title = new Label
-        {
-            Text = I18n.Get("ui.onboarding.through.title"),
-            Dock = DockStyle.Top,
-            Height = Theme.Dip(this, 36),
-            Font = Theme.FontFor(this, TypeRole.Heading),
-            ForeColor = Theme.Text,
             BackColor = Color.Transparent,
         };
         var caption = new Label
@@ -133,24 +60,40 @@ internal sealed partial class OnboardingWindow
             ForeColor = Theme.Text,
             BackColor = Color.Transparent,
         };
-        var tip = new Label
+
+        var gap = new Panel
         {
-            Text = I18n.Get("ui.onboarding.through.tip"),
             Dock = DockStyle.Top,
-            // 这句话在 100% 下就要折成两行；一行的高度会把第二行裁掉（ui-appearance-text-fits 实测）。
-            Height = Theme.Dip(this, 56),
-            AutoSize = false,
-            Font = Theme.FontFor(this, TypeRole.Body),
-            ForeColor = Theme.TextDim,
+            Height = Theme.Dip(this, Theme.SpaceMd),
             BackColor = Color.Transparent,
         };
 
-        _hint.Dock = DockStyle.Fill;
-
-        step.Controls.Add(_hint);
         step.Controls.Add(tip);
-        step.Controls.Add(caption);
+        if (!hasPet)
+        {
+            // 没有视图实现时提示不成立，换成一句「当前没有可显示的宠物」。
+            var notice = new Label
+            {
+                Text = I18n.Get(NoPetKey),
+                Dock = DockStyle.Top,
+                Height = Theme.Dip(this, 32),
+                Font = Theme.FontFor(this, TypeRole.Body),
+                ForeColor = Theme.TextDim,
+                BackColor = Color.Transparent,
+            };
+            step.Controls.Add(notice);
+        }
+        else
+        {
+            step.Controls.Add(caption);
+        }
+
+        step.Controls.Add(gap);
+        step.Controls.Add(_en);
+        step.Controls.Add(_zh);
+        step.Controls.Add(note);
         step.Controls.Add(title);
         return step;
     }
+
 }

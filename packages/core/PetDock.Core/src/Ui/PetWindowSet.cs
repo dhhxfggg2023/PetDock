@@ -110,9 +110,8 @@ internal sealed partial class PetWindowSet : IDisposable
                 return null;
             }
 
-            instance.AttachAndStart(128, 128, 1.0);
-            instance.Start();
-
+            // 画板尺寸的唯一权威是窗口的物理尺寸（150% DPI 下是 192）：不在这里预挂接 128，
+            // 由 PetFrameSource 的首次取帧按实测尺寸做 init/describe/attach。
             var source = new PetFrameSource(instance);
             var window = new LayeredFrameWindow(source);
             source.WindowHandle = window.WindowHandle;

@@ -193,18 +193,11 @@ internal static partial class Program
         //
         // 窗口持有的是**可替换内容源代理**（RFC-15 §3.3）：换宠物时换的是代理里面那一份，
         // 合成器层一行不改。代理在这里创建，导入路径通过它换源。
-        using var window = ComposeWindow("resident", pluginHost);
+        // 窗口必须直接持有**可换源代理**，不是装配时那一份原始帧源。
+        // 2026-10-28 实锤：以前窗口拿的是原始 PetFrameSource，导入/恢复只换了代理里那一份，
+        // 窗口根本看不见；随后旧实例被释放，帧泵每帧报 "attach 需要 Imported（当前 Disposed）"。
+        using var window = ComposeWindow("resident", pluginHost, out SwappableFrameSource? frames);
         ComposeOutcome? composed = Composition;
-        var frames = composed?.Content is null
-            ? null
-            : new SwappableFrameSource(composed.Content, composed.Roster);
-        if (frames is not null)
-        {
-            frames.WindowHandle = window.WindowHandle;
-            // 窗口事件（core.window.focus / moved / dpiChanged）的生产点接上总线：
-            // M4 修复前 LayeredFrameWindow.WindowEvent 全仓零订阅者，这三条事件发了无人收。
-            window.WindowEvent += (type, payload) => frames.PublishWindowEvent(type, payload);
-        }
 
         // 恢复上次导入的宠物（RFC-15 §3.4 的清单里记着「当前选中哪一只」）。
         // 清单里没有、或素材目录不见了、或这个包加载不了 ⇒ 保留默认那只，不报错、不空桌。
@@ -339,6 +332,16 @@ internal static partial class Program
     /// 自检与常驻共用同一条链（两条链正是 M0 source=false 静默 SELF-OK 的成因）。
     /// </summary>
     private static LayeredFrameWindow ComposeWindow(string phase, PluginHost? host = null)
+        => ComposeWindow(phase, host, out _);
+
+    /// <summary>
+    /// 同 <see cref="ComposeWindow(string, PluginHost?)"/>，另外交出窗口真正持有的可换源代理。
+    /// 导入与恢复都通过它换宠物；调用方拿不到它就会去换一份窗口没在用的源。
+    /// </summary>
+    private static LayeredFrameWindow ComposeWindow(
+        string phase,
+        PluginHost? host,
+        out SwappableFrameSource? frames)
     {
         ComposeOutcome outcome = FrameComposition.Compose(phase, attachInstance: true, host);
         if (outcome.Instance is not null && host is not null)
@@ -348,20 +351,23 @@ internal static partial class Program
 
         Composition = outcome;
         KernelLog.Write($"frame-content phase={phase} {outcome.Describe()}");
-        LayeredFrameWindow window = outcome.Content is null
+        SwappableFrameSource? proxy = outcome.Content is null
+            ? null
+            : new SwappableFrameSource(outcome.Content, outcome.Roster);
+        frames = proxy;
+        LayeredFrameWindow window = proxy is null
             ? new LayeredFrameWindow()
-            : new LayeredFrameWindow(outcome.Content);
+            : new LayeredFrameWindow(proxy);
 
         // 窗口句柄回填（M4-VERIFY-r2.md 的 F 号缺口）：窗口要到这一步才存在，而帧源在
         // FrameComposition 里就先建好了。不回填的话 WorldProbe 永远拿 hwnd==0 采样 ——
         // 鼠标取屏幕绝对坐标、WindowRect 恒 0、IsOccluded 恒 false，三类世界输入里两类的值都是假的。
-        if (outcome.Content is PetFrameSource source)
+        // 事件订阅走代理：换源之后事件要跟着新宠物走，挂在旧源上等于新宠物收不到窗口移动。
+        if (proxy is not null)
         {
-            source.WindowHandle = window.WindowHandle;
-            // 窗口事件（core.window.focus / moved / dpiChanged）的生产点在这里接上总线：
-            // M4 修复前 LayeredFrameWindow.WindowEvent 全仓零订阅者，这三条事件发了无人收。
-            window.WindowEvent += (type, payload) => source.PublishWindowEvent(type, payload);
-            KernelLog.Write($"frame-source-bound window=0x{window.WindowHandle.ToInt64():X}");
+            proxy.WindowHandle = window.WindowHandle;
+            window.WindowEvent += (type, payload) => proxy.PublishWindowEvent(type, payload);
+            KernelLog.Write($"frame-source-bound window=0x{window.WindowHandle.ToInt64():X} swappable=true");
         }
 
         // RFC-35 §3.2：窗口鼠标消息 → 实例的交互会话（原规格 11 §5）。接线只在 FrameComposition

@@ -18,12 +18,9 @@ using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
-/// <summary>首次运行引导窗：三步（语言 → 放置示例宠物 → 穿透说明）。</summary>
+/// <summary>首次运行引导窗：一页（选语言 + 穿透提示）。</summary>
 internal sealed partial class OnboardingWindow : PetDockDialog
 {
-    /// <summary>放置示例宠物（宿主侧执行：走既有的 PetImportService.Import）。返回 null = 成功，否则是错误文本。</summary>
-    internal delegate string? PlaceSample();
-
     /// <summary>
     /// 写设置（宿主侧执行：读出 → 改一个字段 → 整份写回）。
     /// language = null 表示不改语言；complete = true 表示写一次性标记。
@@ -34,50 +31,33 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     // 常量是**键名**，不是文案（RFC-42 §3.4 第 3 条）：判据引用键，文案将来在 assets/i18n 的表里；
     // 这一片还没有表，I18n.Get 原样返回键，缺键就显示键名本身。
 
-    /// <summary>第 2 步必须原样出现的标注的键（原规格 18 §4 的原话在资源表里，不改写）。</summary>
-    public const string SampleDisclaimerKey = "ui.onboarding.sample.disclaimer";
-
-    /// <summary>第 3 步必须原样出现的说明的键。</summary>
+    /// <summary>页面里必须原样出现的说明的键。</summary>
     public const string ThroughCaptionKey = "ui.onboarding.through.caption";
 
-    /// <summary>放置成功后的回执的键。</summary>
-    public const string PlacedKey = "ui.onboarding.sample.placed";
-
-    /// <summary>没有视图实现时第 2/3 步被跳过时的页内说明的键。</summary>
+    /// <summary>没有视图实现时的页内说明的键。</summary>
     public const string NoPetKey = "ui.onboarding.no-pet";
 
-    /// <summary>发行物里没带示例素材时的页内说明的键。</summary>
-    public const string NoSampleKey = "ui.onboarding.no-sample";
-
-    /// <summary>「下一步」与「完成」两个按钮文案的键（最后一步换成完成）。</summary>
-    public const string NextKey = "ui.onboarding.next";
+    /// <summary>唯一按钮的文案键（一页只有「完成」）。</summary>
     public const string FinishKey = "ui.onboarding.finish";
 
-    private readonly PlaceSample _placeSample;
     private readonly WriteSettings _writeSettings;
 
     private readonly Panel[] _steps;
     private readonly Label _error = new();
-    private readonly Label _placed = new();
     private readonly ThemedRadio _zh = new() { Text = I18n.Get("ui.onboarding.language.zh"), Name = "onboarding-language-zh" };
     private readonly ThemedRadio _en = new() { Text = "English (en-US)", Name = "onboarding-language-en" };
-    private readonly ThroughHintPanel _hint = new() { Name = "onboarding-animation" };
-    private readonly ThemedButton _next = new() { Text = I18n.Get(NextKey), Name = "onboarding-next", Primary = true };
+    private readonly ThemedButton _next = new() { Text = I18n.Get(FinishKey), Name = "onboarding-next", Primary = true };
     private readonly ThemedButton _skip = new() { Text = I18n.Get("ui.onboarding.skip"), Name = "onboarding-skip" };
-    private readonly ThemedButton _place = new() { Text = I18n.Get("ui.onboarding.place"), Name = "onboarding-place", Primary = true };
 
     private int _index;
-    private bool _samplePlaced;
     private bool _markerWritten;
     private bool _finished;
     private bool _errorShown;
     private string _errorText = string.Empty;
     private string _markerError = string.Empty;
-    private string _sampleStatus = string.Empty;
 
-    public OnboardingWindow(PlaceSample placeSample, WriteSettings writeSettings, bool hasPet)
+    public OnboardingWindow(WriteSettings writeSettings, bool hasPet)
     {
-        _placeSample = placeSample;
         _writeSettings = writeSettings;
 
         Text = I18n.Get("ui.onboarding.title");
@@ -89,13 +69,13 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         Theme.Apply(this);
         // 高度按「三步里最长的那一步」定：第一、二步内容少，留太多空白会读成界面没画完
         // （2026-10-28 截图实测）。
-        ClientSize = new Size(Theme.Dip(this, 560), Theme.Dip(this, 384));
+        ClientSize = new Size(Theme.Dip(this, 560), Theme.Dip(this, 336));
 
-        _steps = hasPet
-            ? new[] { BuildLanguageStep(), BuildSampleStep(), BuildThroughStep() }
-            : new[] { BuildLanguageStep() };
+        // 2026-10-28：删掉「放置示例宠物」与独立的穿透说明页。用户问的「第二个选择框」
+        // 就是那页里的大示意框 —— 它不是选项，删掉；提示并到语言页，一次看完。
+        _steps = new[] { BuildLanguageStep(hasPet) };
 
-        BuildBody(hasPet);
+        BuildBody();
         BuildFooter();
 
         _index = 0;
@@ -105,17 +85,11 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     /// <summary>当前是第几步（0 起）。</summary>
     public int StepIndex => _index;
 
-    /// <summary>一共几步（有视图实现时三步，没有时一步）。</summary>
+    /// <summary>一共几步（恒为 1：语言与使用提示同页）。</summary>
     public int StepCount => _steps.Length;
 
     /// <summary>用户选的语言（读单选框，不读界面文案 —— 文案不随选择变化）。</summary>
     public string SelectedLanguage => _en.Checked ? "en-US" : "zh-CN";
-
-    /// <summary>示例是否已放置成功。</summary>
-    public bool SamplePlaced => _samplePlaced;
-
-    /// <summary>放置结果或跳过原因的一行说明。</summary>
-    public string SampleStatusText => _sampleStatus;
 
     /// <summary>内联错误条当前是否可见。</summary>
     public bool ErrorShown => _errorShown;
@@ -132,17 +106,11 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     /// <summary>引导是否已经走完（完成或跳过）。</summary>
     public bool Finished => _finished;
 
-    /// <summary>示意动画是否在跑（计时器已启动）。</summary>
-    public bool AnimationRunning => _hint.Running;
-
-    /// <summary>示意动画已推进的帧数。</summary>
-    public int AnimationFrameCount => _hint.FrameCount;
-
-    /// <summary>「下一步」按钮当前文案（来自 <see cref="NextButtonKey"/>，不随语言选择变化）。</summary>
+    /// <summary>按钮当前文案（来自 <see cref="NextButtonKey"/>，不随语言选择变化）。</summary>
     public string NextButtonText => _next.Text;
 
-    /// <summary>「下一步」按钮当前文案的键（判据断言这个键，不断言中文字面量）。</summary>
-    public string NextButtonKey => _index == _steps.Length - 1 ? FinishKey : NextKey;
+    /// <summary>按钮当前文案的键（判据断言这个键，不断言中文字面量）。</summary>
+    public string NextButtonKey => FinishKey;
 
     /// <summary>
     /// 某一步里所有标签的文案（判据读它断言 原规格 18 §4 的两句话**原样出现**在界面上，
@@ -201,49 +169,11 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         Finish();
     }
 
-    /// <summary>放置示例宠物（点按钮或判据调用都一样）。</summary>
-    public void TryPlaceSample()
-    {
-        ClearError();
-        string? error;
-        try
-        {
-            error = _placeSample();
-        }
-        catch (Exception ex)
-        {
-            error = I18n.Get("ui.onboarding.placeFailed", ex.Message);
-        }
-
-        if (error is null)
-        {
-            _samplePlaced = true;
-            _sampleStatus = I18n.Get(PlacedKey);
-            _placed.Text = _sampleStatus;
-            return;
-        }
-
-        // 失败：内联错误条 + 旧宠物原样保留（宿主侧不换源）。
-        _sampleStatus = error;
-        ShowError(error);
-    }
-
     /// <summary>跳过引导（跳过也要写一次性标记 —— 否则每次启动都弹）。</summary>
     public void Skip() => Complete(completeOnboarding: true, saveLanguage: false);
 
     /// <summary>完成引导。</summary>
     public void Finish() => Complete(completeOnboarding: true, saveLanguage: true);
-
-    /// <summary>关窗时停掉示意动画的计时器。</summary>
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _hint.StopAnimation();
-        }
-
-        base.Dispose(disposing);
-    }
 
     /// <summary>第 1 步：只写语言，不写标记。</summary>
     private bool SaveLanguage()
@@ -279,7 +209,7 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         Close();
     }
 
-    private void BuildBody(bool hasPet)
+    private void BuildBody()
     {
         _error.Dock = DockStyle.Top;
         _error.Height = Theme.Dip(this, 48);
@@ -299,21 +229,6 @@ internal sealed partial class OnboardingWindow : PetDockDialog
             Padding = new Padding(Theme.Dip(this, Theme.SpaceMd)),
         };
 
-        if (!hasPet)
-        {
-            // 没有视图实现：第 2/3 步不出现，只在第 1 步里说明当前没有可显示的宠物。
-            var notice = new Label
-            {
-                Text = I18n.Get(NoPetKey),
-                Dock = DockStyle.Top,
-                Height = Theme.Dip(this, 32),
-                Font = Theme.FontFor(this, TypeRole.Body),
-                ForeColor = Theme.TextDim,
-                BackColor = Color.Transparent,
-            };
-            _steps[0].Controls.Add(notice);
-        }
-
         foreach (Panel step in _steps)
         {
             step.Dock = DockStyle.Fill;
@@ -331,7 +246,6 @@ internal sealed partial class OnboardingWindow : PetDockDialog
 
         _next.FitToText();
         _skip.FitToText();
-        _place.FitToText();
 
         _skip.Click += (_, _) => Skip();
         _next.Click += (_, _) => GoNext();
@@ -345,16 +259,6 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         for (int i = 0; i < _steps.Length; i++)
         {
             _steps[i].Visible = i == _index;
-        }
-
-        // 示意动画只在第 3 步跑：别的步骤上它没有意义，白烧 CPU。
-        if (_steps[_index].Name == "onboarding-step-through")
-        {
-            _hint.StartAnimation();
-        }
-        else
-        {
-            _hint.StopAnimation();
         }
 
         _next.Text = I18n.Get(NextButtonKey);

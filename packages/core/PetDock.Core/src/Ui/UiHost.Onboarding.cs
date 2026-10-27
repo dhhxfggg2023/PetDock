@@ -80,7 +80,7 @@ internal sealed partial class UiHost
     private void RunOnboarding()
     {
         bool hasPet = _frames?.Roster?.HasView == true;
-        using var window = new OnboardingWindow(PlaceBundledExample, WriteOnboardingSettings, hasPet);
+        using var window = new OnboardingWindow(WriteOnboardingSettings, hasPet);
         AttachOnboarding(window);
         try
         {
@@ -101,37 +101,6 @@ internal sealed partial class UiHost
     /// 挂着的窗不一定是显示着的 —— 互斥纪律看的是「有没有引导窗在管事」。
     /// </summary>
     internal void AttachOnboarding(OnboardingWindow? window) => _onboarding = window;
-
-    /// <summary>
-    /// 引导第 2 步：放置应用自带的示例宠物。
-    /// 走的是**既有的** PetImportService.Import（复制 → 登记 → 换源 → 释放旧实例），
-    /// 不新造一条放置路径 —— 那样会有两套「导入」语义。
-    /// 返回 null = 成功；返回字符串 = 失败原因（页内内联显示）。
-    /// </summary>
-    private string? PlaceBundledExample()
-    {
-        PetImportService? import = _import;
-        if (import is null)
-        {
-            return I18n.Get(OnboardingWindow.NoPetKey);
-        }
-
-        string? pack = BundledExampleAssets.Locate();
-        if (pack is null)
-        {
-            return I18n.Get(OnboardingWindow.NoSampleKey);
-        }
-
-        ImportResult result = import.Import(pack);
-        if (!result.Ok)
-        {
-            return result.Message;
-        }
-
-        _tray.SetPetCount(1);
-        KernelLog.Write($"onboarding-sample-placed instance={result.InstanceId ?? "(unknown)"}");
-        return null;
-    }
 
     /// <summary>
     /// 引导写设置：读出 → 改一个字段 → 整份写回。

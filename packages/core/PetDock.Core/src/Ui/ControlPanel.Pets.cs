@@ -7,6 +7,7 @@
 // 为什么用内联错误条而不是 MessageBox：原规格 18 §5 明写「插件崩溃也不弹模态框」，
 // RFC-15 §3.5 把导入失败也归到同一类 —— 失败信息出现在宠物页里，用户当场看得见。
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 using PetDock.Core.Ui.Design;
 
@@ -19,6 +20,14 @@ internal sealed partial class ControlPanel
     {
         Text = I18n.Get("cp.pets.import"),
         Name = "import-pack",
+    };
+
+    /// <summary>「移除选中宠物」入口：只从桌面上拿掉，不删素材文件。</summary>
+    private readonly ThemedButton _removePetButton = new()
+    {
+        Text = I18n.Get("cp.pets.remove"),
+        Name = "remove-pet",
+        Enabled = false,
     };
 
     /// <summary>内联错误条（平时不可见；有失败信息时出现）。</summary>
@@ -37,6 +46,9 @@ internal sealed partial class ControlPanel
     /// <summary>错误条「被要求显示」的状态（与 WinForms 的容器可见性分开记，见 ImportErrorShown）。</summary>
     private bool _importErrorShown;
 
+    /// <summary>当前选中的宠物 id（自检形态没有窗口句柄，原生选中落不下去，所以面板自己记）。</summary>
+    private string? _selectedPetId;
+
     /// <summary>
     /// 导入回调的形状：面板已经选好了目录（它弹对话框），
     /// 宿主侧只管「拿这个目录去导入」。返回 true = 成功。
@@ -45,6 +57,15 @@ internal sealed partial class ControlPanel
 
     /// <summary>导入入口的名字（自检按它断言入口确实存在）。</summary>
     public string ImportButtonName => _importButton.Name;
+
+    /// <summary>宠物页动作按钮的 Name（导入 + 移除）。</summary>
+    public IReadOnlyList<string> PetButtonNames => new[] { _importButton.Name, _removePetButton.Name };
+
+    /// <summary>宠物页当前列出的行数（自检断言多只宠物都出现在表里）。</summary>
+    public int PetRowCount => _list.Items.Count;
+
+    /// <summary>当前选中的宠物 id（没有选中行时为 null）。</summary>
+    public string? SelectedPetId => _selectedPetId;
 
     /// <summary>
     /// 导入入口挂在哪个页上（自检断言它在**宠物页**，不在别的页）。
@@ -92,10 +113,21 @@ internal sealed partial class ControlPanel
     private void InitPetsPage()
     {
         _importButton.Click += (_, _) => RunImport();
+        _removePetButton.Click += (_, _) => RemoveSelectedPet();
+        _list.SelectedIndexChanged += (_, _) =>
+        {
+            if (_list.SelectedItems.Count > 0)
+            {
+                _selectedPetId = _list.SelectedItems[0].Tag as string;
+            }
+
+            UpdatePetButtons();
+        };
 
         Panel page = PageOf(PanelPages.Pets);
         int dpi = Theme.DpiOf(page);
         _importButton.FitToText();
+        _removePetButton.FitToText();
 
         // 错误条：赤陶字压在压暗的赤陶底上（原规格 18 §2.6 的失败色对）。
         _importError.Font = Theme.FontFor(page, TypeRole.Body);
@@ -107,6 +139,7 @@ internal sealed partial class ControlPanel
 
         FlowLayoutPanel bar = FormGrid.Bar(page);
         bar.Controls.Add(_importButton);
+        bar.Controls.Add(_removePetButton);
 
         page.Controls.Add(_importError);
         page.Controls.Add(bar);
@@ -175,6 +208,87 @@ internal sealed partial class ControlPanel
 
         ShowImportError(message);
         return false;
+    }
+
+    /// <summary>移除按钮的可用性：有选中行、且宿主接了移除动作。</summary>
+    private void UpdatePetButtons() => _removePetButton.Enabled = _removePet is not null && SelectedPetId is not null;
+
+    /// <summary>
+    /// 按宠物 id 选中一行（自检用：无人值守环境没法点行）。找不到返回 false。
+    /// 还没填过表时先按一次新快照填表。
+    /// </summary>
+    public bool SelectPet(string id)
+    {
+        if (_list.Items.Count == 0)
+        {
+            RefreshCurrent();
+        }
+
+        foreach (ListViewItem item in _list.Items)
+        {
+            if (!string.Equals(item.Tag as string, id, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            _selectedPetId = id;
+            if (_list.IsHandleCreated)
+            {
+                _list.SelectedItems.Clear();
+                item.Selected = true;
+            }
+
+            UpdatePetButtons();
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>把选中的那只从桌面上移除（素材文件不删，理由见确认文案）。</summary>
+    /// <param name="confirm">是否先弹确认框（自检传 false：无人值守环境里没人点「是」）。</param>
+    public void RemoveSelectedPet(bool confirm = true)
+    {
+        if (_removePet is null)
+        {
+            ShowImportError(I18n.Get("cp.pets.remove.unavailable"));
+            return;
+        }
+
+        if (_selectedPetId is not { } id)
+        {
+            return;
+        }
+
+        ListViewItem? row = null;
+        foreach (ListViewItem candidate in _list.Items)
+        {
+            if (string.Equals(candidate.Tag as string, id, StringComparison.Ordinal))
+            {
+                row = candidate;
+                break;
+            }
+        }
+
+        string name = row is not null && row.SubItems.Count > 0 ? row.SubItems[0].Text : id;
+        if (confirm && !ConfirmDialog.Ask(
+                I18n.Get("cp.pets.removeConfirm", name),
+                I18n.Get("cp.pets.removeConfirmTitle")))
+        {
+            return;
+        }
+
+        string? error = _removePet(id);
+        if (error is not null)
+        {
+            ShowImportError(error);
+            return;
+        }
+
+        _importErrorShown = false;
+        _importError.Visible = false;
+        _importError.Text = string.Empty;
+        RefreshCurrent();
     }
 
     /// <summary>显示内联错误条（失败原因留在这页里，不弹模态框）。</summary>
