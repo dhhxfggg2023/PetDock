@@ -122,6 +122,30 @@ internal static class UiShots
                     }
                 }
 
+                // 两套色板各留证据（2026-10-28 第二版）：亮/暗都显式设定，不靠系统默认——
+                // 否则「跟随系统」的机器上两张图会一模一样，等于没有证据。
+                if (dpi == 96)
+                {
+                    ThemeMode previousMode = Theme.Mode;
+                    foreach ((ThemeMode mode, string token) in new[] { (ThemeMode.Dark, "dark"), (ThemeMode.Light, "light") })
+                    {
+                        Theme.Mode = mode;
+                        try
+                        {
+                            using var themed = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
+                            foreach (string page in new[] { PanelPages.Settings, PanelPages.Pets })
+                            {
+                                themed.ShowPage(page);
+                                count += Save(themed, Path.Combine(dir, $"panel-{page}-{token}@{dpi}.png"), emit, revealHidden: false);
+                            }
+                        }
+                        finally
+                        {
+                            Theme.Mode = previousMode;
+                        }
+                    }
+                }
+
                 using (var consent = new AuthorizationDialog(
                            "示例宠物", "sample-pet", 1, new[] { "input.mousePosition", "network.fetch:api.example.com" }))
                 {

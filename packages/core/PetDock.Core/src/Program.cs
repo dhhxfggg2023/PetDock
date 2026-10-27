@@ -140,6 +140,9 @@ internal static partial class Program
         PetDock.Core.Ui.Design.Theme.Material = PetDock.Core.Ui.Design.Theme.ParseMaterial(startupSettings.Material);
         KernelLog.Write($"startup-material {PetDock.Core.Ui.Design.Theme.MaterialToken(PetDock.Core.Ui.Design.Theme.Material)}");
 
+        PetDock.Core.Ui.Design.Theme.Mode = PetDock.Core.Ui.Design.Theme.ParseMode(startupSettings.ThemeMode);
+        KernelLog.Write($"startup-theme {PetDock.Core.Ui.Design.Theme.ModeToken(PetDock.Core.Ui.Design.Theme.Mode)} light={PetDock.Core.Ui.Design.Theme.IsLight}");
+
         using PluginHost pluginHost = new(
             PluginHost.ProbePluginsRoot() ?? string.Empty,
             PluginHost.ResidentTickMs,

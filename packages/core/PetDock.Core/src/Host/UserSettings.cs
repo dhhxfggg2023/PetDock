@@ -27,7 +27,8 @@ internal sealed record UserSettings(
     Point? PetPosition = null,
     IReadOnlyDictionary<string, Point>? PetPositions = null,
     IReadOnlyList<string>? DisabledPlugins = null,
-    string? Material = null)
+    string? Material = null,
+    string? ThemeMode = null)
 {
     /// <summary>清单版本（docs/17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;

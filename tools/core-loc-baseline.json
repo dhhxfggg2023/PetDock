@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 27160,
+  "budget": 27380,
   "history": [
     {
       "date": "2026-10-18",
@@ -1674,6 +1674,41 @@
             "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs"
           ],
           "lines": 16
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 27311,
+      "budget": 27380,
+      "note": "重构第二批：深浅两套完整色板 + 设置页亮度三选一 + 启动时按设置落主题。实测 27101 → 27311（+210）：Theme.Colors.cs +195（色板、ThemeMode、令牌属性；Theme.cs 的令牌声明同时删掉 -54）、UiHost.Appearance.cs +41（材质+亮度落地与换主题重建）、其余文件净 -26（UserSettings/Store/Settings/MaterialHost/Panel/Program 的接线与注释压缩）。抬到 27380（余量 69）。判据面在 test/SelfCheck 下，按 D-03a 口径不计。",
+      "attribution": [
+        {
+          "slice": "两套色板与主题模式（Palette 结构体、深/浅值、跟随系统解析、令牌属性）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/Theme.Colors.cs"
+          ],
+          "lines": 195
+        },
+        {
+          "slice": "外观落地（DWM 材质 + 换色板后重建面板）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Appearance.cs"
+          ],
+          "lines": 41
+        },
+        {
+          "slice": "接线与净减（删除 Theme.cs 旧令牌声明、设置页亮度行、持久化、启动时解析）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/Theme.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/MaterialHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": -26
         }
       ]
     }

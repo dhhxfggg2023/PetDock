@@ -107,7 +107,7 @@ internal sealed partial class UiHost
     /// 每一步都可能失败，失败要说清楚是哪一步——「已保存设置，但开机自启未生效」比「保存失败」诚实。
     /// 返回 null = 全部成功；返回字符串 = 失败或部分失败的原因。
     /// </summary>
-    private string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, Design.MaterialKind material)
+    private string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, Design.MaterialKind material, Design.ThemeMode theme)
     {
         var problems = new List<string>();
 
@@ -135,6 +135,7 @@ internal sealed partial class UiHost
         {
             IdleFrameBudgetMs = idleFrameBudgetMs,
             Material = Design.Theme.MaterialToken(material),
+            ThemeMode = Design.Theme.ModeToken(theme),
         };
         try
         {
@@ -145,17 +146,11 @@ internal sealed partial class UiHost
             problems.Add(I18n.Get("ui.panel.settingsSaveFailed", error.Message));
         }
 
-        // ③ 材质立即落到面板上（不用重启）。系统给不了模糊时只到透明一档，
-        //    这时把「为什么与选的不完全一样」说给用户听 —— 不假装兑现了。
-        Design.Theme.Material = material;
-        if (_panel is not null && !_panel.IsDisposed)
+        // ③ 材质与亮度立即生效（细节在 UiHost.Appearance.cs：材质走 DWM，亮度要重建面板）。
+        string? appearanceProblem = ApplyAppearance(material, theme);
+        if (appearanceProblem is not null)
         {
-            Design.MaterialReport report = Design.Theme.ApplyMaterial(_panel);
-            _panel.Invalidate(true);
-            if (!report.Blurred && material != Design.MaterialKind.Opaque)
-            {
-                problems.Add(I18n.Get("cp.settings.material.fallback"));
-            }
+            problems.Add(appearanceProblem);
         }
 
         // ④ 立即推给帧泵（不用重启）。这一步不会失败：越界值在 FramePump 里被拉回合法区间。

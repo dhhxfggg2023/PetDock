@@ -1,0 +1,41 @@
+// 外观设置（材质 + 亮度）的落地点（2026-10-28 第二版）。
+//
+// 为什么单开一个文件：UiHost.Panel.cs 已经贴着 D-03c 的 400 行上限；
+// 这两件事（DWM 合成、换色板后重建面板）本来也是「外观」这一件事。
+using PetDock.Core.Ui.Design;
+
+namespace PetDock.Core.Ui;
+
+internal sealed partial class UiHost
+{
+    /// <summary>
+    /// 把材质与亮度落到当前面板上，返回 null（成功）或一句「为什么与选的不完全一样」。
+    /// 亮度变化必须重建面板：自绘控件会跟着令牌变，但标签/容器的 BackColor 是构造时写死的，
+    /// 只 Invalidate 会留下半深半浅的一页。重建与语言热切换走同一条路（重开即生效）。
+    /// </summary>
+    private string? ApplyAppearance(MaterialKind material, ThemeMode theme)
+    {
+        Theme.Material = material;
+
+        bool themeChanged = Theme.Mode != theme;
+        Theme.Mode = theme;
+        if (themeChanged && _panel is not null && !_panel.IsDisposed)
+        {
+            ControlPanel stale = _panel;
+            _panel = null;
+            stale.Dispose();
+            OpenPanel();
+        }
+
+        if (_panel is null || _panel.IsDisposed)
+        {
+            return null;
+        }
+
+        MaterialReport report = Theme.ApplyMaterial(_panel);
+        _panel.Invalidate(true);
+        return !report.Blurred && material != MaterialKind.Opaque
+            ? I18n.Get("cp.settings.material.fallback")
+            : null;
+    }
+}

@@ -51,6 +51,12 @@ internal sealed partial class ControlPanel
         Name = "material-picker",
     };
 
+    /// <summary>界面亮度三选一：跟随系统 / 浅色 / 深色（2026-10-28 第二版）。</summary>
+    private readonly ThemedSegmented _themeSwitch = new()
+    {
+        Name = "theme-picker",
+    };
+
     /// <summary>内联状态标签（成功与失败都写在这里）。</summary>
     private readonly Label _settingsStatus = new()
     {
@@ -70,14 +76,17 @@ internal sealed partial class ControlPanel
     /// 设置回调的形状：面板把用户填的意图交过来，宿主侧执行后回一句话。
     /// 返回 null = 成功；返回字符串 = 失败或部分失败的原因。
     /// </summary>
-    internal delegate string? SettingsCommand(double idleFrameBudgetMs, bool startWithWindows, MaterialKind material);
+    internal delegate string? SettingsCommand(double idleFrameBudgetMs, bool startWithWindows, MaterialKind material, ThemeMode theme);
 
-    /// <summary>设置页四个控件的名字（自检按它们断言入口存在）。</summary>
+    /// <summary>设置页五个控件的名字（自检按它们断言入口存在）。</summary>
     public IReadOnlyList<string> SettingsControlNames =>
-        new[] { _startupBox.Name, _idleFrameBox.Name, _applyButton.Name, _materialSwitch.Name };
+        new[] { _startupBox.Name, _idleFrameBox.Name, _applyButton.Name, _materialSwitch.Name, _themeSwitch.Name };
 
     /// <summary>材质选择器当前选中的键（自检读它，不读像素）。</summary>
     public string MaterialKey => _materialSwitch.SelectedKey;
+
+    /// <summary>亮度选择器当前选中的键：system / light / dark（自检读它）。</summary>
+    public string ThemeKey => _themeSwitch.SelectedKey;
 
     /// <summary>设置页状态标签当前是否被要求显示（自检读它）。</summary>
     public bool SettingsStatusShown => _settingsStatusShown;
@@ -102,11 +111,15 @@ internal sealed partial class ControlPanel
     /// 与点击「应用」走同一条路（同一个回调、同一个状态标签），
     /// 区别只是不经过按钮事件 —— 自检不该靠模拟点击来证明功能。
     /// </summary>
-    internal void TryApplySettingsForCheck(double idleFrameBudgetMs, bool startWithWindows, MaterialKind? material = null)
+    internal void TryApplySettingsForCheck(double idleFrameBudgetMs, bool startWithWindows, MaterialKind? material = null, ThemeMode? theme = null)
     {
         if (material is MaterialKind kind)
         {
             _materialSwitch.Select(Theme.MaterialToken(kind), raise: false);
+        }
+        if (theme is ThemeMode mode)
+        {
+            _themeSwitch.Select(Theme.ModeToken(mode), raise: false);
         }
         _idleFrameBox.Value = (decimal)Math.Round(
             Math.Clamp(idleFrameBudgetMs, (double)_idleFrameBox.Minimum, (double)_idleFrameBox.Maximum),
@@ -145,6 +158,13 @@ internal sealed partial class ControlPanel
         _materialSwitch.Select(Theme.MaterialToken(Theme.Material), raise: false);
         _materialSwitch.Width = Theme.Dip(dpi, 240);
 
+        _themeSwitch.SetOptions(
+            (Theme.ModeToken(ThemeMode.System), I18n.Get("cp.settings.theme.system")),
+            (Theme.ModeToken(ThemeMode.Light), I18n.Get("cp.settings.theme.light")),
+            (Theme.ModeToken(ThemeMode.Dark), I18n.Get("cp.settings.theme.dark")));
+        _themeSwitch.Select(Theme.ModeToken(Theme.Mode), raise: false);
+        _themeSwitch.Width = Theme.Dip(dpi, 240);
+
         // 一页 = 若干段 + 每段若干行；页面只声明内容，坐标与间距交给 FormGrid。
         Panel stack = FormGrid.Stack(page);
         FormGrid.Fill(stack, new Control[]
@@ -154,6 +174,7 @@ internal sealed partial class ControlPanel
             FormGrid.Row(page, I18n.Get("cp.settings.idleFrameLabel"), _idleFrameBox, I18n.Get("cp.settings.idleFrame.note")),
             FormGrid.Gap(page),
             FormGrid.Section(page, I18n.Get("cp.settings.section.appearance")),
+            FormGrid.Row(page, I18n.Get("cp.settings.theme"), _themeSwitch, I18n.Get("cp.settings.theme.hint")),
             FormGrid.Row(page, I18n.Get("cp.settings.material"), _materialSwitch, I18n.Get("cp.settings.material.hint")),
             FormGrid.Gap(page),
             FormGrid.Section(page, I18n.Get("cp.settings.section.diagnostics")),
@@ -206,7 +227,8 @@ internal sealed partial class ControlPanel
         string? problem = _settingsCommand(
             (double)_idleFrameBox.Value,
             _startupBox.Checked,
-            Theme.ParseMaterial(_materialSwitch.SelectedKey));
+            Theme.ParseMaterial(_materialSwitch.SelectedKey),
+            Theme.ParseMode(_themeSwitch.SelectedKey));
         ShowSettingsStatus(
             problem ?? I18n.Get("cp.settings.saved"),
             ok: problem is null);

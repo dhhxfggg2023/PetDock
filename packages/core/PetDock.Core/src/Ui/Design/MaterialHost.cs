@@ -183,10 +183,11 @@ internal static class MaterialHost
     {
         try
         {
-            int on = 1;
+            int on = Theme.IsLight ? 0 : 1;
 
             // 20 = Win10 2004+ 的属性号；19 是 1809~1909 用过的旧号。
             // 两个都试：失败的那次只是返回非 0，不影响窗口本身。
+            // 浅色主题要显式写 0（「不要深色标题栏」），否则系统会沿用上一档的深色装饰。
             if (DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref on, sizeof(int)) != 0)
             {
                 DwmSetWindowAttribute(hwnd, 19, ref on, sizeof(int));

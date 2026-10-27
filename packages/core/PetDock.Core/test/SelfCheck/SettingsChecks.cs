@@ -81,14 +81,17 @@ internal static class SettingsChecks
         // ① 控件入口：设置页确实有可写控件（含 2026-10-28 加的材质三选一）。
         using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
         IReadOnlyList<string> names = panel.SettingsControlNames;
-        bool entryPresent = names.Count == 4
+        bool entryPresent = names.Count == 5
             && names.Contains("startup-box")
             && names.Contains("idle-frame-box")
             && names.Contains("apply-settings")
-            && names.Contains("material-picker");
+            && names.Contains("material-picker")
+            && names.Contains("theme-picker");
         bool materialPreselected = panel.MaterialKey is "opaque" or "frosted" or "glass";
+        bool themePreselected = panel.ThemeKey is "system" or "light" or "dark";
         check("ui-settings-entry-present", entryPresent, "controls=" + string.Join(",", names));
         check("ui-settings-material-selected", materialPreselected, $"material={panel.MaterialKey}");
+        check("ui-settings-theme-selected", themePreselected, $"theme={panel.ThemeKey}");
 
         // ② 往返：写进去再读回来，值不丢。
         store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage));
@@ -150,7 +153,7 @@ internal static class SettingsChecks
 
         // ⑧ 内联状态：宿主侧回一句话，面板显示成内联标签（不弹模态框）。
         int formsBefore = OwnedFormCount();
-        panel.SetSettingsCommand((_, _, _) => "自检：假装失败");
+        panel.SetSettingsCommand((_, _, _, _) => "自检：假装失败");
         panel.TryApplySettingsForCheck(ProbePeriodMs, false);
         bool shown = panel.SettingsStatusShown && panel.SettingsStatusText.Length > 0;
         bool noModal = OwnedFormCount() == formsBefore;

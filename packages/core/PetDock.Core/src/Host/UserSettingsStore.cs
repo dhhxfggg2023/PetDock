@@ -189,7 +189,24 @@ internal sealed class UserSettingsStore
                 }
             }
 
-            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins, material).Clamped();
+            // 界面亮度（2026-10-28 第二版）：只认三个名字，其余按跟随系统。
+            string? themeMode = null;
+            if (obj["themeMode"] is JsonNode themeNode)
+            {
+                string? token = themeNode is JsonValue themeValue && themeValue.TryGetValue(out string? themeText)
+                    ? themeText
+                    : null;
+                if (token is "system" or "light" or "dark")
+                {
+                    themeMode = token;
+                }
+                else
+                {
+                    KernelLog.Write("settings-field-unreadable field=themeMode reason=unknown-token");
+                }
+            }
+
+            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins, material, themeMode).Clamped();
         }
         catch (Exception error)
         {
@@ -223,6 +240,12 @@ internal sealed class UserSettingsStore
         if (value.Material is { Length: > 0 } material && material != "opaque")
         {
             doc["material"] = material;
+        }
+
+        // 界面亮度：与材质同一条纪律——「system」是默认，不写键；显式选过浅/深才落盘。
+        if (value.ThemeMode is "light" or "dark")
+        {
+            doc["themeMode"] = value.ThemeMode;
         }
 
         // 引导的一次性判定（RFC-16 §3.1）。没做过就**不写这个键**，

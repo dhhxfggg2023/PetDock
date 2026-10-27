@@ -46,62 +46,8 @@ internal enum TypeRole
 /// </summary>
 internal static partial class Theme
 {
-    // ---- 配色（2026-10-28 现代化重排：中性石板灰 + 冷蓝点缀，替代原先的深蓝+粉） ----
-    //
-    // 为什么换：用户 2026-10-28 的原话是「好丑啊，能不能做成 dsh 那种现代化的界面」。
-    // 旧配色的深蓝底 + 奶油白 + 粉点缀读起来是「复古像素风」，与母体其余部分（自绘控件、
-    // 圆角、细分隔）不成一套。新色板把色彩压到近乎中性，只留一个冷蓝点缀给出可点的地方。
+    // 配色与主题模式在 Theme.Colors.cs（D-03c 单文件 400 行上限）：色板、ThemeMode、令牌属性都在那里。
 
-    /// <summary>窗口底色：近黑石板灰，全产品最底层。</summary>
-    public static readonly Color Bg = Color.FromArgb(0x0F, 0x14, 0x1A);
-
-    /// <summary>左侧导航栏底：比内容区再深一档，用明度而不是分割线分开。</summary>
-    public static readonly Color BgDeep = Color.FromArgb(0x0A, 0x0E, 0x13);
-
-    /// <summary>卡片／列表行底：比底色亮一档，用来分块。</summary>
-    public static readonly Color Surface = Color.FromArgb(0x16, 0x1D, 0x26);
-
-    /// <summary>悬停／选中底：再亮一档。</summary>
-    public static readonly Color SurfaceHover = Color.FromArgb(0x1E, 0x27, 0x33);
-
-    /// <summary>描边、分隔线：低对比，只做「分块」不做「边框感」。</summary>
-    public static readonly Color Line = Color.FromArgb(0x25, 0x2F, 0x3C);
-
-    /// <summary>主文字。</summary>
-    public static readonly Color Text = Color.FromArgb(0xE8, 0xEE, 0xF6);
-
-    /// <summary>次要文字：标题下的说明、列名。</summary>
-    public static readonly Color TextDim = Color.FromArgb(0x93, 0xA1, 0xB3);
-
-    /// <summary>更弱的文字：占位、空态说明。</summary>
-    public static readonly Color TextMuted = Color.FromArgb(0x67, 0x75, 0x86);
-
-    /// <summary>点缀色：选中态、主按钮、强调数值。</summary>
-    public static readonly Color Accent = Color.FromArgb(0x6C, 0x8E, 0xF5);
-
-    /// <summary>点缀色悬停。</summary>
-    public static readonly Color AccentHover = Color.FromArgb(0x8A, 0xA8, 0xFF);
-
-    /// <summary>点缀色的低饱和底：选中行的底色、选中项右侧的浅色胶囊。</summary>
-    public static readonly Color AccentSoft = Color.FromArgb(0x1B, 0x25, 0x3B);
-
-    /// <summary>主按钮上的文字：冷蓝底上要用近黑才读得清（白字在 0x6C8EF5 上对比度不足）。</summary>
-    public static readonly Color OnAccent = Color.FromArgb(0x0A, 0x0E, 0x14);
-
-    /// <summary>正常／通过：薄荷绿。</summary>
-    public static readonly Color Good = Color.FromArgb(0x74, 0xD3, 0xAE);
-
-    /// <summary>警告：琥珀。</summary>
-    public static readonly Color Warn = Color.FromArgb(0xE8, 0xC2, 0x71);
-
-    /// <summary>失败／禁用：赤陶。</summary>
-    public static readonly Color Bad = Color.FromArgb(0xEF, 0x7A, 0x6B);
-
-    /// <summary>失败块的底：赤陶压暗，保证上面的 <see cref="Bad"/> 与 <see cref="Text"/> 都读得清。</summary>
-    public static readonly Color BadSurface = Color.FromArgb(0x36, 0x20, 0x22);
-
-    /// <summary>提示块的底：琥珀压暗（「重启生效」这类需要用户注意但不失败的话）。</summary>
-    public static readonly Color WarnSurface = Color.FromArgb(0x32, 0x2A, 0x1C);
 
     // ---- 间距刻度（逻辑像素，4 的倍数） ----
 
