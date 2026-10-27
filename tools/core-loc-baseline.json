@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 27020,
+  "budget": 27160,
   "history": [
     {
       "date": "2026-10-18",
@@ -1652,6 +1652,28 @@
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 7
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 27101,
+      "budget": 27160,
+      "note": "重构第一批：设置页从「一条底栏塞满控件」改成「段 + 行」表单网格，新增排版母体 FormGrid.cs。实测 26956 → 27101（+145）：FormGrid.cs +129、ControlPanel.Settings.cs 净值 +16。抬到 27160（余量 59）。判据面在 test/SelfCheck 下，按 D-03a 口径不计。",
+      "attribution": [
+        {
+          "slice": "表单排版母体（段/行/间距；标签列与控件列的唯一形状）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/FormGrid.cs"
+          ],
+          "lines": 129
+        },
+        {
+          "slice": "设置页改用表单网格（两段 + 单一保存底栏）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs"
+          ],
+          "lines": 16
         }
       ]
     }

@@ -207,20 +207,28 @@ internal static class DiagnosticBundleChecks
         Done("ui-diag-bundle-empty-is-honest", emptyHonest,
             "exported=" + emptyExport.Ok + " summary-has-frame-number=" + emptySummary.Contains("frames=", StringComparison.Ordinal));
 
-        // ⑦ 设置页三个入口不再是「(未接线)」，且控件确实存在（审计流水窗是 2026-10-28 加的第三个）。
+        // ⑦ 设置页三个入口都能在控件树里找到（审计流水窗是 2026-10-28 加的第三个）。
+        // 2026-10-28 重构后设置页不再有只读摘要表：入口变成了表单里的行，所以这里按控件名查，
+        // 不再按「列表行文本」查（那套查法会随着摘要表一起消失）。
         using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
         panel.ShowPage(PanelPages.Settings);
-        IReadOnlyList<string> rows = panel.SettingsRowTexts;
-        IReadOnlyList<string> controlNames = panel.DiagnosticControlNames;
-        bool wired = controlNames.Count == 3
-            && controlNames.Contains("diag-open-logs")
-            && controlNames.Contains("diag-export-bundle")
-            && controlNames.Contains("diag-view-audit")
-            && rows.Any(row => row.Contains(I18n.Get(ControlPanel.DiagnosticLogsRow), StringComparison.Ordinal))
-            && rows.Any(row => row.Contains(I18n.Get(ControlPanel.DiagnosticBundleRow), StringComparison.Ordinal))
-            && !rows.Any(row => row.Contains("(未接线)", StringComparison.Ordinal));
+        var present = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Control control in WalkControls(panel))
+        {
+            if (!string.IsNullOrEmpty(control.Name))
+            {
+                present.Add(control.Name);
+            }
+        }
+
+        bool wired = present.Contains("diag-open-logs")
+            && present.Contains("diag-export-bundle")
+            && present.Contains("diag-view-audit")
+            && present.Contains("startup-box")
+            && present.Contains("idle-frame-box")
+            && present.Contains("material-picker");
         Done("ui-diag-panel-entries-wired", wired,
-            "controls=" + string.Join(",", controlNames) + " rows=" + rows.Count);
+            "found=" + string.Join(",", present.Where(name => name.StartsWith("diag-", StringComparison.Ordinal))));
 
         // ⑧ 导出失败说清楚原因（内联状态，不弹模态框）。
         // 让「诊断包」这个目录名被一个**文件**占住：建目录必然失败 ⇒ 导出失败。
@@ -325,6 +333,19 @@ internal static class DiagnosticBundleChecks
         machineName: ProbeMachine);
 
     /// <summary>当前打开的窗体数（判据「不弹模态框」的面）。</summary>
+    /// <summary>控件树的先序遍历（含自身之外的所有后代；按名查控件用）。</summary>
+    private static IEnumerable<Control> WalkControls(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            yield return child;
+            foreach (Control grand in WalkControls(child))
+            {
+                yield return grand;
+            }
+        }
+    }
+
     private static int OwnedFormCount()
     {
         int count = 0;

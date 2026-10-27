@@ -321,22 +321,8 @@ internal sealed partial class ControlPanel : Form
 
     private void BindSettings(UiSnapshot snapshot)
     {
-        _list.Columns.Clear();
-        _list.Items.Clear();
-        _list.Columns.Add(I18n.Get("cp.settings.col.item"));
-        _list.Columns.Add(I18n.Get("cp.settings.col.value"));
-        _list.Columns.Add(I18n.Get("cp.settings.col.note"));
-
-        SettingsView view = snapshot.Settings ?? SettingsView.Default;
-        AddSetting(I18n.Get("cp.settings.startup"), view.StartupEnabled ? I18n.Get("cp.settings.on") : I18n.Get("cp.settings.off"), I18n.Get("cp.settings.startup.note"));
-        AddSetting(I18n.Get("cp.settings.language"), view.Language, I18n.Get("cp.settings.language.hint"));
-        AddSetting(I18n.Get("cp.settings.idleFrame"), view.IdleFrameBudgetMs.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " ms", I18n.Get("cp.settings.idleFrame.note"));
-        AddSetting(I18n.Get("cp.settings.petCount"), snapshot.Pets.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), I18n.Get("cp.settings.petCount.note"));
-        AddSetting(I18n.Get(DiagnosticLogsRow), I18n.Get("cp.settings.row.diagnosticLogs.value"), I18n.Get("cp.settings.logDir.note"));
-        AddSetting(I18n.Get(DiagnosticBundleRow), I18n.Get("cp.settings.row.diagnosticBundle.value"), I18n.Get("cp.settings.bundle.note"));
-
-        _list.FitColumns();
-        BindListOn(PageOf(PanelPages.Settings));
+        // 设置页没有只读摘要表了（2026-10-28 重构）：它和下面的可编辑控件说的是同一件事，
+        // 两处并存就是「同一事实存两遍」，必然漂移。这里只把当前值灌进控件。
         BindSettingsValues(snapshot.Settings);
         _status.Text = I18n.Get("cp.settings.hint");
     }

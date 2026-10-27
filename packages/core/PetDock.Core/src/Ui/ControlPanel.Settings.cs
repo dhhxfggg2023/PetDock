@@ -22,7 +22,8 @@ internal sealed partial class ControlPanel
     /// <summary>开机自启勾选框。</summary>
     private readonly ThemedCheckBox _startupBox = new()
     {
-        Text = I18n.Get("cp.settings.startup"),
+        // 行标签已经写了「开机自启」，控件自己不再重复一遍（2026-10-28 截图里两个并排）。
+        Text = string.Empty,
         Name = "startup-box",
     };
 
@@ -123,8 +124,7 @@ internal sealed partial class ControlPanel
     {
         _applyButton.Click += (_, _) => ApplySettings();
 
-        // 按名字找设置页，不按下标：构造期性能页还没插进来，
-        // 此时的「设置页下标」与插完之后的下标不是同一个数（按下标取会越界）。
+        // 按名字找设置页，不按下标：构造期性能页还没插进来。
         Panel? page = FindPage(PanelPages.Settings);
         if (page is null)
         {
@@ -133,22 +133,11 @@ internal sealed partial class ControlPanel
 
         int dpi = Theme.DpiOf(page);
         _startupBox.FitToText();
+        _startupBox.Width = Theme.Dip(dpi, 120);
         _idleFrameBox.FitToFont(96);
+        _idleFrameBox.Width = Theme.Dip(dpi, 120);
         _applyButton.FitToText();
-        _settingsStatus.Font = Theme.FontFor(page, TypeRole.Body);
-        _settingsStatus.ForeColor = Theme.TextDim;
-        _settingsStatus.BackColor = Theme.Bg;
-        _settingsStatus.Height = Theme.Dip(dpi, 34);
-        _settingsStatus.Padding = new Padding(
-            Theme.Dip(dpi, Theme.SpaceSm), Theme.Dip(dpi, Theme.SpaceXs), Theme.Dip(dpi, Theme.SpaceSm), Theme.Dip(dpi, Theme.SpaceXs));
 
-        FlowLayoutPanel bar = ThemedBar(page);
-        bar.Controls.Add(_startupBox);
-        bar.Controls.Add(ThemedHint(page, I18n.Get("cp.settings.idleFrameLabel")));
-        bar.Controls.Add(_idleFrameBox);
-        bar.Controls.Add(_applyButton);
-
-        // 材质单占一行：它是「看起来整窗都变了」的选项，和阈值/自启不是同一类操作。
         _materialSwitch.SetOptions(
             (Theme.MaterialToken(MaterialKind.Opaque), I18n.Get("cp.settings.material.opaque")),
             (Theme.MaterialToken(MaterialKind.Frosted), I18n.Get("cp.settings.material.frosted")),
@@ -156,14 +145,47 @@ internal sealed partial class ControlPanel
         _materialSwitch.Select(Theme.MaterialToken(Theme.Material), raise: false);
         _materialSwitch.Width = Theme.Dip(dpi, 240);
 
-        FlowLayoutPanel materialBar = ThemedBar(page);
-        materialBar.Controls.Add(ThemedHint(page, I18n.Get("cp.settings.material")));
-        materialBar.Controls.Add(_materialSwitch);
-        materialBar.Controls.Add(ThemedHint(page, I18n.Get("cp.settings.material.hint")));
+        // 一页 = 若干段 + 每段若干行；页面只声明内容，坐标与间距交给 FormGrid。
+        Panel stack = FormGrid.Stack(page);
+        FormGrid.Fill(stack, new Control[]
+        {
+            FormGrid.Section(page, I18n.Get("cp.settings.section.startup")),
+            FormGrid.Row(page, I18n.Get("cp.settings.startup"), _startupBox, I18n.Get("cp.settings.startup.hint")),
+            FormGrid.Row(page, I18n.Get("cp.settings.idleFrameLabel"), _idleFrameBox, I18n.Get("cp.settings.idleFrame.note")),
+            FormGrid.Gap(page),
+            FormGrid.Section(page, I18n.Get("cp.settings.section.appearance")),
+            FormGrid.Row(page, I18n.Get("cp.settings.material"), _materialSwitch, I18n.Get("cp.settings.material.hint")),
+            FormGrid.Gap(page),
+            FormGrid.Section(page, I18n.Get("cp.settings.section.diagnostics")),
+            FormGrid.Row(page, I18n.Get(DiagnosticLogsRow), _openLogsButton, I18n.Get("cp.settings.logDir.note")),
+            FormGrid.Row(page, I18n.Get(DiagnosticBundleRow), _exportBundleButton, I18n.Get("cp.settings.bundle.note")),
+            FormGrid.Row(page, I18n.Get("cp.settings.row.audit"), _auditButton, null),
+        });
 
-        page.Controls.Add(_settingsStatus);
+        // 底栏：状态 + 唯一的保存按钮。设置页只有这一个提交口，其它控件改的只是草稿。
+        var bar = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            Height = Theme.Dip(dpi, 56),
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            BackColor = Theme.Bg,
+            Padding = new Padding(0, Theme.Dip(dpi, Theme.SpaceMd), Theme.Dip(dpi, Theme.SpaceXl), 0),
+        };
+        bar.Controls.Add(_applyButton);
+
+        _settingsStatus.Font = Theme.FontFor(page, TypeRole.Body);
+        _settingsStatus.ForeColor = Theme.TextDim;
+        _settingsStatus.BackColor = Theme.Bg;
+        _settingsStatus.Height = Theme.Dip(dpi, 34);
+        _settingsStatus.Width = Theme.Dip(dpi, 420);
+        _settingsStatus.TextAlign = ContentAlignment.MiddleRight;
+        _settingsStatus.Padding = new Padding(0, 0, Theme.Dip(dpi, Theme.SpaceMd), 0);
+        bar.Controls.Add(_settingsStatus);
+
+        page.Controls.Add(stack);
         page.Controls.Add(bar);
-        page.Controls.Add(materialBar);
+        stack.BringToFront();
     }
 
     /// <summary>按页面 id 找那一页（找不到返回 null，不抛）。</summary>

@@ -89,30 +89,16 @@ internal sealed partial class ControlPanel
     /// </summary>
     internal string TryDiagnosticForCheck(string op) => RunDiagnostic(op).Message;
 
-    /// <summary>把两个诊断按钮挂进设置页的操作栏。</summary>
+    /// <summary>三个诊断入口的点击接线；摆放交给设置页的表单网格（一页一处布局）。</summary>
     private void InitDiagnosticsPage()
     {
         _openLogsButton.Click += (_, _) => RunDiagnostic(DiagnosticOpOpenLogs);
         _exportBundleButton.Click += (_, _) => RunDiagnostic(DiagnosticOpExportBundle);
         _auditButton.Click += (_, _) => RunDiagnostic(DiagnosticOpViewAudit);
 
-        Panel? page = FindPage(PanelPages.Settings);
-        if (page is null)
-        {
-            return;
-        }
-
         _openLogsButton.FitToText();
         _exportBundleButton.FitToText();
         _auditButton.FitToText();
-
-        FlowLayoutPanel bar = ThemedBar(page);
-        bar.Controls.Add(_openLogsButton);
-        bar.Controls.Add(_exportBundleButton);
-        bar.Controls.Add(_auditButton);
-
-        // 操作栏与状态标签都 Dock=Bottom：后加的先排版 —— 状态标签先加、操作栏后加。
-        page.Controls.Add(bar);
     }
 
     /// <summary>
