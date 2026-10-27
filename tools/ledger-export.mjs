@@ -53,7 +53,22 @@ function resolveLedgerDir(repoRoot) {
   }
   candidates.push(local);
   const slug = basename(repoRoot).toLowerCase();
-  candidates.push(join(homedir(), '.dsh', 'code', 'projects', slug));
+  const projectStore = join(homedir(), '.dsh', 'code', 'projects');
+  // 本机账本目录带 8 位项目哈希后缀（PetDock-03ea05a0），裸 slug 目录并不存在；
+  // 同时可能残留多份，按 decisions.md 的修改时间取最新的一份。
+  if (existsSync(projectStore)) {
+    const matches = readdirSync(projectStore, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && (
+        e.name.toLowerCase() === slug || e.name.toLowerCase().startsWith(slug + '-')))
+      .map((e) => join(projectStore, e.name))
+      .sort((a, b) => {
+        const ma = statSync(join(a, 'decisions.md'), { throwIfNoEntry: false })?.mtimeMs ?? 0;
+        const mb = statSync(join(b, 'decisions.md'), { throwIfNoEntry: false })?.mtimeMs ?? 0;
+        return mb - ma;
+      });
+    candidates.push(...matches);
+  }
+  candidates.push(join(projectStore, slug));
   for (const c of candidates) {
     if (c && existsSync(join(c, 'decisions.md'))) return c;
   }
