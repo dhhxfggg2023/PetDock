@@ -139,6 +139,10 @@ internal static partial class ManifestValidator
                     // 2026-10-28：默认装不装由清单自己说，内核不再记住任何生态的 id。
                     ReadBool(prop.Value, "defaultEnabled", errors);
                     break;
+                case "defaultBrain":
+                    // 多个行为层同时在场时，谁是默认体验也由清单自己说（内核不特判 id）。
+                    ReadBool(prop.Value, "defaultBrain", errors);
+                    break;
                 case "interact" + "ion":
                     // RFC-05 §E：pose 优先级（0..100）只校验不读，仲裁仍走 IPointerSurface.Priority。
                     ReadPosePriority(prop.Value, errors);

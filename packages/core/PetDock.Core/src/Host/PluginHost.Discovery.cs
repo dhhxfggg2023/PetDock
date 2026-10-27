@@ -89,7 +89,7 @@ public sealed partial class PluginHost
     }
 
     /// <summary>启动期装载决定：显式关 &gt; 显式开 &gt; manifest.defaultEnabled（只在 trustBuiltins 时生效）。</summary>
-    private bool ShouldLoad(PluginManifest manifest)
+    internal bool ShouldLoad(PluginManifest manifest)
     {
         if (_skipIds.Contains(manifest.Id))
         {

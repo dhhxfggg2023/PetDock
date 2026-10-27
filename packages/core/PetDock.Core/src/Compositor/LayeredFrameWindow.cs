@@ -94,10 +94,22 @@ internal sealed partial class LayeredFrameWindow : Form
     /// <summary>窗口句柄（供自检读取 exstyle 与做命中探针）。</summary>
     public IntPtr WindowHandle => Handle;
 
-    /// <summary>真移窗到物理像素 (x,y)：SWP_NOSIZE|NOZORDER|NOACTIVATE。moveTo 指令的生产路径。</summary>
-    public bool MoveTo(int x, int y) =>
-        Win32.SetWindowPos(Handle, IntPtr.Zero, x, y, 0, 0,
+    /// <summary>
+    /// 真移窗到物理像素 (x,y)：SWP_NOSIZE|NOZORDER|NOACTIVATE。moveTo 指令的生产路径。
+    /// 落点先夹进目标屏的工作区：行为层只看得见自己的窗口矩形，不知道屏幕边界；
+    /// 不夹的话「走到屏幕外」会让宠物整个消失，用户只能等它自己走回来（或者永远回不来）。
+    /// </summary>
+    public bool MoveTo(int x, int y)
+    {
+        Rectangle area = Screen.FromPoint(new Point(x, y)).WorkingArea;
+        Rectangle current = Win32.ScreenRect(Handle);
+        int maxX = area.Right - current.Width;
+        int maxY = area.Bottom - current.Height;
+        x = Math.Clamp(x, area.Left, Math.Max(area.Left, maxX));
+        y = Math.Clamp(y, area.Top, Math.Max(area.Top, maxY));
+        return Win32.SetWindowPos(Handle, IntPtr.Zero, x, y, 0, 0,
             Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
+    }
 
     /// <summary>窗口当前物理位置（供 core.window.moved 的 position 与 Arbiter 校验）。</summary>
     public (int X, int Y) CurrentPosition

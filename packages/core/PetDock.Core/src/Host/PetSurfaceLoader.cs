@@ -17,7 +17,13 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Hosting;
 
 /// <summary>一个已载入的实现类（哪个插件、哪个类型、服务于哪个接口）。</summary>
-public sealed record SurfaceRecord(string PluginId, string PluginDir, string TypeName, Type Interface, object Implementation)
+public sealed record SurfaceRecord(
+    string PluginId,
+    string PluginDir,
+    string TypeName,
+    Type Interface,
+    object Implementation,
+    bool Default = false)
 {
     public override string ToString() => $"{Interface.Name}:{TypeName} plugin={PluginId}";
 }
@@ -95,6 +101,15 @@ public sealed partial class PetSurfaceRoster
             KernelLog.Write($"surface-brain-selector-miss wanted={BrainSelector} fell-back=first");
         }
 
+        // 没有显式选择器时，优先清单自己声明的默认实现（defaultBrain）。
+        // 只按 id 的 Ordinal 序取首会把「默认体验」交给目录名，实测默认宠物因此拿到
+        // 另一个行为层 + 示例包的三个 clip，整场只会被拒的 look_up。
+        SurfaceRecord? declared = _records.FirstOrDefault(r => r.Interface == typeof(T) && r.Default);
+        if (declared is not null)
+        {
+            return declared.Implementation as T;
+        }
+
         return First<T>();
     }
 
@@ -106,42 +121,6 @@ public sealed partial class PetSurfaceRoster
     public IFrameContentProvider? ContentProvider => Find<IFrameContentProvider>()?.Implementation as IFrameContentProvider;
 
     public bool HasContentProvider => ContentProvider is not null;
-
-    /// <summary>从插件根采一次名册。任何一步失败都只登记原因、绝不抛：
-    /// 名册为空是合法的启动态，判据的非 0 由调用方（自检）给。</summary>
-    public static PetSurfaceRoster Discover(string? pluginsRoot)
-    {
-        var roster = new PetSurfaceRoster();
-        if (string.IsNullOrWhiteSpace(pluginsRoot) || !Directory.Exists(pluginsRoot))
-        {
-            KernelLog.Write("surface-roster skipped: no plugins root");
-            return roster;
-        }
-
-        roster.Root = pluginsRoot;
-        using var host = new PluginHost(pluginsRoot, PluginHost.ResidentTickMs, autoLoad: false);
-        foreach (string dir in host.Discover(pluginsRoot))
-        {
-            roster.DiscoveredDirs++;
-            Result<PluginManifest, IReadOnlyList<ManifestError>> result = host.ValidateManifest(dir);
-            if (!result.IsOk)
-            {
-                roster.InvalidManifests++;
-                foreach (ManifestError error in result.Error!)
-                {
-                    KernelLog.Write($"surface-manifest-error {Path.GetFileName(dir)} {error.Field}: {error.Message}");
-                }
-
-                continue;
-            }
-
-            roster.ValidManifests++;
-            roster.LoadPlugin(dir, result.Ok!);
-        }
-
-        KernelLog.Write($"surface-roster {roster.Describe()}");
-        return roster;
-    }
 
     /// <summary>
     /// 名册里第一个视图实现建出的宠物实例（无视图 → null）。
@@ -294,7 +273,8 @@ public sealed partial class PetSurfaceRoster
                     continue;
                 }
 
-                _records.Add(new SurfaceRecord(manifest.Id, dir, type.FullName ?? type.Name, iface, instance));
+                _records.Add(new SurfaceRecord(
+                    manifest.Id, dir, type.FullName ?? type.Name, iface, instance, manifest.DefaultBrain));
                 KernelLog.Write($"surface-bind plugin={manifest.Id} iface={iface.Name} type={type.FullName} dll={Path.GetFileName(manifest.Entry)}");
                 any = true;
             }

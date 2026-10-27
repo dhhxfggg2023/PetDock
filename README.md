@@ -15,7 +15,7 @@ PetDock 是一个「万物皆可插件」的桌宠宿主：**内核只负责把�
 - **内核** — WinForms 分层窗宿主：`WS_EX_LAYERED` 逐像素命中穿透、置顶、Per-Monitor V2 DPI、
   空闲帧泵与单帧预算、深浅两套色板跟随系统。
 - **插件宿主** — tier 0/1/2 三类插件、能力授权门、WASM/WASI 沙箱、事件总线、生命周期与热重载。
-- **示例宠物** — `sample-pet` 呈现器 + `PetDock.SamplePet` 素材包，首次运行即可看到一只会动的宠物。
+- **示例宠物** — `sample-pet` 呈现器 + `PetDock.SamplePet` 素材包，首次运行即可看到一只在桌面上小范围散步的宠物。
 - **主控面板** — 宠物 / 插件 / 设置三页；导入素材包、管理插件、改帧预算与外观。
 - **插件管理** — 从界面安装（文件夹或 zip）、启用 / 停用、删除用户插件；内置插件不可删除。
 - **发布管线** — `node tools/release.mjs` + `node tools/pack.mjs`，产出解压即用的 portable zip。
@@ -34,7 +34,7 @@ npm run lint
 ## 运行与自检
 
 ```powershell
-# 常驻运行：示例宠物停在屏幕右下角，托盘出现
+# 常驻运行：示例宠物从屏幕右下角开始散步，托盘出现
 dotnet run --project packages/core/PetDock.Core -c Release
 
 # 窗口/合成自检（会在可交互桌面会话里真的建窗并做逐像素命中测试）
@@ -64,7 +64,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 
 | 插件 | 默认 | 说明 |
 |---|---|---|
-| `petdock.brain.reaction` | 开 | 内置行为脑：跟随时间与鼠标切换动作（不申请输入钩子） |
+| `petdock.brain.reaction` | 开 | 内置行为脑（清单声明 defaultBrain）：沿水平方向散步，鼠标经过时抬头（不申请输入钩子） |
 | `com.petdock.brainnull` / `com.petdock.statenull` / `com.petdock.spriteseq` | 开 | 内核自带的空实现与示例呈现器 |
 | `petdock.sample.petimage` | 开 | 示例宠物呈现器 |
 | `com.petdock.bongocat.interaction` | **关** | 其他桌宠生态的适配插件，需要键盘钩子，默认不装载 |

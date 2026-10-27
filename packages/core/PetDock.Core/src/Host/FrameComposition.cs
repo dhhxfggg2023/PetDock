@@ -51,9 +51,19 @@ internal static class FrameComposition
     /// 装配内容源。任何一步失败都只是「上层没提供内容」，绝不抛 ——
     /// 窗口必须仍然可见、仍然可命中；判据的非 0 由自检给，不由本方法给。
     /// </summary>
-    public static ComposeOutcome Compose(string phase, bool attachInstance, PluginHost? host = null)
+    public static ComposeOutcome Compose(
+        string phase,
+        bool attachInstance,
+        PluginHost? host = null,
+        IReadOnlyCollection<string>? disabledPlugins = null,
+        IReadOnlyCollection<string>? enabledPlugins = null,
+        bool respectStartupPolicy = false)
     {
-        PetSurfaceRoster roster = PetSurfaceRoster.Discover(PluginHost.ProbePluginsRoot());
+        PetSurfaceRoster roster = PetSurfaceRoster.Discover(
+            PluginHost.ProbePluginsRoot(),
+            disabledPlugins,
+            enabledPlugins,
+            respectStartupPolicy);
         KernelLog.Write($"surface-roster phase={phase} {roster.Describe()}");
         roster.BrainSelector = BrainSelectorFromEnvironment();
 

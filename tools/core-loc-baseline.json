@@ -1787,6 +1787,30 @@
           "lines": -250
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28579,
+      "budget": 28800,
+      "note": "默认行为层可由清单声明（defaultBrain）+ 行为层散步 + 落点夹进工作区（净值 +103）。名册的起始策略路径此前绕过 defaultEnabled，看到的第一只宠物其实来自另一个桌宠生态插件；现在名册也遵守启动快照。D-03c 拆出 PetSurfaceLoader.Discover.cs 与 Program.Compose.cs。",
+      "attribution": [
+        {
+          "slice": "清单默认行为层、名册启动策略、落点夹取与 D-03c 拆分",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/HostingTypes.cs",
+            "packages/core/PetDock.Core/src/Host/ManifestValidator.cs",
+            "packages/core/PetDock.Core/src/Host/ManifestValidator.Parts.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.Discover.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Discovery.cs",
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs",
+            "packages/core/PetDock.Core/src/Program.cs",
+            "packages/core/PetDock.Core/src/Program.Compose.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
+          ],
+          "lines": 103
+        }
+      ]
     }
   ]
 }
