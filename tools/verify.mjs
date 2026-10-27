@@ -133,17 +133,18 @@ function layersFor(config) {
       {
         id: 'residenttest',
         // 基线 tests/perf.resident.json 的 note 钉死了它自己的采集条件：`--seconds 10 --warmup 4000`，
-        // 花名册 = artifacts/_probe/plugroot 的 5 个插件（经 PETDOCK_PLUGINS_ROOT 覆盖）。
-        // 裸跑 `--residenttest` 用的是默认 20s + packages/plugins 的 8 目录花名册，等于拿另一份
-        // 装配去比这份基线——2026-10-24 首次全跑就是这样把 ws 判红（基线 19.64MB，裸跑 23.7→30.6MB）；
-        // 同条件重跑后 ws 回到 19.5~19.8MB，证明红的机制是条件不可比，不是内存变胖。
-        // 花名册不存在时**不退回默认根**（那正是上面那次假红的形状）：直接把这一步判红并说清缺什么。
+        // 花名册 = packages/plugins 的 8 个目录（经 PETDOCK_PLUGINS_ROOT 指到真源码树）。
+        // 2026-10-28 之前这里指的是 artifacts/_probe/plugroot ——那是插件工程的整份拷贝，
+        // 命中图改动落地后它就开始测「没人发行的字节」，且副本无法在原位置重建（相对
+        // ProjectReference 解析不到）。副本已退役，判据改测真花名册：同一份基线里 premise
+        // 的 roster 也同步改成了 packages/plugins:8。
+        // 花名册不存在时**不退回默认根**：直接把这一步判红并说清缺什么。
         ...selftest(config, '--residenttest', ['--seconds', '10', '--warmup', '4000'], 'RESIDENT-PERF-OK'),
         guard: () => {
-          const roster = path.join(REPO_ROOT, 'artifacts', '_probe', 'plugroot');
-          return fs.existsSync(roster) ? null : `花名册目录不存在：artifacts/_probe/plugroot（基线 tests/perf.resident.json 的采集条件就是它；缺了只能拿另一份装配比同一份基线）`;
+          const roster = path.join(REPO_ROOT, 'packages', 'plugins');
+          return fs.existsSync(roster) ? null : `花名册目录不存在：packages/plugins（基线 tests/perf.resident.json 的采集条件就是它；缺了只能拿另一份装配比同一份基线）`;
         },
-        env: () => ({ ...process.env, PETDOCK_PLUGINS_ROOT: path.join(REPO_ROOT, 'artifacts', '_probe', 'plugroot') }),
+        env: () => ({ ...process.env, PETDOCK_PLUGINS_ROOT: path.join(REPO_ROOT, 'packages', 'plugins') }),
       },
     ],
   },

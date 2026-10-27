@@ -7,10 +7,10 @@
 // 能力描述照抄 docs/14 §2 的条目，用大白话重述。
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 using PetDock.Hosting;
 
 namespace PetDock.Core.Ui;
@@ -26,12 +26,12 @@ internal enum GrantAnswer
 /// <summary>授权弹窗。无状态：每次打开都是新的，答案由调用方落账。</summary>
 internal sealed partial class AuthorizationDialog : PetDockDialog
 {
-    private readonly RadioButton _allow;
-    private readonly RadioButton _deny;
-    private readonly RadioButton _once;
-    private readonly Button _ok;
+    private readonly ThemedRadio _allow;
+    private readonly ThemedRadio _deny;
+    private readonly ThemedRadio _once;
+    private readonly ThemedButton _ok;
     private readonly Label _header;
-    private readonly ListView _list;
+    private readonly ThemedList _list;
 
     /// <summary>本窗要问的请求（按顺序）。单请求弹窗就是只有一个元素的批。</summary>
     private readonly List<ConsentRequest> _requests;
@@ -81,45 +81,49 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        Width = 560;
-        Height = 430;
-        Font = SystemFonts.MessageBoxFont;
+        Theme.Apply(this);
+        Width = Theme.Dip(this, 620);
+        // 高度只留「标题 + 说明 + 两三条能力 + 选项 + 按钮」的余量：能力只有一两条时，
+        // 多出来的高度会变成列表里一大片空行（2026-10-28 截图实测），读起来像界面没画完。
+        Height = Theme.Dip(this, 400);
+        int dpi = Theme.DpiOf(this);
 
         _header = new Label
         {
             Text = HeaderFor(),
             AutoSize = false,
-            Height = 24,
+            Height = Theme.Dip(this, 30),
             Dock = DockStyle.Top,
-            Font = new Font(SystemFonts.MessageBoxFont ?? Control.DefaultFont, FontStyle.Bold),
-            Padding = new Padding(12, 8, 12, 0),
+            Font = Theme.FontFor(this, TypeRole.Heading),
+            ForeColor = Theme.Text,
+            BackColor = Theme.Bg,
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceSm), Theme.Dip(this, Theme.SpaceMd), 0),
         };
 
         _intro = new Label
         {
             Text = I18n.Get(Batch ? "ui.auth.intro.batch" : "ui.auth.intro"),
             AutoSize = false,
-            Height = 40,
+            Height = Theme.Dip(this, 44),
             Dock = DockStyle.Top,
-            Padding = new Padding(12, 4, 12, 0),
+            Font = Theme.FontFor(this, TypeRole.Body),
+            ForeColor = Theme.TextDim,
+            BackColor = Theme.Bg,
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceXs), Theme.Dip(this, Theme.SpaceMd), 0),
         };
 
-        // 逐项可勾：ListView 的 Details 视图 + 复选框（CheckedListBox 不能按项置灰）。
+        // 逐项可勾：勾选框由列表自己画（见 ThemedList.RowChecks），真值存在 _checked 里。
         // 批模式用分组头把每份请求隔开：一个窗、几个插件、各自一段。
-        _list = new ListView
+        _list = new ThemedList
         {
             Dock = DockStyle.Fill,
-            View = View.Details,
-            CheckBoxes = true,
-            FullRowSelect = true,
-            GridLines = true,
+            RowChecks = true,
             ShowGroups = Batch,
+            IsRowChecked = IsRowChecked,
+            IsRowCheckEnabled = IsRowCheckEnabled,
+            RowCheckToggled = ToggleRowCheck,
         };
-        _list.Columns.Add(I18n.Get("ui.auth.col.capability"), 470);
-        // ItemCheck 是事前事件：e.NewValue 可以改 —— 改成 Unchecked 就不勾。
-        _list.ItemCheck += OnItemCheck;
-        // 事后事件兜底：万一事前事件被绕过去了（例如外部代码直接改控件状态），这里补回来。
-        _list.ItemChecked += OnItemChecked;
+        _list.Columns.Add(I18n.Get("ui.auth.col.capability"));
         CreateGroups();
 
         _building = true;
@@ -130,44 +134,52 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
 
         _building = false;
 
+        _list.FitColumns();
+
         if (_list.Items.Count == 0)
         {
-            _list.CheckBoxes = false;
             _list.Items.Add(new ListViewItem(I18n.Get("ui.auth.empty")));
         }
 
-        _allow = new RadioButton { Text = I18n.Get("ui.auth.allow"), AutoSize = true, Checked = true, Name = "Allow" };
-        _deny = new RadioButton { Text = I18n.Get("ui.auth.deny"), AutoSize = true, Name = "Deny" };
-        _once = new RadioButton
+        _allow = new ThemedRadio { Text = I18n.Get("ui.auth.allow"), Name = "Allow" };
+        _allow.Checked = true;
+        _deny = new ThemedRadio { Text = I18n.Get("ui.auth.deny"), Name = "Deny" };
+        _once = new ThemedRadio
         {
             // 「仅本次」仅对 Tier 1 会话有效（docs/18 §3 规则）——批里只要有一份 Tier 2，
             // 统一的范围就选不了「仅本次」：不可选的选项要看起来不可选。
             Text = _requests.Any(r => r.Tier >= 2) ? I18n.Get("ui.auth.once.tier2") : I18n.Get("ui.auth.once"),
             Enabled = _requests.All(r => r.Tier < 2),
-            AutoSize = true,
             Name = "Once",
         };
+        _allow.FitToText();
+        _deny.FitToText();
+        _once.FitToText();
 
         var choices = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.TopDown,
             Dock = DockStyle.Bottom,
-            Height = 76,
-            Padding = new Padding(12, 4, 12, 0),
+            Height = Theme.Dip(this, 94),
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceXs), Theme.Dip(this, Theme.SpaceMd), 0),
             WrapContents = false,
+            BackColor = Theme.Bg,
         };
         choices.Controls.Add(_allow);
         choices.Controls.Add(_deny);
         choices.Controls.Add(_once);
 
-        _ok = new Button { Text = I18n.Get("ui.auth.ok"), DialogResult = DialogResult.OK, Width = 88 };
-        var cancel = new Button { Text = I18n.Get("ui.auth.cancel"), DialogResult = DialogResult.Cancel, Width = 88 };
+        _ok = new ThemedButton { Text = I18n.Get("ui.auth.ok"), DialogResult = DialogResult.OK, Primary = true };
+        _ok.FitToText();
+        var cancel = new ThemedButton { Text = I18n.Get("ui.auth.cancel"), DialogResult = DialogResult.Cancel };
+        cancel.FitToText();
         var buttons = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
             Dock = DockStyle.Bottom,
-            Height = 44,
-            Padding = new Padding(12, 6, 12, 6),
+            Height = Theme.Dip(this, 52),
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceSm), Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceSm)),
+            BackColor = Theme.Bg,
         };
         buttons.Controls.Add(_ok);
         buttons.Controls.Add(cancel);
@@ -176,10 +188,12 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         {
             Text = I18n.Get("ui.auth.footer"),
             AutoSize = false,
-            Height = 22,
+            Height = Theme.Dip(this, 26),
             Dock = DockStyle.Bottom,
-            Padding = new Padding(12, 0, 12, 0),
-            ForeColor = SystemColors.GrayText,
+            Font = Theme.FontFor(this, TypeRole.Caption),
+            ForeColor = Theme.TextDim,
+            BackColor = Theme.Bg,
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceMd), 0, Theme.Dip(this, Theme.SpaceMd), 0),
         };
 
         Controls.Add(_list);
@@ -252,108 +266,21 @@ internal sealed partial class AuthorizationDialog : PetDockDialog
         + (entry.PreGranted ? I18n.Get("ui.auth.row.preGranted") : string.Empty)
         + (entry.Denied ? I18n.Get("ui.auth.row.denied") : string.Empty);
 
-    /// <summary>事前事件：勾选状态要变之前先问一次。
-    /// 被拒绝的项在这里把 e.NewValue 改成 Unchecked —— 勾选就不会发生（docs/18 §3：
-    /// 被拒绝的能力点不动、也不再申请）。这条路径不碰原生控件的 Checked 属性，
-    /// 所以不受「行还没拿到原生下标就读不得」的限制。</summary>
-    private void OnItemCheck(object? sender, ItemCheckEventArgs e)
+    /// <summary>某一行（按 Tag 里的行下标）当前是否勾着 —— 列表绘制时问这里。
+    /// 真值只存在 <see cref="_checked"/> 里：不读原生控件，也就不会踩「句柄建好前读不得」。</summary>
+    private bool IsRowChecked(ListViewItem row) =>
+        row.Tag is int index && index >= 0 && index < _checked.Count && _checked[index];
+
+    /// <summary>某一行是否可勾：此前被拒绝的能力置灰且点不动（docs/18 §3）。</summary>
+    private bool IsRowCheckEnabled(ListViewItem row) =>
+        row.Tag is int index && index >= 0 && index < _ids.Count && !_deniedIds.Contains(_ids[index]);
+
+    /// <summary>用户点在勾选框上：翻转这一行的真值并重画。不可勾的行由列表先挡掉。</summary>
+    private void ToggleRowCheck(ListViewItem row)
     {
-        if (_building || e.Index < 0 || e.Index >= _checked.Count)
+        if (row.Tag is int index && index >= 0 && index < _checked.Count)
         {
-            return;
-        }
-
-        if (_deniedIds.Contains(_ids[e.Index]))
-        {
-            e.NewValue = CheckState.Unchecked;
-            _checked[e.Index] = false;
-            return;
-        }
-
-        _checked[e.Index] = e.NewValue == CheckState.Checked;
-    }
-
-    /// <summary>事后事件兜底：若事前事件被绕过去了（例如外部代码直接改控件状态），
-    /// 这里把被拒绝项弹回未勾，并把逻辑真值对齐。
-    /// 事后事件的参数只有 Item（没有 Index），行下标靠 Tag 存的行号对回来。</summary>
-    private void OnItemChecked(object? sender, ItemCheckedEventArgs e)
-    {
-        if (_building || e.Item is not ListViewItem row || row.Tag is not int index)
-        {
-            return;
-        }
-
-        if (index < 0 || index >= _checked.Count)
-        {
-            return;
-        }
-
-        if (_deniedIds.Contains(_ids[index]))
-        {
-            _checked[index] = false;
-            LockDenied(index);
-            return;
-        }
-
-        _checked[index] = ReadChecked(row);
-    }
-
-    /// <summary>把被拒绝项弹回未勾：同步改一次，再用 BeginInvoke 兜一次底。</summary>
-    private void LockDenied(int index)
-    {
-        if (index < 0 || index >= _list.Items.Count)
-        {
-            return;
-        }
-
-        TrySetChecked(_list.Items[index], false);
-
-        if (!IsHandleCreated || IsDisposed)
-        {
-            return;
-        }
-
-        try
-        {
-            BeginInvoke(new MethodInvoker(() =>
-            {
-                if (!IsDisposed && index < _list.Items.Count && ReadChecked(_list.Items[index]))
-                {
-                    TrySetChecked(_list.Items[index], false);
-                }
-            }));
-        }
-        catch (InvalidOperationException)
-        {
-            // 窗口正在销毁，兜底回弹不必再做。
-        }
-    }
-
-    /// <summary>设置一行的勾选状态。行还没有原生下标时（控件刚建句柄）会抛 ——
-    /// 那时按「改不动」处理：逻辑真值已经记下了，画面稍后自己跟上。</summary>
-    private static void TrySetChecked(ListViewItem row, bool isChecked)
-    {
-        try
-        {
-            row.Checked = isChecked;
-        }
-        catch (Exception ex) when (ex is ArgumentOutOfRangeException or InvalidOperationException)
-        {
-            // 行还没有原生下标，或者控件已销毁。
-        }
-    }
-
-    /// <summary>读一行的勾选状态。读不得时按「未勾」处理。</summary>
-    private static bool ReadChecked(ListViewItem row)
-    {
-        try
-        {
-            return row.Checked;
-        }
-        catch (Exception ex) when (ex is ArgumentOutOfRangeException or InvalidOperationException)
-        {
-            // 行还没有原生下标（控件刚建句柄），或者控件已销毁。
-            return false;
+            SetItemCheckedAt(index, !_checked[index]);
         }
     }
 }

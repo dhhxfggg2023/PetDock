@@ -7,27 +7,31 @@
 // 会挂住自检进程」。导出路径固定在数据区下、完成后打开所在目录，用户想换地方自己拿。
 using System;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
 internal sealed partial class ControlPanel
 {
     /// <summary>「打开日志目录」按钮。</summary>
-    private readonly Button _openLogsButton = new()
+    private readonly ThemedButton _openLogsButton = new()
     {
         Text = I18n.Get("cp.diag.openLogs"),
         Name = "diag-open-logs",
-        Width = 120,
-        Height = 28,
     };
 
     /// <summary>「导出诊断包」按钮。</summary>
-    private readonly Button _exportBundleButton = new()
+    private readonly ThemedButton _exportBundleButton = new()
     {
         Text = I18n.Get("cp.diag.exportBundle"),
         Name = "diag-export-bundle",
-        Width = 150,
-        Height = 28,
+    };
+
+    /// <summary>「查看审计流水」按钮（docs/18 §2.8）。</summary>
+    private readonly ThemedButton _auditButton = new()
+    {
+        Text = I18n.Get("cp.diag.viewAudit"),
+        Name = "diag-view-audit",
     };
 
     /// <summary>诊断动作的回调（宿主侧执行）。</summary>
@@ -38,13 +42,16 @@ internal sealed partial class ControlPanel
 
     /// <summary>设置页诊断入口的控件名（自检按它们断言入口存在）。</summary>
     public IReadOnlyList<string> DiagnosticControlNames =>
-        new[] { _openLogsButton.Name, _exportBundleButton.Name };
+        new[] { _openLogsButton.Name, _exportBundleButton.Name, _auditButton.Name };
 
     /// <summary>诊断动作名（自检按它调宿主侧回调，不靠模拟点击）。</summary>
     public const string DiagnosticOpOpenLogs = "open-logs";
 
     /// <summary>诊断动作名：导出诊断包。</summary>
     public const string DiagnosticOpExportBundle = "export-bundle";
+
+    /// <summary>诊断动作名：打开审计流水的只读视图。</summary>
+    public const string DiagnosticOpViewAudit = "view-audit";
 
     /// <summary>设置页诊断两行的行名**键**（判据断键：文案在 assets/i18n，会跟着语言变）。</summary>
     public const string DiagnosticLogsRow = "cp.settings.row.diagnosticLogs", DiagnosticBundleRow = "cp.settings.row.diagnosticBundle";
@@ -87,23 +94,22 @@ internal sealed partial class ControlPanel
     {
         _openLogsButton.Click += (_, _) => RunDiagnostic(DiagnosticOpOpenLogs);
         _exportBundleButton.Click += (_, _) => RunDiagnostic(DiagnosticOpExportBundle);
+        _auditButton.Click += (_, _) => RunDiagnostic(DiagnosticOpViewAudit);
 
-        TabPage? page = FindPage(PanelPages.Settings);
+        Panel? page = FindPage(PanelPages.Settings);
         if (page is null)
         {
             return;
         }
 
-        var bar = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 40,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8, 6, 8, 6),
-            WrapContents = false,
-        };
+        _openLogsButton.FitToText();
+        _exportBundleButton.FitToText();
+        _auditButton.FitToText();
+
+        FlowLayoutPanel bar = ThemedBar(page);
         bar.Controls.Add(_openLogsButton);
         bar.Controls.Add(_exportBundleButton);
+        bar.Controls.Add(_auditButton);
 
         // 操作栏与状态标签都 Dock=Bottom：后加的先排版 —— 状态标签先加、操作栏后加。
         page.Controls.Add(bar);

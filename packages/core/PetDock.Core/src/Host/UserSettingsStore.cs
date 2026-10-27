@@ -171,7 +171,25 @@ internal sealed class UserSettingsStore
                 KernelLog.Write($"settings-field-unreadable field=pluginsDisabled reason=not-an-array type={notArray.GetType().Name}");
             }
 
-            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins).Clamped();
+            // 界面材质（docs/18 §2.7）：只认三个名字，其余一律当没设过（回落到不透明）。
+            // 与上面几个字段同一条纪律：坏值不迁移、不猜测，直接按默认走。
+            string? material = null;
+            if (obj["material"] is JsonNode materialNode)
+            {
+                string? token = materialNode is JsonValue materialValue && materialValue.TryGetValue(out string? text)
+                    ? text
+                    : null;
+                if (token is "opaque" or "frosted" or "glass")
+                {
+                    material = token;
+                }
+                else
+                {
+                    KernelLog.Write($"settings-field-unreadable field=material reason=unknown-token");
+                }
+            }
+
+            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins, material).Clamped();
         }
         catch (Exception error)
         {
@@ -199,6 +217,13 @@ internal sealed class UserSettingsStore
             ["idleFrameBudgetMs"] = value.IdleFrameBudgetMs,
             ["language"] = value.Language,
         };
+
+        // 界面材质（docs/18 §2.7）：只在不是默认值时写这个键——「没这个键」= 不透明，
+        // 这样旧文件不需要迁移，而选了磨砂/玻璃的人重开程序还在。
+        if (value.Material is { Length: > 0 } material && material != "opaque")
+        {
+            doc["material"] = material;
+        }
 
         // 引导的一次性判定（RFC-16 §3.1）。没做过就**不写这个键**，
         // 而不是写 null —— 「键不存在」与「键存在但为 null」在演化上是两件事，

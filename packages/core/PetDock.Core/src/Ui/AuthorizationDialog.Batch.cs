@@ -56,10 +56,7 @@ internal sealed partial class AuthorizationDialog
         }
 
         _checked[index] = isChecked;
-        if (index < _list.Items.Count)
-        {
-            TrySetChecked(_list.Items[index], isChecked);
-        }
+        _list.Invalidate();
 
         return true;
     }
@@ -149,9 +146,8 @@ internal sealed partial class AuthorizationDialog
         {
             var item = new ListViewItem(RowText(entry))
             {
-                // Tag 存行下标：事后事件的参数只有 Item（没有 Index），靠它把原生行对回清单。
+                // Tag 存行下标：列表的勾选框回调只有行对象（没有下标），靠它把行对回清单。
                 Tag = _ids.Count,
-                ForeColor = entry.Denied ? SystemColors.GrayText : SystemColors.ControlText,
             };
             _list.Items.Add(item);
             AttachGroup(item, requestIndex);
@@ -167,7 +163,6 @@ internal sealed partial class AuthorizationDialog
             {
                 // 默认全勾（docs/18 §3：只有被拒绝的项才默认不勾）。
                 _checked.Add(true);
-                item.Checked = true;
             }
         }
     }
@@ -215,10 +210,10 @@ internal sealed partial class AuthorizationDialog
             {
                 // 空清单占位行（「没有需要授权的项」）：有真行了就撤掉。
                 _list.Items.Clear();
-                _list.CheckBoxes = true;
             }
 
             BuildRows(index);
+            _list.FitColumns();
 
             _header.Text = HeaderFor();
             _intro.Text = I18n.Get(Batch ? "ui.auth.intro.batch" : "ui.auth.intro");

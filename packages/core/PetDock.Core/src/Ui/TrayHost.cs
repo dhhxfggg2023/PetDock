@@ -99,6 +99,7 @@ internal sealed class TrayHost : IDisposable
         });
 
         SetPets(pets);
+        Design.ThemedMenuRenderer.Apply(_menu);
 
         _icon = new NotifyIcon
         {

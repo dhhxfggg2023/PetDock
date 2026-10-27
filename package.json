@@ -31,7 +31,8 @@
     "verify:window": "node tools/verify.mjs --only window",
     "verify:perf": "node tools/verify.mjs --only perf",
     "verify:m7": "node tools/verify.mjs --only m7",
-    "verify:dist": "node tools/verify.mjs --only dist"
+    "verify:dist": "node tools/verify.mjs --only dist",
+    "verify:release": "node tools/verify.mjs --config release --only build && node tools/verify.mjs --config release --only window"
   },
   "dependencies": {
     "ajv": "^6.15.0",

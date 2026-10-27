@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 using PetDock.Hosting;
 
 namespace PetDock.Core.Ui;
@@ -18,33 +19,26 @@ internal sealed partial class ControlPanel
 {
     /// <summary>插件页自己的列表（与其它三页共用的那份分开：插件页要留住自己的选中项）。
     /// 单选：两个入口都是「对**选中插件**说话」，多选时对谁说话就成了猜。</summary>
-    private readonly ListView _pluginList = new()
+    private readonly ThemedList _pluginList = new()
     {
         Dock = DockStyle.Fill,
-        View = View.Details,
-        FullRowSelect = true,
         MultiSelect = false,
-        GridLines = true,
         Name = "plugin-list",
     };
 
     /// <summary>「授权选中插件」入口。</summary>
-    private readonly Button _authorizeButton = new()
+    private readonly ThemedButton _authorizeButton = new()
     {
         Text = I18n.Get("cp.plugins.authorize"),
         Name = "authorize",
-        Width = 130,
-        Height = 28,
         Enabled = false,
     };
 
     /// <summary>「禁用/启用选中插件」入口（文案随选中插件的状态变）。</summary>
-    private readonly Button _disableButton = new()
+    private readonly ThemedButton _disableButton = new()
     {
         Text = I18n.Get("cp.plugins.disable"),
         Name = "disable",
-        Width = 130,
-        Height = 28,
         Enabled = false,
     };
 
@@ -54,10 +48,8 @@ internal sealed partial class ControlPanel
     /// </summary>
     private readonly Label _hint = new()
     {
-        Text = I18n.Get("cp.plugins.disableHint"),
         Name = "plugin-hint",
         AutoSize = true,
-        Padding = new Padding(8, 8, 0, 0),
     };
 
     /// <summary>插件页那条说明的当前文案（自检断言它确实挂上了）。</summary>
@@ -104,39 +96,28 @@ internal sealed partial class ControlPanel
 
         _authorizeButton.Click += (_, _) => AuthorizeSelected();
         _disableButton.Click += (_, _) => ToggleSelectedDisabled();
+        _authorizeButton.FitToText();
+        _disableButton.FitToText();
 
-        var bar = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 40,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8, 6, 8, 6),
-            WrapContents = false,
-        };
+        Panel page = PluginPage();
+        _hint.Text = I18n.Get("cp.plugins.disableHint");
+        _hint.Font = Theme.FontFor(page, TypeRole.Caption);
+        _hint.ForeColor = Theme.TextDim;
+        _hint.BackColor = Color.Transparent;
+        _hint.Padding = new Padding(Theme.Dip(page, Theme.SpaceSm), Theme.Dip(page, Theme.SpaceMd), 0, 0);
+
+        FlowLayoutPanel bar = ThemedBar(page);
         bar.Controls.Add(_authorizeButton);
         bar.Controls.Add(_disableButton);
         bar.Controls.Add(_hint);
-
-        TabPage page = PluginPage();
         // 加控件的顺序要紧：后加的先排版，所以操作栏（Bottom）后加，它才贴页底、
         // 列表（Fill）占剩下的空间，不会被盖住。
         page.Controls.Add(_pluginList);
         page.Controls.Add(bar);
     }
 
-    /// <summary>按名字找插件页（不靠下标——性能页会插进来把下标挪走）。</summary>
-    private TabPage PluginPage()
-    {
-        foreach (TabPage page in _pages.TabPages)
-        {
-            if (string.Equals(page.Name, "tab-" + PanelPages.Plugins, StringComparison.Ordinal))
-            {
-                return page;
-            }
-        }
-
-        throw new InvalidOperationException("plugin page missing");
-    }
+    /// <summary>按名字找插件页（不靠下标——页的存在与否只按 id 判定）。</summary>
+    private Panel PluginPage() => PageOf(PanelPages.Plugins);
 
     /// <summary>插件页：填表 + 状态栏文案（状态栏要说清两个按钮各自做什么）。</summary>
     private void BindPlugins(UiSnapshot snapshot)
@@ -178,6 +159,7 @@ internal sealed partial class ControlPanel
         }
 
         // 重画后尽量保住原来的选中项：刷新不该把用户刚选中的插件弄丢。
+        _pluginList.FitColumns();
         _selectedPluginId = null;
         if (previous is not null && _pluginRows.ContainsKey(previous))
         {
@@ -273,6 +255,7 @@ internal sealed partial class ControlPanel
         _authorizeButton.Enabled = has;
         _disableButton.Enabled = has;
         _disableButton.Text = suspended ? I18n.Get("cp.plugins.enable") : I18n.Get("cp.plugins.disable");
+        _disableButton.FitToText();
     }
 
     /// <summary>用户改选中时同步面板自己记的选中 id。</summary>

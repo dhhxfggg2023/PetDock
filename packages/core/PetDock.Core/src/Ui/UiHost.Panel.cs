@@ -20,6 +20,24 @@ internal sealed partial class UiHost
     /// <summary>打开主控面板；已存在则只激活（§2.5 单实例）。</summary>
     public void OpenPanel()
     {
+        // 语言热切换：设置里存的是另一门语言时，在**构造面板之前**换表（2026-10-27）。
+        // 之前的口径是「切换后需重启 PetDock」——重启这件事对用户来说就是「没生效」；
+        // 文案表是纯静态查表，重读一次成本可忽略，所以改成「重新打开面板即生效」，
+        // 已经开着的旧语言窗口直接丢掉重建，避免同一窗里半中半英。
+        string? wanted = _settings?.Load().Language;
+        if (!string.IsNullOrWhiteSpace(wanted)
+            && !string.Equals(wanted, I18n.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            I18n.Load(wanted);
+            KernelLog.Write($"i18n-reloaded lang={I18n.Language} via=panel-open");
+            if (_panel is not null && !_panel.IsDisposed)
+            {
+                ControlPanel stale = _panel;
+                _panel = null;
+                stale.Dispose();
+            }
+        }
+
         if (_panel is not null && !_panel.IsDisposed)
         {
             _panel.Activate();
@@ -89,7 +107,7 @@ internal sealed partial class UiHost
     /// 每一步都可能失败，失败要说清楚是哪一步——「已保存设置，但开机自启未生效」比「保存失败」诚实。
     /// 返回 null = 全部成功；返回字符串 = 失败或部分失败的原因。
     /// </summary>
-    private string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows)
+    private string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, Design.MaterialKind material)
     {
         var problems = new List<string>();
 
@@ -113,7 +131,11 @@ internal sealed partial class UiHost
         // 用户在引导里做完（标记已写），随后在设置页点一次「应用」，标记被抹，
         // 下次启动引导又弹一遍。这里的 `with` 表达式保住其余字段。
         UserSettings previous = _settings?.Load() ?? UserSettings.Default;
-        var updated = previous with { IdleFrameBudgetMs = idleFrameBudgetMs };
+        var updated = previous with
+        {
+            IdleFrameBudgetMs = idleFrameBudgetMs,
+            Material = Design.Theme.MaterialToken(material),
+        };
         try
         {
             _settings?.Save(updated);
@@ -123,9 +145,23 @@ internal sealed partial class UiHost
             problems.Add(I18n.Get("ui.panel.settingsSaveFailed", error.Message));
         }
 
-        // ③ 立即推给帧泵（不用重启）。这一步不会失败：越界值在 FramePump 里被拉回合法区间。
+        // ③ 材质立即落到面板上（不用重启）。系统给不了模糊时只到透明一档，
+        //    这时把「为什么与选的不完全一样」说给用户听 —— 不假装兑现了。
+        Design.Theme.Material = material;
+        if (_panel is not null && !_panel.IsDisposed)
+        {
+            Design.MaterialReport report = Design.Theme.ApplyMaterial(_panel);
+            _panel.Invalidate(true);
+            if (!report.Blurred && material != Design.MaterialKind.Opaque)
+            {
+                problems.Add(I18n.Get("cp.settings.material.fallback"));
+            }
+        }
+
+        // ④ 立即推给帧泵（不用重启）。这一步不会失败：越界值在 FramePump 里被拉回合法区间。
         _loop.SetTargetFrameMs(idleFrameBudgetMs);
-        KernelLog.Write($"settings-applied idle={updated.IdleFrameBudgetMs:0.0}ms startup={startWithWindows}");
+        KernelLog.Write(
+            $"settings-applied idle={updated.IdleFrameBudgetMs:0.0}ms startup={startWithWindows} material={updated.Material}");
 
         return problems.Count == 0 ? null : string.Join(I18n.Get("ui.panel.problemSeparator"), problems);
     }

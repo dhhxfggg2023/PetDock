@@ -62,6 +62,9 @@ internal sealed class DiagnosticService
     /// <summary>诊断包目录（&lt;DATA&gt;\diagnostics）。</summary>
     public string DiagnosticsDirectory => Path.Combine(_store.Root, DiagnosticsFolder);
 
+    /// <summary>审计流水目录（&lt;DATA&gt;\audit）：有流水对象就听它的，否则按约定拼。</summary>
+    public string AuditDirectory => Trail?.DirectoryPath ?? Path.Combine(_store.Root, AuditTrail.AuditFolder);
+
     /// <summary>打开日志目录：目录不存在就建一个空的（空目录也是成功），然后打开它。成败由返回的布尔给出。</summary>
     public (bool Ok, string Message) OpenLogsDirectory()
     {

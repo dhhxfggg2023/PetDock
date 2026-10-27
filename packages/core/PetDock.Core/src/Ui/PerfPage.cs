@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
@@ -31,8 +32,8 @@ internal sealed class PerfPage : UserControl
     private readonly Func<UiSnapshot> _snapshot;
     private readonly Func<string, PetFrameReadings?>? _framesFor;
     private readonly Label _summary;
-    private readonly ListView _rows;
-    private readonly Button _sample;
+    private readonly ThemedList _rows;
+    private readonly ThemedButton _sample;
 
     public PerfPage(Func<UiSnapshot> snapshot, Func<string, PetFrameReadings?>? frames = null)
     {
@@ -43,36 +44,56 @@ internal sealed class PerfPage : UserControl
         _summary = new Label
         {
             Dock = DockStyle.Top,
-            Height = 48,
-            Padding = new Padding(8, 6, 8, 0),
+            Height = Theme.Dip(this, 56),
+            AutoSize = false,
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceSm), Theme.Dip(this, Theme.SpaceSm), Theme.Dip(this, Theme.SpaceSm), 0),
             Text = I18n.Get("ui.perf.idle"),
+            Font = Theme.FontFor(this, TypeRole.Body),
+            ForeColor = Theme.TextDim,
+            BackColor = Color.Transparent,
         };
 
-        _sample = new Button
+        _sample = new ThemedButton
         {
             Text = I18n.Get("ui.perf.sample"),
-            Dock = DockStyle.Top,
-            Height = 32,
             Name = "sample",
+            Primary = true,
         };
+        _sample.FitToText();
+        _sample.Width = Math.Max(_sample.Width, Theme.Dip(this, 160));
         _sample.Click += (_, _) => Sample();
 
-        _rows = new ListView
+        // 宿主条：Dock=Top 会把按钮拉成整行宽的色块（2026-10-28 截图实测），
+        // 所以按钮不定 Dock，由宿主条在尺寸变化时把它摆在左上。
+        var sampleHost = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = Theme.Dip(this, 52),
+            BackColor = Theme.Bg,
+            Name = "perf-sample-host",
+        };
+        sampleHost.Controls.Add(_sample);
+        sampleHost.Resize += (_, _) =>
+            _sample.Location = new Point(
+                Theme.Dip(sampleHost, Theme.SpaceSm),
+                Math.Max(0, (sampleHost.Height - _sample.Height) / 2));
+
+        _rows = new ThemedList
         {
             Dock = DockStyle.Fill,
             View = View.Details,
             FullRowSelect = true,
-            GridLines = true,
             Name = "perf-rows",
         };
-        _rows.Columns.Add(I18n.Get("ui.perf.col.pet"), 150);
-        _rows.Columns.Add(I18n.Get("ui.perf.col.cpu"), 110);
-        _rows.Columns.Add(I18n.Get("ui.perf.col.workingSet"), 130);
-        _rows.Columns.Add(I18n.Get("ui.perf.col.frameMs"), 110);
-        _rows.Columns.Add(I18n.Get("ui.perf.col.overruns"), 100);
+        _rows.SetColumns(
+            (I18n.Get("ui.perf.col.pet"), 150),
+            (I18n.Get("ui.perf.col.cpu"), 110),
+            (I18n.Get("ui.perf.col.workingSet"), 130),
+            (I18n.Get("ui.perf.col.frameMs"), 110),
+            (I18n.Get("ui.perf.col.overruns"), 100));
 
         Controls.Add(_rows);
-        Controls.Add(_sample);
+        Controls.Add(sampleHost);
         Controls.Add(_summary);
     }
 
@@ -82,9 +103,13 @@ internal sealed class PerfPage : UserControl
         _rows.Items.Clear();
         if (perf.IsEmpty)
         {
+            // 空态不摆一张空表：五列全空看起来像「界面没画完」。说清为什么没有数字就够了。
+            _rows.Visible = false;
             _summary.Text = I18n.Get(NoPetRunning);
             return;
         }
+
+        _rows.Visible = true;
 
         foreach (PerfLine line in perf.Rows)
         {
@@ -92,6 +117,7 @@ internal sealed class PerfPage : UserControl
             _rows.Items.Add(new ListViewItem(new[] { line.Name, line.Cpu, line.Memory, line.FrameMs, overruns }));
         }
 
+        _rows.FitColumns();
         _summary.Text = Summary(perf);
     }
 

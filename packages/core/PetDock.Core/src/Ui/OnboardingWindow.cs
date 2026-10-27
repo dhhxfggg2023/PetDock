@@ -14,6 +14,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
@@ -58,12 +59,12 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     private readonly Panel[] _steps;
     private readonly Label _error = new();
     private readonly Label _placed = new();
-    private readonly RadioButton _zh = new() { Text = I18n.Get("ui.onboarding.language.zh"), Name = "onboarding-language-zh" };
-    private readonly RadioButton _en = new() { Text = "English (en-US)", Name = "onboarding-language-en" };
+    private readonly ThemedRadio _zh = new() { Text = I18n.Get("ui.onboarding.language.zh"), Name = "onboarding-language-zh" };
+    private readonly ThemedRadio _en = new() { Text = "English (en-US)", Name = "onboarding-language-en" };
     private readonly ThroughHintPanel _hint = new() { Name = "onboarding-animation" };
-    private readonly Button _next = new() { Text = I18n.Get(NextKey), Name = "onboarding-next", Width = 96, Height = 30 };
-    private readonly Button _skip = new() { Text = I18n.Get("ui.onboarding.skip"), Name = "onboarding-skip", Width = 96, Height = 30 };
-    private readonly Button _place = new() { Text = I18n.Get("ui.onboarding.place"), Name = "onboarding-place", Width = 120, Height = 30 };
+    private readonly ThemedButton _next = new() { Text = I18n.Get(NextKey), Name = "onboarding-next", Primary = true };
+    private readonly ThemedButton _skip = new() { Text = I18n.Get("ui.onboarding.skip"), Name = "onboarding-skip" };
+    private readonly ThemedButton _place = new() { Text = I18n.Get("ui.onboarding.place"), Name = "onboarding-place", Primary = true };
 
     private int _index;
     private bool _samplePlaced;
@@ -85,8 +86,10 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         MinimizeBox = false;
         MaximizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(520, 380);
-        Font = SystemFonts.MessageBoxFont;
+        Theme.Apply(this);
+        // 高度按「三步里最长的那一步」定：第一、二步内容少，留太多空白会读成界面没画完
+        // （2026-10-28 截图实测）。
+        ClientSize = new Size(Theme.Dip(this, 560), Theme.Dip(this, 384));
 
         _steps = hasPet
             ? new[] { BuildLanguageStep(), BuildSampleStep(), BuildThroughStep() }
@@ -279,14 +282,22 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     private void BuildBody(bool hasPet)
     {
         _error.Dock = DockStyle.Top;
-        _error.Height = 44;
+        _error.Height = Theme.Dip(this, 48);
         _error.Name = "onboarding-error";
-        _error.BackColor = Color.FromArgb(0xFF, 0xFD, 0xE9, 0xD9);
-        _error.ForeColor = Color.FromArgb(0xFF, 0x8A, 0x3D, 0x00);
+        _error.Font = Theme.FontFor(this, TypeRole.Body);
+        _error.BackColor = Theme.BadSurface;
+        _error.ForeColor = Theme.Bad;
+        _error.Padding = new Padding(
+            Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceXs), Theme.Dip(this, Theme.SpaceMd), Theme.Dip(this, Theme.SpaceXs));
         _error.Visible = false;
         _error.Text = string.Empty;
 
-        var stepsHost = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
+        var stepsHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Bg,
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceMd)),
+        };
 
         if (!hasPet)
         {
@@ -295,8 +306,10 @@ internal sealed partial class OnboardingWindow : PetDockDialog
             {
                 Text = I18n.Get(NoPetKey),
                 Dock = DockStyle.Top,
-                Height = 28,
-                ForeColor = Color.FromArgb(0xFF, 0x66, 0x66, 0x66),
+                Height = Theme.Dip(this, 32),
+                Font = Theme.FontFor(this, TypeRole.Body),
+                ForeColor = Theme.TextDim,
+                BackColor = Color.Transparent,
             };
             _steps[0].Controls.Add(notice);
         }
@@ -314,13 +327,11 @@ internal sealed partial class OnboardingWindow : PetDockDialog
 
     private void BuildFooter()
     {
-        var footer = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 44,
-            FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(8),
-        };
+        FlowLayoutPanel footer = Theme.DialogButtonBar(this);
+
+        _next.FitToText();
+        _skip.FitToText();
+        _place.FitToText();
 
         _skip.Click += (_, _) => Skip();
         _next.Click += (_, _) => GoNext();

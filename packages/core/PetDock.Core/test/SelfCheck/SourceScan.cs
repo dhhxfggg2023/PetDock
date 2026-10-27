@@ -19,6 +19,13 @@ internal static class SourceScan
 
     /// <summary>数一遍内核 src/ 里满足 <paramref name="match"/> 的行。找不到仓库根返回 -1。</summary>
     internal static int Count(string relativeDir, Func<string, bool> match)
+        => Count(relativeDir, match, skipFile: null);
+
+    /// <summary>
+    /// 同 <see cref="Count(string, Func{string, bool})"/>，但可以按文件跳过（相对路径，'/' 分隔）。
+    /// 外观判据用它把「令牌与基元的家」`Ui/Design/` 排除在裸色扫描之外 —— 那里本来就该写颜色值。
+    /// </summary>
+    internal static int Count(string relativeDir, Func<string, bool> match, Func<string, bool>? skipFile)
     {
         try
         {
@@ -33,7 +40,8 @@ internal static class SourceScan
                 return -1;
             }
 
-            string src = Path.Combine(dir.FullName, relativeDir.Replace('/', Path.DirectorySeparatorChar));
+            string root = dir.FullName;
+            string src = Path.Combine(root, relativeDir.Replace('/', Path.DirectorySeparatorChar));
             if (!Directory.Exists(src))
             {
                 return -1;
@@ -42,6 +50,11 @@ internal static class SourceScan
             int sites = 0;
             foreach (string file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories))
             {
+                if (skipFile is not null && skipFile(Path.GetRelativePath(root, file).Replace('\\', '/')))
+                {
+                    continue;
+                }
+
                 foreach (string raw in File.ReadLines(file))
                 {
                     if (match(raw.TrimStart()))

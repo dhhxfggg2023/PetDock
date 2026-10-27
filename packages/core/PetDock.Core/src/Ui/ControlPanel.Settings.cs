@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 using PetDock.Hosting;
 
 namespace PetDock.Core.Ui;
@@ -19,30 +20,34 @@ namespace PetDock.Core.Ui;
 internal sealed partial class ControlPanel
 {
     /// <summary>开机自启勾选框。</summary>
-    private readonly CheckBox _startupBox = new()
+    private readonly ThemedCheckBox _startupBox = new()
     {
         Text = I18n.Get("cp.settings.startup"),
         Name = "startup-box",
-        AutoSize = true,
     };
 
     /// <summary>空闲降帧阈值（毫秒）。</summary>
-    private readonly NumericUpDown _idleFrameBox = new()
+    private readonly ThemedNumber _idleFrameBox = new()
     {
         Name = "idle-frame-box",
         Minimum = 17,
         Maximum = 200,
         Increment = 1,
-        Width = 90,
+        Value = 50,
     };
 
     /// <summary>「应用」按钮。</summary>
-    private readonly Button _applyButton = new()
+    private readonly ThemedButton _applyButton = new()
     {
         Text = I18n.Get("cp.settings.apply"),
         Name = "apply-settings",
-        Width = 90,
-        Height = 28,
+        Primary = true,
+    };
+
+    /// <summary>界面材质三选一（docs/18 §2.7）。键落盘，文案给人看。</summary>
+    private readonly ThemedSegmented _materialSwitch = new()
+    {
+        Name = "material-picker",
     };
 
     /// <summary>内联状态标签（成功与失败都写在这里）。</summary>
@@ -50,9 +55,7 @@ internal sealed partial class ControlPanel
     {
         Name = "settings-status",
         AutoSize = false,
-        Height = 34,
         TextAlign = ContentAlignment.MiddleLeft,
-        Padding = new Padding(8, 4, 8, 4),
         Text = string.Empty,
     };
 
@@ -66,11 +69,14 @@ internal sealed partial class ControlPanel
     /// 设置回调的形状：面板把用户填的意图交过来，宿主侧执行后回一句话。
     /// 返回 null = 成功；返回字符串 = 失败或部分失败的原因。
     /// </summary>
-    internal delegate string? SettingsCommand(double idleFrameBudgetMs, bool startWithWindows);
+    internal delegate string? SettingsCommand(double idleFrameBudgetMs, bool startWithWindows, MaterialKind material);
 
-    /// <summary>设置页三个控件的名字（自检按它们断言入口存在）。</summary>
+    /// <summary>设置页四个控件的名字（自检按它们断言入口存在）。</summary>
     public IReadOnlyList<string> SettingsControlNames =>
-        new[] { _startupBox.Name, _idleFrameBox.Name, _applyButton.Name };
+        new[] { _startupBox.Name, _idleFrameBox.Name, _applyButton.Name, _materialSwitch.Name };
+
+    /// <summary>材质选择器当前选中的键（自检读它，不读像素）。</summary>
+    public string MaterialKey => _materialSwitch.SelectedKey;
 
     /// <summary>设置页状态标签当前是否被要求显示（自检读它）。</summary>
     public bool SettingsStatusShown => _settingsStatusShown;
@@ -95,8 +101,12 @@ internal sealed partial class ControlPanel
     /// 与点击「应用」走同一条路（同一个回调、同一个状态标签），
     /// 区别只是不经过按钮事件 —— 自检不该靠模拟点击来证明功能。
     /// </summary>
-    internal void TryApplySettingsForCheck(double idleFrameBudgetMs, bool startWithWindows)
+    internal void TryApplySettingsForCheck(double idleFrameBudgetMs, bool startWithWindows, MaterialKind? material = null)
     {
+        if (material is MaterialKind kind)
+        {
+            _materialSwitch.Select(Theme.MaterialToken(kind), raise: false);
+        }
         _idleFrameBox.Value = (decimal)Math.Round(
             Math.Clamp(idleFrameBudgetMs, (double)_idleFrameBox.Minimum, (double)_idleFrameBox.Maximum),
             1,
@@ -113,44 +123,51 @@ internal sealed partial class ControlPanel
     {
         _applyButton.Click += (_, _) => ApplySettings();
 
-        var bar = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 40,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8, 6, 8, 6),
-            WrapContents = false,
-        };
-        bar.Controls.Add(_startupBox);
-        bar.Controls.Add(new Label { Text = I18n.Get("cp.settings.idleFrameLabel"), AutoSize = true, Padding = new Padding(8, 6, 0, 0) });
-        bar.Controls.Add(_idleFrameBox);
-        bar.Controls.Add(_applyButton);
-
         // 按名字找设置页，不按下标：构造期性能页还没插进来，
         // 此时的「设置页下标」与插完之后的下标不是同一个数（按下标取会越界）。
-        TabPage? page = FindPage(PanelPages.Settings);
+        Panel? page = FindPage(PanelPages.Settings);
         if (page is null)
         {
             return;
         }
 
+        int dpi = Theme.DpiOf(page);
+        _startupBox.FitToText();
+        _idleFrameBox.FitToFont(96);
+        _applyButton.FitToText();
+        _settingsStatus.Font = Theme.FontFor(page, TypeRole.Body);
+        _settingsStatus.ForeColor = Theme.TextDim;
+        _settingsStatus.BackColor = Theme.Bg;
+        _settingsStatus.Height = Theme.Dip(dpi, 34);
+        _settingsStatus.Padding = new Padding(
+            Theme.Dip(dpi, Theme.SpaceSm), Theme.Dip(dpi, Theme.SpaceXs), Theme.Dip(dpi, Theme.SpaceSm), Theme.Dip(dpi, Theme.SpaceXs));
+
+        FlowLayoutPanel bar = ThemedBar(page);
+        bar.Controls.Add(_startupBox);
+        bar.Controls.Add(ThemedHint(page, I18n.Get("cp.settings.idleFrameLabel")));
+        bar.Controls.Add(_idleFrameBox);
+        bar.Controls.Add(_applyButton);
+
+        // 材质单占一行：它是「看起来整窗都变了」的选项，和阈值/自启不是同一类操作。
+        _materialSwitch.SetOptions(
+            (Theme.MaterialToken(MaterialKind.Opaque), I18n.Get("cp.settings.material.opaque")),
+            (Theme.MaterialToken(MaterialKind.Frosted), I18n.Get("cp.settings.material.frosted")),
+            (Theme.MaterialToken(MaterialKind.Glass), I18n.Get("cp.settings.material.glass")));
+        _materialSwitch.Select(Theme.MaterialToken(Theme.Material), raise: false);
+        _materialSwitch.Width = Theme.Dip(dpi, 240);
+
+        FlowLayoutPanel materialBar = ThemedBar(page);
+        materialBar.Controls.Add(ThemedHint(page, I18n.Get("cp.settings.material")));
+        materialBar.Controls.Add(_materialSwitch);
+        materialBar.Controls.Add(ThemedHint(page, I18n.Get("cp.settings.material.hint")));
+
         page.Controls.Add(_settingsStatus);
         page.Controls.Add(bar);
+        page.Controls.Add(materialBar);
     }
 
     /// <summary>按页面 id 找那一页（找不到返回 null，不抛）。</summary>
-    private TabPage? FindPage(string id)
-    {
-        foreach (TabPage page in _pages.TabPages)
-        {
-            if (string.Equals(page.Name, "tab-" + id, StringComparison.Ordinal))
-            {
-                return page;
-            }
-        }
-
-        return null;
-    }
+    private Panel? FindPage(string id) => _pageOf.TryGetValue(id, out Panel? page) ? page : null;
 
     /// <summary>
     /// 把设置页的当前值交给宿主侧执行。宿主侧回来说一句，结果显示在内联状态标签上。
@@ -164,7 +181,10 @@ internal sealed partial class ControlPanel
             return;
         }
 
-        string? problem = _settingsCommand((double)_idleFrameBox.Value, _startupBox.Checked);
+        string? problem = _settingsCommand(
+            (double)_idleFrameBox.Value,
+            _startupBox.Checked,
+            Theme.ParseMaterial(_materialSwitch.SelectedKey));
         ShowSettingsStatus(
             problem ?? I18n.Get("cp.settings.saved"),
             ok: problem is null);
@@ -174,7 +194,7 @@ internal sealed partial class ControlPanel
     private void ShowSettingsStatus(string message, bool ok)
     {
         _settingsStatus.Text = message;
-        _settingsStatus.ForeColor = ok ? SystemColors.ControlText : Color.FromArgb(0x99, 0x22, 0x22);
+        _settingsStatus.ForeColor = ok ? Theme.Good : Theme.Bad;
         _settingsStatusShown = true;
         SettingsStatusOk = ok;
     }

@@ -3,10 +3,16 @@
 //   ① 刷新快照与采样；② 插件页的「授权」「禁用/启用」两个入口（RFC-13 §2.6）。
 // 后者只**发出意图**（把选中的 pluginId 交给回调），真正的判定与落账在宿主侧。
 // 单实例由 ControlPanelHost 保证（RFC-12 §2.5「再次点托盘只激活已有窗口」）。
+//
+// 外观（docs/18 §2.6，2026-10-27）：全部用 Ui/Design 的设计令牌与自绘控件，
+// 不再出现默认 Button/ListView 的系统外观。四页不再用 TabControl 装——
+// 它只是切页用的，却会带一圈原生边框和默认底色；换成一个 Panel 容器 + 每页一个 Panel，
+// 切页就是改 Visible。
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
@@ -32,6 +38,16 @@ internal static class PanelPages
         Settings => I18n.Get("cp.tab.settings"),
         _ => id,
     };
+
+    /// <summary>页头副标题：一句话说清这一页能做什么（docs/18 §2.5 的一行说明位）。</summary>
+    public static string Note(string id) => id switch
+    {
+        Pets => I18n.Get("cp.page.pets.hint"),
+        Plugins => I18n.Get("cp.page.plugins.hint"),
+        Perf => I18n.Get("cp.page.perf.hint"),
+        Settings => I18n.Get("cp.page.settings.hint"),
+        _ => string.Empty,
+    };
 }
 
 /// <summary>
@@ -41,10 +57,13 @@ internal static class PanelPages
 internal sealed partial class ControlPanel : Form
 {
     private readonly Func<UiSnapshot> _snapshot;
-    private readonly ListView _list;
+    private readonly ThemedList _list;
     private readonly Label _status;
-    private readonly Dictionary<string, Button> _nav = new(StringComparer.Ordinal);
-    private readonly TabControl _pages;
+    private readonly Label _headerTitle;
+    private readonly Label _headerSubtitle;
+    private readonly NavRail _rail;
+    private readonly Panel _content;
+    private readonly Dictionary<string, Panel> _pageOf = new(StringComparer.Ordinal);
     private readonly PerfPage _perfPage;
 
     /// <summary>插件页「授权」入口的回调（可空：没人接就静默）。</summary>
@@ -68,69 +87,129 @@ internal sealed partial class ControlPanel : Form
 
         Text = I18n.Get("cp.title");
         StartPosition = FormStartPosition.CenterScreen;
-        Width = 900;
-        Height = 560;
-        MinimumSize = new Size(680, 420);
-        Font = SystemFonts.MessageBoxFont;
+        Theme.Apply(this);
+        Width = Theme.Dip(this, 980);
+        Height = Theme.Dip(this, 620);
+        MinimumSize = new Size(Theme.Dip(this, 780), Theme.Dip(this, 480));
         ShowInTaskbar = true;
 
         // 左导航（§2.5：固定四项，顺序固定）
-        var nav = new FlowLayoutPanel
+        _rail = new NavRail
         {
             Dock = DockStyle.Left,
-            Width = 132,
-            FlowDirection = FlowDirection.TopDown,
-            Padding = new Padding(8),
-            WrapContents = false,
-            BackColor = SystemColors.Control,
+            Width = Theme.Dip(this, 188),
+            Name = "nav",
         };
         foreach (string id in PanelPages.All)
         {
-            var button = new Button
-            {
-                Text = PanelPages.Title(id),
-                Width = 112,
-                Height = 34,
-                Name = id,
-                TextAlign = ContentAlignment.MiddleLeft,
-            };
-            string captured = id;
-            button.Click += (_, _) => ShowPage(captured);
-            _nav[id] = button;
-            nav.Controls.Add(button);
+            _rail.AddItem(id, PanelPages.Title(id));
         }
 
-        // 右内容：每页一个 TabPage（不显示标签页头，导航由左栏驱动）
-        _pages = new TabControl
-        {
-            Dock = DockStyle.Fill,
-            Appearance = TabAppearance.FlatButtons,
-            ItemSize = new Size(0, 1),
-            SizeMode = TabSizeMode.Fixed,
-        };
-        _pages.TabPages.Add(MakePage(PanelPages.Pets));
-        _pages.TabPages.Add(MakePage(PanelPages.Plugins));
-        _pages.TabPages.Add(MakePage(PanelPages.Settings));
+        _rail.Picked = ShowPage;
 
-        _list = new ListView
+        // 页头：当前页标题 + 一句说明 + 刷新。面板只读展示，刷新是它唯一的写动作（§2.4）。
+        // 标题与说明用显式定位（Dock 叠两个 Label 会互相盖住，且页头高度随 DPI 变）。
+        var header = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = Theme.Dip(this, 84),
+            BackColor = Theme.Bg,
+            Name = "panel-header",
+            // 底部留 1px 给页头的分隔线：不留的话 Dock=Fill 的子容器会把它盖掉，
+            // 只剩刷新按钮那一小段线露在外面（2026-10-28 截图实测）。
+            Padding = new Padding(0, 0, Theme.Dip(this, Theme.SpaceXl), 1),
+        };
+        var titleHost = new Panel
         {
             Dock = DockStyle.Fill,
-            View = View.Details,
-            FullRowSelect = true,
-            GridLines = true,
-            Name = "page-list",
+            BackColor = Theme.Bg,
+            Name = "panel-header-text",
         };
+        _headerTitle = new Label
+        {
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = Theme.Font(TypeRole.Title),
+            ForeColor = Theme.Text,
+            BackColor = Theme.Bg,
+            Name = "page-title",
+        };
+        _headerSubtitle = new Label
+        {
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = Theme.Font(TypeRole.Caption),
+            ForeColor = Theme.TextDim,
+            BackColor = Theme.Bg,
+            Name = "page-subtitle",
+        };
+        titleHost.Controls.Add(_headerSubtitle);
+        titleHost.Controls.Add(_headerTitle);
+        titleHost.Resize += (_, _) => PlaceHeaderText(titleHost, _headerTitle, _headerSubtitle);
+
+        var refresh = new ThemedButton
+        {
+            Text = I18n.Get("cp.button.refresh"),
+            Name = "refresh",
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        };
+        refresh.FitToText();
+        refresh.Click += (_, _) => RefreshCurrent();
+
+        // 右侧占位条：Dock=Right 的容器给按钮留出位置，按钮在其中垂直居中。
+        // 直接把按钮 Dock=Right 会被拉成与页头等高的竖条（2026-10-28 截图实测）。
+        var rightHost = new Panel
+        {
+            Dock = DockStyle.Right,
+            Width = refresh.Width + (Theme.Dip(this, Theme.SpaceXl) * 2),
+            BackColor = Theme.Bg,
+            Name = "panel-header-right",
+        };
+        rightHost.Controls.Add(refresh);
+        rightHost.Resize += (_, _) =>
+            refresh.Location = new Point(
+                Math.Max(0, (rightHost.Width - refresh.Width) / 2),
+                Math.Max(0, (rightHost.Height - refresh.Height) / 2));
+        header.Controls.Add(titleHost);
+        header.Controls.Add(rightHost);
+
+        PlaceHeaderText(titleHost, _headerTitle, _headerSubtitle);
+        PlaceHeaderText(titleHost, _headerTitle, _headerSubtitle);
+        header.Paint += (_, e) => Ink.Line(
+            e.Graphics, 0, header.Height - 1, header.Width, header.Height - 1, Theme.Line);
 
         _status = new Label
         {
             Dock = DockStyle.Bottom,
-            Height = 26,
+            Height = Theme.Dip(this, 36),
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(8, 0, 8, 0),
+            Padding = new Padding(Theme.Dip(this, Theme.SpaceXl), 0, Theme.Dip(this, Theme.SpaceXl), 0),
+            Font = Theme.Font(TypeRole.Caption),
+            ForeColor = Theme.TextDim,
+            BackColor = Theme.Bg,
             Text = I18n.Get("cp.status.notRefreshed"),
+            Name = "panel-status",
         };
+        _status.Paint += (_, e) => Ink.Line(e.Graphics, 0, 0, _status.Width, 0, Theme.Line);
 
+        // 页容器：每页一个真正独立的 Panel（原实现用 TabControl，纯为切页却带一圈原生边框）
+        _content = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Bg,
+            Name = "pages",
+        };
+        foreach (string id in PanelPages.All)
+        {
+            Panel page = MakePage(id);
+            _pageOf[id] = page;
+            _content.Controls.Add(page);
+        }
+
+        _list = new ThemedList { Name = "page-list", Dock = DockStyle.Fill };
         _perfPage = new PerfPage(_snapshot, frames);
+        _perfPage.Dock = DockStyle.Fill;
+        _pageOf[PanelPages.Perf].Controls.Add(_perfPage);
 
         // 插件页有自己的列表与操作栏（partial 的另一半建），所以它不进共享的 BindListOn。
         InitPluginPage();
@@ -144,24 +223,11 @@ internal sealed partial class ControlPanel : Form
         // 设置页还有两个诊断入口（RFC-17 §3.4：打开日志目录 / 导出诊断包）。
         InitDiagnosticsPage();
 
-        // 性能页是独立控件页（有采样按钮），单独挂一个 TabPage
-        var perfTab = MakePage(PanelPages.Perf);
-        _perfPage.Dock = DockStyle.Fill;
-        perfTab.Controls.Add(_perfPage);
-        _pages.TabPages.Insert(2, perfTab);
-
-        var refresh = new Button
-        {
-            Text = I18n.Get("cp.button.refresh"),
-            Dock = DockStyle.Top,
-            Height = 30,
-            Name = "refresh",
-        };
-        refresh.Click += (_, _) => RefreshCurrent();
-
-        Controls.Add(_pages);
+        // 停靠顺序：先加 Fill 再加边，边先占位、Fill 吃剩下的空间。
+        Controls.Add(_content);
         Controls.Add(_status);
-        Controls.Add(nav);
+        Controls.Add(header);
+        Controls.Add(_rail);
 
         ShowPage(PanelPages.Pets);
 
@@ -173,7 +239,7 @@ internal sealed partial class ControlPanel : Form
         {
             // 自检形态：创建控件树但不显示窗口（避免无人值守环境挂死，RFC-12 §3）。
             CreateControl();
-            foreach (TabPage page in _pages.TabPages)
+            foreach (Panel page in _pageOf.Values)
             {
                 page.CreateControl();
             }
@@ -183,31 +249,31 @@ internal sealed partial class ControlPanel : Form
     /// <summary>当前页 id（自检用）。</summary>
     public string CurrentPage => _current;
 
-    private static TabPage MakePage(string id) => new(id) { Name = "tab-" + id, Padding = new Padding(4) };
+    /// <summary>按页面 id 取那一页（四页在构造期就全部存在）。</summary>
+    internal Panel PageOf(string id) => _pageOf[id];
 
     /// <summary>切页（§2.5：右内容随导航切换，且所有四页都真实存在）。</summary>
     public void ShowPage(string id)
     {
-        int index = Array.IndexOf(PanelPages.All, id);
-        if (index < 0)
+        if (!_pageOf.ContainsKey(id))
         {
             throw new ArgumentOutOfRangeException(nameof(id), id, "unknown panel page");
         }
 
         _current = id;
-        if (index < _pages.TabPages.Count)
+        foreach (KeyValuePair<string, Panel> pair in _pageOf)
         {
-            _pages.SelectedIndex = index;
+            pair.Value.Visible = string.Equals(pair.Key, id, StringComparison.Ordinal);
         }
 
-        foreach (KeyValuePair<string, Button> pair in _nav)
-        {
-            Font baseFont = SystemFonts.MessageBoxFont ?? Control.DefaultFont;
-            pair.Value.Font = string.Equals(pair.Key, id, StringComparison.Ordinal)
-                ? new Font(baseFont, FontStyle.Bold)
-                : baseFont;
-        }
+        _pageOf[id].BringToFront();
+        _rail.Select(id);
+        _headerTitle.Text = PanelPages.Title(id);
+        _headerSubtitle.Text = PanelPages.Note(id);
 
+        // 状态栏先清成中性的「就绪」：不清的话切到别的页会留着上一页的话
+        // （2026-10-28 截图实测：性能页底部写着「尚无插件装载」）。各页 Bind 可以覆盖它。
+        _status.Text = I18n.Get("cp.status.ready");
         RefreshCurrent();
     }
 
@@ -234,19 +300,20 @@ internal sealed partial class ControlPanel : Form
 
     private void BindPets(UiSnapshot snapshot)
     {
-        _list.Items.Clear();
         _list.Columns.Clear();
-        _list.Columns.Add(I18n.Get("cp.pets.col.name"), 180);
-        _list.Columns.Add(I18n.Get("cp.pets.col.source"), 160);
-        _list.Columns.Add(I18n.Get("cp.pets.col.state"), 120);
-        _list.Columns.Add(I18n.Get("cp.pets.col.memory"), 160);
+        _list.Items.Clear();
+        _list.Columns.Add(I18n.Get("cp.pets.col.name"));
+        _list.Columns.Add(I18n.Get("cp.pets.col.source"));
+        _list.Columns.Add(I18n.Get("cp.pets.col.state"));
+        _list.Columns.Add(I18n.Get("cp.pets.col.memory"));
 
         foreach (PetLine line in snapshot.Pets)
         {
             _list.Items.Add(new ListViewItem(new[] { line.Name, line.Source, line.State, line.Memory }));
         }
 
-        BindListOn(_pages.TabPages[0]);
+        _list.FitColumns();
+        BindListOn(PageOf(PanelPages.Pets));
         _status.Text = snapshot.Pets.Count == 0
             ? I18n.Get("cp.pets.empty")
             : I18n.Get("cp.pets.count", snapshot.Pets.Count);
@@ -254,11 +321,11 @@ internal sealed partial class ControlPanel : Form
 
     private void BindSettings(UiSnapshot snapshot)
     {
-        _list.Items.Clear();
         _list.Columns.Clear();
-        _list.Columns.Add(I18n.Get("cp.settings.col.item"), 200);
-        _list.Columns.Add(I18n.Get("cp.settings.col.value"), 300);
-        _list.Columns.Add(I18n.Get("cp.settings.col.note"), 300);
+        _list.Items.Clear();
+        _list.Columns.Add(I18n.Get("cp.settings.col.item"));
+        _list.Columns.Add(I18n.Get("cp.settings.col.value"));
+        _list.Columns.Add(I18n.Get("cp.settings.col.note"));
 
         SettingsView view = snapshot.Settings ?? SettingsView.Default;
         AddSetting(I18n.Get("cp.settings.startup"), view.StartupEnabled ? I18n.Get("cp.settings.on") : I18n.Get("cp.settings.off"), I18n.Get("cp.settings.startup.note"));
@@ -268,13 +335,8 @@ internal sealed partial class ControlPanel : Form
         AddSetting(I18n.Get(DiagnosticLogsRow), I18n.Get("cp.settings.row.diagnosticLogs.value"), I18n.Get("cp.settings.logDir.note"));
         AddSetting(I18n.Get(DiagnosticBundleRow), I18n.Get("cp.settings.row.diagnosticBundle.value"), I18n.Get("cp.settings.bundle.note"));
 
-        TabPage? settingsPage = FindPage(PanelPages.Settings);
-        if (settingsPage is null)
-        {
-            return;
-        }
-
-        BindListOn(settingsPage);
+        _list.FitColumns();
+        BindListOn(PageOf(PanelPages.Settings));
         BindSettingsValues(snapshot.Settings);
         _status.Text = I18n.Get("cp.settings.hint");
     }
@@ -282,11 +344,17 @@ internal sealed partial class ControlPanel : Form
     private void AddSetting(string name, string value, string note) =>
         _list.Items.Add(new ListViewItem(new[] { name, value, note }));
 
-    private void BindListOn(TabPage page)
+    private void BindListOn(Panel page)
     {
         if (!page.Controls.Contains(_list))
         {
             page.Controls.Add(_list);
+
+            // 停靠顺序：WinForms 从 Controls 集合的**末尾**往头排 Dock，
+            // 所以最后被加进来的 Fill 控件会先吃掉整块区域，把 Dock=Bottom 的操作栏压在下面
+            // （2026-10-28 截图实测：设置页的操作栏整条看不见）。把列表挪到集合头上，
+            // 它就最后参与排版，只吃操作栏剩下的空间。
+            page.Controls.SetChildIndex(_list, 0);
         }
     }
 
@@ -296,9 +364,12 @@ internal sealed partial class ControlPanel : Form
         get
         {
             var ids = new List<string>();
-            foreach (TabPage page in _pages.TabPages)
+            foreach (string id in PanelPages.All)
             {
-                ids.Add(page.Name.StartsWith("tab-", StringComparison.Ordinal) ? page.Name[4..] : page.Name);
+                if (_pageOf.ContainsKey(id))
+                {
+                    ids.Add(id);
+                }
             }
 
             return ids;

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 24180,
+  "budget": 27020,
   "history": [
     {
       "date": "2026-10-18",
@@ -1521,6 +1521,137 @@
             "packages/core/PetDock.Core/src/Ui/PetWindowSet.ContextMenu.cs"
           ],
           "lines": 40
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 25762,
+      "budget": 25820,
+      "note": "docs/18 §2.6 外观母体重做（2026-10-27/28 用户「将项目完成到可以验收」m00001 的那一片）：把四页、三个弹窗、托盘菜单从系统默认外观换成一套自绘令牌（深色底 + 奶油白字 + 韭菜色强调）。实测 24121 → 25762（+1641）。归属四片：（1）新建 `src/Ui/Design/` 设计系统（令牌、DPI 字体栈、Ink 绘制基元、NavRail 侧栏、自绘按钮/列表/开关/数字框/菜单）共 1635 —— 这是本片的主体，也是唯一新增目录；（2）四页与侧栏重接（ControlPanel.cs 与四个 partial 换成主题控件，按钮文案改由 FitToText 定宽）净 +25；（3）授权/确认/引导三个弹窗与穿透示意面板换成同一套令牌（授权弹窗净 -75 是把三个单选与两个按钮交给自绘基元、删掉重复的配色代码）净 -22；（4）numstat 与实测整包差额 +3（同一文件内既有行被替换后逐文件算术与实际整包读数不闭合，按整包裁定，同 2026-10-27 那条的口径）。抬到 25820（余量 58）。判据面（test/SelfCheck 下的 ui-appearance-* 与 docs/18 §2.6 清单）在 test/ 下，按 D-03a 口径不计。",
+      "attribution": [
+        {
+          "slice": "设计系统母体（新建 Ui/Design：Theme/Ink/NavRail/ThemedButton/ThemedList/ThemedMenu/ThemedNumber/ThemedToggle）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/Theme.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/Ink.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/NavRail.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedButton.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedMenu.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedNumber.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedToggle.cs"
+          ],
+          "lines": 1635
+        },
+        {
+          "slice": "四页与侧栏重接（ControlPanel 与四个 partial 换成主题控件）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs"
+          ],
+          "lines": 25
+        },
+        {
+          "slice": "三个弹窗与穿透示意面板的主题化（授权/确认/引导 + ThroughHintPanel + 托盘菜单挂渲染器）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.cs",
+            "packages/core/PetDock.Core/src/Ui/AuthorizationDialog.Batch.cs",
+            "packages/core/PetDock.Core/src/Ui/ConfirmDialog.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs",
+            "packages/core/PetDock.Core/src/Ui/ThroughHintPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
+          ],
+          "lines": -22
+        },
+        {
+          "slice": "逐文件算术与整包实测的差额（同一文件内替换行导致 numstat 不闭合，按整包裁定）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
+          ],
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 26739,
+      "budget": 26800,
+      "note": "现代化重排 + 材质三档（用户 2026-10-28 「反正给我做好看点」m02284 的那一片）：配色从深蓝+奶油+粉换成中性石板灰+冷蓝，导航栏/页头/按钮/列表重排，并新增不透明/磨砂/玻璃三档材质（系统合成 + 回落）。实测 25762 → 26739（+977）。归属四片：（1）材质子系统（Theme.Material.cs 90 + MaterialHost.cs 236 + ThemedSegmented.cs 228）共 554；（2）现代感重排（NavRail/ThemedButton/ControlPanel.Layout.cs 与 ControlPanel.cs 的净增）共 177；（3）自检与截图工件（AppearanceMaterialChecks.cs 87 + UiShots.cs 的增量 59）共 146；（4）列表空白区自绘与空态（ThemedList.EmptyArea.cs 与 ThemedList 的净增、PerfPage 空表隐藏）共 100。抬到 26800（余量 61）。判据面在 test/SelfCheck 下，按 D-03a 口径不计。",
+      "attribution": [
+        {
+          "slice": "材质子系统（令牌透明度、系统合成与回落、三选一分段器）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/Theme.Material.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/MaterialHost.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedSegmented.cs"
+          ],
+          "lines": 554
+        },
+        {
+          "slice": "现代感重排（导航栏品牌行与选中态、页头副标题、按钮变体、列表去斑马纹与深色滚动条、页容器拆文件）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Layout.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/NavRail.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedButton.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs"
+          ],
+          "lines": 177
+        },
+        {
+          "slice": "自检与截图工件（材质两条判据 + PrintWindow 采集与几何读数）",
+          "files": [
+            "packages/core/PetDock.Core/test/SelfCheck/AppearanceMaterialChecks.cs",
+            "packages/core/PetDock.Core/test/SelfCheck/UiShots.cs"
+          ],
+          "lines": 146
+        },
+        {
+          "slice": "列表空白区自绘与空态（空表不再按列画竖线、最后一行的残行不再露出、性能页没有可测对象时不摆空表）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.EmptyArea.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs",
+            "packages/core/PetDock.Core/src/Ui/PerfPage.cs"
+          ],
+          "lines": 100
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 26956,
+      "budget": 27020,
+      "note": "审计流水只读视图 + 语言热切换（用户 2026-10-28「三件候补」里最后两件的落点）。实测 26739 → 26956（+217）。两片一片差额：（1）审计视图（AuditWindow.cs 151 + UiHost.Diagnostics.cs 的 OpenAuditWindow 27 + ControlPanel.Diagnostics.cs 的第三个按钮 6 + AuditTrail.cs 的 DirectoryPath 5 + DiagnosticService.cs 的 AuditDirectory 3）共 192；（2）语言热切换在 UiHost.Panel.cs 的净增 18；（3）差额 7（编排与空行）。判据面 AuditChecks.cs 在 test/SelfCheck 下，按 D-03a 口径不计。抬到 27020（余量 64）。",
+      "attribution": [
+        {
+          "slice": "审计流水只读视图（窗 + 宿主接线 + 目录只读出口 + 设置页入口）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/AuditWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Diagnostics.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
+            "packages/core/PetDock.Core/src/Host/AuditTrail.cs",
+            "packages/core/PetDock.Core/src/Host/DiagnosticService.cs"
+          ],
+          "lines": 192
+        },
+        {
+          "slice": "语言热切换：打开面板时按设置重载文案并重建旧面板",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 18
+        },
+        {
+          "slice": "编译与编排差额（同一文件内替换行，numstat 不闭合，按整包裁定）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
+          ],
+          "lines": 7
         }
       ]
     }

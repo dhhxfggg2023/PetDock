@@ -78,14 +78,17 @@ internal static class SettingsChecks
     {
         var store = new UserSettingsStore(root);
 
-        // ① 控件入口：设置页确实有可写控件。
+        // ① 控件入口：设置页确实有可写控件（含 2026-10-28 加的材质三选一）。
         using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
         IReadOnlyList<string> names = panel.SettingsControlNames;
-        bool entryPresent = names.Count == 3
+        bool entryPresent = names.Count == 4
             && names.Contains("startup-box")
             && names.Contains("idle-frame-box")
-            && names.Contains("apply-settings");
+            && names.Contains("apply-settings")
+            && names.Contains("material-picker");
+        bool materialPreselected = panel.MaterialKey is "opaque" or "frosted" or "glass";
         check("ui-settings-entry-present", entryPresent, "controls=" + string.Join(",", names));
+        check("ui-settings-material-selected", materialPreselected, $"material={panel.MaterialKey}");
 
         // ② 往返：写进去再读回来，值不丢。
         store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage));
@@ -93,6 +96,18 @@ internal static class SettingsChecks
         bool roundTrip = Math.Abs(loaded.IdleFrameBudgetMs - ProbePeriodMs) < 0.05
             && string.Equals(loaded.Language, UserSettings.DefaultLanguage, StringComparison.Ordinal);
         check("ui-settings-round-trip", roundTrip, loaded.Describe());
+
+        // ②b 材质往返（docs/18 §2.7）：认得的值读回来一样，认不得的值当没设过。
+        store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, Material: "glass"));
+        string? glassBack = store.Load().Material;
+        store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, Material: "bogus"));
+        string? bogusBack = store.Load().Material;
+        store.Save(new UserSettings(ProbePeriodMs, UserSettings.DefaultLanguage, Material: "opaque"));
+        string? opaqueBack = store.Load().Material;
+        check(
+            "ui-settings-material-round-trip",
+            glassBack == "glass" && bogusBack is null && opaqueBack is null,
+            $"glass={glassBack ?? "(null)"} bogus={bogusBack ?? "(null)"} opaque={opaqueBack ?? "(null)"}");
 
         // ③ 损坏文件：回落默认值，不抛。
         File.WriteAllText(Path.Combine(root, UserSettingsStore.SettingsFile), "{ this is not json");
@@ -135,7 +150,7 @@ internal static class SettingsChecks
 
         // ⑧ 内联状态：宿主侧回一句话，面板显示成内联标签（不弹模态框）。
         int formsBefore = OwnedFormCount();
-        panel.SetSettingsCommand((_, _) => "自检：假装失败");
+        panel.SetSettingsCommand((_, _, _) => "自检：假装失败");
         panel.TryApplySettingsForCheck(ProbePeriodMs, false);
         bool shown = panel.SettingsStatusShown && panel.SettingsStatusText.Length > 0;
         bool noModal = OwnedFormCount() == formsBefore;

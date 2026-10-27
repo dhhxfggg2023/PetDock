@@ -26,7 +26,8 @@ internal sealed record UserSettings(
     int? OnboardingCompletedVersion = null,
     Point? PetPosition = null,
     IReadOnlyDictionary<string, Point>? PetPositions = null,
-    IReadOnlyList<string>? DisabledPlugins = null)
+    IReadOnlyList<string>? DisabledPlugins = null,
+    string? Material = null)
 {
     /// <summary>清单版本（docs/17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
@@ -78,7 +79,8 @@ internal sealed record UserSettings(
         + $" onboarding={(OnboardingCompletedVersion?.ToString(CultureInfo.InvariantCulture) ?? "(none)")}"
         + $" position={DescribePosition()}"
         + $" pet-positions={(PetPositions is null ? 0 : PetPositions.Count)}"
-        + $" plugins-disabled={(DisabledPlugins is null ? 0 : DisabledPlugins.Count)}"
+        + " plugins-disabled=" + (DisabledPlugins is null ? 0 : DisabledPlugins.Count)
+        + " material=" + (Material ?? "opaque")
         + " start-with-windows=" + I18n.Get("host.settings.start-with-windows");
 
     /// <summary>位置的读数写法；没存过就叫 none（不是 0,0 —— 两者语义不同，RFC-22 §4）。</summary>

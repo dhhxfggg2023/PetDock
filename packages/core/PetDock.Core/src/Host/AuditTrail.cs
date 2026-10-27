@@ -68,6 +68,11 @@ internal sealed partial class AuditTrail : IDisposable
     private bool _available = true;
     private int _dropped;
 
+    /// <summary>流水目录（只读出口：界面侧要读它，但不该自己拼路径）。</summary>
+    /// <remarks>名字不能叫 `Directory`：同一个 partial 类里还有 `Directory.GetFiles(...)`，
+    /// 属性会遮蔽 `System.IO.Directory`，报出来的是 CS1929 而不是「名字冲突」（账本 2026-10-21）。</remarks>
+    public string DirectoryPath => _directory;
+
     public AuditTrail(string directory, RedactRules rules)
     {
         _directory = directory ?? throw new ArgumentNullException(nameof(directory));

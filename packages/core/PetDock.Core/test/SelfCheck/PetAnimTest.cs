@@ -68,6 +68,7 @@ internal static class PetAnimTest
         }
 
         Console.WriteLine($"CHECK-DISPLAY animtest-target {target}");
+        int hitmapFailures = CheckHitmapContract(view, description);
 
         IClipCatalog? catalog = view as IClipCatalog;
         if (catalog is null)
@@ -75,7 +76,7 @@ internal static class PetAnimTest
             Console.WriteLine("CHECK-DISPLAY animtest-declared declared-unavailable (implementation is not IClipCatalog)");
         }
 
-        int failures = 0;
+        int failures = hitmapFailures;
         var failedClips = new List<string>();
         foreach (string clip in clips)
         {
@@ -100,6 +101,25 @@ internal static class PetAnimTest
         }
 
         return Fail(failedClips.Count > 0 ? $"clips={string.Join(",", failedClips)}" : $"failures={failures}");
+    }
+
+    /// <summary>
+    /// RFC-31 §4 的对称义务：实现方声明 `RequiresHitmap=true` 就必须每帧都带尺寸正确的命中图；
+    /// 声明 false 时允许不带。这条判据存在的理由很具体：2026-10-28 之前，内置的序列帧呈现器
+    /// 声明 false 且从不产出命中图，于是真实桌宠一直走的是内核替它猜阈值的 alpha 退路——判据不写，
+    /// 这个缺口在 194 条全绿里看不出来。
+    /// </summary>
+    private static int CheckHitmapContract(IPetView view, PetDescription description)
+    {
+        Frame frame = view.QueryFrame(0);
+        int pixels = frame.BitmapHandle.PixelCount;
+        bool hasMap = frame.Hitmap is not null;
+        bool sized = !hasMap || frame.Hitmap!.Length == pixels;
+        bool ok = !description.RequiresHitmap || (hasMap && sized);
+        Console.WriteLine(
+            $"CHECK anim-hitmap {(ok ? "PASS" : "FAIL")} requires={description.RequiresHitmap}"
+            + $" hitmap={(hasMap ? frame.Hitmap!.Length + "B" : "none")} pixels={pixels}");
+        return ok ? 0 : 1;
     }
 
     /// <summary>结构化失败出口：ANIM-FAIL 必须带原因，退出码非 0（G2）。</summary>

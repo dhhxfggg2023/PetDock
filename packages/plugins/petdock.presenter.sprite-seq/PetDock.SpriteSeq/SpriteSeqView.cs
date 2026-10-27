@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using PetDock.Core.PetRuntime;
 
 namespace PetDock.Builtins;
@@ -22,6 +23,16 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
     private PackData? _pack;
     private readonly Dictionary<string, Bitmap> _sources = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Bitmap> _composed = new(StringComparer.Ordinal);
+
+    // 命中图缓存：键与 _composed 同（clip#frame@画板），同一帧同一尺寸只有一张。
+    private readonly Dictionary<string, byte[]> _hitmaps = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// 可命中的 alpha 下限（0..255）：≥25% 不透明才算「点在角色身上」。
+    /// 取值理由：像素角色的边缘抗锯齿与投影常落在 1..32 这一带，按 0 判会让桌宠外面
+    /// 一圈不可见的像素吃掉鼠标；按 128 判又会把半透明的耳朵/尾巴判成穿透。
+    /// </summary>
+    private const byte HitAlphaFloor = 64;
     private RenderTarget? _target;
     private string? _current;
     private bool _disposed;
@@ -84,10 +95,15 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
     public PetDescription Describe()
     {
         PackData pack = RequirePack();
+
+        // RFC-31 §4 / docs/11:111：RequiresHitmap=true 表示「alpha 不可信、必须给显式命中图」。
+        // sprite-seq 的素材是带边缘抗锯齿与半透明阴影的 PNG：alpha 落在中间值的那一圈不该可点
+        // （否则桌宠边缘外 2~3px 也会吃掉鼠标）。所以这一档由插件自己出命中图，逐像素按阈值判，
+        // 内核不再替它猜阈值——见 Compose 里的 HitmapFor。
         return new PetDescription(
             pack.NaturalSize,
             pack.PreferredFps,
-            RequiresHitmap: false,
+            RequiresHitmap: true,
             Array.Empty<string>(),
             Array.Empty<string>());
     }
@@ -120,6 +136,7 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
 
         _sources.Clear();
         _composed.Clear();
+        _hitmaps.Clear();
         _target = null;
         return Task.CompletedTask;
     }
@@ -153,7 +170,12 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
         int index = FrameIndexOf(clip, nowMs);
         Bitmap frame = Compose(clipId, index, target);
         BitmapHandle handle = target.Bitmaps.Acquire(frame);
-        return new Frame(handle, new PetSize(target.PixelWidth, target.PixelHeight), target.Scale);
+        return new Frame(
+            handle,
+            new PetSize(target.PixelWidth, target.PixelHeight),
+            target.Scale,
+            ClearRect: null,
+            Hitmap: HitmapFor(clipId, index, frame));
     }
 
     public void OnEvent(PetEvent evt)
@@ -245,4 +267,46 @@ public sealed class SpriteSeqView : IPetView, IClipCatalog
 
     private PackData RequirePack() =>
         _pack ?? throw new InvalidOperationException("sprite-seq view used before InitAsync");
+
+    /// <summary>
+    /// 由合成后的帧算命中图（每像素 0|1，尺寸 = 画板物理像素）。
+    /// 只读 alpha 通道、不改像素：docs/11:45「hitmap 只影响命中，不影响外观」。
+    /// </summary>
+    private byte[] HitmapFor(string clipId, int index, Bitmap frame)
+    {
+        string key = $"{FrameKey(clipId, index)}@{frame.Width}x{frame.Height}";
+        if (_hitmaps.TryGetValue(key, out byte[]? cached))
+        {
+            return cached;
+        }
+
+        Rectangle bounds = new(0, 0, frame.Width, frame.Height);
+        BitmapData data = frame.LockBits(bounds, ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb);
+        var map = new byte[frame.Width * frame.Height];
+        try
+        {
+            // 逐行拷进托管缓冲再判定：unsafe 指针在这个工程里不是既有约定，不为一张命中图开先例。
+            var row = new byte[Math.Abs(data.Stride)];
+            for (int y = 0; y < frame.Height; y++)
+            {
+                Marshal.Copy(data.Scan0 + (y * data.Stride), row, 0, row.Length);
+                int outRow = y * frame.Width;
+                for (int x = 0; x < frame.Width; x++)
+                {
+                    // Format32bppPArgb 的内存序是 B,G,R,A。
+                    if (row[(x * 4) + 3] >= HitAlphaFloor)
+                    {
+                        map[outRow + x] = 1;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            frame.UnlockBits(data);
+        }
+
+        _hitmaps[key] = map;
+        return map;
+    }
 }

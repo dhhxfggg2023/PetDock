@@ -135,6 +135,11 @@ internal static partial class Program
             KernelLog.Write($"startup-plugins-disabled count={disabledIds.Count}");
         }
 
+        // 界面材质（docs/18 §2.7）：必须在任何窗口构造之前设好 —— Theme.Apply 在窗口
+        // 建句柄时就把材质落上去，晚一步就会先闪一帧不透明窗。
+        PetDock.Core.Ui.Design.Theme.Material = PetDock.Core.Ui.Design.Theme.ParseMaterial(startupSettings.Material);
+        KernelLog.Write($"startup-material {PetDock.Core.Ui.Design.Theme.MaterialToken(PetDock.Core.Ui.Design.Theme.Material)}");
+
         using PluginHost pluginHost = new(
             PluginHost.ProbePluginsRoot() ?? string.Empty,
             PluginHost.ResidentTickMs,

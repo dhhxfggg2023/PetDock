@@ -4,10 +4,14 @@
 // （RFC-16 §6 已否决拿 LayeredFrameWindow 当通用覆盖窗用）。
 // 机器判据只到「计时器已启动且帧计数在推进」，不判「动画逐帧正确」。
 //
+// 外观（docs/18 §2.6）：它是一块「示意画布」，所以画成面板而不是纯色矩形 ——
+// 圆角虚线框 + 韭菜色高亮圈，与深色界面同一套令牌。颜色一律取自 Theme，不写死。
+//
 // 单独成文件的原因：D-03c 的单文件 400 行上限。
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
@@ -22,7 +26,7 @@ internal sealed class ThroughHintPanel : Panel
     public ThroughHintPanel()
     {
         DoubleBuffered = true;
-        BackColor = Color.FromArgb(0xFF, 0xF2, 0xF2, 0xF2);
+        BackColor = Theme.Surface;
         _timer.Tick += Advance;
     }
 
@@ -64,7 +68,8 @@ internal sealed class ThroughHintPanel : Panel
     private void Advance(object? sender, EventArgs e)
     {
         _frameCount++;
-        int travel = Math.Max(1, Width - 48);
+        int diameter = Theme.Dip(this, 32);
+        int travel = Math.Max(1, Width - diameter - (Theme.Dip(this, Theme.SpaceMd) * 2));
         _offset += _direction * 6;
         if (_offset >= travel)
         {
@@ -83,8 +88,17 @@ internal sealed class ThroughHintPanel : Panel
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        using var pen = new Pen(Color.FromArgb(0xFF, 0x3A, 0x6E, 0xC0), 3);
-        int y = Math.Max(0, (Height / 2) - 16);
-        e.Graphics.DrawEllipse(pen, _offset, y, 32, 32);
+
+        int pad = Theme.Dip(this, Theme.SpaceMd);
+        int radius = Theme.Dip(this, Theme.RadiusMd);
+        var frame = new Rectangle(pad, pad, Math.Max(1, Width - (pad * 2)), Math.Max(1, Height - (pad * 2)));
+        Ink.Stroke(e.Graphics, frame, radius, Theme.Line, Theme.Dip(this, 1));
+
+        int diameter = Theme.Dip(this, 32);
+        int y = Math.Max(pad, (Height / 2) - (diameter / 2));
+        int stroke = Theme.Dip(this, 3);
+        using var pen = Theme.Pen(Theme.Accent, stroke);
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        e.Graphics.DrawEllipse(pen, pad + _offset, y, diameter, diameter);
     }
 }

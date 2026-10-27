@@ -8,18 +8,17 @@
 // RFC-15 §3.5 把导入失败也归到同一类 —— 失败信息出现在宠物页里，用户当场看得见。
 using System;
 using System.Windows.Forms;
+using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
 internal sealed partial class ControlPanel
 {
     /// <summary>「导入素材包」入口（宠物页专属，不进插件页的操作栏）。</summary>
-    private readonly Button _importButton = new()
+    private readonly ThemedButton _importButton = new()
     {
         Text = I18n.Get("cp.pets.import"),
         Name = "import-pack",
-        Width = 130,
-        Height = 28,
     };
 
     /// <summary>内联错误条（平时不可见；有失败信息时出现）。</summary>
@@ -27,12 +26,8 @@ internal sealed partial class ControlPanel
     {
         Name = "import-error",
         Dock = DockStyle.Bottom,
-        Height = 46,
         Visible = false,
-        ForeColor = SystemColors.ControlText,
-        BackColor = Color.FromArgb(0xFF, 0xFD, 0xE9, 0xD9),
         TextAlign = ContentAlignment.MiddleLeft,
-        Padding = new Padding(8, 4, 8, 4),
         Text = string.Empty,
     };
 
@@ -63,7 +58,7 @@ internal sealed partial class ControlPanel
             while (node?.Parent is not null)
             {
                 node = node.Parent;
-                if (node is TabPage page)
+                if (node is Panel page && page.Name.StartsWith("tab-", StringComparison.Ordinal))
                 {
                     return page.Name;
                 }
@@ -98,17 +93,21 @@ internal sealed partial class ControlPanel
     {
         _importButton.Click += (_, _) => RunImport();
 
-        var bar = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 40,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8, 6, 8, 6),
-            WrapContents = false,
-        };
+        Panel page = PageOf(PanelPages.Pets);
+        int dpi = Theme.DpiOf(page);
+        _importButton.FitToText();
+
+        // 错误条：赤陶字压在压暗的赤陶底上（docs/18 §2.6 的失败色对）。
+        _importError.Font = Theme.FontFor(page, TypeRole.Body);
+        _importError.ForeColor = Theme.Bad;
+        _importError.BackColor = Theme.BadSurface;
+        _importError.Height = Theme.Dip(dpi, 46);
+        _importError.Padding = new Padding(
+            Theme.Dip(dpi, Theme.SpaceMd), Theme.Dip(dpi, Theme.SpaceXs), Theme.Dip(dpi, Theme.SpaceMd), Theme.Dip(dpi, Theme.SpaceXs));
+
+        FlowLayoutPanel bar = ThemedBar(page);
         bar.Controls.Add(_importButton);
 
-        TabPage page = _pages.TabPages[0];
         page.Controls.Add(_importError);
         page.Controls.Add(bar);
     }

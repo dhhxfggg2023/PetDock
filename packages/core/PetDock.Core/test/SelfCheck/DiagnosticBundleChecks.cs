@@ -207,14 +207,15 @@ internal static class DiagnosticBundleChecks
         Done("ui-diag-bundle-empty-is-honest", emptyHonest,
             "exported=" + emptyExport.Ok + " summary-has-frame-number=" + emptySummary.Contains("frames=", StringComparison.Ordinal));
 
-        // ⑦ 设置页两个入口不再是「(未接线)」，且控件确实存在。
+        // ⑦ 设置页三个入口不再是「(未接线)」，且控件确实存在（审计流水窗是 2026-10-28 加的第三个）。
         using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
         panel.ShowPage(PanelPages.Settings);
         IReadOnlyList<string> rows = panel.SettingsRowTexts;
         IReadOnlyList<string> controlNames = panel.DiagnosticControlNames;
-        bool wired = controlNames.Count == 2
+        bool wired = controlNames.Count == 3
             && controlNames.Contains("diag-open-logs")
             && controlNames.Contains("diag-export-bundle")
+            && controlNames.Contains("diag-view-audit")
             && rows.Any(row => row.Contains(I18n.Get(ControlPanel.DiagnosticLogsRow), StringComparison.Ordinal))
             && rows.Any(row => row.Contains(I18n.Get(ControlPanel.DiagnosticBundleRow), StringComparison.Ordinal))
             && !rows.Any(row => row.Contains("(未接线)", StringComparison.Ordinal));

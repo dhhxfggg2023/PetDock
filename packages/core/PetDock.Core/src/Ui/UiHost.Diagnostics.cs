@@ -39,6 +39,11 @@ internal sealed partial class UiHost
                 return _diagnostics.ExportBundle();
             }
 
+            if (string.Equals(op, ControlPanel.DiagnosticOpViewAudit, StringComparison.Ordinal))
+            {
+                return OpenAuditWindow();
+            }
+
             return (false, I18n.Get("ui.diag.unknown", op));
         }
         catch (Exception error)
@@ -46,5 +51,27 @@ internal sealed partial class UiHost
             KernelLog.Write($"diagnostic-failed op={op} {error.GetType().Name}: {error.Message}");
             return (false, I18n.Get("ui.diag.failed", error.GetType().Name, error.Message));
         }
+    }
+
+    /// <summary>
+    /// 审计流水的只读视图（docs/18 §2.8）。读盘在这里，窗口只负责列。
+    /// 非模态：它是「看一眼」的窗，不该把面板和宠物一起冻住（Exit 确认那种才需要模态）。
+    /// </summary>
+    private (bool Ok, string Message) OpenAuditWindow()
+    {
+        AuditTrailRead read = AuditTrail.ReadAll(_diagnostics!.AuditDirectory);
+        if (!read.Available)
+        {
+            return (false, read.Note);
+        }
+
+        AuditWindow window = AuditWindow.Create(read);
+        window.FormClosed += (_, _) => window.Dispose();
+        window.Show(_panel);
+
+        return read.Rows.Count == 0
+            ? (true, I18n.Get("cp.audit.empty"))
+            : (true, I18n.Get("cp.audit.summary", read.Rows.Count, read.Rows.Count)
+                + I18n.Get("cp.audit.files", read.Files));
     }
 }

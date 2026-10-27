@@ -22,11 +22,16 @@ namespace PetDock.Hosting;
 internal static class UiSelfTest
 {
     private static string? _logPath;
+    private static string? _shotsDir;
 
     public static int Run(string[] args)
     {
         int logIdx = Array.FindIndex(args, a => string.Equals(a, "--log", StringComparison.Ordinal));
         _logPath = logIdx >= 0 && args.Length > logIdx + 1 ? args[logIdx + 1] : null;
+
+        // 人眼验收的截图工件（docs/18 §7.1）：--uitest --shots <目录>。
+        int shotIdx = Array.FindIndex(args, a => string.Equals(a, "--shots", StringComparison.Ordinal));
+        _shotsDir = shotIdx >= 0 && args.Length > shotIdx + 1 ? args[shotIdx + 1] : null;
 
         try
         {
@@ -40,6 +45,8 @@ internal static class UiSelfTest
             PanelSingleton();
             RosterReadOnly();
             AuthorizationDialogCheck();
+            // 2026-10-28：外观母体（docs/18 §2.6）的机器判据 —— 裸色/控件种类/四档缩放令牌/文字放得下。
+            AppearanceChecks.Run(Check);
             // 2026-10-26 真机故障（弹窗被压在宠物下面/后面）的反向门禁：模态窗必须在置顶档，
             // 且真的压在宠物上面。见 ModalBandChecks.cs。
             ModalBandChecks.Run(Check);
@@ -54,6 +61,8 @@ internal static class UiSelfTest
             ResidentLoopChecks.Run(Check);
             ImportChecks.Run(Check);
             SettingsChecks.Run(Check);
+            // 2026-10-28：审计流水的只读视图（docs/18 §2.8，ui-audit-view-*）。
+            AuditChecks.Run(Check);
             // 2026-10-26：插件开关落盘 + 右键宠物弹菜单的接线（ui-plugins-* / ui-pet-context-menu-*）。
             PluginToggleChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
@@ -84,6 +93,14 @@ internal static class UiSelfTest
             // 判据体检 S2（2026-10-25）：账本自己的负例对照 —— 证明「跳过」真的分得开、
             // 且没人接的 SKIP 会改变末行 marker。见 SkipLedger.ControlCheck。
             SkipLedger.ControlCheck(Check, "ui-skip-ledger-classify");
+
+            // 截图工件：判据之后再拍，保证拍到的就是刚刚被判绿的那棵树。
+            if (_shotsDir is not null)
+            {
+                int shots = UiShots.Capture(_shotsDir, Emit);
+                shots += UiShots.CaptureMaterials(_shotsDir, Emit);
+                Emit($"STAT shots n={shots} dir={_shotsDir}");
+            }
         }
         catch (Exception error)
         {
