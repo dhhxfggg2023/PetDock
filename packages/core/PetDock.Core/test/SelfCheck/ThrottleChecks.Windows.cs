@@ -291,13 +291,26 @@ internal static partial class ThrottleChecks
             {
                 _frame?.Dispose();
                 _frame = new Bitmap(frameSize.Width, frameSize.Height, PixelFormat.Format32bppArgb);
-                using Graphics graphics = Graphics.FromImage(_frame);
-                graphics.Clear(Color.FromArgb(0, 0, 0, 0));
-                using var brush = new SolidBrush(Color.FromArgb(255, 0xC0, 0x6E, 0x3A));
                 int w = frameSize.Width;
                 int h = frameSize.Height;
+
                 // 右下角四分之一块：覆盖 (0.75,0.75) 那个分数点，离 (0.5,0.5) 足够远。
-                graphics.FillRectangle(brush, w / 2, h / 2, w - (w / 2), h - (h / 2));
+                // 画真素材而不是纯色块（2026-10-28 所有者指出纯色图看不出是宠物），
+                // 但先铺一层不透明底再叠素材：这条判据要的是「这点确实不透光」，
+                // 素材边缘的半透明像素会让取样点变成运气而不是矩形。
+                var corner = new Rectangle(w / 2, h / 2, w - (w / 2), h - (h / 2));
+                using (Graphics graphics = Graphics.FromImage(_frame))
+                {
+                    graphics.Clear(Color.FromArgb(0, 0, 0, 0));
+                    using var baseBrush = new SolidBrush(Color.FromArgb(255, 0xC0, 0x6E, 0x3A));
+                    graphics.FillRectangle(baseBrush, corner);
+                    Bitmap? art = SampleArt.TryFrame(corner.Width, corner.Height);
+                    if (art is not null)
+                    {
+                        graphics.DrawImage(art, corner);
+                    }
+                }
+
                 _size = frameSize;
             }
 

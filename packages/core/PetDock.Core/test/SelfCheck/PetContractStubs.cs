@@ -12,7 +12,7 @@ using PetDock.Core.PetRuntime;
 namespace PetDock.Hosting;
 
 /// <summary>可控的视图桩件：帧数可数、异常可注入、耗时可控、片段声明可挂。</summary>
-internal sealed class StubView : IPetView, IClipCatalog
+internal sealed partial class StubView : IPetView, IClipCatalog
 {
     private readonly List<AnimationClip> _clips = new();
     private readonly Dictionary<int, Bitmap> _frames = new();
@@ -165,23 +165,7 @@ internal sealed class StubView : IPetView, IClipCatalog
         return map;
     }
 
-    private Bitmap BitmapFor(int index)
-    {
-        if (_frames.TryGetValue(index, out Bitmap? cached))
-        {
-            return cached;
-        }
-
-        int width = _target?.PixelWidth ?? 8;
-        int height = _target?.PixelHeight ?? 8;
-        var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
-        using Graphics g = Graphics.FromImage(bitmap);
-        g.Clear(Color.FromArgb(0, 0, 0, 0));
-        using var brush = new SolidBrush(Color.FromArgb(255, 30, 60 + (index * 20), 200));
-        g.FillEllipse(brush, 1, 1, width - 2, height - 2);
-        _frames[index] = bitmap;
-        return bitmap;
-    }
+    // 帧的绘制在 PetContractStubs.Art.cs（同一个 partial 类，D-03c 单文件行数上限）。
 }
 
 /// <summary>可控的行为层桩件：一次 tick 交出一批故意冲突的指令（用于验仲裁顺序）。</summary>

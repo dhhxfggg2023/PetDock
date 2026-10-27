@@ -31,7 +31,10 @@ internal static partial class AppearanceChecks
         DpiTokens(check);
         TextFits(check);
         Material(check);
+        SampleArtPresent(check);
     }
+
+    // ⑥ 真素材的判据在 AppearanceSampleChecks.cs（同一个 partial 类，D-03c 单文件行数上限）。
 
     // ⑤ 材质的判据在 AppearanceMaterialChecks.cs（同一个 partial 类，D-03c 单文件行数上限）。
 
