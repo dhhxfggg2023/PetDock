@@ -75,6 +75,9 @@ public partial class PluginsPage : UserControl, IUiPage
             }
 
             CountText.Text = _rows.Count == 0 ? string.Empty : _context.T("cp.plugins.count", _rows.Count);
+            EmptyText.Text = _context.T("cp.plugins.empty");
+            EmptyText.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            Rows.Visibility = _rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
             RefreshTrash();
             if (selected is not null)
             {

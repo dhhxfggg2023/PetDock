@@ -1,4 +1,6 @@
 {
+  "ui.singleInstance.title": "PetDock is already running",
+  "ui.singleInstance.running": "PetDock is already running; its windows live in the tray. Double-click the tray icon (or the pet) to open the control panel.",
   "ui.diag.unavailable": "Diagnostics are unavailable: the host has not taken over diagnostic actions.",
   "ui.diag.unknown": "Unknown diagnostic action: {0}",
   "ui.diag.failed": "Diagnostic action failed: {0} {1}",

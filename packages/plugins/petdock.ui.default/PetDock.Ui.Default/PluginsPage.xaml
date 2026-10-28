@@ -107,6 +107,10 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
+                <TextBlock Grid.Row="1" x:Name="EmptyText" Style="{DynamicResource Pd.Dim}"
+                           Margin="24" TextWrapping="Wrap" Visibility="Collapsed"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+
                 <!-- 回收站（2026-10-28 第三轮）：删掉的插件在这里，可恢复或彻底删除。 -->
                 <Border Grid.Row="2" BorderBrush="{DynamicResource Pd.Line}" BorderThickness="0,1,0,0"
                         Margin="18,0,18,0" Padding="0,10,0,12">

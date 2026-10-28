@@ -34,6 +34,7 @@ public partial class SettingsPage : UserControl, IUiPage
         DiagnosticsSection.Text = context.T("cp.settings.section.diagnostics");
         OpenLogsButton.Content = context.T("cp.diag.openLogs");
         ExportButton.Content = context.T("cp.diag.exportBundle");
+        AuditButton.Content = context.T("cp.diag.viewAudit");
 
         ThemeSystem.Content = context.T("cp.settings.theme.system");
         ThemeLight.Content = context.T("cp.settings.theme.light");
@@ -162,6 +163,8 @@ public partial class SettingsPage : UserControl, IUiPage
     }
 
     private void OnOpenLogs(object sender, RoutedEventArgs e) => _context.OpenLogs();
+
+    private void OnOpenAudit(object sender, RoutedEventArgs e) => _context.OpenAudit();
 
     private void OnExport(object sender, RoutedEventArgs e)
     {

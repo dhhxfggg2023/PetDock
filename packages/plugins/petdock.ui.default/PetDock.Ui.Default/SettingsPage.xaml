@@ -101,7 +101,9 @@
                             <Button x:Name="OpenLogsButton" Style="{DynamicResource Pd.SecondaryButton}"
                                     Click="OnOpenLogs" Margin="0,0,8,0" />
                             <Button x:Name="ExportButton" Style="{DynamicResource Pd.SecondaryButton}"
-                                    Click="OnExport" />
+                                    Click="OnExport" Margin="0,0,8,0" />
+                            <Button x:Name="AuditButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                    Click="OnOpenAudit" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

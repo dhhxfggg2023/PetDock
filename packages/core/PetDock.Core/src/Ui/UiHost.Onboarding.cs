@@ -85,9 +85,11 @@ internal sealed partial class UiHost
         bool hasPet = _frames?.Roster?.HasView == true;
         using var window = new OnboardingWindow(WriteOnboardingSettings, hasPet);
         AttachOnboarding(window);
+        bool finished = false;
         try
         {
             window.ShowDialog();
+            finished = window.Finished;
         }
         catch (Exception error)
         {
@@ -96,6 +98,14 @@ internal sealed partial class UiHost
         finally
         {
             AttachOnboarding(null);
+        }
+
+        // 引导结束（完成或跳过）就把主控面板打开：用户刚被告知「宠物在桌面上」，
+        // 接下来最想做的往往是导入素材/换设置，让 TA 自己去找托盘是在赌运气。
+        // 直接关掉引导（X）不算结束：那时用户的意图是「先别打扰我」。
+        if (finished)
+        {
+            OpenPanel();
         }
     }
 

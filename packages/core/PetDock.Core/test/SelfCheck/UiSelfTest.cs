@@ -42,6 +42,8 @@ internal static class UiSelfTest
             TrayItems();
             // 2026-10-28 WPF 壳：页面全部来自 IUiPage 插件；这里验壳本身（预览上下文 + 假页面）。
             UiWorkspaceChecks.Run(Check);
+            // 2026-10-28 第五轮：首次使用闭环（插件空状态、审计入口）。
+            FirstUseChecks.Run(Check);
             // 2026-10-28 第三轮：导入/安装的长任务（进度条、取消、取消后的现场）。
             UiWorkChecks.Run(Check);
             PanelSingleton();

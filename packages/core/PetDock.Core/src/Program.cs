@@ -92,6 +92,7 @@ internal static partial class Program
             if (!instance.IsFirst)
             {
                 KernelLog.Write($"single-instance-refused name={instance.Name} — 已有实例在跑，本次不再打开第二只");
+                ShowAlreadyRunningNotice();
                 return 0;
             }
 
@@ -108,6 +109,29 @@ internal static partial class Program
             : composeTest ? RunComposeTest(args)
             : goldenTest ? RunGoldenBaseline(args, goldenIdx)
             : RunResident(ResidentPerfProbe.Parse(args));
+    }
+
+    /// <summary>
+    /// 第二个实例只做一件事：告诉用户「不是没反应，是它已经在托盘里」。
+    /// 文案表按用户设置加载（这条路径不经过 UiHost）；读不到设置就退回默认语言。
+    /// </summary>
+    private static void ShowAlreadyRunningNotice()
+    {
+        try
+        {
+            UserSettings settings = new UserSettingsStore(PetDataStore.Resolve().Root).Load();
+            I18n.Load(settings.Language);
+        }
+        catch (Exception)
+        {
+            // 读设置失败也照样要说话：I18n 会退回默认语言。
+        }
+
+        MessageBox.Show(
+            I18n.Get("ui.singleInstance.running"),
+            I18n.Get("ui.singleInstance.title"),
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
     }
 
     /// <summary>常驻：内容链与 --selftest 完全相同（唯一装配入口），但消息循环的宿主是 UiHost

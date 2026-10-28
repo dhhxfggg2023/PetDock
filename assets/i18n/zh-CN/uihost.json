@@ -1,4 +1,6 @@
 {
+  "ui.singleInstance.title": "PetDock 已在运行",
+  "ui.singleInstance.running": "PetDock 已经在运行了，界面在托盘里：双击托盘图标（或双击宠物）就能打开主控面板。",
   "ui.diag.unavailable": "诊断功能不可用：宿主未接管诊断动作。",
   "ui.diag.unknown": "未知的诊断动作：{0}",
   "ui.diag.failed": "诊断动作失败：{0} {1}",
