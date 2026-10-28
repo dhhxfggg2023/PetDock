@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
@@ -35,7 +36,8 @@ internal sealed partial class PetWindowSet : IDisposable
         LayeredFrameWindow Window,
         PetFrameSource? Source,
         ResidentFrameLoop Loop,
-        string? PetId = null);
+        string? PetId = null,
+        string? Name = null);
 
     private readonly LayeredFrameWindow _primary;
     private readonly ResidentFrameLoop? _primaryLoop;
@@ -103,7 +105,9 @@ internal sealed partial class PetWindowSet : IDisposable
         PetInstance? instance = null;
         try
         {
-            instance = roster.BuildInstance("resident-set", new[] { pack.Path }, freshView: true, imported: true);
+            string name = string.IsNullOrWhiteSpace(pack.Name) ? Path.GetFileName(pack.Path) : pack.Name;
+            instance = roster.BuildInstance(
+                "resident-set", new[] { pack.Path }, freshView: true, imported: true, displayName: name);
             if (instance is null)
             {
                 KernelLog.Write($"pet-set-skip pack={pack.InstanceId} reason=no-view");
@@ -119,7 +123,7 @@ internal sealed partial class PetWindowSet : IDisposable
             // 鼠标消息进交互会话 + moveTo 真移窗：与主窗同一条接线（RFC-35 §3.2）。
             // 不接就是「第二只点了没反应」「第二只不会走」。
             FrameComposition.WireWindow(window, instance);
-            return new Slot(instance, pack.Path, window, source, new ResidentFrameLoop(window), pack.InstanceId);
+            return new Slot(instance, pack.Path, window, source, new ResidentFrameLoop(window), pack.InstanceId, name);
         }
         catch (Exception error)
         {
@@ -198,7 +202,8 @@ internal sealed partial class PetWindowSet : IDisposable
             // 第二只点了必须有反应、moveTo 必须真挪窗：与主窗同一条接线（RFC-35 §3.2）。
             FrameComposition.WireWindow(window, instance);
 
-            var slot = new Slot(instance, packPath, window, source, new ResidentFrameLoop(window), CatalogIdOf(packPath));
+            var slot = new Slot(
+                instance, packPath, window, source, new ResidentFrameLoop(window), CatalogIdOf(packPath), instance.DisplayName);
             Add(slot);
 
             if (_started)
@@ -247,6 +252,15 @@ internal sealed partial class PetWindowSet : IDisposable
         }
 
         _primaryLoop?.Start();
+    }
+
+    /// <summary>把其余几只的窗口一起改成同一逻辑边长（设置页「宠物大小」）。</summary>
+    public void SetLogicalSize(int edge)
+    {
+        foreach (Slot slot in _slots)
+        {
+            slot.Window.SetLogicalSize(edge);
+        }
     }
 
     /// <summary>隐藏所有槽位并停泵（托盘的「隐藏宠物」：隐藏的宠物不该继续烧 CPU）。</summary>

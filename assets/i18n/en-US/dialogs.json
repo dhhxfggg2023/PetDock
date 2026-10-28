@@ -45,5 +45,5 @@
 
   "ui.roster.source.kernelFallback": "(kernel fallback)",
   "ui.roster.state.degraded": " · degraded",
-  "ui.roster.memory.process": "{0} MB (process)"
+  "ui.roster.memory.process": "{0} MB (shared by PetDock)"
 }

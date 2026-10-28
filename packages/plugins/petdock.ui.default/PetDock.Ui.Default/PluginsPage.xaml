@@ -98,6 +98,7 @@
                                 <TextBlock Grid.Column="4" Text="{Binding Granted}" Style="{DynamicResource Pd.Dim}"
                                            VerticalAlignment="Center" />
                                 <ToggleButton Grid.Column="5" Style="{DynamicResource Pd.Switch}"
+                                              AutomationProperties.Name="{Binding Name}"
                                               IsChecked="{Binding Enabled, Mode=OneWay}"
                                               IsEnabled="{Binding CanToggle}"
                                               Click="OnToggleClick" Tag="{Binding Id}"

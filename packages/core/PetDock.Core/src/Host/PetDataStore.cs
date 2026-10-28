@@ -78,8 +78,8 @@ internal sealed partial class PetDataStore
     /// <summary>清单文件路径。</summary>
     public string CatalogPath => Path.Combine(Root, CatalogFile);
 
-    /// <summary>当前选中的导入物（实例 id + 素材根目录）；没有则 null。</summary>
-    public sealed record ActivePack(string InstanceId, string Path);
+    /// <summary>清单里的一只：实例 id + 素材根目录 + 给用户看的名字（旧清单没有 name 时回落到目录名）。</summary>
+    public sealed record ActivePack(string InstanceId, string Path, string Name = "");
 
     /// <summary>
     /// 定位数据区。优先级：显式覆盖 → 程序目录旁的便携标记 → %LOCALAPPDATA% → 程序目录（退化）。
@@ -194,8 +194,9 @@ internal sealed partial class PetDataStore
     /// 写清单：登记一个导入物并把它设为当前选中。
     /// 写含 原规格 17 §4 要求的两个字段（agent_id 与 timestamp）。
     /// </summary>
-    public void RegisterActive(string instanceId, string folder)
+    public void RegisterActive(string instanceId, string folder, string? name = null)
     {
+        string display = string.IsNullOrWhiteSpace(name) ? folder : name;
         JsonObject catalog = ReadCatalog();
         catalog["schemaVersion"] = SchemaVersion;
         catalog["agent_id"] = "host";
@@ -208,13 +209,14 @@ internal sealed partial class PetDataStore
             if (item is JsonObject entry && string.Equals((string?)entry["id"], instanceId, StringComparison.Ordinal))
             {
                 entry["folder"] = folder;
+                entry["name"] = display;
                 known = true;
             }
         }
 
         if (!known)
         {
-            pets.Add(new JsonObject { ["id"] = instanceId, ["folder"] = folder });
+            pets.Add(new JsonObject { ["id"] = instanceId, ["folder"] = folder, ["name"] = display });
         }
 
         catalog["pets"] = pets;
@@ -281,7 +283,8 @@ internal sealed partial class PetDataStore
             string path = Path.Combine(PacksDir, folder);
             if (Directory.Exists(path))
             {
-                list.Add(new ActivePack(id, path));
+                string? name = (string?)entry["name"];
+                list.Add(new ActivePack(id, path, string.IsNullOrWhiteSpace(name) ? folder : name));
             }
         }
 

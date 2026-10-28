@@ -7,6 +7,18 @@
     <UserControl.Resources>
         <!-- 主题刷子由 UiWorkspaceView.ApplyPalette 在构造时注入；样式只引用键名。
              这样页面插件不依赖内核的 Theme 类型，也不需要知道现在是亮还是暗。 -->
+        <!-- 键盘焦点框：自绘模板的按钮/开关默认没有可见焦点，键盘用户会「按了没反应」。
+             用虚线描边而不是系统默认（系统默认在深色底上几乎看不见）。 -->
+        <Style x:Key="Pd.FocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Margin="1" StrokeThickness="2" Stroke="{DynamicResource Pd.Accent}"
+                                   StrokeDashArray="2 2" SnapsToDevicePixels="True" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="Pd.PageTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="26" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -60,6 +72,7 @@
             <Setter Property="Padding" Value="18,9" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -87,6 +100,7 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Padding" Value="16,8" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -123,6 +137,7 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Margin" Value="10,2" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
@@ -153,6 +168,7 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Width" Value="38" />
             <Setter Property="Height" Value="22" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
@@ -185,6 +201,7 @@
             <Setter Property="FontSize" Value="12.5" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
@@ -215,6 +232,7 @@
             <Setter Property="Padding" Value="10,7" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="CaretBrush" Value="{DynamicResource Pd.Accent}" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">

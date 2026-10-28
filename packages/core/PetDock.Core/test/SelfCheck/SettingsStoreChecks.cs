@@ -38,6 +38,7 @@ internal static class SettingsStoreChecks
         WithRoot(check, "ui-settings-update-atomic", Atomic);
         WithRoot(check, "ui-settings-update-no-temp-leftover", NoTempLeftover);
         WithRoot(check, "ui-settings-update-skips-unchanged-write", SkipsUnchangedWrite);
+        WithRoot(check, "ui-settings-pet-size-persisted", PetSizePersisted);
     }
 
     /// <summary>① 两条线程各改一个字段，最后两个字段都得是各自写过的值。</summary>
@@ -90,6 +91,25 @@ internal static class SettingsStoreChecks
             "ui-settings-update-skips-unchanged-write",
             before == after,
             $"before={before:HH:mm:ss.fff} after={after:HH:mm:ss.fff}");
+    }
+
+    /// <summary>④ 宠物尺寸落盘并读回；越界值被 Clamped() 拉回上限；没设过时保持 null（由面板回落 128）。</summary>
+    private static void PetSizePersisted(Check check, string root)
+    {
+        var store = new UserSettingsStore(root);
+        store.Save(UserSettings.Default with { PetSize = 160 });
+        int? reloaded = new UserSettingsStore(root).Load().PetSize;
+
+        store.Update(current => current with { PetSize = 999 });
+        int? clamped = new UserSettingsStore(root).Load().PetSize;
+
+        store.Save(UserSettings.Default);
+        int? unset = new UserSettingsStore(root).Load().PetSize;
+
+        check(
+            "ui-settings-pet-size-persisted",
+            reloaded == 160 && clamped == UserSettings.MaxPetSize && unset is null,
+            $"reloaded={reloaded?.ToString() ?? "(none)"} clamped={clamped?.ToString() ?? "(none)"} unset={unset?.ToString() ?? "(none)"}");
     }
 
     /// <summary>

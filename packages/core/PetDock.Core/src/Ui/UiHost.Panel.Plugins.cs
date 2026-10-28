@@ -23,7 +23,18 @@ internal sealed partial class UiHost
             return;
         }
 
-        _ = Task.Run(() => TogglePluginDisabledCore(pluginId));
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                TogglePluginDisabledCore(pluginId);
+            }
+            catch (Exception error)
+            {
+                KernelLog.Write($"toggle-failed plugin={pluginId} {error.GetType().Name}: {error.Message}");
+                ReportPluginFailure(I18n.Get("cp.plugins.toggle.failed", error.Message));
+            }
+        });
     }
 
     /// <summary>禁用/启用的本体（后台线程）。</summary>
@@ -54,6 +65,7 @@ internal sealed partial class UiHost
             if (enabled is null)
             {
                 KernelLog.Write($"toggle-skip plugin={pluginId} reason=unknown-plugin");
+                ReportPluginFailure(I18n.Get("cp.plugins.toggle.unknown"));
                 return;
             }
 
@@ -62,6 +74,7 @@ internal sealed partial class UiHost
             if (essential)
             {
                 KernelLog.Write($"toggle-skip plugin={pluginId} reason=essential");
+                ReportPluginFailure(I18n.Get("cp.plugins.toggle.essential"));
                 return;
             }
 
@@ -73,8 +86,10 @@ internal sealed partial class UiHost
             else
             {
                 KernelLog.Write($"toggle-failed plugin={pluginId} {inventoryError}");
+                ReportPluginFailure(I18n.Get("cp.plugins.toggle.failed", inventoryError ?? string.Empty));
             }
 
+            RefreshUiOnUi();
             return;
         }
 
@@ -82,6 +97,7 @@ internal sealed partial class UiHost
         if (handle is null)
         {
             KernelLog.Write($"toggle-skip plugin={pluginId} reason=not-loaded");
+            ReportPluginFailure(I18n.Get("cp.plugins.toggle.unknown"));
             return;
         }
 
@@ -92,6 +108,7 @@ internal sealed partial class UiHost
                 host.Disable(handle).GetAwaiter().GetResult();
                 KernelLog.Write($"plugin-disabled plugin={pluginId}");
                 PersistPluginDisabled(pluginId, disabled: true);
+                RefreshUiOnUi();
                 return;
             }
 
@@ -100,6 +117,7 @@ internal sealed partial class UiHost
                 handle.Resume();
                 KernelLog.Write($"plugin-enabled plugin={pluginId}");
                 PersistPluginDisabled(pluginId, disabled: false);
+                RefreshUiOnUi();
                 return;
             }
 
@@ -108,7 +126,37 @@ internal sealed partial class UiHost
         catch (Exception ex)
         {
             KernelLog.Write($"toggle-failed plugin={pluginId} {ex.GetType().Name}: {ex.Message}");
+            ReportPluginFailure(I18n.Get("cp.plugins.toggle.failed", ex.Message));
         }
+    }
+
+    /// <summary>
+    /// 把插件启停/授权失败写回面板状态条（后台线程 → UI 线程）。
+    /// 失败只进 KernelLog 等于用户看不见：他点了开关，界面过一会儿又弹回原状，没有任何解释。
+    /// </summary>
+    private void ReportPluginFailure(string message)
+    {
+        KernelLog.Write($"plugin-ui-problem {message}");
+        RunOnUi(() =>
+        {
+            ControlPanel? panel = _panel;
+            if (panel is not null && !panel.IsDisposed)
+            {
+                panel.SetStatus(message, UiStatusKind.Problem);
+            }
+        });
+    }
+
+    /// <summary>动作完成后让列表重新绑定（后台线程 → UI 线程；面板已关就什么都不做）。</summary>
+    private void RefreshUiOnUi()
+    {
+        RunOnUi(() =>
+        {
+            if (_panel is not null && !_panel.IsDisposed)
+            {
+                RefreshUi();
+            }
+        });
     }
 
     /// <summary>

@@ -50,10 +50,14 @@ public sealed record SettingsView(
     string Language,
     bool StartupEnabled,
     string? Theme = null,
-    string? Material = null)
+    string? Material = null,
+    int PetSize = 128,
+    string? PetName = null,
+    string? Version = null)
 {
     /// <summary>没有设置可读时的默认状态。</summary>
-    public static SettingsView Default { get; } = new(1000.0 / 30.0, "zh-CN", false, "system", "opaque");
+    public static SettingsView Default { get; } = new(
+        1000.0 / 30.0, "zh-CN", false, "system", "opaque", 128, null, null);
 }
 
 /// <summary>面板一次重绘所需的全部数据。</summary>

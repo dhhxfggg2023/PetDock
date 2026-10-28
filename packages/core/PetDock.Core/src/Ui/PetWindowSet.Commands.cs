@@ -24,8 +24,9 @@ internal sealed partial class PetWindowSet
     public static string IdOf(Slot slot) =>
         slot.Instance?.Id ?? Path.GetFileName(slot.PackPath);
 
-    /// <summary>托盘上显示的名字：素材包目录名（`user.alpha` 这种），不编造宠物名。</summary>
-    public static string TitleOf(Slot slot) => Path.GetFileName(slot.PackPath);
+    /// <summary>托盘上显示的名字：清单里的显示名；旧条目没有名字时才回落目录名。不编造宠物名。</summary>
+    public static string TitleOf(Slot slot) =>
+        string.IsNullOrWhiteSpace(slot.Name) ? Path.GetFileName(slot.PackPath) : slot.Name;
 
     /// <summary>当前桌面上主窗之外的那几只，按槽位顺序。</summary>
     public IReadOnlyList<Entry> Entries()

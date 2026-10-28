@@ -119,6 +119,12 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    public string? SetPetSize(int size)
+    {
+        Commands.Add("pet-size:" + size);
+        return null;
+    }
+
     public string? SetLanguage(string language)
     {
         Commands.Add("language:" + language);

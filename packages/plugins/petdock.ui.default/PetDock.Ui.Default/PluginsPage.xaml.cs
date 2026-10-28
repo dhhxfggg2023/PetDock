@@ -239,6 +239,7 @@ public partial class PluginsPage : UserControl, IUiPage
         }
 
         TrashToggle.Content = _context.T("cp.plugins.trash.header", _trash.Count);
+        System.Windows.Automation.AutomationProperties.SetName(TrashToggle, TrashToggle.Content.ToString() ?? "trash");
         TrashSummary.Text = _trash.Count == 0
             ? string.Empty
             : _context.T("cp.plugins.trash.total", (bytes / 1048576.0).ToString("0.0"));

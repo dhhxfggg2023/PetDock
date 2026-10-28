@@ -56,6 +56,7 @@ internal sealed partial class AuditTrail : IDisposable
 
     private readonly object _gate = new();
     private readonly Queue<string> _buffer = new();
+    private readonly LogFileWriter _fileWriter;
     private readonly RedactRules _rules;
     private readonly string _directory;
     private readonly string _fileName;
@@ -87,8 +88,8 @@ internal sealed partial class AuditTrail : IDisposable
             + now.ToString("MM", CultureInfo.InvariantCulture)
             + now.ToString("dd", CultureInfo.InvariantCulture)
             + "-" + now.ToString("HHmmss", CultureInfo.InvariantCulture)
-            + "-" + Environment.ProcessId.ToString(CultureInfo.InvariantCulture)
-            + ".jsonl";
+            + "-" + Environment.ProcessId.ToString(CultureInfo.InvariantCulture);
+        _fileWriter = new LogFileWriter(_directory, _fileName, ".jsonl", long.MaxValue, MaxDirBytes);
         _worker = new Thread(Loop)
         {
             IsBackground = true,
@@ -206,6 +207,12 @@ internal sealed partial class AuditTrail : IDisposable
         if (_worker.IsAlive)
         {
             _worker.Join(TimeSpan.FromSeconds(2));
+        }
+
+        // 后台线程没起来（或 join 超时）也要收尾：.part 不改成硬证据，导出会把它标成未完成。
+        lock (_commitGate)
+        {
+            _fileWriter.Complete();
         }
     }
 

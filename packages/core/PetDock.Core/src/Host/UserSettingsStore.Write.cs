@@ -114,6 +114,12 @@ internal sealed partial class UserSettingsStore
             };
         }
 
+        // 宠物窗口尺寸：128 是默认值，不写键；只有用户选过别的尺寸才落盘。
+        if (value.PetSize is int petSize && petSize != UserSettings.DefaultPetSize)
+        {
+            doc["petSize"] = petSize;
+        }
+
         // 逐宠物位置（RFC-37 §7 第 4 条）：键是清单 id。空表 / null 就不写这个键（与引导标记同一条纪律）。
         // 按 key 的 Ordinal 序写：同一份数据每次落盘的字节序一致，diff 里不会出现无意义的重排。
         if (value.PetPositions is { Count: > 0 } positions)

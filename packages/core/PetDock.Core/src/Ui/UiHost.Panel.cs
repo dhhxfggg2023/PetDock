@@ -76,7 +76,10 @@ internal sealed partial class UiHost
             settings.Language,
             StartupRegistration.IsEnabled(),
             settings.ThemeMode,
-            settings.Material);
+            settings.Material,
+            settings.PetSize ?? UserSettings.DefaultPetSize,
+            _primaryRemoved ? null : _pet?.DisplayName,
+            AppVersion);
     }
 
     /// <summary>
@@ -149,6 +152,33 @@ internal sealed partial class UiHost
         return problems.Count == 0 ? null : string.Join(I18n.Get("ui.panel.problemSeparator"), problems);
     }
 
+    /// <summary>程序版本（设置页「关于」与左下角版本位共用；三段式，不带构建元数据）。</summary>
+    private static string AppVersion =>
+        typeof(UiHost).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+
+    /// <summary>
+    /// 改宠物窗口尺寸（设置页「宠物大小」）：主窗与其余几只一起改，落盘后立即生效。
+    /// 返回 null = 成功；否则是给用户看的原因。
+    /// </summary>
+    private string? SetPetSizeFromPanel(int size)
+    {
+        int clamped = Math.Clamp(size, UserSettings.MinPetSize, UserSettings.MaxPetSize);
+        try
+        {
+            _settings?.Update(current => current with { PetSize = clamped });
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"pet-size-save-failed {error.GetType().Name}: {error.Message}");
+            return I18n.Get("ui.panel.settingsSaveFailed", error.Message);
+        }
+
+        _window.SetLogicalSize(clamped);
+        _petSet?.SetLogicalSize(clamped);
+        KernelLog.Write($"pet-size-applied size={clamped}");
+        return null;
+    }
+
     /// <summary>
     /// 插件页「授权」入口（RFC-13 §2.6）：打开复核弹窗，然后把授权**收窄**。
     /// 运行期不能新增授予（原规格 14 §2「一次断言：安装时一次性提交能力清单；不允许补申请」）：
@@ -157,7 +187,18 @@ internal sealed partial class UiHost
     /// </summary>
     public void AuthorizePlugin(string pluginId)
     {
-        _ = Task.Run(() => AuthorizePluginCore(pluginId));
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                AuthorizePluginCore(pluginId);
+            }
+            catch (Exception error)
+            {
+                KernelLog.Write($"authorize-failed plugin={pluginId} {error.GetType().Name}: {error.Message}");
+                ReportPluginFailure(I18n.Get("cp.plugins.authorize.failed"));
+            }
+        });
     }
 
     /// <summary>复核的本体（后台线程）。</summary>
@@ -168,6 +209,7 @@ internal sealed partial class UiHost
         if (host is null || consent is null)
         {
             KernelLog.Write($"authorize-skip plugin={pluginId} reason=no-host-or-port");
+            ReportPluginFailure(I18n.Get("cp.plugins.authorize.unavailable"));
             return;
         }
 
@@ -175,6 +217,7 @@ internal sealed partial class UiHost
         if (row is null)
         {
             KernelLog.Write($"authorize-skip plugin={pluginId} reason=not-loaded");
+            ReportPluginFailure(I18n.Get("cp.plugins.toggle.unknown"));
             return;
         }
 
@@ -195,6 +238,7 @@ internal sealed partial class UiHost
         if (answer is null)
         {
             KernelLog.Write($"authorize-skip plugin={pluginId} reason=no-answer");
+            RefreshUiOnUi();
             return;
         }
 
@@ -216,5 +260,6 @@ internal sealed partial class UiHost
 
         bool changed = host.RestrictConsent(pluginId, keep);
         KernelLog.Write($"authorize-done plugin={pluginId} keep={keep.Count} changed={changed}");
+        RefreshUiOnUi();
     }
 }

@@ -49,7 +49,8 @@ internal static class UiRoster
         {
             pets.Add(new PetLine(
                 Id: pet.Id,
-                Name: pet.Id,
+                // 用户导入的是「守岸人」，不是 user.-----；内置那只显示「内置宠物」，不是内部实例 id。
+                Name: pet.Imported ? pet.DisplayName : I18n.Get("cp.pets.name.builtin"),
                 Source: DescribeSource(pet),
                 State: PluginHost.DescribeInstanceState(pet.State)
                     + (pet.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty),

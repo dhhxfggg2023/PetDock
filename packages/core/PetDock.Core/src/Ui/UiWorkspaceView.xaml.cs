@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Brush = System.Windows.Media.Brush;
@@ -38,6 +39,9 @@ public partial class UiWorkspaceView : UserControl
 
         InitializeComponent();
         BrandSub.Text = I18n.Get("cp.brand.tagline");
+        VersionText.Text = I18n.Get(
+            "ui.workspace.version",
+            typeof(UiWorkspaceView).Assembly.GetName().Version?.ToString(3) ?? "1.0.0");
         ApplyPalette();
         BuildNav();
 
@@ -213,6 +217,10 @@ public partial class UiWorkspaceView : UserControl
                 Content = content,
                 Tag = page.Id,
             };
+
+            // 导航项的内容是自绘的 StackPanel，读屏拿不到标题；显式给一个名字。
+            AutomationProperties.SetName(button, page.Title);
+            AutomationProperties.SetHelpText(button, page.Note);
             button.Checked += (_, _) => ShowPage(page.Id);
             _nav[page.Id] = button;
             NavHost.Children.Add(button);

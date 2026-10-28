@@ -21,5 +21,6 @@
   "ui.work.cancel": "取消",
   "ui.work.cancelling": "正在取消…",
   "ui.work.busy": "已有另一个操作正在进行，请等它结束。",
-  "ui.work.failed": "操作失败，详情见日志。"
+  "ui.work.failed": "操作失败，详情见日志。",
+  "ui.workspace.version": "v{0}"
 }

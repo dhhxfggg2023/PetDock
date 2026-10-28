@@ -82,6 +82,8 @@ internal sealed partial class UiHost : IUiPageContext
             Theme.ParseMaterial(material),
             Theme.ParseMode(theme));
 
+    string? IUiPageContext.SetPetSize(int size) => SetPetSizeFromPanel(size);
+
     string? IUiPageContext.SetLanguage(string language) => SetLanguageFromPanel(language);
 
     void IUiPageContext.OpenLogs() => RunDiagnostic(ControlPanel.DiagnosticOpOpenLogs);

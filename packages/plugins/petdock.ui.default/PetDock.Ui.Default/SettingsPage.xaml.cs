@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using PetDock.Core.Ui;
 using UserControl = System.Windows.Controls.UserControl;
@@ -26,6 +27,14 @@ public partial class SettingsPage : UserControl, IUiPage
         // 还能凭这两个词走回来。所以它们不随界面语言翻译表变化。
         LanguageZh.Content = context.T("cp.settings.language.zh");
         LanguageEn.Content = context.T("cp.settings.language.en");
+        PetSection.Text = context.T("cp.settings.section.pet");
+        PetNameLabel.Text = context.T("cp.settings.pet.current");
+        PetNameHint.Text = context.T("cp.settings.pet.current.hint");
+        PetSizeLabel.Text = context.T("cp.settings.pet.size");
+        PetSizeHint.Text = context.T("cp.settings.pet.size.hint");
+        PetSizeSmall.Content = context.T("cp.settings.pet.size.small");
+        PetSizeMedium.Content = context.T("cp.settings.pet.size.medium");
+        PetSizeLarge.Content = context.T("cp.settings.pet.size.large");
         AppearanceSection.Text = context.T("cp.settings.section.appearance");
         ThemeLabel.Text = context.T("cp.settings.theme");
         ThemeHint.Text = context.T("cp.settings.theme.hint");
@@ -42,6 +51,19 @@ public partial class SettingsPage : UserControl, IUiPage
         MaterialOpaque.Content = context.T("cp.settings.material.opaque");
         MaterialFrosted.Content = context.T("cp.settings.material.frosted");
         MaterialGlass.Content = context.T("cp.settings.material.glass");
+        AboutSection.Text = context.T("cp.settings.section.about");
+        AboutVersionLabel.Text = context.T("cp.settings.about.version");
+        AboutHint.Text = context.T("cp.settings.about.hint");
+
+        // 无障碍：自绘模板的控件没有可读文本，读屏只能靠显式名字。
+        AutomationProperties.SetName(StartupSwitch, StartupLabel.Text);
+        AutomationProperties.SetName(PetNameText, PetNameLabel.Text);
+        AutomationProperties.SetName(PetSizeSmall, PetSizeSmall.Content?.ToString() ?? "small");
+        AutomationProperties.SetName(PetSizeMedium, PetSizeMedium.Content?.ToString() ?? "medium");
+        AutomationProperties.SetName(PetSizeLarge, PetSizeLarge.Content?.ToString() ?? "large");
+        AutomationProperties.SetName(OpenLogsButton, OpenLogsButton.Content?.ToString() ?? "logs");
+        AutomationProperties.SetName(ExportButton, ExportButton.Content?.ToString() ?? "export");
+        AutomationProperties.SetName(AuditButton, AuditButton.Content?.ToString() ?? "audit");
 
         // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
         Loaded += (_, _) =>
@@ -80,6 +102,11 @@ public partial class SettingsPage : UserControl, IUiPage
                 SelectLanguage(view.Language);
                 SelectTheme(view.Theme);
                 SelectMaterial(view.Material);
+                SelectPetSize(view.PetSize);
+                PetNameText.Text = string.IsNullOrWhiteSpace(view.PetName)
+                    ? _context.T("cp.settings.pet.none")
+                    : view.PetName;
+                AboutVersionText.Text = view.Version ?? "—";
             }
         }
         finally
@@ -107,6 +134,30 @@ public partial class SettingsPage : UserControl, IUiPage
         MaterialOpaque.IsChecked = token is null or "opaque";
         MaterialFrosted.IsChecked = token == "frosted";
         MaterialGlass.IsChecked = token == "glass";
+    }
+
+    /// <summary>三档尺寸（96/128/160）；其他值按中号显示，实际生效值仍以宿主快照为准。</summary>
+    private void SelectPetSize(int size)
+    {
+        PetSizeSmall.IsChecked = size <= 96;
+        PetSizeLarge.IsChecked = size >= 160;
+        PetSizeMedium.IsChecked = size > 96 && size < 160;
+    }
+
+    private int SelectedPetSize =>
+        PetSizeSmall.IsChecked == true ? 96 : PetSizeLarge.IsChecked == true ? 160 : 128;
+
+    /// <summary>尺寸改动即生效：主窗与其余几只一起改，窗口不重建。</summary>
+    private void OnPetSizeChanged(object sender, RoutedEventArgs e)
+    {
+        if (_binding)
+        {
+            return;
+        }
+
+        string? problem = _context.SetPetSize(SelectedPetSize);
+        ShowStatus(problem);
+        _context.Refresh();
     }
 
     private string SelectedTheme =>

@@ -29,7 +29,8 @@ internal sealed record UserSettings(
     IReadOnlyList<string>? DisabledPlugins = null,
     string? Material = null,
     string? ThemeMode = null,
-    IReadOnlyList<string>? EnabledPlugins = null)
+    IReadOnlyList<string>? EnabledPlugins = null,
+    int? PetSize = null)
 {
     /// <summary>清单版本（原规格 17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
@@ -45,6 +46,15 @@ internal sealed record UserSettings(
 
     /// <summary>帧周期上限：5fps（再慢就不是动画了）。</summary>
     public const double MaxIdleFrameBudgetMs = 1000.0 / 5.0;
+
+    /// <summary>宠物窗口的默认逻辑边长（物理像素 = 它 × DPI 缩放）。</summary>
+    public const int DefaultPetSize = 128;
+
+    /// <summary>宠物尺寸下限（再小就点不中，也看不清表情）。</summary>
+    public const int MinPetSize = 64;
+
+    /// <summary>宠物尺寸上限（再大就会挡住半个屏幕）。</summary>
+    public const int MaxPetSize = 256;
 
     /// <summary>默认设置（文件缺失或损坏时的回落值）。</summary>
     public static UserSettings Default { get; } =
@@ -68,6 +78,7 @@ internal sealed record UserSettings(
             MinIdleFrameBudgetMs,
             MaxIdleFrameBudgetMs),
         Language = string.IsNullOrWhiteSpace(Language) ? DefaultLanguage : Language,
+        PetSize = PetSize is int size ? Math.Clamp(size, MinPetSize, MaxPetSize) : null,
     };
 
     /// <summary>帧周期的可读写法（面板用毫秒整数编辑，这里给一位小数）。</summary>
@@ -84,6 +95,7 @@ internal sealed record UserSettings(
         + " plugins-disabled=" + (DisabledPlugins is null ? 0 : DisabledPlugins.Count)
         + " plugins-enabled=" + (EnabledPlugins is null ? 0 : EnabledPlugins.Count)
         + " material=" + (Material ?? "opaque")
+        + " pet-size=" + (PetSize?.ToString(CultureInfo.InvariantCulture) ?? "(default)")
         + " start-with-windows=" + I18n.Get("host.settings.start-with-windows");
 
     /// <summary>位置的读数写法；没存过就叫 none（不是 0,0 —— 两者语义不同，RFC-22 §4）。</summary>

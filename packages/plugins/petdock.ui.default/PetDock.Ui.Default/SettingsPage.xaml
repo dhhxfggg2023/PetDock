@@ -54,6 +54,42 @@
 
                 <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
                     <StackPanel>
+                        <TextBlock x:Name="PetSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="PetNameLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="PetNameHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" x:Name="PetNameText" Style="{DynamicResource Pd.Body}"
+                                       FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="PetSizeLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="PetSizeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <RadioButton x:Name="PetSizeSmall" GroupName="petsize" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnPetSizeChanged" />
+                                <RadioButton x:Name="PetSizeMedium" GroupName="petsize" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnPetSizeChanged" />
+                                <RadioButton x:Name="PetSizeLarge" GroupName="petsize" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnPetSizeChanged" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
                         <TextBlock x:Name="AppearanceSection" Style="{DynamicResource Pd.Section}" />
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -94,7 +130,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{DynamicResource Pd.Card}">
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock x:Name="DiagnosticsSection" Style="{DynamicResource Pd.Section}" />
                         <StackPanel Orientation="Horizontal">
@@ -105,6 +141,23 @@
                             <Button x:Name="AuditButton" Style="{DynamicResource Pd.SecondaryButton}"
                                     Click="OnOpenAudit" />
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}">
+                    <StackPanel>
+                        <TextBlock x:Name="AboutSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" x:Name="AboutVersionLabel" Style="{DynamicResource Pd.Body}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock x:Name="AboutVersionText" Style="{DynamicResource Pd.Body}" FontWeight="SemiBold" />
+                                <TextBlock x:Name="AboutHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>

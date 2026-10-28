@@ -57,13 +57,10 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
     private readonly ManualResetEventSlim _signal = new(false);
     private readonly Thread _worker;
 
-    // —— 只被后台写入线程访问 ——
-    private StreamWriter? _writer;
-    private long _fileBytes;
-    private int _fileIndex;
+    /// <summary>文件生命周期（与 AuditTrail 共用同一个写者）。</summary>
+    private readonly LogFileWriter _fileWriter;
 
     // —— 受 _gate 保护 ——
-    private string? _activePath;
     private bool _completed;
     private bool _disposed;
     private int _dropped;
@@ -81,6 +78,7 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
             + now.ToString("MM", CultureInfo.InvariantCulture)
             + now.ToString("dd", CultureInfo.InvariantCulture)
             + "-" + now.ToString("HHmmss", CultureInfo.InvariantCulture);
+        _fileWriter = new LogFileWriter(_directory, _baseName, ".log", MaxFileBytes, MaxDirBytes);
         _worker = new Thread(Loop)
         {
             IsBackground = true,
@@ -93,16 +91,7 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
     public string LogDirectory => _directory;
 
     /// <summary>当前活动文件路径（带 .part）。没有活动文件时为 null。</summary>
-    public string? ActiveFilePath
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _activePath;
-            }
-        }
-    }
+    public string? ActiveFilePath => _fileWriter.ActivePath;
 
     /// <summary>缓冲里还没落盘的行数。</summary>
     public int PendingLines
@@ -219,7 +208,7 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
         // 收尾文件也要与后台线程互斥：join 超时的情况下后台线程还可能正在写。
         lock (_commitGate)
         {
-            FinishFile();
+            _fileWriter.Complete();
         }
     }
 
@@ -299,16 +288,13 @@ internal sealed partial class ResidentLog : IKernelLogSink, IDisposable
 
         try
         {
-            EnsureWriter();
-            foreach (string raw in batch)
+            var lines = new string[batch.Length];
+            for (int i = 0; i < batch.Length; i++)
             {
-                string line = Format(raw);
-                _writer!.Write(line);
-                _fileBytes += Encoding.UTF8.GetByteCount(line);
+                lines[i] = Format(batch[i]);
             }
 
-            _writer!.Flush();
-            EnforceDirCap();
+            _fileWriter.Write(lines);
 
             lock (_gate)
             {

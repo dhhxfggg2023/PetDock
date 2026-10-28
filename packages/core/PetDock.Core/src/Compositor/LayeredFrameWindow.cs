@@ -16,7 +16,6 @@ namespace PetDock.Core.Compositor;
 /// </summary>
 internal sealed partial class LayeredFrameWindow : Form
 {
-    private static readonly Size LogicalFrameSize = new(128, 128);
     private const int ScreenMargin = 32;
 
     private readonly IFrameContentSource _content;
@@ -63,10 +62,10 @@ internal sealed partial class LayeredFrameWindow : Form
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.None;
-        // 不设 MinimumSize/MaximumSize：它们的单位是物理像素，而 LogicalFrameSize 是逻辑像素，
+        // 不设 MinimumSize/MaximumSize：它们的单位是物理像素，而逻辑尺寸是逻辑像素，
         // 128 的上下限会把 150% DPI 下 192x192 的窗口卡住（实测落地 192x128，方形窗口被压扁）。
         // 窗口尺寸的唯一来源是 ApplyPhysicalSize()。
-        Size = LogicalFrameSize;
+        Size = _logicalSize;
         DoubleBuffered = false;
 
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -79,7 +78,7 @@ internal sealed partial class LayeredFrameWindow : Form
         // 真正尺寸在 OnHandleCreated 里按窗口实测矩形校正（见 ApplyFrameToWindowSize）。
         // 这里绝不能拿「内容尺寸」当 DIB 尺寸：帧缓冲必须与窗口物理尺寸严格一致，
         // 不一致时 UpdateLayeredWindow 会从源 DC 之外取图，整帧一个像素都不显示（实测）。
-        _frame = DibFrame.Create(LogicalFrameSize.Width, LogicalFrameSize.Height);
+        _frame = DibFrame.Create(_logicalSize.Width, _logicalSize.Height);
         long tFrame = clock.ElapsedMilliseconds;
         _frame.Hwnd = Handle;
         long tHandle = clock.ElapsedMilliseconds;
@@ -125,9 +124,6 @@ internal sealed partial class LayeredFrameWindow : Form
     /// HandleLittle 那一步含 CreateWindowEx + WM_CREATE + OnHandleCreated + 首次 Present。
     /// </summary>
     public StartupTimings Startup { get; private set; }
-
-    /// <summary>窗口的逻辑尺寸（不随 DPI 变化）。</summary>
-    public Size LogicalSize => LogicalFrameSize;
 
     /// <summary>
     /// 最近一帧的外表内容是否与上一次是同一个位图对象（RFC-21 §3.5）。
@@ -238,54 +234,6 @@ internal sealed partial class LayeredFrameWindow : Form
         Size actual = WindowSize;
         SetWindowPosition(area.X + (area.Width - actual.Width) / 2,
             area.Y + (area.Height - actual.Height) / 2);
-    }
-
-    /// <summary>窗口物理尺寸（逻辑尺寸 × 当前 DPI 缩放）。</summary>
-    public Size GetPhysicalSize()
-    {
-        double scale = DeviceDpi / 96.0;
-        return new Size(
-            (int)Math.Round(LogicalSize.Width * scale),
-            (int)Math.Round(LogicalSize.Height * scale));
-    }
-
-    /// <summary>窗口外接矩形的实际物理尺寸（实测值，不是请求值）。</summary>
-    public Size WindowSize => Win32.ScreenRect(Handle).Size;
-
-    /// <summary>帧缓冲尺寸（=窗口实际物理尺寸）；无帧缓冲时为 0x0。</summary>
-    public Size FrameSize => _frame is null ? Size.Empty : new Size(_frame.Width, _frame.Height);
-
-    /// <summary>
-    /// 让帧缓冲的尺寸追上窗口的实际尺寸。
-    /// 尺寸的唯一权威是 GetWindowRect 的实测值：SetWindowPos 请求 192x192 而窗口落地成 192x128
-    /// 这种事真的发生过（见构造函数里为什么不设 MaximumSize），
-    /// 而 DIB 与窗口一旦不等，UpdateLayeredWindow 就从源 DC 之外取图 —— 整帧不可见，且不报错。
-    /// </summary>
-    private void ApplyFrameToWindowSize()
-    {
-        Size actual = WindowSize;
-        if (actual.Width <= 0 || actual.Height <= 0)
-        {
-            return;
-        }
-
-        if (_frame is not null && _frame.Width == actual.Width && _frame.Height == actual.Height)
-        {
-            return;
-        }
-
-        DibFrame rebuilt = DibFrame.Create(actual.Width, actual.Height);
-        rebuilt.Hwnd = Handle;
-        _frame?.Dispose();
-        _frame = rebuilt;
-    }
-
-    /// <summary>把窗口尺寸设为逻辑尺寸 × 当前 DPI 缩放。</summary>
-    public void ApplyPhysicalSize()
-    {
-        Size physical = GetPhysicalSize();
-        Win32.SetWindowPos(Handle, IntPtr.Zero, 0, 0, physical.Width, physical.Height,
-            Win32.SWP_NOMOVE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
     }
 
     /// <summary>把窗口移动到屏幕坐标（物理像素）。</summary>

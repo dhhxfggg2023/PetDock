@@ -19,7 +19,7 @@
     "pack": "node tools/pack.mjs",
     "dist": "node tools/release.mjs && node tools/pack.mjs",
     "dist:selftest": "node tools/portable-selftest.mjs",
-    "lint": "node tools/depscan.mjs && node tools/lint-core.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/i18n-lint.mjs && node tools/i18n-parity.mjs",
+    "lint": "node tools/depscan.mjs && node tools/version-parity.mjs && node tools/lint-core.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/i18n-lint.mjs && node tools/i18n-parity.mjs",
     "verify": "node tools/verify.mjs",
     "verify:all": "node tools/verify.mjs --all",
     "verify:list": "node tools/verify.mjs --list",

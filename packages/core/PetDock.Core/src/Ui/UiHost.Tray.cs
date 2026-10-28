@@ -48,7 +48,7 @@ internal sealed partial class UiHost
         {
             string primaryId = _pet?.Id ?? PrimaryPetId;
             items.Add(new PetMenuItem(
-                _pet is null ? I18n.Get("ui.tray.kernelFallback") : primaryId,
+                _pet is null ? I18n.Get("ui.tray.kernelFallback") : _pet.DisplayName,
                 () => MovePetById(primaryId),
                 () => PausePetById(primaryId),
                 () => RemovePetByIdWithConfirm(primaryId)));
@@ -183,7 +183,7 @@ internal sealed partial class UiHost
     {
         if (IsPrimary(id))
         {
-            return _pet?.Id ?? I18n.Get("ui.tray.kernelFallback");
+            return _pet?.DisplayName ?? I18n.Get("ui.tray.kernelFallback");
         }
 
         IReadOnlyList<PetWindowSet.Entry> entries = _petSet?.Entries() ?? System.Array.Empty<PetWindowSet.Entry>();

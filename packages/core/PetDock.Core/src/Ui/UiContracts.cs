@@ -157,6 +157,9 @@ public interface IUiPageContext
     /// <summary>应用设置。返回 null = 成功；否则是失败或部分失败的原因。</summary>
     string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, string material, string theme);
 
+    /// <summary>改宠物窗口的像素边长（64..256）。返回 null = 成功；否则是给用户看的原因。</summary>
+    string? SetPetSize(int size);
+
     /// <summary>
     /// 换界面语言（写入设置并立即生效，不重启）。返回 null = 成功；否则是给用户看的原因。
     /// 语言不塞进 <see cref="ApplySettings"/>：它换的是整张文案表并重建面板，

@@ -139,7 +139,8 @@ public sealed partial class PetSurfaceRoster
         string instanceIdPrefix,
         IReadOnlyList<string>? assetRoots = null,
         bool freshView = false,
-        bool imported = false)
+        bool imported = false,
+        string? displayName = null)
     {
         IPetView? view = View;
         if (view is null)
@@ -156,7 +157,7 @@ public sealed partial class PetSurfaceRoster
         // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
         string? brainPluginId = Find<IBrain>()?.PluginId;
         PetInstance instance = new(
-            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported);
+            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported, displayName);
         AttachStateStore(instance, assetRoots);
         return instance;
     }

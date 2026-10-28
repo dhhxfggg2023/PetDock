@@ -203,7 +203,23 @@ internal sealed partial class UserSettingsStore
                 }
             }
 
-            return new UserSettings(period, language, onboarding, petPosition, petPositions, disabledPlugins, material, themeMode, enabledPlugins).Clamped();
+            // 宠物窗口尺寸（2026-10-28）：越界值由 Clamped() 拉回，坏值当没设过。
+            int? petSize = null;
+            if (obj["petSize"] is JsonNode sizeNode)
+            {
+                try
+                {
+                    petSize = sizeNode.GetValue<int>();
+                }
+                catch (Exception error)
+                {
+                    KernelLog.Write($"settings-field-unreadable field=petSize {error.GetType().Name}");
+                }
+            }
+
+            return new UserSettings(
+                period, language, onboarding, petPosition, petPositions,
+                disabledPlugins, material, themeMode, enabledPlugins, petSize).Clamped();
         }
         catch (Exception error)
         {

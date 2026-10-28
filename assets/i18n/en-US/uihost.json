@@ -21,5 +21,6 @@
   "ui.work.cancel": "Cancel",
   "ui.work.cancelling": "Cancelling…",
   "ui.work.busy": "Another operation is still running; wait for it to finish.",
-  "ui.work.failed": "The operation failed. See the log for details."
+  "ui.work.failed": "The operation failed. See the log for details.",
+  "ui.workspace.version": "v{0}"
 }

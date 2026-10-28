@@ -110,6 +110,9 @@ internal sealed class PetImportService
         try
         {
             token.ThrowIfCancellationRequested();
+            // 显示名取用户选的那个目录名（原始中文保留）：磁盘上的目录名会被 Sanitize 成 ASCII，
+            // 不能拿它当名字，否则「守岸人」会变成「-----」，用户认不出自己刚导入的是哪只。
+            string displayName = DisplayNameOf(sourceDir);
             stage?.Invoke("host.import.stage.convert");
 
             // 第三方格式先由插件转成标准包。转换失败就按导入失败回滚。
@@ -140,7 +143,7 @@ internal sealed class PetImportService
             stage?.Invoke("host.import.stage.register");
 
             // ② 登记：清单写失败 ⇒ 素材拷贝成了孤儿，回滚（不留半个状态）。
-            _store.RegisterActive(instanceId, folder);
+            _store.RegisterActive(instanceId, folder, displayName);
 
             token.ThrowIfCancellationRequested();
             stage?.Invoke("host.import.stage.start");
@@ -149,7 +152,8 @@ internal sealed class PetImportService
             PetInstance? next = null;
             onUi(() =>
             {
-                next = _roster.BuildInstance("import", new[] { path }, freshView: true, imported: true);
+                next = _roster.BuildInstance(
+                    "import", new[] { path }, freshView: true, imported: true, displayName: displayName);
                 if (next is null)
                 {
                     throw new InvalidOperationException(I18n.Get("host.import.err.no-view"));
@@ -238,7 +242,8 @@ internal sealed class PetImportService
 
         try
         {
-            PetInstance? instance = roster.BuildInstance("import", new[] { active.Path }, freshView: true, imported: true);
+            PetInstance? instance = roster.BuildInstance(
+                "import", new[] { active.Path }, freshView: true, imported: true, displayName: active.Name);
             if (instance is null)
             {
                 KernelLog.Write($"import-restore-miss instance={active.InstanceId} reason=no-view");
@@ -294,6 +299,15 @@ internal sealed class PetImportService
         {
             KernelLog.Write($"import-release-failed {error.GetType().Name}: {error.Message}");
         }
+    }
+
+    /// <summary>用户选中的目录叫什么（去尾分隔符；空名回落到一句可读的默认名）。</summary>
+    private static string DisplayNameOf(string sourceDir)
+    {
+        string trimmed = (sourceDir ?? string.Empty)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string name = Path.GetFileName(trimmed);
+        return string.IsNullOrWhiteSpace(name) ? I18n.Get("cp.pets.name.pack") : name;
     }
 
     /// <summary>回滚一次失败的导入（删掉刚复制进去的目录）。</summary>

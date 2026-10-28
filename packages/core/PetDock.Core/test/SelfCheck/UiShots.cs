@@ -221,5 +221,5 @@ internal static class UiShots
                 I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin"),
                 Removable: true),
         },
-        new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque"));
+        new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque", 128, "示例宠物", "0.1.0"));
 }

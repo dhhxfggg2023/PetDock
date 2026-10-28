@@ -42,9 +42,11 @@ public sealed partial class PetInstance : IDisposable
         string sourceKind,
         IReadOnlyList<string>? assetRoots = null,
         string? brainPluginId = null,
-        bool imported = false)
+        bool imported = false,
+        string? displayName = null)
     {
         Id = instanceId;
+        DisplayName = string.IsNullOrWhiteSpace(displayName) ? instanceId : displayName;
         View = view;
         Brain = brain;
         Surfaces = surfaces;
@@ -63,6 +65,12 @@ public sealed partial class PetInstance : IDisposable
 
     /// <summary>实例 id（原规格 11 §2 PetInstanceId）。</summary>
     public string Id { get; }
+
+    /// <summary>
+    /// 给用户看的名字（清单里的 name；缺省回落到实例 id）。
+    /// 与 <see cref="Id"/> 分开：id 要稳定、可作键；名字可以带中文、可以重复。
+    /// </summary>
+    public string DisplayName { get; }
 
     /// <summary>提供本实例视图面的插件 id（宿主侧记账用；ABI 里没有这个概念）。</summary>
     public string PluginId { get; }
@@ -217,7 +225,7 @@ public sealed partial class PetInstance : IDisposable
     {
         if (State != InstanceState.Running)
         {
-            throw new InvalidOperationException(I18n.Get("host.pet.err.attach-needs-running", State));
+            throw new InvalidOperationException(I18n.Get("host.pet.err.retarget-needs-running", State));
         }
 
         AttachView(pixelWidth, pixelHeight, scale);

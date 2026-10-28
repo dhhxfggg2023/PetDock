@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace PetDock.Hosting;
 
@@ -23,7 +24,7 @@ internal static class PetSetChecks
 
             // 两次导入 = 清单里两条（RFC-15 的替换语义只换「当前选中」，不删历史）。
             (string firstName, string firstFolder, string firstPath) = Stage(store, root, "alpha-pack");
-            store.RegisterActive(firstName, firstFolder);
+            store.RegisterActive(firstName, firstFolder, "守岸人");
             (string secondName, string secondFolder, string secondPath) = Stage(store, root, "beta-pack");
             store.RegisterActive(secondName, secondFolder);
 
@@ -33,6 +34,13 @@ internal static class PetSetChecks
                 && string.Equals(all[1].InstanceId, secondName, StringComparison.Ordinal);
             check("ui-catalog-all-packs", both,
                 $"count={all.Count} ids={Describe(all)}");
+
+            // 显示名不是内部 id：新清单写原目录名（中文保留），旧清单缺 name 时回落目录名。
+            bool named = all.Count == 2
+                && string.Equals(all[0].Name, "守岸人", StringComparison.Ordinal)
+                && string.Equals(all[1].Name, secondFolder, StringComparison.Ordinal);
+            check("ui-catalog-display-name", named,
+                $"first={all.FirstOrDefault()?.Name ?? "(none)"} second={all.Skip(1).FirstOrDefault()?.Name ?? "(none)"}");
 
             // 活跃项从同一份集合里选出来，不另解析一遍清单（一个答案一个主人）。
             PetDataStore.ActivePack? active = store.ReadActive();
@@ -60,6 +68,7 @@ internal static class PetSetChecks
         catch (Exception error)
         {
             check("ui-catalog-all-packs", false, "exception: " + error.GetType().Name);
+            check("ui-catalog-display-name", false, "exception: " + error.GetType().Name);
             check("ui-catalog-active-from-set", false, "exception: " + error.GetType().Name);
             check("ui-catalog-missing-pack", false, "exception: " + error.GetType().Name);
             check("ui-catalog-active-gone", false, "exception: " + error.GetType().Name);

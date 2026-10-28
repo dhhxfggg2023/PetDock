@@ -10,6 +10,9 @@
     <AssemblyName>PetDock.Core</AssemblyName>
     <Product>PetDock</Product>
 
+    <!-- 版本号唯一事实源是 package.json 的 version；这里镜像它，由 tools/version-parity.mjs 在 lint 里卡住漂移。 -->
+    <Version>0.1.0</Version>
+
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

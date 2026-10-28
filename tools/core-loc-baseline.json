@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 29200,
+  "budget": 29400,
   "history": [
     {
       "date": "2026-10-18",
@@ -347,7 +347,6 @@
           "slice": "RFC-17 A 运行期日志落盘层与脱敏规则（KernelLog sink、后台写入、滚动与目录上限、脱敏占位符）",
           "files": [
             "packages/core/PetDock.Core/src/Host/ResidentLog.cs",
-            "packages/core/PetDock.Core/src/Host/ResidentLog.Files.cs",
             "packages/core/PetDock.Core/src/Host/RedactRules.cs"
           ],
           "lines": 714
@@ -2042,6 +2041,59 @@
             "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml.cs"
           ],
           "lines": 53
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 29285,
+      "budget": 29400,
+      "note": "宠物本体 + 内核清理第六轮（实测 29115 → 29285，+170）。宠物名不再显示内部 id：导入时把原始目录名写进 pets.json 的 name，PetInstance.DisplayName 一路带到面板/托盘/设置页；设置页补「宠物」（名字/三档尺寸）与「关于」（版本），尺寸落 settings.json 并改主窗与其余几只的逻辑边长；左下角版本位终于有字；「内存为进程级读数」换成用户话；自绘控件补 FocusVisualStyle 与 AutomationProperties。内核清理把两套几乎逐行相同的落盘器合并为 LogFileWriter（顺手修掉按字符计字节、目录上限把活动 .part 算进去两个真 bug），插件启停/授权失败回写状态条并在动作后刷新列表，31 个死键删除，retarget 专用错误键接上。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "宠物显示名、尺寸设置、设置页宠物/关于、版本位、内存文案与无障碍",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.Write.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.Commands.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Sizing.cs"
+          ],
+          "lines": 270
+        },
+        {
+          "slice": "两套落盘器合并为 LogFileWriter（删除 ResidentLog.Files.cs，AuditTrail.Files 只剩批次锁）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/LogFileWriter.cs",
+            "packages/core/PetDock.Core/src/Host/AuditTrail.Files.cs",
+            "packages/core/PetDock.Core/src/Host/AuditTrail.cs",
+            "packages/core/PetDock.Core/src/Host/ResidentLog.cs"
+          ],
+          "lines": -180
+        },
+        {
+          "slice": "插件启停/授权失败回写状态条、动作后刷新列表、死键清理",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.Plugins.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+          ],
+          "lines": 80
         }
       ]
     }

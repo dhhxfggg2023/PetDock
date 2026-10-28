@@ -45,5 +45,5 @@
 
   "ui.roster.source.kernelFallback": "(内核兜底)",
   "ui.roster.state.degraded": " · 降级",
-  "ui.roster.memory.process": "{0} MB (进程)"
+  "ui.roster.memory.process": "{0} MB（整个 PetDock 共用）"
 }
