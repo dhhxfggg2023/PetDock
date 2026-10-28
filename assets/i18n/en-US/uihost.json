@@ -14,5 +14,9 @@
   "ui.confirm.cancel": "Cancel",
   "ui.workspace.empty.title": "No interface pages",
   "ui.workspace.empty.note": "Add a UI plugin under plugins/ and reopen the panel.",
-  "ui.workspace.empty.status": "ui: no pages"
+  "ui.workspace.empty.status": "ui: no pages",
+  "ui.work.cancel": "Cancel",
+  "ui.work.cancelling": "Cancelling…",
+  "ui.work.busy": "Another operation is still running; wait for it to finish.",
+  "ui.work.failed": "The operation failed. See the log for details."
 }

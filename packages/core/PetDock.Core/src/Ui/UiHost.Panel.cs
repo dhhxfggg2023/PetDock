@@ -150,30 +150,6 @@ internal sealed partial class UiHost
     }
 
     /// <summary>
-    /// 面板「导入素材包」入口的执行体（UI 线程）。
-    /// 面板负责弹目录选择器、把目录交过来；宿主编排做复制、登记与换源（RFC-15 §3.3）。
-    /// 失败时把原因交回面板，由面板显示成内联错误条 —— 不弹模态框（原规格 18 §5）。
-    /// </summary>
-    private bool RunImportFromPanel(string sourceDir, out string message)
-    {
-        PetImportService? import = _import;
-        if (import is null)
-        {
-            message = I18n.Get("ui.panel.importUnavailable");
-            return false;
-        }
-
-        ImportResult result = import.Import(sourceDir);
-        message = result.Message;
-        if (result.Ok)
-        {
-            RefreshTrayPets();
-        }
-
-        return result.Ok;
-    }
-
-    /// <summary>
     /// 插件页「授权」入口（RFC-13 §2.6）：打开复核弹窗，然后把授权**收窄**。
     /// 运行期不能新增授予（原规格 14 §2「一次断言：安装时一次性提交能力清单；不允许补申请」）：
     /// 用户在复核时勾了此前没给过的能力，那一项**不授予**——只保留「此前已授予 ∩ 本次勾选」。

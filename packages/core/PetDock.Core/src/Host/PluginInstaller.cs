@@ -12,8 +12,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using PetDock.Core.Ui;
 using System.Linq;
+using System.Threading;
+using PetDock.Core.Ui;
 using PetDock.Core.Compositor;
 
 namespace PetDock.Hosting;
@@ -46,21 +47,22 @@ internal sealed class PluginInstaller
     }
 
     /// <summary>解包/复制到临时区并校验。返回 false 时 error 是给人看的一句话，临时区已清掉。</summary>
-    public bool TryPrepare(string source, out InstallPlan? plan, out string? error)
+    public bool TryPrepare(string source, out InstallPlan? plan, out string? error, CancellationToken token = default)
     {
         plan = null;
         error = null;
         string staging = Path.Combine(_stageRoot, Guid.NewGuid().ToString("N"));
         try
         {
+            token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(staging);
             if (Directory.Exists(source))
             {
-                CopyDirectory(source, staging);
+                CopyDirectory(source, staging, token);
             }
             else if (File.Exists(source))
             {
-                ExtractZip(source, staging);
+                ExtractZip(source, staging, token);
             }
             else
             {
@@ -122,21 +124,30 @@ internal sealed class PluginInstaller
                 bytes);
             return true;
         }
+        catch (OperationCanceledException)
+        {
+            // 用户取消：临时区不能留半份解包结果。
+            TryDelete(staging);
+            throw;
+        }
         catch (Exception ex)
         {
-            error = I18n.Get("cp.plugins.install.failed", ex.Message);
+            KernelLog.Write($"plugin-install-prepare-failed {ex.GetType().Name}: {ex.Message}");
+            error = I18n.Get("cp.plugins.install.failed");
             TryDelete(staging);
             return false;
         }
     }
 
     /// <summary>提交：目标存在就先搬到备份，再把新目录搬进去；失败尽量把备份搬回来。</summary>
-    public bool TryCommit(InstallPlan plan, out string? error)
+    public bool TryCommit(InstallPlan plan, out string? error, CancellationToken token = default)
     {
         error = null;
         string? backup = null;
         try
         {
+            // 取消只在「还没动正式位置」时生效：一旦开始搬目录，就要把它搬完或搬回去。
+            token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(_userRoot);
             if (Directory.Exists(plan.TargetDir))
             {
@@ -155,6 +166,11 @@ internal sealed class PluginInstaller
                 + $" files={plan.Files} bytes={plan.Bytes}");
             return true;
         }
+        catch (OperationCanceledException)
+        {
+            // 取消发生在动正式位置之前：按原样交还给调用方，临时区由 finally 清掉。
+            throw;
+        }
         catch (Exception ex)
         {
             if (backup is not null && Directory.Exists(backup) && !Directory.Exists(plan.TargetDir))
@@ -169,7 +185,8 @@ internal sealed class PluginInstaller
                 }
             }
 
-            error = I18n.Get("cp.plugins.install.commitFailed", ex.Message);
+            KernelLog.Write($"plugin-install-commit-failed id={plan.Id} {ex.GetType().Name}: {ex.Message}");
+            error = I18n.Get("cp.plugins.install.commitFailed");
             return false;
         }
         finally
@@ -201,7 +218,7 @@ internal sealed class PluginInstaller
         return matches.Count == 1 ? matches[0] : null;
     }
 
-    private static void ExtractZip(string zipPath, string staging)
+    private static void ExtractZip(string zipPath, string staging, CancellationToken token)
     {
         using ZipArchive archive = ZipFile.OpenRead(zipPath);
         if (archive.Entries.Count > MaxEntries)
@@ -213,6 +230,7 @@ internal sealed class PluginInstaller
         long total = 0;
         foreach (ZipArchiveEntry entry in archive.Entries)
         {
+            token.ThrowIfCancellationRequested();
             string relative = entry.FullName.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
             if (relative.Length == 0)
             {
@@ -260,15 +278,16 @@ internal sealed class PluginInstaller
 
             using Stream input = entry.Open();
             using var output = new FileStream(dest, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            input.CopyTo(output);
+            CopyStream(input, output, token);
         }
     }
 
-    private static void CopyDirectory(string from, string to)
+    private static void CopyDirectory(string from, string to, CancellationToken token)
     {
         Directory.CreateDirectory(to);
         foreach (string file in Directory.GetFiles(from))
         {
+            token.ThrowIfCancellationRequested();
             var info = new FileInfo(file);
             if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
             {
@@ -287,7 +306,19 @@ internal sealed class PluginInstaller
             {
                 throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", dir));
             }
-            CopyDirectory(dir, Path.Combine(to, Path.GetFileName(dir)));
+            CopyDirectory(dir, Path.Combine(to, Path.GetFileName(dir)), token);
+        }
+    }
+
+    /// <summary>分块复制（zip 条目长度不可靠地小；每块检查取消）。</summary>
+    private static void CopyStream(Stream input, Stream output, CancellationToken token)
+    {
+        var buffer = new byte[81920];
+        int read;
+        while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            token.ThrowIfCancellationRequested();
+            output.Write(buffer, 0, read);
         }
     }
 

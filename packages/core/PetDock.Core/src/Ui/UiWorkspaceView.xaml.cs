@@ -25,6 +25,9 @@ public partial class UiWorkspaceView : UserControl
 
     private string? _current;
 
+    /// <summary>进度条旁边「取消」按钮要调的动作（宿主设置；null = 没有长任务）。</summary>
+    private UiCommand? _cancelWork;
+
     public UiWorkspaceView(IReadOnlyList<IUiPage> pages, IUiPageContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -81,7 +84,12 @@ public partial class UiWorkspaceView : UserControl
         PageHost.Content = view;
         TitleText.Text = page.Title;
         NoteText.Text = page.Note;
-        ClearStatus();
+
+        // 长任务期间换页不能把「正在做什么」擦掉：进度条还在跑，状态条就必须说明它在跑什么。
+        if (!IsWorking)
+        {
+            ClearStatus();
+        }
 
         if (_nav.TryGetValue(id, out RadioButton? button))
         {
@@ -108,6 +116,46 @@ public partial class UiWorkspaceView : UserControl
         StatusText.SetResourceReference(TextBlock.ForegroundProperty, "Pd.TextMuted");
     }
 
+    /// <summary>是否有长任务在跑（自检读它，证明进度条真的出现/收起）。</summary>
+    public bool IsWorking => WorkBar.Visibility == Visibility.Visible;
+
+    /// <summary>开始一次长任务：显示不确定进度条与取消按钮，状态条换成「正在做什么」。</summary>
+    internal void BeginWork(string text, UiCommand cancel)
+    {
+        _cancelWork = cancel;
+        WorkCancel.Content = I18n.Get("ui.work.cancel");
+        WorkCancel.IsEnabled = true;
+        WorkBar.Visibility = Visibility.Visible;
+        WorkCancel.Visibility = Visibility.Visible;
+        SetStatus(text ?? string.Empty);
+    }
+
+    /// <summary>换一句进度（后台线程经宿主投递到 UI 线程后再调）。</summary>
+    public void SetWorkStage(string text) => SetStatus(text ?? string.Empty);
+
+    /// <summary>结束长任务：收起进度条与取消按钮。状态条留给页面写结果。</summary>
+    public void EndWork()
+    {
+        _cancelWork = null;
+        WorkBar.Visibility = Visibility.Collapsed;
+        WorkCancel.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnCancelWork(object sender, RoutedEventArgs e)
+    {
+        UiCommand? cancel = _cancelWork;
+        if (cancel is null)
+        {
+            return;
+        }
+
+        // 只请求一次：再点也不会把同一个取消重复投递（按钮同时灰掉，给用户一个「收到了」）。
+        _cancelWork = null;
+        WorkCancel.IsEnabled = false;
+        WorkCancel.Content = I18n.Get("ui.work.cancelling");
+        cancel();
+    }
+
     /// <summary>状态条颜色：成功走 Good，失败走 Bad，中性走说明文字那档。</summary>
     private static string StatusBrush(UiStatusKind kind) => kind switch
     {
@@ -121,14 +169,16 @@ public partial class UiWorkspaceView : UserControl
         foreach (IUiPage page in _pages)
         {
             var content = new StackPanel { Orientation = Orientation.Horizontal };
-            content.Children.Add(new TextBlock
+            var glyph = new TextBlock
             {
                 Text = page.Glyph,
                 Width = 26,
                 FontSize = 14,
                 VerticalAlignment = VerticalAlignment.Center,
-                Foreground = (Brush)FindResource("Pd.TextMuted"),
-            });
+            };
+            // 引用而不是拷贝：换色板时这枚图标也要跟着变（拷一份 Brush 就永远停在旧颜色）。
+            glyph.SetResourceReference(TextBlock.ForegroundProperty, "Pd.TextMuted");
+            content.Children.Add(glyph);
             content.Children.Add(new TextBlock
             {
                 Text = page.Title,
@@ -148,8 +198,11 @@ public partial class UiWorkspaceView : UserControl
         }
     }
 
-    /// <summary>把内核色板转成 WPF 资源。页面插件只认 DynamicResource 键，不认 Theme 类型。</summary>
-    private void ApplyPalette()
+    /// <summary>
+    /// 把内核色板转成 WPF 资源。页面插件只认 DynamicResource 键，不认 Theme 类型。
+    /// 亮/暗切换时**原地**再调一次：资源键名不变，所以同一个窗口、同一页、同一滚动位置都能保留。
+    /// </summary>
+    internal void ApplyPalette()
     {
         Set("Pd.Bg", Theme.Bg);
         Set("Pd.BgDeep", Theme.BgDeep);
@@ -163,7 +216,6 @@ public partial class UiWorkspaceView : UserControl
         Set("Pd.AccentHover", Theme.AccentHover);
         Set("Pd.AccentSoft", Theme.AccentSoft);
         Set("Pd.OnAccent", Theme.OnAccent);
-        Set("Pd.Good", Theme.Good);
         Set("Pd.Good", Theme.Good);
         Set("Pd.Warn", Theme.Warn);
         Set("Pd.Bad", Theme.Bad);

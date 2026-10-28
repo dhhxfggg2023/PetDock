@@ -61,6 +61,19 @@ internal sealed class ControlPanel : Form
     /// <summary>导航里的页 id，按显示顺序。</summary>
     public IReadOnlyList<string> PageIds => Workspace.PageIds;
 
+    /// <summary>
+    /// 原地换色板（亮/暗切换）：窗口、当前页、滚动位置都不动，只把颜色令牌换一套。
+    /// 旧做法是 Dispose 再 OpenPanel，用户看到的是「窗口跳回屏幕中央、回到宠物页」。
+    /// </summary>
+    public void ApplyPalette()
+    {
+        BackColor = Theme.Bg;
+        ForeColor = Theme.Text;
+        _element.BackColor = Theme.Bg;
+        Workspace.ApplyPalette();
+        Invalidate(true);
+    }
+
     public void ShowPage(string id) => Workspace.ShowPage(id);
 
     public void SetStatus(string text, UiStatusKind kind = UiStatusKind.Info) => Workspace.SetStatus(text, kind);

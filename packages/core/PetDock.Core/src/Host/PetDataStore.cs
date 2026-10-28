@@ -14,6 +14,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
 using PetDock.Core.Ui;
@@ -115,7 +116,7 @@ internal sealed partial class PetDataStore
     /// 同名目录不覆盖：加了序号另起一个，导入历史因此不会互相踩。
     /// 失败一律抛（调用方把异常转成界面上的内联错误条）。
     /// </summary>
-    public (string InstanceId, string Folder, string Path) StagePack(string sourceDir)
+    public (string InstanceId, string Folder, string Path) StagePack(string sourceDir, CancellationToken token = default)
     {
         if (string.IsNullOrWhiteSpace(sourceDir))
         {
@@ -146,7 +147,17 @@ internal sealed partial class PetDataStore
         }
 
         string target = Path.Combine(PacksDir, folder);
-        CopyTree(full, target);
+        try
+        {
+            CopyTree(full, target, token);
+        }
+        catch
+        {
+            // 复制到一半失败/取消：别在素材目录里留半个包（下次启动会被当成一只坏宠物）。
+            Discard(target);
+            throw;
+        }
+
         return ("user." + folder, folder, target);
     }
 
@@ -338,18 +349,19 @@ internal sealed partial class PetDataStore
     /// 三条护栏：重解析点不跟（避免越界到目录之外）、单文件不超上限、总量不超上限。
     /// 越界与超限都抛 —— 静默跳过会让用户以为「全部导入成功了」。
     /// </summary>
-    private static void CopyTree(string from, string to)
+    private static void CopyTree(string from, string to, CancellationToken token)
     {
         long total = 0;
-        CopyInto(from, to, ref total);
+        CopyInto(from, to, ref total, token);
     }
 
-    private static void CopyInto(string from, string to, ref long total)
+    private static void CopyInto(string from, string to, ref long total, CancellationToken token)
     {
         Directory.CreateDirectory(to);
 
         foreach (string file in Directory.GetFiles(from))
         {
+            token.ThrowIfCancellationRequested();
             FileInfo info = new(file);
             if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
             {
@@ -378,7 +390,7 @@ internal sealed partial class PetDataStore
                 throw new IOException(I18n.Get("host.import.err.reparse-dir", dir));
             }
 
-            CopyInto(dir, Path.Combine(to, Path.GetFileName(dir)), ref total);
+            CopyInto(dir, Path.Combine(to, Path.GetFileName(dir)), ref total, token);
         }
     }
 }

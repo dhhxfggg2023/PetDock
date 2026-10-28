@@ -283,7 +283,22 @@
 
             <Border Grid.Row="2" Padding="34,10" BorderBrush="{DynamicResource Pd.Line}"
                     BorderThickness="0,1,0,0">
-                <TextBlock x:Name="StatusText" Style="{StaticResource Pd.Dim}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="StatusText" Style="{StaticResource Pd.Dim}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <!-- 长任务的进度条与取消：只在宿主跑导入/安装时出现（UiHost.Work.cs）。 -->
+                    <ProgressBar x:Name="WorkBar" Grid.Column="1" Width="150" Height="6" Margin="12,0"
+                                 IsIndeterminate="True" Visibility="Collapsed" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource Pd.Accent}"
+                                 Background="{DynamicResource Pd.Line}" BorderThickness="0" />
+                    <Button x:Name="WorkCancel" Grid.Column="2" Visibility="Collapsed"
+                            Style="{StaticResource Pd.GhostButton}" Click="OnCancelWork" />
+                </Grid>
             </Border>
         </Grid>
     </Grid>

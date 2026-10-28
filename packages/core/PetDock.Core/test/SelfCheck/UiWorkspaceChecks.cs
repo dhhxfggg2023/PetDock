@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using PetDock.Core.Ui;
+using PetDock.Core.Ui.Design;
 using Color = System.Windows.Media.Color;
 using Size = System.Windows.Size;
 
@@ -25,6 +26,49 @@ internal static class UiWorkspaceChecks
         EmptyWorkspace(check);
         PluginDeleteAffordance(check);
         SettingsLanguageSwitch(check);
+        ThemeSwitchKeepsPanel(check);
+    }
+
+    /// <summary>
+    /// 亮/暗切换只换色板：同一只面板、同一页、同一位位置，颜色真的变了。
+    /// 旧实现（Dispose 后 OpenPanel）会让 CurrentPage 回到第一页、窗口回到屏幕中央。
+    /// </summary>
+    private static void ThemeSwitchKeepsPanel(Report check)
+    {
+        ThemeMode before = Theme.Mode;
+        try
+        {
+            Theme.Mode = ThemeMode.Dark;
+            var context = new PreviewUiContext();
+            var pages = new IUiPage[]
+            {
+                new TestPage("a", "Title A", 10),
+                new TestPage("b", "Title B", 20),
+            };
+
+            using var panel = new ControlPanel(context, pages, showWindow: false);
+            panel.ShowPage("b");
+            var spot = new System.Drawing.Point(120, 80);
+            panel.Location = spot;
+
+            Theme.Mode = ThemeMode.Light;
+            panel.ApplyPalette();
+            bool kept = string.Equals(panel.CurrentPage, "b", StringComparison.Ordinal)
+                && panel.Location == spot;
+            var brush = panel.Workspace.Background as SolidColorBrush;
+            bool recolored = brush is not null
+                && brush.Color == Color.FromArgb(Theme.Bg.A, Theme.Bg.R, Theme.Bg.G, Theme.Bg.B);
+            check("ui-theme-switch-keeps-panel", kept && recolored,
+                $"page={panel.CurrentPage} loc={panel.Location} recolored={recolored}");
+        }
+        catch (Exception error)
+        {
+            check("ui-theme-switch-keeps-panel", false, error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            Theme.Mode = before;
+        }
     }
 
     private static void OrderedPages(Report check)

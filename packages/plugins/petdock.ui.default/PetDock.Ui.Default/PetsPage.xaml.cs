@@ -75,7 +75,7 @@ public partial class PetsPage : UserControl, IUiPage
         }
     }
 
-    private void OnImportClick(object sender, RoutedEventArgs e)
+    private async void OnImportClick(object sender, RoutedEventArgs e)
     {
         using var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
@@ -89,15 +89,38 @@ public partial class PetsPage : UserControl, IUiPage
             return;
         }
 
-        if (!_context.ImportPet(dialog.SelectedPath, out string message))
+        // 导入在后台跑（UiHost.Work.cs）：按钮先灰掉，防止同一份对话框结果被点两次。
+        ImportButton.IsEnabled = false;
+        try
         {
-            ShowError(message);
-            return;
-        }
+            UiCommandResult result = await _context.ImportPetAsync(dialog.SelectedPath);
+            if (result.Ok)
+            {
+                HideError();
+                _context.SetStatus(_context.T("cp.pets.count", _context.Snapshot.Pets.Count));
+                _context.Refresh();
+                return;
+            }
 
-        HideError();
-        _context.SetStatus(_context.T("cp.pets.count", _context.Snapshot.Pets.Count));
-        _context.Refresh();
+            if (result.Cancelled)
+            {
+                // 取消是用户自己按的：走状态条，不进错误条。
+                HideError();
+                _context.SetStatus(result.Message);
+                return;
+            }
+
+            ShowError(result.Message);
+        }
+        catch (Exception)
+        {
+            // 宿主已经把可预期的失败翻译成文案；走到这里是没预料的异常，只说「失败了」。
+            ShowError(_context.T("ui.work.failed"));
+        }
+        finally
+        {
+            ImportButton.IsEnabled = true;
+        }
     }
 
     private void ShowError(string message)

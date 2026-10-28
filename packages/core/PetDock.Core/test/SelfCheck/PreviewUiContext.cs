@@ -3,6 +3,7 @@
 // 而不是把宿主再测一遍。
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
@@ -67,11 +68,10 @@ internal sealed class PreviewUiContext : IUiPageContext
 
     public string T(string key, object arg0) => I18n.Get(key, arg0);
 
-    public bool ImportPet(string sourceDir, out string message)
+    public Task<UiCommandResult> ImportPetAsync(string sourceDir)
     {
         Commands.Add("import:" + sourceDir);
-        message = string.Empty;
-        return true;
+        return Task.FromResult(UiCommandResult.Success());
     }
 
     public string? RemovePet(string petId)
@@ -84,10 +84,10 @@ internal sealed class PreviewUiContext : IUiPageContext
 
     public void TogglePluginDisabled(string pluginId) => Commands.Add("toggle:" + pluginId);
 
-    public string? InstallPlugin(string source, bool enable)
+    public Task<UiCommandResult> InstallPluginAsync(string source, bool enable)
     {
         Commands.Add("install:" + source + ":" + enable);
-        return null;
+        return Task.FromResult(UiCommandResult.Success());
     }
 
     public string? RemovePlugin(string pluginId)

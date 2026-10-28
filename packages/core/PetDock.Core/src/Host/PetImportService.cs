@@ -10,6 +10,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Threading;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Ui;
@@ -29,21 +30,30 @@ internal delegate void PetReplacedNotify(PetInstance? instance);
 /// </summary>
 internal delegate bool PetAdoptNotify(PetInstance instance, string packPath);
 
+/// <summary>导入的一个阶段（值是一个 i18n 键，由宿主翻成给用户看的一句话）。</summary>
+internal delegate void ImportStageNotify(string key);
+
+/// <summary>把一段必须落在 UI 线程上的工作交回去（后台线程阻塞等待它做完）。</summary>
+internal delegate void ImportUiDispatch(UiCommand step);
+
 /// <summary>一次导入的结果。失败时 <see cref="Error"/> 有值，桌面上的旧宠物原样不动。</summary>
 internal sealed record ImportResult(bool Ok, string Message, string? InstanceId = null, string? MessageKey = null)
 {
     internal const string AddedKey = "host.import.added";
     internal const string ReplacedKey = "host.import.replaced";
 
-    /// <summary>用户主动取消目录选择：不是失败，不显示错误条（RFC-15 §3.5 第一行）。</summary>
-    public static ImportResult Cancelled { get; } = new(true, "cancelled");
+    /// <summary>用户按了取消（或关掉了界面）：不是失败，不显示成错误。</summary>
+    public bool WasCancelled { get; init; }
 
     public static ImportResult Failure(string message) => new(false, message);
+
+    public static ImportResult Cancel(string message) => new(false, message) { WasCancelled = true };
 }
 
 /// <summary>
 /// 宠物导入的宿主编排。
-/// 线程：全部方法假定在 **UI 线程**上调用（换源会碰窗口的帧循环，跨线程做会撕裂）。
+/// 线程：重活（格式转换、复制、登记）可以在后台线程；建实例、换源、挂到窗口集合
+/// 会碰窗口的帧循环，必须经 <c>onUi</c> 回到 UI 线程（UI 线程不等待后台线程，因此不会自锁）。
 /// </summary>
 internal sealed class PetImportService
 {
@@ -85,13 +95,22 @@ internal sealed class PetImportService
     /// **片 2 的例外（RFC-37 §3.5）**：装了窗口集合时，第 ④ 步换成「把新的那只摆上桌」——
     /// 用户导入第二只宠物是想要两只，不是想要换掉第一只。摆不进去（没有集合层）才退回替换。
     /// </summary>
-    public ImportResult Import(string sourceDir)
+    public ImportResult Import(
+        string sourceDir,
+        CancellationToken token = default,
+        ImportStageNotify? stage = null,
+        ImportUiDispatch? onUi = null)
     {
+        // 没给调度器 = 调用方本来就在 UI 线程上（自检、旧装配）：直接执行。
+        onUi ??= step => step();
         string stagedPath = string.Empty;
         string conversionPath = string.Empty;
         PetDataStore.ActivePack? previousActive = null;
         try
         {
+            token.ThrowIfCancellationRequested();
+            stage?.Invoke("host.import.stage.convert");
+
             // 第三方格式先由插件转成标准包。转换失败就按导入失败回滚。
             string stagedSource = sourceDir;
             foreach (IPackImporter importer in _importers)
@@ -108,45 +127,77 @@ internal sealed class PetImportService
                 break;
             }
 
+            token.ThrowIfCancellationRequested();
+            stage?.Invoke("host.import.stage.copy");
+
             // 追加时必须把「当前选中」指回来（登记会把它指向新来的那只），所以先记下原值。
             previousActive = _store.ReadActive();
-            (string instanceId, string folder, string path) = _store.StagePack(stagedSource);
+            (string instanceId, string folder, string path) = _store.StagePack(stagedSource, token);
             stagedPath = path;
+
+            token.ThrowIfCancellationRequested();
+            stage?.Invoke("host.import.stage.register");
 
             // ② 登记：清单写失败 ⇒ 素材拷贝成了孤儿，回滚（不留半个状态）。
             _store.RegisterActive(instanceId, folder);
 
-            // ③ 重建实例：素材根按 RFC-15 §3.2 第 3 跳显式传给视图实现。
-            PetInstance? next = _roster.BuildInstance("import", new[] { path }, freshView: true, imported: true);
-            if (next is null)
-            {
-                throw new InvalidOperationException(I18n.Get("host.import.err.no-view"));
-            }
+            token.ThrowIfCancellationRequested();
+            stage?.Invoke("host.import.stage.start");
 
-            // 初始化在这里做（init/describe/attach）：视图实现不接受这个素材包时，
-            // 异常会在换源**之前**抛出 —— 旧宠物因此毫发无损（RFC-15 §3.5 倒数第二行）。
-            next.AttachAndStart(128, 128, 1.0);
-            next.Start();
+            // ③ 重建实例：素材根按 RFC-15 §3.2 第 3 跳显式传给视图实现。
+            PetInstance? next = null;
+            onUi(() =>
+            {
+                next = _roster.BuildInstance("import", new[] { path }, freshView: true, imported: true);
+                if (next is null)
+                {
+                    throw new InvalidOperationException(I18n.Get("host.import.err.no-view"));
+                }
+
+                // 初始化在这里做（init/describe/attach）：视图实现不接受这个素材包时，
+                // 异常会在换源**之前**抛出 —— 旧宠物因此毫发无损（RFC-15 §3.5 倒数第二行）。
+                next.AttachAndStart(128, 128, 1.0);
+                next.Start();
+            });
+
+            token.ThrowIfCancellationRequested();
 
             // ④ 片 2：桌面上已经有位置就摆上去，主窗那只不动（active 也指回原来那只）。
-            if (AdoptExtra is not null && AdoptExtra(next, path))
+            PetAdoptNotify? adopt = AdoptExtra;
+            bool adopted = false;
+            if (adopt is not null)
+            {
+                onUi(() => adopted = adopt(next!, path));
+            }
+
+            if (adopted)
             {
                 _store.SetActive(previousActive?.InstanceId);
-                KernelLog.Write($"import-added instance={next.Id} folder={folder}"
+                KernelLog.Write($"import-added instance={next!.Id} folder={folder}"
                     + $" main={previousActive?.InstanceId ?? "(none)"}");
                 return new ImportResult(true, I18n.Get(ImportResult.AddedKey), next.Id, ImportResult.AddedKey);
             }
 
             // ④ 换源：代理切到新宠物。下一帧生效（代理不缓存帧）。
-            PetInstance? previous = _currentPet();
-            _frames.Replace(new PetFrameSource(next));
-            _onPetReplaced(next);
+            onUi(() =>
+            {
+                PetInstance? previous = _currentPet();
+                _frames.Replace(new PetFrameSource(next!));
+                _onPetReplaced(next);
 
-            // ⑤ 释放旧实例：换源之后才做，先释放会让切换窗口里露出空白帧。
-            ReleaseOld(previous, next);
+                // ⑤ 释放旧实例：换源之后才做，先释放会让切换窗口里露出空白帧。
+                ReleaseOld(previous, next!);
+            });
 
-            KernelLog.Write($"import-ok instance={next.Id} folder={folder}");
+            KernelLog.Write($"import-ok instance={next!.Id} folder={folder}");
             return new ImportResult(true, I18n.Get(ImportResult.ReplacedKey), next.Id, ImportResult.ReplacedKey);
+        }
+        catch (OperationCanceledException)
+        {
+            // 用户取消：复制一半的素材要扔掉；清单登记留在原样（下一次导入会再写）。
+            Rollback(stagedPath);
+            KernelLog.Write($"import-cancelled source={sourceDir}");
+            return ImportResult.Cancel(I18n.Get("cp.pets.import.cancelled"));
         }
         catch (Exception error)
         {
@@ -261,10 +312,10 @@ internal sealed class PetImportService
     /// </summary>
     private static string Describe(Exception error) => error switch
     {
-        DirectoryNotFoundException => I18n.Get("host.import.err.dir-missing", error.Message),
-        FileNotFoundException => I18n.Get("host.import.err.dir-missing", error.Message),
-        IOException => I18n.Get("host.import.err.copy-failed", error.Message),
-        UnauthorizedAccessException => I18n.Get("host.import.err.copy-denied", error.Message),
-        _ => I18n.Get("host.import.err.failed", error.Message),
+        DirectoryNotFoundException => I18n.Get("host.import.err.dir-missing"),
+        FileNotFoundException => I18n.Get("host.import.err.dir-missing"),
+        UnauthorizedAccessException => I18n.Get("host.import.err.copy-denied"),
+        IOException => I18n.Get("host.import.err.copy-failed"),
+        _ => I18n.Get("host.import.err.failed"),
     };
 }

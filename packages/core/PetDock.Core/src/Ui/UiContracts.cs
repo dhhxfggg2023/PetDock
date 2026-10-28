@@ -9,6 +9,7 @@
 // 第三方页面将来走声明式描述，不把未受信任代码塞进 UI 线程。
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace PetDock.Core.Ui;
@@ -43,6 +44,19 @@ public interface IUiPage
 
     /// <summary>建视图。每次调用返回新实例；壳负责释放。</summary>
     FrameworkElement CreateView();
+}
+
+/// <summary>
+/// 一次可能耗时很久的宿主命令的结果：成功、失败、用户取消三种结局分开说。
+/// 取消不是失败（用户自己按的），所以页面不能把它当错误条展示。
+/// </summary>
+public sealed record UiCommandResult(bool Ok, bool Cancelled, string Message)
+{
+    public static UiCommandResult Success(string message = "") => new(true, false, message);
+
+    public static UiCommandResult Failure(string message) => new(false, false, message);
+
+    public static UiCommandResult Cancel(string message) => new(false, true, message);
 }
 
 /// <summary>状态条的口吻：info 是计数与提示，success 是「做成了」，problem 是「没做成，原因在这里」。</summary>
@@ -94,8 +108,11 @@ public interface IUiPageContext
     /// <summary>带一个占位符的本地化文案。</summary>
     string T(string key, object arg0);
 
-    /// <summary>导入素材包目录。返回 false 时 message 是给用户看的原因。</summary>
-    bool ImportPet(string sourceDir, out string message);
+    /// <summary>
+    /// 导入素材包目录（后台执行，不阻塞界面）。复制/登记在后台线程，建实例与换源仍回到 UI 线程。
+    /// 返回失败或取消时 Message 是给用户看的原因；返回的 Task 在 UI 线程上完成。
+    /// </summary>
+    Task<UiCommandResult> ImportPetAsync(string sourceDir);
 
     /// <summary>移除一只宠物（确认框由页面自己弹，宿主只执行）。</summary>
     string? RemovePet(string petId);
@@ -106,8 +123,11 @@ public interface IUiPageContext
     /// <summary>翻转某个插件的启用/停用（重启生效）。</summary>
     void TogglePluginDisabled(string pluginId);
 
-    /// <summary>安装插件（目录或 zip；enable = 安装后立即启用）。返回 null = 成功。</summary>
-    string? InstallPlugin(string source, bool enable);
+    /// <summary>
+    /// 安装插件（目录或 zip；enable = 安装后立即启用）。解压/复制/校验在后台线程执行。
+    /// 返回成功、失败或用户取消；返回的 Task 在 UI 线程上完成。
+    /// </summary>
+    Task<UiCommandResult> InstallPluginAsync(string source, bool enable);
 
     /// <summary>删除用户安装的插件。返回 null = 成功。</summary>
     string? RemovePlugin(string pluginId);

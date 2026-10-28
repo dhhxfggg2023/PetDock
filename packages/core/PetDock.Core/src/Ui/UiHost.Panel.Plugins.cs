@@ -1,5 +1,6 @@
 // 插件页的启停、安装、删除入口（从 UiHost.Panel.cs 拆出，D-03c）。
 // 与主文件同一条纪律：面板只发意图，判定/弹窗/落账都在宿主侧；动作都离开 UI 线程。
+// 安装/导入的异步执行体在 UiHost.Work.cs（本文件只剩启停、删除与授权复核）。
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -168,40 +169,6 @@ internal sealed partial class UiHost
         {
             KernelLog.Write($"plugin-toggle-persist-failed plugin={pluginId} {error.GetType().Name}: {error.Message}");
         }
-    }
-
-    /// <summary>
-    /// 面板「安装插件…」入口的执行体（在 UI 线程上跑，和导入素材同一取舍）。
-    /// 顺序：解到临时区并校验 → 落到用户插件根 → 打开它（打开会触发一次授权询问）。
-    /// 返回 null = 成功；返回字符串 = 成功之前就失败了，这条字符串原样进状态栏。
-    /// </summary>
-    private string? InstallPluginFromPanel(string source, bool enable)
-    {
-        if (_installer is null || _inventory is null)
-        {
-            return I18n.Get("cp.plugins.install.unavailable");
-        }
-
-        if (!_installer.TryPrepare(source, out InstallPlan? plan, out string? error) || plan is null)
-        {
-            return error;
-        }
-
-        KernelLog.Write(
-            $"plugin-install-prepared id={plan.Id} version={plan.Version} replaces={(plan.Replaces ? 1 : 0)}"
-            + $" files={plan.Files} bytes={plan.Bytes}");
-        if (!_installer.TryCommit(plan, out error))
-        {
-            return error;
-        }
-
-        if (enable && !_inventory.SetEnabled(plan.Id, true, out string? enableError))
-        {
-            // 装上了但没打开：这仍然算安装成功，把原因留在日志里（状态栏已经有成功文案）。
-            KernelLog.Write($"plugin-install-enable-failed id={plan.Id} {enableError}");
-        }
-
-        return null;
     }
 
     /// <summary>面板「删除」入口：只允许删用户装进来的插件（内置的在管理面里被拒）。</summary>

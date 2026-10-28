@@ -143,7 +143,7 @@ public partial class PluginsPage : UserControl, IUiPage
         menu.IsOpen = true;
     }
 
-    private void Install(bool folder)
+    private async void Install(bool folder)
     {
         string? source = folder ? PickFolder() : PickZip();
         if (source is null)
@@ -151,11 +151,30 @@ public partial class PluginsPage : UserControl, IUiPage
             return;
         }
 
-        string? problem = _context.InstallPlugin(source, enable: true);
-        _context.SetStatus(
-            problem ?? _context.T("cp.plugins.install.done"),
-            problem is null ? UiStatusKind.Success : UiStatusKind.Problem);
-        _context.Refresh();
+        // 解压/校验在后台跑（UiHost.Work.cs）：安装按钮先灰掉，避免并发写同一个插件根。
+        InstallButton.IsEnabled = false;
+        try
+        {
+            UiCommandResult result = await _context.InstallPluginAsync(source, enable: true);
+            if (result.Ok)
+            {
+                _context.SetStatus(_context.T("cp.plugins.install.done"), UiStatusKind.Success);
+                _context.Refresh();
+                return;
+            }
+
+            _context.SetStatus(
+                result.Message,
+                result.Cancelled ? UiStatusKind.Info : UiStatusKind.Problem);
+        }
+        catch (Exception)
+        {
+            _context.SetStatus(_context.T("ui.work.failed"), UiStatusKind.Problem);
+        }
+        finally
+        {
+            InstallButton.IsEnabled = true;
+        }
     }
 
     private string? PickFolder()

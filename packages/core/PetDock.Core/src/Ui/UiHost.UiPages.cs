@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using PetDock.Core.Compositor;
 using PetDock.Core.Ui.Design;
 using PetDock.Hosting;
@@ -48,8 +49,8 @@ internal sealed partial class UiHost : IUiPageContext
 
     string IUiPageContext.T(string key, object arg0) => I18n.Get(key, arg0);
 
-    bool IUiPageContext.ImportPet(string sourceDir, out string message) =>
-        RunImportFromPanel(sourceDir, out message);
+    Task<UiCommandResult> IUiPageContext.ImportPetAsync(string sourceDir) =>
+        ImportPetFromPanelAsync(sourceDir);
 
     string? IUiPageContext.RemovePet(string petId) => RemovePetFromPanel(petId);
 
@@ -57,7 +58,8 @@ internal sealed partial class UiHost : IUiPageContext
 
     void IUiPageContext.TogglePluginDisabled(string pluginId) => TogglePluginDisabled(pluginId);
 
-    string? IUiPageContext.InstallPlugin(string source, bool enable) => InstallPluginFromPanel(source, enable);
+    Task<UiCommandResult> IUiPageContext.InstallPluginAsync(string source, bool enable) =>
+        InstallPluginFromPanelAsync(source, enable);
 
     string? IUiPageContext.RemovePlugin(string pluginId) => RemovePluginFromPanel(pluginId);
 
