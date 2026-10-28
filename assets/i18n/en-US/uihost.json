@@ -15,6 +15,7 @@
   "ui.workspace.empty.title": "No interface pages",
   "ui.workspace.empty.note": "Add a UI plugin under plugins/ and reopen the panel.",
   "ui.workspace.empty.status": "ui: no pages",
+  "ui.work.copyProgress": "Copying {0} MB / {1} MB",
   "ui.work.cancel": "Cancel",
   "ui.work.cancelling": "Cancelling…",
   "ui.work.busy": "Another operation is still running; wait for it to finish.",

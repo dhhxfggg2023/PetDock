@@ -160,6 +160,14 @@ internal static class UiWorkspaceChecks
                 new PluginLine("builtin.required", "系统插件", "0.1.0", 0, "运行中", 0, "内置",
                     Essential: true),
             }));
+        context.Trash.Add(new TrashLine(
+            "com.example.trash-2026-10-28-120000",
+            "com.example.trash",
+            "已删除插件",
+            "1.0.0",
+            1024 * 1024,
+            "2026-10-28 12:00",
+            Restorable: true));
 
         try
         {
@@ -174,6 +182,13 @@ internal static class UiWorkspaceChecks
                 check("ui-plugin-delete-affordance", false, "controls=missing");
                 return;
             }
+
+            var trashRows = view?.FindName("TrashRows") as System.Windows.Controls.ListBox;
+            var trashToggle = view?.FindName("TrashToggle") as System.Windows.Controls.Button;
+            bool trashListed = trashRows?.Items.Count == 1
+                && trashToggle?.Content?.ToString()?.Contains("1", StringComparison.Ordinal) == true;
+            check("ui-plugin-trash-section", trashListed,
+                $"items={trashRows?.Items.Count} toggle={trashToggle?.Content}");
 
             rows.SelectedIndex = 0;
             bool optionalEnabled = remove.IsEnabled;

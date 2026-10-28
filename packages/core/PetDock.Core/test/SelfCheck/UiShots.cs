@@ -72,6 +72,21 @@ internal static class UiShots
                         count++;
                     }
                 }
+
+                // 长任务进度条的样子：确定态 + 取消按钮。只在宠物页上拍，证明它不是浮在空中的控件。
+                panel.ShowPage("pets");
+                foreach (int dpi in new[] { 96, 144 })
+                {
+                    string progressText = I18n.Get("ui.work.copyProgress", "42.0", "100.0");
+                    panel.Workspace.BeginWork(progressText, () => { });
+                    panel.Workspace.SetWorkProgress(0.42, progressText);
+                    string path = Path.Combine(
+                        dir,
+                        "panel-progress@" + dpi.ToString() + (light ? "-light" : "-dark") + ".png");
+                    Capture(panel.Workspace, path, dpi);
+                    panel.Workspace.EndWork();
+                    count++;
+                }
             }
         }
         catch (Exception error)

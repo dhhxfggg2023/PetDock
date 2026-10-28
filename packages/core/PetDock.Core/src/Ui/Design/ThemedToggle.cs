@@ -187,13 +187,6 @@ internal abstract class ThemedPick : Control
     private Size PreferredSizeOf() => GetPreferredSize(Size.Empty);
 }
 
-/// <summary>勾选框：勾/不勾两种状态。</summary>
-internal sealed class ThemedCheckBox : ThemedPick
-{
-    protected override void DrawMark(Graphics g, Rectangle box, int dpi) =>
-        Ink.CheckBox(g, box, Checked, Enabled, Theme.Dip(dpi, Theme.SpaceXs));
-}
-
 /// <summary>单选框：同组互斥，选中的那一枚画实心点。</summary>
 internal sealed class ThemedRadio : ThemedPick
 {

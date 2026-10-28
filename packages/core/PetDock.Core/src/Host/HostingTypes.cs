@@ -10,6 +10,9 @@ namespace PetDock.Hosting;
 /// <summary>manifest 校验错误的一条：Field 为字段路径（"id"、"capabilities[1]"、"license.spdx"…）。</summary>
 public sealed record ManifestError(string Field, string Message);
 
+/// <summary>复制进度（已复制字节 / 总字节）。回调在复制线程上同步触发，接收方自己决定节流与切线程。</summary>
+internal delegate void CopyProgressNotify(long copied, long total);
+
 /// <summary>
 /// 原规格 21 的 kind 六值。契约画的是 enum；两个字面值在 core 里不可整词落盘（见文件头），
 /// 故做语义等价的「合法值包装」：取值恰为六者之一，由 ManifestValidator 保证。

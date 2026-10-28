@@ -12,16 +12,6 @@ using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
-/// <summary>内置页的稳定 id（自检按 id 断言，不按标题文字）。</summary>
-internal static class PanelPages
-{
-    public const string Pets = "pets";
-    public const string Plugins = "plugins";
-    public const string Settings = "settings";
-
-    public static readonly string[] All = { Pets, Plugins, Settings };
-}
-
 internal sealed class ControlPanel : Form
 {
     /// <summary>诊断入口的稳定 op 名（宿主侧按它分派）。</summary>

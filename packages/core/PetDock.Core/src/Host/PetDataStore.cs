@@ -116,7 +116,10 @@ internal sealed partial class PetDataStore
     /// 同名目录不覆盖：加了序号另起一个，导入历史因此不会互相踩。
     /// 失败一律抛（调用方把异常转成界面上的内联错误条）。
     /// </summary>
-    public (string InstanceId, string Folder, string Path) StagePack(string sourceDir, CancellationToken token = default)
+    public (string InstanceId, string Folder, string Path) StagePack(
+        string sourceDir,
+        CancellationToken token = default,
+        CopyProgressNotify? progress = null)
     {
         if (string.IsNullOrWhiteSpace(sourceDir))
         {
@@ -149,7 +152,7 @@ internal sealed partial class PetDataStore
         string target = Path.Combine(PacksDir, folder);
         try
         {
-            CopyTree(full, target, token);
+            CopyTree(full, target, token, progress);
         }
         catch
         {
@@ -344,53 +347,4 @@ internal sealed partial class PetDataStore
         return new string(chars).Trim('-');
     }
 
-    /// <summary>
-    /// 递归复制目录（.NET 8 没有现成的整目录复制 API）。
-    /// 三条护栏：重解析点不跟（避免越界到目录之外）、单文件不超上限、总量不超上限。
-    /// 越界与超限都抛 —— 静默跳过会让用户以为「全部导入成功了」。
-    /// </summary>
-    private static void CopyTree(string from, string to, CancellationToken token)
-    {
-        long total = 0;
-        CopyInto(from, to, ref total, token);
-    }
-
-    private static void CopyInto(string from, string to, ref long total, CancellationToken token)
-    {
-        Directory.CreateDirectory(to);
-
-        foreach (string file in Directory.GetFiles(from))
-        {
-            token.ThrowIfCancellationRequested();
-            FileInfo info = new(file);
-            if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
-            {
-                throw new IOException(I18n.Get("host.import.err.reparse-file", file));
-            }
-
-            if (info.Length > MaxFileBytes)
-            {
-                throw new IOException(I18n.Get("host.import.err.file-too-large", MaxFileBytes) + file);
-            }
-
-            total += info.Length;
-            if (total > MaxPackBytes)
-            {
-                throw new IOException(I18n.Get("host.import.err.pack-too-large", MaxPackBytes));
-            }
-
-            File.Copy(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
-        }
-
-        foreach (string dir in Directory.GetDirectories(from))
-        {
-            DirectoryInfo info = new(dir);
-            if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
-            {
-                throw new IOException(I18n.Get("host.import.err.reparse-dir", dir));
-            }
-
-            CopyInto(dir, Path.Combine(to, Path.GetFileName(dir)), ref total, token);
-        }
-    }
 }

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 28800,
+  "budget": 29200,
   "history": [
     {
       "date": "2026-10-18",
@@ -323,10 +323,8 @@
           "lines": 194
         },
         {
-          "slice": "RFC-16 C 自带示例素材的定位（只定位，不复制不解析）",
-          "files": [
-            "packages/core/PetDock.Core/src/Host/BundledExampleAssets.cs"
-          ],
+          "slice": "RFC-16 C 自带示例素材的定位（只定位，不复制不解析；该文件于 2026-10-28 因全仓零引用清理删除，历史增量仍按当时归属记 75 行）",
+          "files": [],
           "lines": 75
         },
         {
@@ -1955,6 +1953,95 @@
             "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml"
           ],
           "lines": 33
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28911,
+      "budget": 29000,
+      "note": "第三轮：可靠性四件套收尾 + 死代码清理 + 插件回收站。上一轮的四个提交（语言进设置页 / 设置单写者 / 状态条 / 删除确认）在本条补记 330；25d9760 的导入安装后台化与主题换色板 +352；随后删除全仓零引用的 BundledExampleAssets（整文件）/ PanelPages / ThemedCheckBox / CheckDisplayConsistency 净减 94；最后回收站列表 / 恢复 / 彻底删除 / 保留策略 +413。预算 28800 → 29000（余量 89，按 RFC-11 不取整到 29500）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "上一轮四个可靠性提交补记（语言热切换、设置单写者、状态条口吻、删除确认）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Language.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs",
+            "packages/core/PetDock.Core/src/Ui/OnboardingWindow.Steps.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Onboarding.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.Write.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+          ],
+          "lines": 330
+        },
+        {
+          "slice": "长任务离开 UI 线程（UiHost.Work）、导入/安装取消与友好文案、主题原地换色板",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Work.cs",
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs",
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInstaller.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Appearance.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.Plugins.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
+          ],
+          "lines": 352
+        },
+        {
+          "slice": "死代码清理：BundledExampleAssets 整文件、PanelPages、ThemedCheckBox、CheckDisplayConsistency（净减）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedToggle.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+          ],
+          "lines": -94
+        },
+        {
+          "slice": "插件回收站：列表、恢复、同 id 冲突拒绝、彻底删除、保留策略（20 个 / 512 MB）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginInventory.Trash.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Work.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
+          ],
+          "lines": 413
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 29115,
+      "budget": 29200,
+      "note": "字节进度与文件内取消：复制从 File.Copy 换成 1 MiB 缓冲流（PetDataStore.Copy.cs 新 partial），导入与插件安装共用 CopyProgressNotify；面板进度条从不确定态切到确定态；判据 ui-import-copy-progress / ui-import-copy-cancel-midfile / ui-install-copy-progress / ui-work-progress-determinate。实测 +199（28911 → 29110），预算 29000 → 29200（余量 90，按 RFC-11 不取整）。判据面不计。",
+      "attribution": [
+        {
+          "slice": "块复制与进度回调（目录递归、总量预扫描、文件内取消、安装器同源）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.Copy.cs",
+            "packages/core/PetDock.Core/src/Host/PetDataStore.cs",
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInstaller.cs",
+            "packages/core/PetDock.Core/src/Host/HostingTypes.cs"
+          ],
+          "lines": 151
+        },
+        {
+          "slice": "宿主进度节流与确定态进度条（UiHost.Work 回调、Workspace 画 0..100）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Work.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml.cs"
+          ],
+          "lines": 53
         }
       ]
     }

@@ -59,6 +59,19 @@ public sealed record UiCommandResult(bool Ok, bool Cancelled, string Message)
     public static UiCommandResult Cancel(string message) => new(false, true, message);
 }
 
+/// <summary>
+/// 回收站里的一只插件（插件页「已删除的插件」区）。DirName 是回收站里的目录名，
+/// 也是恢复/彻底删除的稳定键；Restorable=false 表示目录还在但清单已不可用。
+/// </summary>
+public sealed record TrashLine(
+    string DirName,
+    string Id,
+    string Name,
+    string Version,
+    long Bytes,
+    string RemovedAt,
+    bool Restorable);
+
 /// <summary>状态条的口吻：info 是计数与提示，success 是「做成了」，problem 是「没做成，原因在这里」。</summary>
 public enum UiStatusKind
 {
@@ -131,6 +144,15 @@ public interface IUiPageContext
 
     /// <summary>删除用户安装的插件。返回 null = 成功。</summary>
     string? RemovePlugin(string pluginId);
+
+    /// <summary>回收站里的插件（按删除时间从新到旧；只读扫描，可能在 UI 线程调用）。</summary>
+    IReadOnlyList<TrashLine> TrashPlugins();
+
+    /// <summary>把一只插件从回收站恢复并启用；返回的 Task 在 UI 线程上完成。</summary>
+    Task<UiCommandResult> RestorePluginAsync(string dirName);
+
+    /// <summary>彻底删除回收站里的一只（页面负责先确认）；返回的 Task 在 UI 线程上完成。</summary>
+    Task<UiCommandResult> PurgePluginAsync(string dirName);
 
     /// <summary>应用设置。返回 null = 成功；否则是失败或部分失败的原因。</summary>
     string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, string material, string theme);

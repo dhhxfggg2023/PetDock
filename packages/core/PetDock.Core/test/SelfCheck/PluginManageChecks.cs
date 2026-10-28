@@ -223,7 +223,7 @@ internal static class PluginManageChecks
     }
 
     /// <summary>一个能通过清单校验的最小 tier 0 插件（声明式，不需要执行体）。</summary>
-    private static void WritePlugin(string dir, string id, string version, string entry, bool? defaultEnabled = null, bool essential = false)
+    internal static void WritePlugin(string dir, string id, string version, string entry, bool? defaultEnabled = null, bool essential = false)
     {
         Directory.CreateDirectory(dir);
         string flag = defaultEnabled is null

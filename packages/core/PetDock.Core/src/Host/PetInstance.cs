@@ -367,23 +367,6 @@ public sealed partial class PetInstance : IDisposable
         return string.Join(" ", parts);
     }
 
-    /// <summary>§9 降级链与视听面的一致性检查：Hidden 档必须能回答「不可命中」，
-    /// Placeholder 档必须还能回答 hitmap 判定。返回空串 = 一致。</summary>
-    public string CheckDisplayConsistency()
-    {
-        if (Display.Tier >= DisplayTier.Hidden)
-        {
-            return "hidden-tier-answers-no-hit";
-        }
-
-        if (Display.Tier >= DisplayTier.Placeholder && (CurrentFrame is null || Target is null))
-        {
-            return "placeholder-tier-without-frame";
-        }
-
-        return string.Empty;
-    }
-
     private void Move(InstanceState to, string reason, long atMs)
     {
         InstanceStateMachine.Require(State, to, reason);

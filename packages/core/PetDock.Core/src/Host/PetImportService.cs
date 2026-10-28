@@ -99,7 +99,8 @@ internal sealed class PetImportService
         string sourceDir,
         CancellationToken token = default,
         ImportStageNotify? stage = null,
-        ImportUiDispatch? onUi = null)
+        ImportUiDispatch? onUi = null,
+        CopyProgressNotify? progress = null)
     {
         // 没给调度器 = 调用方本来就在 UI 线程上（自检、旧装配）：直接执行。
         onUi ??= step => step();
@@ -132,7 +133,7 @@ internal sealed class PetImportService
 
             // 追加时必须把「当前选中」指回来（登记会把它指向新来的那只），所以先记下原值。
             previousActive = _store.ReadActive();
-            (string instanceId, string folder, string path) = _store.StagePack(stagedSource, token);
+            (string instanceId, string folder, string path) = _store.StagePack(stagedSource, token, progress);
             stagedPath = path;
 
             token.ThrowIfCancellationRequested();

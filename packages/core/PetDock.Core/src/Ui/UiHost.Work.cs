@@ -8,6 +8,8 @@
 //   · 建实例、换源、挂窗口这些会碰帧循环的步骤经 RunOnUi 回到 UI 线程；
 //   · UI 线程只等 await，不等后台线程，所以 Send/Invoke 不会自锁。
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using PetDock.Core.Compositor;
@@ -25,6 +27,10 @@ internal sealed partial class UiHost
 
     /// <summary>当前后台任务的取消开关；null = 没有任务在跑。</summary>
     private CancellationTokenSource? _workCancel;
+
+    /// <summary>进度节流时钟（复制回调在后台线程上可能每 MB 一次）。</summary>
+    private readonly System.Diagnostics.Stopwatch _workClock = System.Diagnostics.Stopwatch.StartNew();
+    private long _lastProgressMs;
 
     /// <summary>是否有长任务在跑（自检与进度条都看它）。</summary>
     public bool IsWorking => _workCancel is not null;
@@ -56,7 +62,7 @@ internal sealed partial class UiHost
             "cp.pets.import.cancelled",
             token =>
             {
-                ImportResult imported = import.Import(sourceDir, token, ReportWorkStage, RunOnUi);
+                ImportResult imported = import.Import(sourceDir, token, ReportWorkStage, RunOnUi, ReportCopyProgress);
                 if (imported.WasCancelled)
                 {
                     return UiCommandResult.Cancel(imported.Message);
@@ -70,6 +76,104 @@ internal sealed partial class UiHost
         if (result.Ok)
         {
             RefreshTrayPets();
+            RefreshUi();
+        }
+
+        return result;
+    }
+
+    /// <summary>回收站里的插件（只读；扫描 + 清单校验都在这里做，页面只负责摆放）。</summary>
+    public IReadOnlyList<TrashLine> TrashPlugins()
+    {
+        if (_inventory is null)
+        {
+            return Array.Empty<TrashLine>();
+        }
+
+        try
+        {
+            var lines = new List<TrashLine>();
+            foreach (PluginInventory.TrashEntry entry in _inventory.Trash())
+            {
+                lines.Add(new TrashLine(
+                    entry.DirName,
+                    entry.Id,
+                    entry.Name,
+                    entry.Version,
+                    entry.Bytes,
+                    entry.RemovedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+                    entry.Restorable));
+            }
+
+            return lines;
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"plugin-trash-list-failed {error.GetType().Name}: {error.Message}");
+            return Array.Empty<TrashLine>();
+        }
+    }
+
+    /// <summary>从回收站恢复一只插件（搬回插件根并重新启用）。</summary>
+    private async Task<UiCommandResult> RestorePluginFromPanelAsync(string dirName)
+    {
+        PluginInventory? inventory = _inventory;
+        if (inventory is null)
+        {
+            return UiCommandResult.Failure(I18n.Get("cp.plugins.restore.unavailable"));
+        }
+
+        UiCommandResult result = await RunWorkAsync(
+            I18n.Get("cp.plugins.restoring"),
+            "cp.plugins.restore.cancelled",
+            token =>
+            {
+                token.ThrowIfCancellationRequested();
+                string? id = inventory.Restore(dirName, out string? error);
+                if (id is null)
+                {
+                    return UiCommandResult.Failure(error ?? I18n.Get("cp.plugins.restore.failed"));
+                }
+
+                if (!inventory.SetEnabled(id, true, out string? enableError))
+                {
+                    // 文件回来了但没启用：仍然算恢复成功，把原因留在日志里。
+                    KernelLog.Write($"plugin-restore-enable-failed id={id} {enableError}");
+                }
+
+                return UiCommandResult.Success(I18n.Get("cp.plugins.restore.done"));
+            });
+
+        if (result.Ok)
+        {
+            RefreshUi();
+        }
+
+        return result;
+    }
+
+    /// <summary>彻底删除回收站里的一只插件。</summary>
+    private async Task<UiCommandResult> PurgePluginFromPanelAsync(string dirName)
+    {
+        PluginInventory? inventory = _inventory;
+        if (inventory is null)
+        {
+            return UiCommandResult.Failure(I18n.Get("cp.plugins.purge.unavailable"));
+        }
+
+        UiCommandResult result = await RunWorkAsync(
+            I18n.Get("cp.plugins.purging"),
+            "cp.plugins.purge.cancelled",
+            token =>
+            {
+                token.ThrowIfCancellationRequested();
+                return inventory.Purge(dirName, out string? error)
+                    ? UiCommandResult.Success(I18n.Get("cp.plugins.purge.done"))
+                    : UiCommandResult.Failure(error ?? I18n.Get("cp.plugins.purge.failed"));
+            });
+
+        if (result.Ok)
+        {
             RefreshUi();
         }
 
@@ -92,7 +196,7 @@ internal sealed partial class UiHost
             "cp.plugins.install.cancelled",
             token =>
             {
-                if (!installer.TryPrepare(source, out InstallPlan? plan, out string? error, token) || plan is null)
+                if (!installer.TryPrepare(source, out InstallPlan? plan, out string? error, token, ReportCopyProgress) || plan is null)
                 {
                     return UiCommandResult.Failure(error ?? I18n.Get("cp.plugins.install.failed"));
                 }
@@ -144,6 +248,7 @@ internal sealed partial class UiHost
 
         using var cts = new CancellationTokenSource();
         _workCancel = cts;
+        _lastProgressMs = 0;
         ShowWork(startText);
         try
         {
@@ -189,6 +294,43 @@ internal sealed partial class UiHost
         }
 
         panel.Workspace.SetWorkStage(text);
+    }
+
+    /// <summary>复制进度（后台线程调用）：节流到约 10 Hz，切成确定态进度条；最后一字节必报。</summary>
+    private void ReportCopyProgress(long copied, long total)
+    {
+        long now = _workClock.ElapsedMilliseconds;
+        if (copied < total && now - _lastProgressMs < 100)
+        {
+            return;
+        }
+
+        _lastProgressMs = now;
+        double ratio = total <= 0 ? 1.0 : Math.Clamp(copied / (double)total, 0.0, 1.0);
+        string text = I18n.Get(
+            "ui.work.copyProgress",
+            (copied / 1048576.0).ToString("0.0", CultureInfo.InvariantCulture),
+            (total / 1048576.0).ToString("0.0", CultureInfo.InvariantCulture));
+
+        ControlPanel? panel = _panel;
+        if (panel is null || panel.IsDisposed)
+        {
+            return;
+        }
+
+        if (panel.InvokeRequired)
+        {
+            panel.BeginInvoke((System.Windows.Forms.MethodInvoker)(() =>
+            {
+                if (!panel.IsDisposed)
+                {
+                    panel.Workspace.SetWorkProgress(ratio, text);
+                }
+            }));
+            return;
+        }
+
+        panel.Workspace.SetWorkProgress(ratio, text);
     }
 
     private void ShowWork(string text)

@@ -26,6 +26,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Margin="18,14,18,10">
@@ -105,6 +106,77 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+
+                <!-- 回收站（2026-10-28 第三轮）：删掉的插件在这里，可恢复或彻底删除。 -->
+                <Border Grid.Row="2" BorderBrush="{DynamicResource Pd.Line}" BorderThickness="0,1,0,0"
+                        Margin="18,0,18,0" Padding="0,10,0,12">
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock x:Name="TrashSummary" DockPanel.Dock="Right" Style="{DynamicResource Pd.Muted}"
+                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                            <Button x:Name="TrashToggle" Style="{DynamicResource Pd.GhostButton}"
+                                    HorizontalAlignment="Left" Click="OnTrashToggle" />
+                        </DockPanel>
+                        <StackPanel x:Name="TrashPanel" Visibility="Collapsed" Margin="0,6,0,0">
+                            <TextBlock x:Name="TrashEmpty" Style="{DynamicResource Pd.Muted}"
+                                       TextWrapping="Wrap" Visibility="Collapsed" />
+                            <ListBox x:Name="TrashRows" Background="Transparent" BorderThickness="0"
+                                     MaxHeight="170" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0,1" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="Bd" CornerRadius="9" Padding="8,7" Background="Transparent">
+                                                        <ContentPresenter />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Pd.SurfaceHover}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" Style="{DynamicResource Pd.Body}"
+                                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Version}" Style="{DynamicResource Pd.Dim}"
+                                                           Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding RemovedAt}" Style="{DynamicResource Pd.Muted}"
+                                                           Margin="12,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding SizeText}" Style="{DynamicResource Pd.Muted}"
+                                                           Margin="12,0,0,0" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="{Binding RestoreLabel}"
+                                                    Style="{DynamicResource Pd.SecondaryButton}"
+                                                    Padding="12,5" Margin="8,0,0,0"
+                                                    IsEnabled="{Binding Restorable}"
+                                                    Tag="{Binding DirName}" Click="OnRestoreClick" />
+                                            <Button Grid.Column="2" Content="{Binding PurgeLabel}"
+                                                    Style="{DynamicResource Pd.DangerButton}"
+                                                    Padding="12,5" Margin="8,0,0,0"
+                                                    Tag="{Binding DirName}" Click="OnPurgeClick" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 

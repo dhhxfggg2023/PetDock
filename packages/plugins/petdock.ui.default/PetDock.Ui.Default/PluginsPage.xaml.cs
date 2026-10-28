@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using PetDock.Core.Ui;
+using Button = System.Windows.Controls.Button;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace PetDock.Ui.Default;
@@ -13,6 +15,7 @@ public partial class PluginsPage : UserControl, IUiPage
 {
     private readonly IUiPageContext _context;
     private readonly ObservableCollection<PluginRow> _rows = new();
+    private readonly ObservableCollection<TrashRow> _trash = new();
     private bool _refreshing;
 
     public PluginsPage(IUiPageContext context)
@@ -32,6 +35,7 @@ public partial class PluginsPage : UserControl, IUiPage
         HintText.Text = context.T("cp.plugins.disableHint");
 
         Rows.ItemsSource = _rows;
+        TrashRows.ItemsSource = _trash;
         // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
         Loaded += (_, _) =>
         {
@@ -71,6 +75,7 @@ public partial class PluginsPage : UserControl, IUiPage
             }
 
             CountText.Text = _rows.Count == 0 ? string.Empty : _context.T("cp.plugins.count", _rows.Count);
+            RefreshTrash();
             if (selected is not null)
             {
                 Rows.SelectedItem = _rows.FirstOrDefault(row => string.Equals(row.Id, selected, StringComparison.Ordinal));
@@ -217,5 +222,113 @@ public partial class PluginsPage : UserControl, IUiPage
             problem ?? _context.T("cp.plugins.remove.done"),
             problem is null ? UiStatusKind.Success : UiStatusKind.Problem);
         _context.Refresh();
+    }
+
+    private void RefreshTrash()
+    {
+        _trash.Clear();
+        IReadOnlyList<TrashLine> lines = _context.TrashPlugins();
+        long bytes = 0;
+        foreach (TrashLine line in lines)
+        {
+            _trash.Add(new TrashRow(line, _context));
+            bytes += line.Bytes;
+        }
+
+        TrashToggle.Content = _context.T("cp.plugins.trash.header", _trash.Count);
+        TrashSummary.Text = _trash.Count == 0
+            ? string.Empty
+            : _context.T("cp.plugins.trash.total", (bytes / 1048576.0).ToString("0.0"));
+
+        bool empty = _trash.Count == 0;
+        TrashEmpty.Text = _context.T("cp.plugins.trash.empty");
+        TrashEmpty.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        TrashRows.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnTrashToggle(object sender, RoutedEventArgs e) =>
+        TrashPanel.Visibility = TrashPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+    private async void OnRestoreClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string dirName })
+        {
+            return;
+        }
+
+        try
+        {
+            UiCommandResult result = await _context.RestorePluginAsync(dirName);
+            _context.SetStatus(
+                result.Message,
+                result.Ok ? UiStatusKind.Success : result.Cancelled ? UiStatusKind.Info : UiStatusKind.Problem);
+            _context.Refresh();
+        }
+        catch (Exception)
+        {
+            _context.SetStatus(_context.T("ui.work.failed"), UiStatusKind.Problem);
+        }
+    }
+
+    private async void OnPurgeClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string dirName })
+        {
+            return;
+        }
+
+        TrashRow? row = _trash.FirstOrDefault(candidate => string.Equals(candidate.DirName, dirName, StringComparison.Ordinal));
+        string name = row?.Name ?? dirName;
+        if (!_context.Confirm(_context.T("cp.plugins.trash.confirm", name), _context.T("cp.plugins.trash.confirmTitle")))
+        {
+            return;
+        }
+
+        try
+        {
+            UiCommandResult result = await _context.PurgePluginAsync(dirName);
+            _context.SetStatus(
+                result.Message,
+                result.Ok ? UiStatusKind.Success : result.Cancelled ? UiStatusKind.Info : UiStatusKind.Problem);
+            _context.Refresh();
+        }
+        catch (Exception)
+        {
+            _context.SetStatus(_context.T("ui.work.failed"), UiStatusKind.Problem);
+        }
+    }
+
+    /// <summary>回收站一行的显示数据（标签与大小在这里本地化一次，DataTemplate 只做绑定）。</summary>
+    public sealed class TrashRow
+    {
+        public TrashRow(TrashLine line, IUiPageContext context)
+        {
+            DirName = line.DirName;
+            Name = string.IsNullOrEmpty(line.Name) ? line.DirName : line.Name;
+            Version = line.Version;
+            RemovedAt = line.RemovedAt;
+            SizeText = context.T("cp.plugins.trash.size", (line.Bytes / 1048576.0).ToString("0.0"));
+            Restorable = line.Restorable;
+            RestoreLabel = context.T("cp.plugins.trash.restore");
+            PurgeLabel = context.T("cp.plugins.trash.purge");
+        }
+
+        public string DirName { get; }
+
+        public string Name { get; }
+
+        public string Version { get; }
+
+        public string RemovedAt { get; }
+
+        public string SizeText { get; }
+
+        public bool Restorable { get; }
+
+        public string RestoreLabel { get; }
+
+        public string PurgeLabel { get; }
     }
 }

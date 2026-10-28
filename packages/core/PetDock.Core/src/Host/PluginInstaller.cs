@@ -47,7 +47,12 @@ internal sealed class PluginInstaller
     }
 
     /// <summary>解包/复制到临时区并校验。返回 false 时 error 是给人看的一句话，临时区已清掉。</summary>
-    public bool TryPrepare(string source, out InstallPlan? plan, out string? error, CancellationToken token = default)
+    public bool TryPrepare(
+        string source,
+        out InstallPlan? plan,
+        out string? error,
+        CancellationToken token = default,
+        CopyProgressNotify? progress = null)
     {
         plan = null;
         error = null;
@@ -58,11 +63,15 @@ internal sealed class PluginInstaller
             Directory.CreateDirectory(staging);
             if (Directory.Exists(source))
             {
-                CopyDirectory(source, staging, token);
+                long expected = Measure(source).Bytes;
+                long copied = 0;
+                progress?.Invoke(0, expected);
+                CopyDirectory(source, staging, token, ref copied, expected, progress);
+                progress?.Invoke(copied, expected);
             }
             else if (File.Exists(source))
             {
-                ExtractZip(source, staging, token);
+                ExtractZip(source, staging, token, progress);
             }
             else
             {
@@ -218,7 +227,7 @@ internal sealed class PluginInstaller
         return matches.Count == 1 ? matches[0] : null;
     }
 
-    private static void ExtractZip(string zipPath, string staging, CancellationToken token)
+    private static void ExtractZip(string zipPath, string staging, CancellationToken token, CopyProgressNotify? progress)
     {
         using ZipArchive archive = ZipFile.OpenRead(zipPath);
         if (archive.Entries.Count > MaxEntries)
@@ -227,6 +236,14 @@ internal sealed class PluginInstaller
         }
 
         string rootFull = Path.GetFullPath(staging) + Path.DirectorySeparatorChar;
+        long expected = 0;
+        foreach (ZipArchiveEntry entry in archive.Entries)
+        {
+            expected += entry.Length;
+        }
+
+        long copied = 0;
+        progress?.Invoke(0, expected);
         long total = 0;
         foreach (ZipArchiveEntry entry in archive.Entries)
         {
@@ -278,11 +295,17 @@ internal sealed class PluginInstaller
 
             using Stream input = entry.Open();
             using var output = new FileStream(dest, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            CopyStream(input, output, token);
+            CopyStream(input, output, token, ref copied, expected, progress);
         }
     }
 
-    private static void CopyDirectory(string from, string to, CancellationToken token)
+    private static void CopyDirectory(
+        string from,
+        string to,
+        CancellationToken token,
+        ref long copied,
+        long expected,
+        CopyProgressNotify? progress)
     {
         Directory.CreateDirectory(to);
         foreach (string file in Directory.GetFiles(from))
@@ -297,7 +320,12 @@ internal sealed class PluginInstaller
             {
                 throw new IOException(I18n.Get("cp.plugins.install.fileTooLarge", file));
             }
-            File.Copy(file, Path.Combine(to, info.Name), overwrite: false);
+
+            using (var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, 1024 * 1024, FileOptions.SequentialScan))
+            using (var output = new FileStream(Path.Combine(to, info.Name), FileMode.CreateNew, FileAccess.Write, FileShare.None, 1024 * 1024, FileOptions.SequentialScan))
+            {
+                CopyStream(input, output, token, ref copied, expected, progress);
+            }
         }
 
         foreach (string dir in Directory.GetDirectories(from))
@@ -306,19 +334,27 @@ internal sealed class PluginInstaller
             {
                 throw new IOException(I18n.Get("cp.plugins.install.unsafeEntry", dir));
             }
-            CopyDirectory(dir, Path.Combine(to, Path.GetFileName(dir)), token);
+            CopyDirectory(dir, Path.Combine(to, Path.GetFileName(dir)), token, ref copied, expected, progress);
         }
     }
 
-    /// <summary>分块复制（zip 条目长度不可靠地小；每块检查取消）。</summary>
-    private static void CopyStream(Stream input, Stream output, CancellationToken token)
+    /// <summary>分块复制（zip 条目与插件目录共用）：每块检查取消并上报字节进度。</summary>
+    private static void CopyStream(
+        Stream input,
+        Stream output,
+        CancellationToken token,
+        ref long copied,
+        long expected,
+        CopyProgressNotify? progress)
     {
-        var buffer = new byte[81920];
+        var buffer = new byte[1024 * 1024];
         int read;
         while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
         {
             token.ThrowIfCancellationRequested();
             output.Write(buffer, 0, read);
+            copied += read;
+            progress?.Invoke(copied, expected);
         }
     }
 

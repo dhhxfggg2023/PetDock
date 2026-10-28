@@ -32,7 +32,7 @@ public sealed record PluginEntry(
 /// <summary>插件目录的合并视图 + 开/关/删三个动作。线程模型：方法可以在后台线程调用，
 /// 宿主动作由 PluginHost 自己封送到调度线程；删除只碰扫描到的插件目录，系统必需插件由
 /// 清单 essential 保护。</summary>
-internal sealed class PluginInventory
+internal sealed partial class PluginInventory
 {
     private readonly PluginHost _host;
     private readonly UserSettingsStore? _settings;
@@ -198,6 +198,7 @@ internal sealed class PluginInventory
         {
             _host.Unload(pluginId).GetAwaiter().GetResult();
             string trash = MoveToTrash(entry);
+            PruneTrash();
 
             if (_settings is not null)
             {
@@ -228,7 +229,7 @@ internal sealed class PluginInventory
     private string MoveToTrash(PluginEntry entry)
     {
         string stamp = DateTime.UtcNow.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture);
-        string trashRoot = Path.Combine(_userRoot, ".removed");
+        string trashRoot = Path.Combine(_userRoot, TrashFolder);
         Directory.CreateDirectory(trashRoot);
         string target = Path.Combine(trashRoot, entry.Id + "-" + stamp);
         try

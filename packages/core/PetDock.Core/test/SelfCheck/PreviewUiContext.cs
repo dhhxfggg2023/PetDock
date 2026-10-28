@@ -96,6 +96,23 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    /// <summary>判据可注入的回收站内容（默认空）。</summary>
+    public List<TrashLine> Trash { get; } = new();
+
+    public IReadOnlyList<TrashLine> TrashPlugins() => Trash;
+
+    public Task<UiCommandResult> RestorePluginAsync(string dirName)
+    {
+        Commands.Add("restore-plugin:" + dirName);
+        return Task.FromResult(UiCommandResult.Success());
+    }
+
+    public Task<UiCommandResult> PurgePluginAsync(string dirName)
+    {
+        Commands.Add("purge-plugin:" + dirName);
+        return Task.FromResult(UiCommandResult.Success());
+    }
+
     public string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, string material, string theme)
     {
         Commands.Add("settings:" + idleFrameBudgetMs.ToString("0.###") + ":" + startWithWindows + ":" + material + ":" + theme);

@@ -125,13 +125,34 @@ public partial class UiWorkspaceView : UserControl
         _cancelWork = cancel;
         WorkCancel.Content = I18n.Get("ui.work.cancel");
         WorkCancel.IsEnabled = true;
+        WorkBar.IsIndeterminate = true;
+        WorkBar.Value = 0;
         WorkBar.Visibility = Visibility.Visible;
         WorkCancel.Visibility = Visibility.Visible;
         SetStatus(text ?? string.Empty);
     }
 
-    /// <summary>换一句进度（后台线程经宿主投递到 UI 线程后再调）。</summary>
-    public void SetWorkStage(string text) => SetStatus(text ?? string.Empty);
+    /// <summary>换一句阶段进度（总量未知，进度条回到不确定态）。</summary>
+    public void SetWorkStage(string text)
+    {
+        WorkBar.IsIndeterminate = true;
+        WorkBar.Value = 0;
+        SetStatus(text ?? string.Empty);
+    }
+
+    /// <summary>确定态进度（0..1）。文案由宿主拼好（含已复制/总量/百分比），壳只负责画。</summary>
+    public void SetWorkProgress(double ratio, string text)
+    {
+        WorkBar.IsIndeterminate = false;
+        WorkBar.Value = Math.Clamp(ratio, 0.0, 1.0) * 100.0;
+        SetStatus(text ?? string.Empty);
+    }
+
+    /// <summary>进度条是否确定态（自检读它）。</summary>
+    public bool WorkProgressKnown => !WorkBar.IsIndeterminate;
+
+    /// <summary>进度条当前百分比（自检读它）。</summary>
+    public double WorkPercent => WorkBar.Value;
 
     /// <summary>结束长任务：收起进度条与取消按钮。状态条留给页面写结果。</summary>
     public void EndWork()

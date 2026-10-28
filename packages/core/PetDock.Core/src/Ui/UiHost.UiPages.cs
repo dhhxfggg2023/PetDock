@@ -63,6 +63,14 @@ internal sealed partial class UiHost : IUiPageContext
 
     string? IUiPageContext.RemovePlugin(string pluginId) => RemovePluginFromPanel(pluginId);
 
+    IReadOnlyList<TrashLine> IUiPageContext.TrashPlugins() => TrashPlugins();
+
+    Task<UiCommandResult> IUiPageContext.RestorePluginAsync(string dirName) =>
+        RestorePluginFromPanelAsync(dirName);
+
+    Task<UiCommandResult> IUiPageContext.PurgePluginAsync(string dirName) =>
+        PurgePluginFromPanelAsync(dirName);
+
     string? IUiPageContext.ApplySettings(
         double idleFrameBudgetMs,
         bool startWithWindows,
