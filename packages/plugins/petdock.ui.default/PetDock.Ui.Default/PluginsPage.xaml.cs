@@ -152,7 +152,9 @@ public partial class PluginsPage : UserControl, IUiPage
         }
 
         string? problem = _context.InstallPlugin(source, enable: true);
-        _context.SetStatus(problem ?? _context.T("cp.plugins.install.done"));
+        _context.SetStatus(
+            problem ?? _context.T("cp.plugins.install.done"),
+            problem is null ? UiStatusKind.Success : UiStatusKind.Problem);
         _context.Refresh();
     }
 
@@ -197,7 +199,9 @@ public partial class PluginsPage : UserControl, IUiPage
         }
 
         string? problem = _context.RemovePlugin(row.Id);
-        _context.SetStatus(problem ?? _context.T("cp.plugins.remove.done"));
+        _context.SetStatus(
+            problem ?? _context.T("cp.plugins.remove.done"),
+            problem is null ? UiStatusKind.Success : UiStatusKind.Problem);
         _context.Refresh();
     }
 }

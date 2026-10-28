@@ -77,6 +77,24 @@ internal static class UiWorkspaceChecks
         panel.SetStatus("saved");
         check("ui-workspace-status", string.Equals(panel.Workspace.StatusTextValue, "saved", StringComparison.Ordinal),
             "status=" + panel.Workspace.StatusTextValue);
+
+        // 页面写结果的固定写法是「SetStatus 之后紧跟 Refresh」：这次刷新不能把刚写的话吃掉。
+        // 旧壳在 Changed 里清空状态条，于是安装失败原图未渲染就被抹掉，用户只看到列表没变。
+        context.Refresh();
+        check("ui-workspace-status-survives-refresh",
+            string.Equals(panel.Workspace.StatusTextValue, "saved", StringComparison.Ordinal)
+            && panel.Workspace.StatusKind == UiStatusKind.Info,
+            "status=" + panel.Workspace.StatusTextValue + " kind=" + panel.Workspace.StatusKind);
+
+        panel.SetStatus("装不上：缺入口", UiStatusKind.Problem);
+        check("ui-workspace-status-problem-kind",
+            panel.Workspace.StatusKind == UiStatusKind.Problem
+            && string.Equals(panel.Workspace.StatusTextValue, "装不上：缺入口", StringComparison.Ordinal),
+            "kind=" + panel.Workspace.StatusKind);
+
+        panel.ShowPage("a");
+        check("ui-workspace-status-cleared-on-switch", string.Equals(panel.Workspace.StatusTextValue, string.Empty, StringComparison.Ordinal),
+            "status=" + panel.Workspace.StatusTextValue);
     }
 
     /// <summary>插件页的删除入口：可选插件选中后可用，系统必需插件选中后禁用并说明原因。</summary>

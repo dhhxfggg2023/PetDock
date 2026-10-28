@@ -62,6 +62,9 @@ public partial class UiWorkspaceView : UserControl
     /// <summary>状态条文字（自检读它，证明页面 SetStatus 真的落到壳上）。</summary>
     public string StatusTextValue => StatusText.Text;
 
+    /// <summary>状态条当前口吻（自检读它，证明 problem 真的换成了红色那档）。</summary>
+    public UiStatusKind StatusKind { get; private set; }
+
     /// <summary>切页；未知 id 抛异常（静默失败会让深链与自检都失去意义）。</summary>
     public void ShowPage(string id)
     {
@@ -78,7 +81,7 @@ public partial class UiWorkspaceView : UserControl
         PageHost.Content = view;
         TitleText.Text = page.Title;
         NoteText.Text = page.Note;
-        StatusText.Text = string.Empty;
+        ClearStatus();
 
         if (_nav.TryGetValue(id, out RadioButton? button))
         {
@@ -86,8 +89,32 @@ public partial class UiWorkspaceView : UserControl
         }
     }
 
-    /// <summary>写状态条（页面通过 IUiPageContext.SetStatus 间接触发）。</summary>
-    public void SetStatus(string text) => StatusText.Text = text ?? string.Empty;
+    /// <summary>
+    /// 写状态条（页面通过 IUiPageContext.SetStatus 间接触发）。文案一直留着，
+    /// 直到换页或页面自己清 —— 页面里「先写结果、再刷新列表」的写法必须让人看得见结果。
+    /// </summary>
+    public void SetStatus(string text, UiStatusKind kind = UiStatusKind.Info)
+    {
+        StatusKind = kind;
+        StatusText.Text = text ?? string.Empty;
+        StatusText.SetResourceReference(TextBlock.ForegroundProperty, StatusBrush(kind));
+    }
+
+    /// <summary>清状态条。</summary>
+    public void ClearStatus()
+    {
+        StatusKind = UiStatusKind.Info;
+        StatusText.Text = string.Empty;
+        StatusText.SetResourceReference(TextBlock.ForegroundProperty, "Pd.TextMuted");
+    }
+
+    /// <summary>状态条颜色：成功走 Good，失败走 Bad，中性走说明文字那档。</summary>
+    private static string StatusBrush(UiStatusKind kind) => kind switch
+    {
+        UiStatusKind.Success => "Pd.Good",
+        UiStatusKind.Problem => "Pd.Bad",
+        _ => "Pd.TextMuted",
+    };
 
     private void BuildNav()
     {
@@ -137,6 +164,7 @@ public partial class UiWorkspaceView : UserControl
         Set("Pd.AccentSoft", Theme.AccentSoft);
         Set("Pd.OnAccent", Theme.OnAccent);
         Set("Pd.Good", Theme.Good);
+        Set("Pd.Good", Theme.Good);
         Set("Pd.Warn", Theme.Warn);
         Set("Pd.Bad", Theme.Bad);
         Set("Pd.BadSurface", Theme.BadSurface);
@@ -154,7 +182,7 @@ public partial class UiWorkspaceView : UserControl
 
     private void OnContextChanged(object? sender, EventArgs e)
     {
-        // 数据变化不重建页面：页面自己在 Changed 里刷新绑定，避免输入到一半被清掉。
-        StatusText.Text = string.Empty;
+        // 数据变化既不重建页面、也不清状态条：页面在 Changed 里自己刷新绑定（避免输入到一半被清），
+        // 而「刚刚那步成没成」正是刷新之后用户最该看到的一句话。
     }
 }

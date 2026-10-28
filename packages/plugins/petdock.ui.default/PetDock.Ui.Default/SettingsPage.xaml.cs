@@ -158,7 +158,7 @@ public partial class SettingsPage : UserControl, IUiPage
 
         StatusText.Text = problem;
         StatusText.SetResourceReference(TextBlock.ForegroundProperty, "Pd.Bad");
-        _context.SetStatus(problem);
+        _context.SetStatus(problem, UiStatusKind.Problem);
     }
 
     private void OnOpenLogs(object sender, RoutedEventArgs e) => _context.OpenLogs();

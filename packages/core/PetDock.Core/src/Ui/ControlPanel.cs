@@ -63,5 +63,8 @@ internal sealed class ControlPanel : Form
 
     public void ShowPage(string id) => Workspace.ShowPage(id);
 
-    public void SetStatus(string text) => Workspace.SetStatus(text);
+    public void SetStatus(string text, UiStatusKind kind = UiStatusKind.Info) => Workspace.SetStatus(text, kind);
+
+    /// <summary>清状态栏（换页或页面自己决定清掉时调）。</summary>
+    public void ClearStatus() => Workspace.ClearStatus();
 }

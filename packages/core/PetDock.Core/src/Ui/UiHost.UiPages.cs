@@ -26,11 +26,19 @@ internal sealed partial class UiHost : IUiPageContext
 
     void IUiPageContext.Refresh() => RefreshUi();
 
-    void IUiPageContext.SetStatus(string text)
+    void IUiPageContext.SetStatus(string text, UiStatusKind kind)
     {
         if (_panel is not null && !_panel.IsDisposed)
         {
-            _panel.SetStatus(text);
+            _panel.SetStatus(text, kind);
+        }
+    }
+
+    void IUiPageContext.ClearStatus()
+    {
+        if (_panel is not null && !_panel.IsDisposed)
+        {
+            _panel.ClearStatus();
         }
     }
 

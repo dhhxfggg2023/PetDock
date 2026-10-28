@@ -45,6 +45,19 @@ public interface IUiPage
     FrameworkElement CreateView();
 }
 
+/// <summary>状态条的口吻：info 是计数与提示，success 是「做成了」，problem 是「没做成，原因在这里」。</summary>
+public enum UiStatusKind
+{
+    /// <summary>计数、说明这类中性的话。</summary>
+    Info = 0,
+
+    /// <summary>操作成功。</summary>
+    Success = 1,
+
+    /// <summary>操作失败，文案要说清楚原因。</summary>
+    Problem = 2,
+}
+
 /// <summary>
 /// 页面能看到/能做的全部事情。页面不持有宿主引用，只拿这个口子；
 /// 所有写操作都是「意图」，判定与落账仍在宿主侧（原规格 18 §2.4）。
@@ -60,8 +73,14 @@ public interface IUiPageContext
     /// <summary>请宿主重新取快照并触发 Changed。</summary>
     void Refresh();
 
-    /// <summary>写底部状态栏（页面级提示，不弹模态框）。</summary>
-    void SetStatus(string text);
+    /// <summary>
+    /// 写底部状态栏（页面级提示，不弹模态框）。文案**留在这个页面上**，直到用户换页或页面自己 Clear：
+    /// 旧实现一 Refresh 就清空，于是「先写结果再刷新列表」变成了一帧都看不见的静默失败。
+    /// </summary>
+    void SetStatus(string text, UiStatusKind kind = UiStatusKind.Info);
+
+    /// <summary>清掉状态栏（页面自己决定什么时候清，比如用户开始改输入）。</summary>
+    void ClearStatus();
 
     /// <summary>取一条本地化文案；缺键返回键名本身（RFC-42 §3.2）。</summary>
     string T(string key);

@@ -21,6 +21,9 @@ internal sealed class PreviewUiContext : IUiPageContext
 
     public string LastStatus { get; private set; } = string.Empty;
 
+    /// <summary>最后一次状态的口吻（判据用它区分「装好了」和「没装上」）。</summary>
+    public UiStatusKind LastStatusKind { get; private set; } = UiStatusKind.Info;
+
     public List<string> Commands { get; } = new();
 
     public void SetSnapshot(UiSnapshot snapshot)
@@ -35,7 +38,17 @@ internal sealed class PreviewUiContext : IUiPageContext
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    public void SetStatus(string text) => LastStatus = text;
+    public void SetStatus(string text, UiStatusKind kind = UiStatusKind.Info)
+    {
+        LastStatus = text;
+        LastStatusKind = kind;
+    }
+
+    public void ClearStatus()
+    {
+        LastStatus = string.Empty;
+        LastStatusKind = UiStatusKind.Info;
+    }
 
     public string T(string key) => I18n.Get(key);
 
