@@ -38,7 +38,7 @@
   "ui.onboarding.finish": "Finish",
   "ui.onboarding.skip": "Skip setup",
   "ui.onboarding.through.caption": "Clicks on the pet's transparent areas reach whatever is below it; this is expected",
-  "ui.onboarding.through.tip": "Try clicking an empty spot near the pet's edge — the window below receives your click. Entry points: right-click the pet for the menu (control panel, hide, exit); double-click the pet to open the control panel directly.",
+  "ui.onboarding.through.tip": "Right-click the pet for the menu (panel, hide, exit).\nDouble-click the pet to open the panel.",
   "ui.onboarding.no-pet": "There is no pet to show; the usage tip is omitted.",
   "ui.onboarding.error.languageSave": "{0} (the language choice could not be saved)",
   "ui.onboarding.error.completeSave": "{0} (the setup-complete flag could not be saved; setup will appear again next launch)",
