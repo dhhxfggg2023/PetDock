@@ -2,6 +2,8 @@
 // 拆自 PetDriveTest.cs（D-03c：单文件 ≤400 行）；命令形态与总体判据见 PetDriveTest.Run。
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using PetDock.Core.PetRuntime;
 
 namespace PetDock.Hosting;
@@ -23,9 +25,21 @@ internal static partial class PetDriveTest
         Check(ref failures, "hitmap-center-hits", instance.HitsAt(3, 3), "center-hitmap=1");
 
         // alpha===0 永远放行穿透：即使 hitmap 在该点写 1 也不许命中。
-        byte[] forced = new byte[frame.BitmapHandle.PixelCount];
+        // 这里用**自造**的 8x8 位图，而不是 StubView 的帧：StubView 有真素材时会读
+        // assets/sample-pet，四角也可能被抗锯齿糊上 alpha，测试就会随素材变红。
+        using var probeBitmap = new Bitmap(8, 8, PixelFormat.Format32bppPArgb);
+        using (Graphics graphics = Graphics.FromImage(probeBitmap))
+        {
+            graphics.Clear(Color.Transparent);
+            using var brush = new SolidBrush(Color.FromArgb(255, 230, 80, 40));
+            graphics.FillEllipse(brush, 2, 2, 4, 4);
+        }
+
+        var probeHandle = new BitmapHandle(9001, probeBitmap);
+        byte[] forced = new byte[probeHandle.PixelCount];
         Array.Fill(forced, (byte)1);
-        Frame overrideFrame = new(frame.BitmapHandle, frame.Size, frame.Scale, null, forced);
+        Frame overrideFrame = new(probeHandle, frame.Size, frame.Scale, null, forced);
+        overrideFrame.CacheAlpha();
         Check(ref failures, "hitmap-alpha-zero-wins", !overrideFrame.HitsAt(0, 0),
             "alpha=0 时 hitmap=1 也必须穿透");
         // 圆心 (4,4)：alpha!=0 且 hitmap=1 → 可命中；(7,7) 在圆外（alpha=0）→ 穿透。

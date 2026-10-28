@@ -9,5 +9,8 @@
   "ui.tray.exitConfirm": "Quit PetDock? Your pets will disappear from the desktop.",
   "ui.tray.exitConfirmTitle": "PetDock — Confirm quit",
   "ui.confirm.ok": "OK",
-  "ui.confirm.cancel": "Cancel"
+  "ui.confirm.cancel": "Cancel",
+  "ui.workspace.empty.title": "No interface pages",
+  "ui.workspace.empty.note": "Add a UI plugin under plugins/ and reopen the panel.",
+  "ui.workspace.empty.status": "ui: no pages"
 }

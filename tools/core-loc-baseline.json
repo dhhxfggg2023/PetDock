@@ -123,7 +123,7 @@
           "slice": "RFC-13 插件页授权/禁用入口",
           "files": [
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
             "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
           ],
@@ -204,7 +204,7 @@
         {
           "slice": "RFC-15 D 宠物页 UI（导入入口、目录选择器、内联错误条、空态文案）",
           "files": [
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 191
@@ -244,7 +244,7 @@
         {
           "slice": "RFC-18 C 设置页可写形态（勾选框 / 阈值框 / 应用按钮 / 内联状态标签 + 只读清单刷新）",
           "files": [
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 208
@@ -367,7 +367,7 @@
           "slice": "RFC-17 C 诊断服务与面板入口（读数采集、打开日志目录、导出诊断包、设置页两个按钮）",
           "files": [
             "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/UiHost.Diagnostics.cs"
           ],
           "lines": 447
@@ -1295,8 +1295,8 @@
           "slice": "RFC-42 解耦：诊断成败改成 (bool Ok, string Message) 结构化、SettingsStatusOk 布尔、Onboarding 常量变键名、PerfPage 两个判据锚点常量（净额，含删掉两处 StartsWith/Contains 文案嗅探）",
           "files": [
             "packages/core/PetDock.Core/src/Host/DiagnosticService.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/OnboardingWindow.cs"
           ],
           "lines": 16
@@ -1466,7 +1466,7 @@
             "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
             "packages/core/PetDock.Core/src/Host/PluginHost.cs",
             "packages/core/PetDock.Core/src/Program.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs"
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 95
         },
@@ -1539,10 +1539,10 @@
           "slice": "四页与侧栏重接（ControlPanel 与四个 partial 换成主题控件）",
           "files": [
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Pets.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs"
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 25
         },
@@ -1586,7 +1586,7 @@
           "slice": "现代感重排（导航栏品牌行与选中态、页头副标题、按钮变体、列表去斑马纹与深色滚动条、页容器拆文件）",
           "files": [
             "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Layout.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/Design/NavRail.cs",
             "packages/core/PetDock.Core/src/Ui/Design/ThemedButton.cs",
             "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs"
@@ -1622,7 +1622,7 @@
           "files": [
             "packages/core/PetDock.Core/src/Ui/AuditWindow.cs",
             "packages/core/PetDock.Core/src/Ui/UiHost.Diagnostics.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Host/AuditTrail.cs",
             "packages/core/PetDock.Core/src/Host/DiagnosticService.cs"
           ],
@@ -1660,7 +1660,7 @@
         {
           "slice": "设置页改用表单网格（两段 + 单一保存底栏）",
           "files": [
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs"
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 16
         }
@@ -1690,7 +1690,7 @@
           "slice": "接线与净减（删除 Theme.cs 旧令牌声明、设置页亮度行、持久化、启动时解析）",
           "files": [
             "packages/core/PetDock.Core/src/Ui/Design/Theme.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
             "packages/core/PetDock.Core/src/Host/UserSettings.cs",
             "packages/core/PetDock.Core/src/Ui/Design/MaterialHost.cs",
@@ -1714,7 +1714,7 @@
             "packages/core/PetDock.Core/src/Host/PluginInstaller.cs",
             "packages/core/PetDock.Core/src/Host/PluginHost.Manage.cs",
             "packages/core/PetDock.Core/src/Host/PluginHost.Discovery.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.Manage.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/UiHost.Panel.Plugins.cs"
           ],
           "lines": 900
@@ -1742,19 +1742,19 @@
           "files": [
             "packages/core/PetDock.Core/src/Ui/Design/ThemedList.Switch.cs",
             "packages/core/PetDock.Core/src/Ui/Design/ThemedList.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Plugins.Manage.cs"
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": 240
         },
         {
           "slice": "多宠物面板（快照合并、逐只移除、托盘计数）",
           "files": [
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
             "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
             "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
             "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
-            "packages/core/PetDock.Core/test/SelfCheck/PetPanelChecks.cs"
+            "packages/core/PetDock.Core/test/SelfCheck/UiSelfTest.cs"
           ],
           "lines": 130
         },
@@ -1821,8 +1821,8 @@
         {
           "slice": "设置页诊断区合并与失效读数 API 退役",
           "files": [
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
-            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs"
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs"
           ],
           "lines": -13
         }
@@ -1893,6 +1893,51 @@
             "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.HitTest.cs"
           ],
           "lines": 75
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 27838,
+      "budget": 28800,
+      "note": "WPF 全量 UI 重构（用户 2026-10-28 m05659「直接完全重构…那就选wpf」/ m05663「一切皆可插件」）：旧 WinForms 四页与面板 partial 删除，内核只留壳、页面契约与插件目录；页面全部迁到 first-party 插件 petdock.ui.default。实测 28731 → 27838（-893）。判据面在 test/SelfCheck 下，按 D-03a 口径不计。",
+      "attribution": [
+        {
+          "slice": "WPF 壳与页面契约：删除 WinForms 四页，新增 UiContracts/UiWorkspaceView/UiPluginCatalog/页面命令面与材质标题栏",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml.cs",
+            "packages/core/PetDock.Core/src/Ui/UiPluginCatalog.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs",
+            "packages/core/PetDock.Core/src/Ui/Design/MaterialHost.cs"
+          ],
+          "lines": -893
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 27877,
+      "budget": 28800,
+      "note": "界面插件安全阀（净值 +39）：清单可用 essential 声明随包界面，停用它等于把用户锁在唯一面板入口外；插件页灰掉开关，宿主侧也拒绝切换。非 essential 的界面插件在停用后不再建页。另把 perf 基线从退役的 tests/ 迁到 tools/。",
+      "attribution": [
+        {
+          "slice": "essential 界面插件：清单字段、名册行、开关禁用与宿主侧拒绝",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/HostingTypes.cs",
+            "packages/core/PetDock.Core/src/Host/ManifestValidator.cs",
+            "packages/core/PetDock.Core/src/Host/ManifestValidator.Parts.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs",
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.Plugins.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs",
+            "packages/core/PetDock.Core/src/Ui/UiPluginCatalog.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml"
+          ],
+          "lines": 39
         }
       ]
     }

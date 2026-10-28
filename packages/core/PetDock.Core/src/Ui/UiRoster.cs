@@ -88,7 +88,8 @@ internal static class UiRoster
                     Source: I18n.Get(entry.Origin == "user" ? "cp.plugins.origin.user" : "cp.plugins.origin.builtin"),
                     Enabled: entry.Enabled,
                     Loaded: entry.Loaded,
-                    Removable: entry.Removable));
+                    Removable: entry.Removable,
+                    Essential: entry.Essential));
             }
         }
         else if (host is not null)

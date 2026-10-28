@@ -9,5 +9,8 @@
   "ui.tray.exitConfirm": "确定退出 PetDock？宠物会从桌面消失。",
   "ui.tray.exitConfirmTitle": "PetDock — 退出确认",
   "ui.confirm.ok": "确定",
-  "ui.confirm.cancel": "取消"
+  "ui.confirm.cancel": "取消",
+  "ui.workspace.empty.title": "没有可用的界面插件",
+  "ui.workspace.empty.note": "把界面插件放进 plugins/ 后重新打开面板。",
+  "ui.workspace.empty.status": "界面：没有页面"
 }

@@ -3,6 +3,7 @@
 // quota 在 Tier2Wire.cs / Tier2Sandbox.Wire.cs，会话状态在 Tier2Sandbox.Session.cs。
 // 本文件只留边界骨架（spawn / 往返 / 关闭）与记账。P-05（原规格 01 §5）：公共方法一律不外抛。
 using System.Diagnostics;
+using System.IO;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;

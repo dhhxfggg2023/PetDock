@@ -66,7 +66,8 @@ public sealed record PluginManifest(
     IReadOnlyList<string>? Events = null,
     int? PosePriority = null,
     bool DefaultEnabled = true,
-    bool DefaultBrain = false)
+    bool DefaultBrain = false,
+    bool Essential = false)
 {
     public override string ToString() => $"{Id} v{Version} kind={Kind.Value} tier={Tier}";
 }

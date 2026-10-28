@@ -45,17 +45,7 @@ internal sealed partial class UiHost
             return;
         }
 
-        _panel = new ControlPanel(
-            Snapshot,
-            showWindow: false,
-            AuthorizePlugin,
-            TogglePluginDisabled,
-            InstallPluginFromPanel,
-            RemovePluginFromPanel,
-            RemovePetFromPanel);
-        _panel.SetImportCommand(RunImportFromPanel);
-        _panel.SetSettingsCommand(ApplySettings);
-        _panel.SetDiagnosticCommand(RunDiagnosticOp);
+        _panel = new ControlPanel(this, LoadUiPages(), showWindow: false);
         _panel.FormClosed += (_, _) =>
         {
             // 关闭面板不退出程序（§2.5）：只是把它丢掉，托盘还在。
@@ -84,7 +74,9 @@ internal sealed partial class UiHost
         return new SettingsView(
             settings.IdleFrameBudgetMs,
             settings.Language,
-            StartupRegistration.IsEnabled());
+            StartupRegistration.IsEnabled(),
+            settings.ThemeMode,
+            settings.Material);
     }
 
     /// <summary>

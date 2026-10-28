@@ -1,381 +1,143 @@
-// 人眼验收的截图工件（原规格 18 §7.1 最后一行：人眼验收需要有人先看图）。
+// 界面截图工件（2026-10-28 WPF 重构）：不再由测试代码搭一棵假界面树，而是
+// 走生产路径 UiPluginCatalog.Load 找到真实界面插件，用预览上下文提供只读快照，
+// 然后把壳渲染成 PNG。这样截图拍到的就是用户会看到的页面。
 //
-// 与判据分开的原因：判据量的是「放不放得下」，截图回答的是「看起来是不是一套东西」。
-// 后者机器判不了，但可以替人省掉「装一遍、点四页」的成本 —— 所有界面都用 DrawToBitmap 存成 PNG，
-// 100% 与 150% 各一组，所有者直接看文件即可。
-//
-// 不 Show 窗口（无人值守）：CreateControl + 临时可见 + 逐层 PerformLayout，再画到 Bitmap 上。
-// 托盘菜单是外壳绘制的弹出窗，DrawToBitmap 拿不到它，因此不在截图里（人眼验收时单看）。
+// 口径：--uitest --shots <目录>；96dpi 与 144dpi 各一套、浅色与深色各一套。
+// 渲染不依赖窗口显示（无前台、锁屏也能跑），所以不再有旧的 SHOT-SKIP 分支。
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Windows.Forms;
+using System.Linq;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using PetDock.Core.Ui;
 using PetDock.Core.Ui.Design;
+using Size = System.Windows.Size;
 
 namespace PetDock.Hosting;
 
-/// <summary>截图工件的日志行回调（D-03b：自声明委托，不用系统泛型委托）。</summary>
-internal delegate void ShotLog(string line);
-
-/// <summary>人眼验收用的截图工件。</summary>
 internal static class UiShots
 {
-    private static readonly int[] Scales = { 96, 144 };
+    private const int Width = 1040;
+    private const int Height = 680;
 
-    /// <summary>
-    /// 材质的真机截图：磨砂/玻璃是系统合成在窗口背后的东西，PrintWindow/DrawToBitmap 都拿不到，
-    /// 只能把窗口真的摆到桌面上、再从屏幕拷一块。三档各出一张，人眼看「有没有那层底」。
-    /// </summary>
-    public static int CaptureMaterials(string dir, ShotLog emit)
+    public static int Capture(string dir, LineSink emit)
     {
+        // 截图走的是页面插件自己的本地化；不先加载文案表，拍到的全是键名。
+        I18n.Load(I18n.DefaultLanguage);
         Directory.CreateDirectory(dir);
-        MaterialKind saved = Theme.Material;
-        int count = 0;
-        try
+        string? root = FindDevPluginRoot();
+        if (root is null)
         {
-            using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
-            panel.ShowPage(PanelPages.Settings);
-            panel.StartPosition = FormStartPosition.Manual;
-            panel.Location = new Point(80, 80);
-            panel.Show();
-            Application.DoEvents();
-
-            // 屏幕被锁（LockApp 在前台）时 CopyFromScreen 拍到的是锁屏界面，
-            // 三档材质会拍成同一张图——那种「证据」比没有更坏，所以直接跳过。
-            if (GetForegroundWindow() != panel.Handle)
-            {
-                emit("SHOT-SKIP material 前台不是面板（锁屏/别的应用在前台），屏幕截图会拍到别的东西");
-                return 0;
-            }
-
-            foreach (MaterialKind kind in new[] { MaterialKind.Opaque, MaterialKind.Frosted, MaterialKind.Glass })
-            {
-                Theme.Material = kind;
-                MaterialReport report = Theme.ApplyMaterial(panel);
-                panel.Invalidate(true);
-                panel.Update();
-
-                // 让 DWM 有机会把合成做完，再拷屏幕（否则拍到的是上一档）。
-                for (int i = 0; i < 20; i++)
-                {
-                    Application.DoEvents();
-                    System.Threading.Thread.Sleep(10);
-                }
-
-                string name = $"material-{Theme.MaterialToken(kind)}.png";
-                using var bitmap = new Bitmap(panel.Width, panel.Height);
-                using (Graphics graphics = Graphics.FromImage(bitmap))
-                {
-                    graphics.CopyFromScreen(panel.Location, Point.Empty, panel.Size);
-                }
-
-                bitmap.Save(Path.Combine(dir, name), ImageFormat.Png);
-                emit($"SHOT {name} {bitmap.Width}x{bitmap.Height} material=[{report.Describe()}]");
-                count++;
-            }
-
-            panel.Hide();
-        }
-        catch (Exception error)
-        {
-            emit($"SHOT-FAIL material {error.GetType().Name}: {error.Message}");
-        }
-        finally
-        {
-            Theme.Material = saved;
-        }
-
-        return count;
-    }
-
-    public static int Capture(string dir, ShotLog emit)
-    {
-        Directory.CreateDirectory(dir);
-        int count = 0;
-        foreach (int dpi in Scales)
-        {
-            Theme.SetSimulatedDpi(dpi);
-            try
-            {
-                using (var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false))
-                {
-                    foreach (string page in PanelPages.All)
-                    {
-                        panel.ShowPage(page);
-                        emit($"SHOTINFO page={page} panel={panel.ClientSize.Width}x{panel.ClientSize.Height} " + Geometry(panel));
-                        Panel settingsPage = panel.PageOf(PanelPages.Settings);
-                        if (string.Equals(page, PanelPages.Settings, StringComparison.Ordinal))
-                        {
-                            var tree = new List<string>();
-                            for (int i = 0; i < settingsPage.Controls.Count; i++)
-                            {
-                                Control child = settingsPage.Controls[i];
-                                tree.Add($"{i}:{child.GetType().Name}({child.Name}) dock={child.Dock} bounds={child.Bounds} vis={child.Visible}");
-                            }
-
-                            emit("SHOTINFO settings-page= " + settingsPage.ClientSize + " children=[" + string.Join(" | ", tree) + "]");
-                        }
-                        count += Save(panel, Path.Combine(dir, $"panel-{page}@{dpi}.png"), emit, revealHidden: false);
-                    }
-                }
-
-                // 空表拍不出行内控件（开关、来源、移除按钮），用一组假数据补两张「有行」的证据。
-                // 这不是产品数据，只回答「行里的东西画对了没有」——文件名带 demo，别当运行截图。
-                using (var demo = new ControlPanel(DemoSnapshot, showWindow: false))
-                {
-                    demo.ShowPage(PanelPages.Plugins);
-                    count += Save(demo, Path.Combine(dir, $"panel-plugins-demo@{dpi}.png"), emit, revealHidden: false);
-                    demo.ShowPage(PanelPages.Pets);
-                    count += Save(demo, Path.Combine(dir, $"panel-pets-demo@{dpi}.png"), emit, revealHidden: false);
-                }
-
-                // 两套色板各留证据（2026-10-28 第二版）：亮/暗都显式设定，不靠系统默认——
-                // 否则「跟随系统」的机器上两张图会一模一样，等于没有证据。
-                if (dpi == 96)
-                {
-                    ThemeMode previousMode = Theme.Mode;
-                    foreach ((ThemeMode mode, string token) in new[] { (ThemeMode.Dark, "dark"), (ThemeMode.Light, "light") })
-                    {
-                        Theme.Mode = mode;
-                        try
-                        {
-                            using var themed = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
-                            foreach (string page in new[] { PanelPages.Settings, PanelPages.Pets })
-                            {
-                                themed.ShowPage(page);
-                                count += Save(themed, Path.Combine(dir, $"panel-{page}-{token}@{dpi}.png"), emit, revealHidden: false);
-                            }
-                        }
-                        finally
-                        {
-                            Theme.Mode = previousMode;
-                        }
-                    }
-                }
-
-                using (var consent = new AuthorizationDialog(
-                           "示例宠物", "sample-pet", 1, new[] { "input.mousePosition", "network.fetch:api.example.com" }))
-                {
-                    count += Save(consent, Path.Combine(dir, $"consent@{dpi}.png"), emit);
-                }
-
-                using (var quit = new ConfirmDialog(I18n.Get("ui.tray.exitConfirm"), I18n.Get("ui.tray.exitConfirmTitle")))
-                {
-                    count += Save(quit, Path.Combine(dir, $"quit@{dpi}.png"), emit);
-                }
-
-                using (var onboarding = new OnboardingWindow(WriteNothing, hasPet: true))
-                {
-                    for (int step = 0; step < onboarding.StepCount; step++)
-                    {
-                        // 先确认「要拍的是第几步」，再拍：循环对一页/多页都成立。
-                        emit($"SHOTINFO onboarding step={onboarding.StepIndex + 1}/{onboarding.StepCount}");
-                        count += Save(onboarding, Path.Combine(dir, $"onboarding-{step + 1}@{dpi}.png"), emit, revealHidden: false);
-                        if (step < onboarding.StepCount - 1)
-                        {
-                            onboarding.GoNext();
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                Theme.SetSimulatedDpi(0);
-            }
-        }
-
-        return count;
-    }
-
-    /// <summary>截图专用的假快照：两行插件（开/关、内置/用户）+ 两只宠物，只为让行内控件有东西可画。</summary>
-    private static UiSnapshot DemoSnapshot()
-    {
-        string running = I18n.Get("cp.plugins.state.running");
-        string suspended = I18n.Get("cp.plugins.state.suspended");
-        string builtin = I18n.Get("cp.plugins.origin.builtin");
-        string user = I18n.Get("cp.plugins.origin.user");
-        return new UiSnapshot(
-            new[]
-            {
-                new PetLine("demo.primary", "示例宠物", I18n.Get("cp.pets.source.imported"), "运行中", "18.4 MB"),
-                new PetLine("demo.second", "第二只示例宠物", I18n.Get("cp.pets.source.imported"), "运行中", "22.1 MB"),
-            },
-            new[]
-            {
-                new PluginLine("com.example.demo.brain", "示例脑", "1.2.0", 1, running, 1, builtin, true, true, false),
-                new PluginLine("com.example.demo.hover", "示例互动", "0.9.0", 0, suspended, 0, builtin, false, false, false),
-                new PluginLine("com.example.custombrain", "我的脑", "0.1.0", 1, running, 2, user, true, true, true),
-            },
-            null);
-    }
-
-    private static int Save(Control root, string path, ShotLog emit, bool revealHidden = true)
-    {
-        bool wasShown = root is Form { Visible: true };
-        try
-        {
-            // DrawToBitmap 只画「真的存在」的子窗口：窗体没 Show 过时，子控件的 WS_VISIBLE
-            // 还没落到外壳上，整张图只有底色。所以截图必须先 Show（会闪一下，这是工件不是判据）。
-            if (root is Form form && !wasShown)
-            {
-                form.Show();
-                Application.DoEvents();
-            }
-
-            Dictionary<Control, bool> hidden = revealHidden
-                ? MakeVisible(root)
-                : new Dictionary<Control, bool>();
-            try
-            {
-                root.CreateControl();
-                Application.DoEvents();
-                Layout(root);
-                Application.DoEvents();
-
-                // 布局改过之后先把整棵树的失效区同步重画一遍：PrintWindow 拿的是窗口当前像素，
-                // 控件被重新停靠后留下的残影会被当成「界面画错了」（2026-10-28 实测）。
-                root.Invalidate(true);
-                root.Update();
-                Application.DoEvents();
-                using var bitmap = new Bitmap(Math.Max(1, root.Width), Math.Max(1, root.Height));
-                if (!Paint(root, bitmap))
-                {
-                    root.DrawToBitmap(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
-                }
-
-                bitmap.Save(path, ImageFormat.Png);
-                emit($"SHOT {Path.GetFileName(path)} {bitmap.Width}x{bitmap.Height}");
-                return 1;
-            }
-            finally
-            {
-                foreach (KeyValuePair<Control, bool> pair in hidden)
-                {
-                    pair.Key.Visible = pair.Value;
-                }
-            }
-        }
-        catch (Exception error)
-        {
-            emit($"SHOT-FAIL {Path.GetFileName(path)} {error.GetType().Name}: {error.Message}");
+            emit("SHOT-SKIP reason=no-ui-plugin-root");
             return 0;
         }
-        finally
-        {
-            if (root is Form shown && !wasShown)
-            {
-                shown.Hide();
-            }
-        }
-    }
 
-    /// <summary>几何读数（截图对不上时用它定位，而不是靠看像素猜）。</summary>
-    private static string Geometry(Control root)
-    {
-        var parts = new List<string>();
-        foreach (Control child in Walk(root))
-        {
-            if (child is ListView list)
-            {
-                var widths = new List<int>();
-                foreach (ColumnHeader column in list.Columns)
-                {
-                    widths.Add(column.Width);
-                }
-
-                parts.Add(
-                    $"{child.Name}[{child.GetType().Name}] bounds={child.Bounds} cols=[{string.Join(",", widths)}]");
-            }
-            else if (child is Label { Name: "page-title" or "panel-status" })
-            {
-                parts.Add($"{child.Name}[{child.GetType().Name}] bounds={child.Bounds}");
-            }
-        }
-
-        return string.Join(" ", parts);
-    }
-
-    /// <summary>截图前把隐藏页/隐藏步骤也置为可见（Dock 布局跳过不可见控件）。</summary>
-    private static Dictionary<Control, bool> MakeVisible(Control root)
-    {
-        var map = new Dictionary<Control, bool>();
-        foreach (Control child in Walk(root))
-        {
-            map[child] = child.Visible;
-            if (!child.Visible)
-            {
-                child.Visible = true;
-            }
-        }
-
-        return map;
-    }
-
-    /// <summary>
-    /// 画一整窗：优先 PrintWindow(PW_RENDERFULLCONTENT)，失败才退回 DrawToBitmap。
-    /// 为什么：DrawToBitmap 对自带子窗口的控件（ListView 的表头就是一个 SysHeader32）会把子窗口
-    /// 画到错的偏移上——2026-10-28 的截图里设置页表头无故右移 80px、首列标题消失，就是这个假象，
-    /// 真窗上看并没有（所以人眼验收的工件不能靠 DrawToBitmap 出）。
-    /// </summary>
-    private static bool Paint(Control root, Bitmap bitmap)
-    {
-        if (root is not Form { IsHandleCreated: true } form)
-        {
-            return false;
-        }
-
-        using Graphics graphics = Graphics.FromImage(bitmap);
-        IntPtr dc = graphics.GetHdc();
+        ThemeMode original = Theme.Mode;
+        int count = 0;
         try
         {
-            return PrintWindow(form.Handle, dc, PwRenderFullContent);
+            foreach (bool light in new[] { true, false })
+            {
+                Theme.Mode = light ? ThemeMode.Light : ThemeMode.Dark;
+                var context = new PreviewUiContext(SampleSnapshot());
+                IReadOnlyList<IUiPlugin> plugins = UiPluginCatalog.Load(root, context);
+                IUiPage[] pages = plugins
+                    .SelectMany(plugin => plugin.CreatePages(context))
+                    .OrderBy(page => page.Order)
+                    .ThenBy(page => page.Id, StringComparer.Ordinal)
+                    .ToArray();
+
+                if (pages.Length == 0)
+                {
+                    emit("SHOT-SKIP reason=no-ui-pages root=" + root);
+                    return 0;
+                }
+
+                using var panel = new ControlPanel(context, pages, showWindow: false);
+                foreach (IUiPage page in pages)
+                {
+                    panel.ShowPage(page.Id);
+                    foreach (int dpi in new[] { 96, 144 })
+                    {
+                        string path = Path.Combine(
+                            dir,
+                            "panel-" + page.Id + "@" + dpi.ToString() + (light ? "-light" : "-dark") + ".png");
+                        Capture(panel.Workspace, path, dpi);
+                        count++;
+                    }
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            emit("SHOT-FAIL " + error);
         }
         finally
         {
-            graphics.ReleaseHdc(dc);
+            Theme.Mode = original;
         }
+
+        emit("SHOT-OK n=" + count + " dir=" + dir);
+        return count;
     }
 
-    /// <summary>
-    /// 采集标志。PW_RENDERFULLCONTENT(2) 能把自绘内容抓全，但对 ListView 的子窗口（表头）
-    /// 会把它按列拉伸到列表空白区，截图里因此出现一整套竖线（2026-10-28 实测：pets/perf 空白表
-    /// 出现等距竖线，而同一窗口用 0 号标志拍就没有）。选 0：宁可少一点层级效果，不要假缺陷。
-    /// </summary>
-    private const uint PwRenderFullContent = 0x00000002;
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
-
-    private static IEnumerable<Control> Walk(Control root)
+    private static void Capture(FrameworkElement workspace, string path, int dpi)
     {
-        foreach (Control child in root.Controls)
+        workspace.Measure(new Size(Width, Height));
+        workspace.Arrange(new Rect(0, 0, Width, Height));
+        workspace.UpdateLayout();
+
+        int pixelWidth = Width * dpi / 96;
+        int pixelHeight = Height * dpi / 96;
+        var bitmap = new RenderTargetBitmap(pixelWidth, pixelHeight, dpi, dpi, PixelFormats.Pbgra32);
+        bitmap.Render(workspace);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using FileStream stream = File.Create(path);
+        encoder.Save(stream);
+    }
+
+    /// <summary>开发树里向上找 packages/plugins（发行包里则用 exe 旁的 plugins）。</summary>
+    private static string? FindDevPluginRoot()
+    {
+        string packaged = Path.Combine(AppContext.BaseDirectory, "plugins");
+        if (Directory.Exists(packaged))
         {
-            yield return child;
-            foreach (Control grand in Walk(child))
+            return packaged;
+        }
+
+        DirectoryInfo? cursor = new DirectoryInfo(AppContext.BaseDirectory);
+        for (int depth = 0; depth < 8 && cursor is not null; depth++)
+        {
+            string candidate = Path.Combine(cursor.FullName, "packages", "plugins");
+            if (Directory.Exists(candidate))
             {
-                yield return grand;
+                return candidate;
             }
+
+            cursor = cursor.Parent;
         }
+
+        return null;
     }
 
-    private static void Layout(Control parent)
-    {
-        parent.PerformLayout();
-        foreach (Control child in parent.Controls)
+    /// <summary>截图用快照：两只宠物、几行插件（含一个停用项），设置页有真实数值。</summary>
+    private static UiSnapshot SampleSnapshot() => new(
+        new[]
         {
-            Layout(child);
-        }
-    }
-
-    private static bool WriteNothing(string? language, bool complete, out string error)
-    {
-        error = string.Empty;
-        return true;
-    }
+            new PetLine("sample-pet", "示例宠物", "assets/sample-pet", "idle", "51 MB"),
+            new PetLine("sample-pet-2", "示例宠物 2", "assets/sample-pet", "walk", "51 MB"),
+        },
+        new[]
+        {
+            new PluginLine("petdock.brain.default", "默认行为层", "0.1.0", 0, "loaded", 0, "built-in"),
+            new PluginLine("petdock.state.null", "空状态层", "0.1.0", 0, "loaded", 0, "built-in"),
+            new PluginLine("petdock.ui.default", "默认界面", "0.1.0", 0, "loaded", 0, "built-in",
+                Essential: true),
+            new PluginLine("petdock.sample.petimage", "示例图片宠物", "0.1.0", 0, "loaded", 0, "built-in"),
+        },
+        new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque"));
 }

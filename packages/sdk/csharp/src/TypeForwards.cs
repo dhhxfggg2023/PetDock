@@ -44,3 +44,14 @@ using System.Runtime.CompilerServices;
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.PluginLog))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.PluginLogLevel))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPluginLogSink))]
+
+// 2026-10-28「一切皆可插件」：页面插件也走同一条转发。壳只认这三个契约与只读快照，
+// 页面实现在插件里；不转发会让插件编译期直接绑到 Core.dll，依赖方向悄悄退化成 plugins→core。
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.IUiPlugin))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.IUiPage))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.IUiPageContext))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.UiSnapshot))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.PetLine))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.PluginLine))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.PetReading))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.SettingsView))]

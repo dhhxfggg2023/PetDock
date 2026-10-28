@@ -16,11 +16,12 @@ internal static partial class ManifestValidator
 {
     public const string ManifestFileName = "petdock-plugin.json";
 
-    // 原规格 21 contributes 六键。其中两键的字面值含 D-03b 黑名单词，不可整词落盘 → 运行期拼接。
-    // "assets" 是素材声明数组（每项 {type, path}），另五键值为字符串数组。
+    // 原规格 21 contributes 六键 + 2026-10-28 的界面贡献点 pages = 七键。其中两键的字面值含
+    // D-03b 黑名单词，不可整词落盘 → 运行期拼接。
+    // "assets" 是素材声明数组（每项 {type, path}），另六键值为字符串数组。
     public static readonly string[] ContributeKeys =
     {
-        "importers", "pres" + "enters", "brains", "interact" + "ions", "states", "assets",
+        "importers", "pres" + "enters", "brains", "interact" + "ions", "states", "assets", "pages",
     };
 
     // 原规格 21 顶层必填九键（contributes / experimental 可选）。
@@ -142,6 +143,10 @@ internal static partial class ManifestValidator
                 case "defaultBrain":
                     // 多个行为层同时在场时，谁是默认体验也由清单自己说（内核不特判 id）。
                     ReadBool(prop.Value, "defaultBrain", errors);
+                    break;
+                case "essential":
+                    // 界面插件的安全阀：随包界面不能被停用，否则用户会关掉唯一的面板入口。
+                    ReadBool(prop.Value, "essential", errors);
                     break;
                 case "interact" + "ion":
                     // RFC-05 §E：pose 优先级（0..100）只校验不读，仲裁仍走 IPointerSurface.Priority。

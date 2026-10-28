@@ -1,6 +1,7 @@
 // Program.cs 的自检辅助部分：命中探针重试、命中点空位查找与逐项实况取样。
 // 拆自原 Program.cs，逻辑逐行一致（原规格 40 D-03c：单文件不超过 400 行）。
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;

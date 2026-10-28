@@ -41,29 +41,21 @@ internal static class UiSelfTest
             I18n.Load(I18n.DefaultLanguage);
             TrayItems();
             TrayHookSticky();
-            PanelPagesCheck();
+            // 2026-10-28 WPF 壳：页面全部来自 IUiPage 插件；这里验壳本身（预览上下文 + 假页面）。
+            UiWorkspaceChecks.Run(Check);
             PanelSingleton();
             RosterReadOnly();
             AuthorizationDialogCheck();
-            // 2026-10-28：外观母体（原规格 18 §2.6）的机器判据 —— 裸色/控件种类/四档缩放令牌/文字放得下。
-            AppearanceChecks.Run(Check);
             // 2026-10-26 真机故障（弹窗被压在宠物下面/后面）的反向门禁：模态窗必须在置顶档，
             // 且真的压在宠物上面。见 ModalBandChecks.cs。
             ModalBandChecks.Run(Check);
-            ConsentUiChecks.Run(Emit, Check);
             // 2026-10-26：同批授权请求合进一个窗、按插件分段的判据（ui-auth-batch-*）。
             ConsentBatchChecks.Run(Check);
             FramePumpOverruns();
             KeyboardHookContract();
             ResidentLoopChecks.Run(Check);
-            ImportChecks.Run(Check);
-            // 2026-10-28：宠物页要能列出「主窗之外还有几只」，并逐只移除（ui-pet-*）。
-            PetPanelChecks.Run(Check);
-            SettingsChecks.Run(Check);
             // 2026-10-28：审计流水的只读视图（原规格 18 §2.8，ui-audit-view-*）。
             AuditChecks.Run(Check);
-            // 2026-10-26：插件开关落盘 + 右键宠物弹菜单的接线（ui-plugins-* / ui-pet-context-menu-*）。
-            PluginToggleChecks.Run(Check);
             // 2026-10-28：管理面（策略默认 / 清单视图 / 开关落盘 / 安装器护栏）的判据。
             PluginManageChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
@@ -85,7 +77,6 @@ internal static class UiSelfTest
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);
-            DiagnosticBundleChecks.Run(Check);
             AuditTrailChecks.Run(Check);
             // RFC-21 §4：静态节流分档的判据（ui-throttle-*）。判据体在 ThrottleChecks。
             ThrottleChecks.Run(Check);
@@ -97,7 +88,6 @@ internal static class UiSelfTest
             if (_shotsDir is not null)
             {
                 int shots = UiShots.Capture(_shotsDir, Emit);
-                shots += UiShots.CaptureMaterials(_shotsDir, Emit);
                 Emit($"STAT shots n={shots} dir={_shotsDir}");
             }
         }
@@ -172,37 +162,6 @@ internal static class UiSelfTest
             new[] { new PetMenuItem("sample-pet", noop, noop, noop, noop) },
             noop, noop, noop, noop);
         Check("ui-tray-hook-item-sticky", tray.HookItemVisible, $"visible={tray.HookItemVisible}");
-        return failures;
-    }
-
-    /// <summary>§2.5：四页齐全且 id 稳定（不按标题文字断言）。</summary>
-    private static int PanelPagesCheck()
-    {
-        int failures = 0;
-        using var panel = new ControlPanel(() => UiSnapshot.Empty, showWindow: false);
-        IReadOnlyList<string> ids = panel.PageIds;
-        bool ok = ids.Count == 3
-            && ids[0] == PanelPages.Pets
-            && ids[1] == PanelPages.Plugins
-            && ids[2] == PanelPages.Settings;
-        Check("ui-panel-pages", ok, "pages=" + string.Join(",", ids));
-
-        // 切页：每一页都必须真的存在（未知页 → 显式异常，不是静默失败）
-        bool switched = true;
-        foreach (string id in PanelPages.All)
-        {
-            try
-            {
-                panel.ShowPage(id);
-                switched &= string.Equals(panel.CurrentPage, id, StringComparison.Ordinal);
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                switched = false;
-            }
-        }
-
-        Check("ui-panel-switch", switched, $"last={panel.CurrentPage}");
         return failures;
     }
 

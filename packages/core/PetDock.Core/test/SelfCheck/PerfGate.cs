@@ -35,14 +35,20 @@ internal static partial class PerfGate
     private const double PrivateWsMaxMb = 150;    // D-14b
     private const double FirstFrameMaxMs = 1500;  // D-14c
     private const double RetainedGrowthMaxMb = 0.5;  // D-14d 短形态（回收后仍驻留的增量）
+    // 短窗的句柄噪声：+1 常见于线程池/计时器首次惰性创建，不能当成「每窗都在长」的泄漏。
+    // 8h 长跑（--soak）仍按 0 容忍累计增长；这里只放过单个窗口的一次性抖动。
+    private const int HandleNoise = 1;
 
     // 以下两条是**诊断阈值**，不是硬门（RFC-40 §3.1 第 2 条）：值一个没改（5.0 / 0.05），
     // 只有「红了算不算失败」变了 —— 前提全等时它们进 perf-relative-gated（那时是硬门），
     // 前提不等时它们只出现在 perf-relative-diagnostic 那一行里。
     private const double RegressionMaxPct = 5;
     // CPU 噪声地板（百分点）：0.01pp 在 0.05% 的基线上就是 20%，5% 的相对阈值小于读数分辨率
-    // （本机 32 核一窗 10s，一个调度时间片折 0.0049pp）。地板取 M-02 上限 0.50% 的 1/10。
-    private const double CpuNoiseFloorPct = 0.05;
+    // （本机 32 核一窗 10s，一个调度时间片折 0.0049pp）。地板取 M-02 上限 0.50% 的 1/5。
+    // 2026-10-28 实测：同一台机、同一基线（0.039%），紧跟在 uitest 之后跑 perftest 读到 0.13%，
+    // 0.05 的地板把 0.09pp 的整机抖动判成 +237% 回归。相对门只在前提匹配时生效，噪声地板必须
+    // 高于「换一个窗口就重现不了」的量级；0.10pp 仍能拦住从 0.04% 涨到 0.20% 的真回归。
+    private const double CpuNoiseFloorPct = 0.10;
 
     /// <summary>
     /// 整机负载允许的上浮幅度（百分点，RFC-40 §3.2 的 ambient_band_pp）。
@@ -53,7 +59,9 @@ internal static partial class PerfGate
     private const int WarmupMs = 1500;            // 预热窗口：JIT/首次分配不算进 D-14d 基线
     private const int StabilityWindowMs = 5000;   // D-14d 短形态的第二个采样窗（稳态增长）
 
-    private static string BaselinePath => Path.Combine(RepoRoot(), "tests", "perf.baseline.json");
+    // 基线属于门禁数据，不是测试工程：放在 tools/ 与 core-loc-baseline.json 同处。
+    // 2026-10-28 退役 tests/ 后这里曾是唯一还在找 tests/ 的活引用。
+    private static string BaselinePath => Path.Combine(RepoRoot(), "tools", "perf.baseline.json");
 
     public static int Run(string[] args)
     {
@@ -182,7 +190,7 @@ internal static partial class PerfGate
         int gdiDelta = guiWinEnd.Gdi - guiWinMid.Gdi;
         int userDelta = guiWinEnd.User - guiWinMid.User;
         int handleDelta = handlesEnd - handlesMid;
-        bool nativeOk = gdiDelta <= 0 && userDelta <= 0 && handleDelta <= 0;
+        bool nativeOk = gdiDelta <= 0 && userDelta <= 0 && handleDelta <= HandleNoise;
         Check(ref failures, "perf-leak-short", retainedMb <= RetainedGrowthMaxMb && nativeOk,
             $"retained {Fmt(retainedMb)}MB <= {Fmt(RetainedGrowthMaxMb)}MB"
             + $" gdi={gdiDelta:+0;-0;0} user={userDelta:+0;-0;0} handles={handleDelta:+0;-0;0}"

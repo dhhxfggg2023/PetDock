@@ -23,6 +23,7 @@ public sealed record PluginEntry(
     bool Loaded,
     bool Enabled,
     bool Removable,
+    bool Essential,
     string Origin,
     string Dir);
 
@@ -89,6 +90,7 @@ internal sealed class PluginInventory
                 isLoaded,
                 EffectiveEnabled(manifest.Id, settings, isLoaded, manifest.DefaultEnabled, userOwned),
                 userOwned,
+                manifest.Essential,
                 userOwned ? "user" : "builtin",
                 dir));
         }

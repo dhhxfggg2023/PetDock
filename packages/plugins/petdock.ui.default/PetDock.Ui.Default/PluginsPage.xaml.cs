@@ -1,0 +1,195 @@
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using PetDock.Core.Ui;
+using UserControl = System.Windows.Controls.UserControl;
+
+namespace PetDock.Ui.Default;
+
+public partial class PluginsPage : UserControl, IUiPage
+{
+    private readonly IUiPageContext _context;
+    private readonly ObservableCollection<PluginRow> _rows = new();
+    private bool _refreshing;
+
+    public PluginsPage(IUiPageContext context)
+    {
+        _context = context;
+        InitializeComponent();
+
+        InstallButton.Content = context.T("cp.plugins.install");
+        RemoveButton.Content = context.T("cp.plugins.remove");
+        AuthorizeButton.Content = context.T("cp.plugins.authorize");
+        ColName.Text = context.T("cp.plugins.col.name");
+        ColSource.Text = context.T("cp.plugins.col.source");
+        ColVersion.Text = context.T("cp.plugins.col.version");
+        ColState.Text = context.T("cp.plugins.col.state");
+        ColGranted.Text = context.T("cp.plugins.col.granted");
+        ColEnabled.Text = context.T("cp.plugins.col.enabled");
+        HintText.Text = context.T("cp.plugins.disableHint");
+
+        Rows.ItemsSource = _rows;
+        // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
+        Loaded += (_, _) =>
+        {
+            context.Changed -= OnChanged;
+            context.Changed += OnChanged;
+            Refresh();
+        };
+        Unloaded += (_, _) => context.Changed -= OnChanged;
+        Refresh();
+    }
+
+    public string Id => "plugins";
+
+    public string Title => _context.T("cp.tab.plugins");
+
+    public string Note => _context.T("cp.page.plugins.hint");
+
+    public string Glyph => "🧩";
+
+    public int Order => 20;
+
+    public FrameworkElement CreateView() => this;
+
+    private void OnChanged(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(new Action(Refresh));
+
+    private void Refresh()
+    {
+        _refreshing = true;
+        try
+        {
+            string? selected = (Rows.SelectedItem as PluginRow)?.Id;
+            _rows.Clear();
+            foreach (PluginLine line in _context.Snapshot.Plugins)
+            {
+                _rows.Add(new PluginRow(line));
+            }
+
+            CountText.Text = _rows.Count == 0 ? string.Empty : _context.T("cp.plugins.count", _rows.Count);
+            if (selected is not null)
+            {
+                Rows.SelectedItem = _rows.FirstOrDefault(row => string.Equals(row.Id, selected, StringComparison.Ordinal));
+            }
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+
+        UpdateButtons();
+    }
+
+    private PluginRow? Selected => Rows.SelectedItem as PluginRow;
+
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateButtons();
+
+    private void UpdateButtons()
+    {
+        PluginRow? row = Selected;
+        RemoveButton.IsEnabled = row is not null && row.Removable;
+        AuthorizeButton.IsEnabled = row is not null;
+    }
+
+    private void OnToggleClick(object sender, RoutedEventArgs e)
+    {
+        if (_refreshing || sender is not ToggleButton { Tag: string id })
+        {
+            return;
+        }
+
+        PluginRow? row = _rows.FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.Ordinal));
+        if (row is null)
+        {
+            return;
+        }
+
+        row.Enabled = !row.Enabled;
+        _context.TogglePluginDisabled(id);
+        _context.Refresh();
+    }
+
+    private void OnAuthorizeClick(object sender, RoutedEventArgs e)
+    {
+        if (Selected is { } row)
+        {
+            _context.AuthorizePlugin(row.Id);
+        }
+    }
+
+    private void OnInstallClick(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu();
+        var folder = new MenuItem { Header = _context.T("cp.plugins.install.folder") };
+        folder.Click += (_, _) => Install(folder: true);
+        var zip = new MenuItem { Header = _context.T("cp.plugins.install.zip") };
+        zip.Click += (_, _) => Install(folder: false);
+        menu.Items.Add(folder);
+        menu.Items.Add(zip);
+        menu.PlacementTarget = InstallButton;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    private void Install(bool folder)
+    {
+        string? source = folder ? PickFolder() : PickZip();
+        if (source is null)
+        {
+            return;
+        }
+
+        string? problem = _context.InstallPlugin(source, enable: true);
+        _context.SetStatus(problem ?? _context.T("cp.plugins.install.done"));
+        _context.Refresh();
+    }
+
+    private string? PickFolder()
+    {
+        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = _context.T("cp.plugins.install.folder"),
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = false,
+        };
+        return dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK ? dialog.SelectedPath : null;
+    }
+
+    private string? PickZip()
+    {
+        using var dialog = new System.Windows.Forms.OpenFileDialog
+        {
+            Filter = _context.T("cp.plugins.install.zipFilter"),
+            CheckFileExists = true,
+            Multiselect = false,
+        };
+        return dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK ? dialog.FileName : null;
+    }
+
+    private void OnRemoveClick(object sender, RoutedEventArgs e)
+    {
+        if (Selected is not { } row)
+        {
+            return;
+        }
+
+        MessageBoxResult answer = System.Windows.MessageBox.Show(
+            Window.GetWindow(this),
+            _context.T("cp.plugins.remove.confirm", row.Name),
+            _context.T("cp.plugins.remove.confirmTitle"),
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        if (answer != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        string? problem = _context.RemovePlugin(row.Id);
+        _context.SetStatus(problem ?? _context.T("cp.plugins.remove.done"));
+        _context.Refresh();
+    }
+}

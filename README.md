@@ -12,12 +12,14 @@ PetDock 是一个「万物皆可插件」的桌宠宿主：**内核只负责把�
 
 ## 现在的状态
 
-- **内核** — WinForms 分层窗宿主：`WS_EX_LAYERED` 逐像素命中穿透、置顶、Per-Monitor V2 DPI、
-  空闲帧泵与单帧预算、深浅两套色板跟随系统。
+- **内核** — C#：WinForms 分层窗负责桌面合成（`WS_EX_LAYERED` 逐像素命中穿透、置顶、
+  Per-Monitor V2 DPI、空闲帧泵与单帧预算），WPF 负责主控面板；深浅两套色板跟随系统。
 - **插件宿主** — tier 0/1/2 三类插件、能力授权门、WASM/WASI 沙箱、事件总线、生命周期与热重载。
 - **示例宠物** — `sample-pet` 呈现器 + `PetDock.SamplePet` 素材包，首次运行即可看到一只在桌面上小范围散步的宠物。
-- **主控面板** — 宠物 / 插件 / 设置三页；导入素材包、管理插件、改帧预算与外观。
-- **插件管理** — 从界面安装（文件夹或 zip）、启用 / 停用、删除用户插件；内置插件不可删除。
+- **主控面板** — WPF 壳 + 页面插件：导航、页头、状态条与主题由内核提供，宠物 / 插件 / 设置三页
+  由 first-party 插件 `petdock.ui.default` 贡献；第三方界面插件可以加自己的页，壳不需要改。
+- **插件管理** — 从界面安装（文件夹或 zip）、启用 / 停用、删除用户插件；内置插件不可删除，
+  随包界面插件（清单 `essential: true`）不可停用——它是唯一的面板入口。
 - **发布管线** — `node tools/release.mjs` + `node tools/pack.mjs`，产出解压即用的 portable zip。
 - **门禁** — `npm run lint`（七道静态门禁）与 `node tools/verify.mjs`（六层：静态 → 构建 →
   窗口/事件自检 → UI 自检 → 性能 → 发布物自检）。仓库没有 CI 工作流，门禁在本机执行。
@@ -78,7 +80,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 
 | 路径 | 内容 |
 |---|---|
-| `packages/core/` | 内核（C# / WinForms）：窗口合成、插件宿主、事件总线、沙箱。不含任何具体桌宠生态 |
+| `packages/core/` | 内核（C# / WinForms 窗口 + WPF 面板）：窗口合成、界面壳、插件宿主、事件总线、沙箱。不含任何具体桌宠生态 |
 | `packages/core/PetDock.Core/test/SelfCheck/` | 可执行判据（编进同一个 exe，由诊断旗标驱动） |
 | `packages/sdk/` | 插件 SDK（C# 与 JS 两侧的类型/模块面） |
 | `packages/plugins/` | 第一方与第三方插件，同等待遇 |

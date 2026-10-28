@@ -247,6 +247,8 @@ internal static partial class ManifestValidator
             || defaultEl.GetBoolean();
         bool defaultBrain = root.TryGetProperty("defaultBrain", out JsonElement brainEl)
             && brainEl.GetBoolean();
+        bool essential = root.TryGetProperty("essential", out JsonElement essentialEl)
+            && essentialEl.GetBoolean();
         return new PluginManifest(
             Id: root.GetProperty("id").GetString()!,
             Name: root.GetProperty("name").GetString()!,
@@ -262,6 +264,7 @@ internal static partial class ManifestValidator
             Events: events,
             PosePriority: posePriority,
             DefaultEnabled: defaultEnabled,
-            DefaultBrain: defaultBrain);
+            DefaultBrain: defaultBrain,
+            Essential: essential);
     }
 }

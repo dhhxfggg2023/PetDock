@@ -8,6 +8,7 @@
 // core 不解析素材格式：这里只做「把这个目录复制进来、登记、换源」。
 // 「这个目录里是什么格式」的知识全在视图实现侧（D-03b / 原规格 01 P-02）。
 using System;
+using System.IO;
 using System.Collections.Generic;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;

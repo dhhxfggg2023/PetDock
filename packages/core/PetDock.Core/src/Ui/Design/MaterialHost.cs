@@ -33,6 +33,9 @@ internal readonly record struct MaterialReport(
 internal static class MaterialHost
 {
     private const int DwmUseImmersiveDarkMode = 20;
+    private const int DwmWindowBorderColor = 34;
+    private const int DwmWindowCaptionColor = 35;
+    private const int DwmWindowTextColor = 36;
     private const int DwmWindowCornerPreference = 33;
     private const int DwmSystemBackdropType = 38;
     private const int BackdropNone = 1;
@@ -63,6 +66,7 @@ internal static class MaterialHost
 
         IntPtr hwnd = form.Handle;
         TryDarkMode(hwnd);
+        TryCaptionColors(hwnd);
 
         if (kind == MaterialKind.Opaque)
         {
@@ -90,6 +94,30 @@ internal static class MaterialHost
         MaterialKind.Frosted => 0.92,
         _ => 1.0,
     };
+
+    /// <summary>
+    /// 把系统标题栏刷成面板底色（2026-10-28 用户截图：标题栏是 Windows 强调色亮黄，与界面完全脱节）。
+    /// DWM 35/36/34 是 Win11 才有的；老系统返回非 0，保持默认外观即可。
+    /// </summary>
+    private static void TryCaptionColors(IntPtr hwnd)
+    {
+        try
+        {
+            int caption = ColorRef(Theme.Bg);
+            int text = ColorRef(Theme.Text);
+            int border = ColorRef(Theme.Line);
+            DwmSetWindowAttribute(hwnd, DwmWindowCaptionColor, ref caption, sizeof(int));
+            DwmSetWindowAttribute(hwnd, DwmWindowTextColor, ref text, sizeof(int));
+            DwmSetWindowAttribute(hwnd, DwmWindowBorderColor, ref border, sizeof(int));
+        }
+        catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException)
+        {
+            // 老系统没有标题栏取色属性：默认外观即可。
+        }
+    }
+
+    /// <summary>COLORREF 是 0x00BBGGRR，不是 ARGB。</summary>
+    private static int ColorRef(System.Drawing.Color color) => color.R | (color.G << 8) | (color.B << 16);
 
     private static bool TrySystemBackdrop(IntPtr hwnd, MaterialKind kind)
     {

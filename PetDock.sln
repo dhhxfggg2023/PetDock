@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -42,6 +42,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "petdock.bongocat", "petdock.bongocat", "{6A3B90F6-6068-47F9-8687-976CC0216270}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PetDock.BongoCat", "packages\plugins\petdock.bongocat\PetDock.BongoCat\PetDock.BongoCat.csproj", "{94BE8F67-9C2E-4815-9FB3-A2B02204C984}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "petdock.ui.default", "petdock.ui.default", "{F130503F-592C-4B18-ADDF-F3181C0AF05F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PetDock.Ui.Default", "packages\plugins\petdock.ui.default\PetDock.Ui.Default\PetDock.Ui.Default.csproj", "{50D46645-29FB-42BD-AA5C-B097C5174C3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -88,6 +92,10 @@ Global
 		{94BE8F67-9C2E-4815-9FB3-A2B02204C984}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{94BE8F67-9C2E-4815-9FB3-A2B02204C984}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{94BE8F67-9C2E-4815-9FB3-A2B02204C984}.Release|Any CPU.Build.0 = Release|Any CPU
+		{50D46645-29FB-42BD-AA5C-B097C5174C3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50D46645-29FB-42BD-AA5C-B097C5174C3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50D46645-29FB-42BD-AA5C-B097C5174C3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50D46645-29FB-42BD-AA5C-B097C5174C3F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5F37913D-F1D9-4A56-84D9-D269A16D7DE1} = {00494AD3-2709-4B68-A7BA-4815861C9AEF}
@@ -109,5 +117,7 @@ Global
 		{B012F696-52BD-42E9-8CF3-069BBC20DFDB} = {36FF782A-CC14-45D5-A802-6869361E5D92}
 		{6A3B90F6-6068-47F9-8687-976CC0216270} = {A7A9E824-2929-4FAF-8A44-AAC4753F334C}
 		{94BE8F67-9C2E-4815-9FB3-A2B02204C984} = {6A3B90F6-6068-47F9-8687-976CC0216270}
+		{F130503F-592C-4B18-ADDF-F3181C0AF05F} = {A7A9E824-2929-4FAF-8A44-AAC4753F334C}
+		{50D46645-29FB-42BD-AA5C-B097C5174C3F} = {F130503F-592C-4B18-ADDF-F3181C0AF05F}
 	EndGlobalSection
 EndGlobal

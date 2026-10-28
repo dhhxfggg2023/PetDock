@@ -39,11 +39,13 @@ internal sealed partial class UiHost
         if (_inventory is not null)
         {
             bool? enabled = null;
+            bool essential = false;
             foreach (PluginEntry entry in _inventory.Rows())
             {
                 if (string.Equals(entry.Id, pluginId, StringComparison.Ordinal))
                 {
                     enabled = entry.Enabled;
+                    essential = entry.Essential;
                     break;
                 }
             }
@@ -51,6 +53,14 @@ internal sealed partial class UiHost
             if (enabled is null)
             {
                 KernelLog.Write($"toggle-skip plugin={pluginId} reason=unknown-plugin");
+                return;
+            }
+
+            // 随包界面插件是面板的唯一入口：停用它等于把用户锁在门外。
+            // 清单自己声明 essential，内核不特判任何 id。
+            if (essential)
+            {
+                KernelLog.Write($"toggle-skip plugin={pluginId} reason=essential");
                 return;
             }
 

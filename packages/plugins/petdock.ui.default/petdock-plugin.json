@@ -1,0 +1,16 @@
+{
+  "id": "petdock.ui.default",
+  "name": "PetDock 默认界面",
+  "version": "0.1.0",
+  "api": { "major": 1, "minor": 0 },
+  "kind": "service",
+  "tier": 0,
+  "capabilities": [],
+  "entry": "PetDock.Ui.Default/bin/Release/net8.0-windows/PetDock.Ui.Default.dll",
+  "license": { "spdx": "MIT" },
+  "defaultEnabled": true,
+  "essential": true,
+  "contributes": {
+    "pages": [ "PetDock.Ui.Default.DefaultUiPlugin" ]
+  }
+}

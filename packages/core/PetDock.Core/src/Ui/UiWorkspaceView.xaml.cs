@@ -1,0 +1,159 @@
+// WPF 主壳：只管导航、页头、状态条与主题资源；页面全部来自 IUiPlugin（2026-10-28）。
+// 这是「一切皆可插件」的壳侧半边：它不知道 pets/plugins/settings 的存在，
+// 只按 IUiPage.Order 排序、按 Id 切页、把 IUiPageContext 交给页面。
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using Brush = System.Windows.Media.Brush;
+using Color = System.Windows.Media.Color;
+using PetDock.Core.Ui.Design;
+using UserControl = System.Windows.Controls.UserControl;
+using RadioButton = System.Windows.Controls.RadioButton;
+using Orientation = System.Windows.Controls.Orientation;
+
+namespace PetDock.Core.Ui;
+
+public partial class UiWorkspaceView : UserControl
+{
+    private readonly IReadOnlyList<IUiPage> _pages;
+    private readonly IUiPageContext _context;
+    private readonly Dictionary<string, FrameworkElement> _views = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RadioButton> _nav = new(StringComparer.Ordinal);
+
+    private string? _current;
+
+    public UiWorkspaceView(IReadOnlyList<IUiPage> pages, IUiPageContext context)
+    {
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _pages = (pages ?? Array.Empty<IUiPage>())
+            .OrderBy(p => p.Order)
+            .ThenBy(p => p.Id, StringComparer.Ordinal)
+            .ToArray();
+
+        InitializeComponent();
+        ApplyPalette();
+        BuildNav();
+
+        if (_pages.Count == 0)
+        {
+            TitleText.Text = I18n.Get("ui.workspace.empty.title");
+            NoteText.Text = I18n.Get("ui.workspace.empty.note");
+            StatusText.Text = I18n.Get("ui.workspace.empty.status");
+        }
+        else
+        {
+            ShowPage(_pages[0].Id);
+        }
+
+        _context.Changed += OnContextChanged;
+        Unloaded += (_, _) => _context.Changed -= OnContextChanged;
+    }
+
+    /// <summary>当前页 id（自检读它）。</summary>
+    public string? CurrentPage => _current;
+
+    /// <summary>导航里的页 id，按显示顺序。</summary>
+    public IReadOnlyList<string> PageIds => _pages.Select(p => p.Id).ToArray();
+
+    /// <summary>状态条文字（自检读它，证明页面 SetStatus 真的落到壳上）。</summary>
+    public string StatusTextValue => StatusText.Text;
+
+    /// <summary>切页；未知 id 抛异常（静默失败会让深链与自检都失去意义）。</summary>
+    public void ShowPage(string id)
+    {
+        IUiPage page = _pages.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.Ordinal))
+            ?? throw new ArgumentOutOfRangeException(nameof(id), id, "unknown ui page");
+
+        _current = page.Id;
+        if (!_views.TryGetValue(id, out FrameworkElement? view))
+        {
+            view = page.CreateView();
+            _views[id] = view;
+        }
+
+        PageHost.Content = view;
+        TitleText.Text = page.Title;
+        NoteText.Text = page.Note;
+        StatusText.Text = string.Empty;
+
+        if (_nav.TryGetValue(id, out RadioButton? button))
+        {
+            button.IsChecked = true;
+        }
+    }
+
+    /// <summary>写状态条（页面通过 IUiPageContext.SetStatus 间接触发）。</summary>
+    public void SetStatus(string text) => StatusText.Text = text ?? string.Empty;
+
+    private void BuildNav()
+    {
+        foreach (IUiPage page in _pages)
+        {
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            content.Children.Add(new TextBlock
+            {
+                Text = page.Glyph,
+                Width = 26,
+                FontSize = 14,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = (Brush)FindResource("Pd.TextMuted"),
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = page.Title,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var button = new RadioButton
+            {
+                GroupName = "pd-nav",
+                Style = (Style)FindResource("Pd.NavButton"),
+                Content = content,
+                Tag = page.Id,
+            };
+            button.Checked += (_, _) => ShowPage(page.Id);
+            _nav[page.Id] = button;
+            NavHost.Children.Add(button);
+        }
+    }
+
+    /// <summary>把内核色板转成 WPF 资源。页面插件只认 DynamicResource 键，不认 Theme 类型。</summary>
+    private void ApplyPalette()
+    {
+        Set("Pd.Bg", Theme.Bg);
+        Set("Pd.BgDeep", Theme.BgDeep);
+        Set("Pd.Surface", Theme.Surface);
+        Set("Pd.SurfaceHover", Theme.SurfaceHover);
+        Set("Pd.Line", Theme.Line);
+        Set("Pd.Text", Theme.Text);
+        Set("Pd.TextDim", Theme.TextDim);
+        Set("Pd.TextMuted", Theme.TextMuted);
+        Set("Pd.Accent", Theme.Accent);
+        Set("Pd.AccentHover", Theme.AccentHover);
+        Set("Pd.AccentSoft", Theme.AccentSoft);
+        Set("Pd.OnAccent", Theme.OnAccent);
+        Set("Pd.Good", Theme.Good);
+        Set("Pd.Warn", Theme.Warn);
+        Set("Pd.Bad", Theme.Bad);
+        Set("Pd.BadSurface", Theme.BadSurface);
+        Set("Pd.WarnSurface", Theme.WarnSurface);
+        Background = (Brush)Resources["Pd.Bg"];
+        Foreground = (Brush)Resources["Pd.Text"];
+    }
+
+    private void Set(string key, System.Drawing.Color color)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
+        brush.Freeze();
+        Resources[key] = brush;
+    }
+
+    private void OnContextChanged(object? sender, EventArgs e)
+    {
+        // 数据变化不重建页面：页面自己在 Changed 里刷新绑定，避免输入到一半被清掉。
+        StatusText.Text = string.Empty;
+    }
+}

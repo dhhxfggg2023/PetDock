@@ -9,7 +9,7 @@ internal delegate void UiCommand();
 
 /// <summary>宠物页一行。Memory 是**进程级**读数（宠物与内核同进程，原规格 10 §3），
 /// 所以文案里必须写明「进程」，不能让读者以为这是单只宠物的独占内存。</summary>
-internal sealed record PetLine(
+public sealed record PetLine(
     string Id,
     string Name,
     string Source,
@@ -18,7 +18,7 @@ internal sealed record PetLine(
 
 /// <summary>插件页一行。Granted 是当前有效的能力句柄数（原规格 14 §2「能力是句柄」）。
 /// Id 放最前：插件页的两个入口要「对某个插件说话」，必须有 id（RFC-13 §2.6）。</summary>
-internal sealed record PluginLine(
+public sealed record PluginLine(
     string Id,
     string Name,
     string Version,
@@ -28,13 +28,14 @@ internal sealed record PluginLine(
     string Source = "",
     bool Enabled = true,
     bool Loaded = true,
-    bool Removable = false);
+    bool Removable = false,
+    bool Essential = false);
 
 /// <summary>
 /// 桌上**某一只**的即时状态（RFC-37 片 4）。「可见」与「在出帧」分开报：隐藏的宠物窗口
 /// 仍然存在，泵停着 —— 把两者并成一个布尔会让「收起但没停泵」这种真缺陷消失。
 /// </summary>
-internal sealed record PetReading(
+public sealed record PetReading(
     string Id,
     bool Visible,
     bool Pumping);
@@ -43,17 +44,19 @@ internal sealed record PetReading(
 /// 设置页的当前状态（原规格 18 §2.3）。面板读它来摆放控件，宿主改它来生效。
 /// StartupEnabled 的事实源是注册表，不是设置文件（同一事实存两处必然漂移）。
 /// </summary>
-internal sealed record SettingsView(
+public sealed record SettingsView(
     double IdleFrameBudgetMs,
     string Language,
-    bool StartupEnabled)
+    bool StartupEnabled,
+    string? Theme = null,
+    string? Material = null)
 {
     /// <summary>没有设置可读时的默认状态。</summary>
-    public static SettingsView Default { get; } = new(1000.0 / 30.0, "zh-CN", false);
+    public static SettingsView Default { get; } = new(1000.0 / 30.0, "zh-CN", false, "system", "opaque");
 }
 
 /// <summary>面板一次重绘所需的全部数据。</summary>
-internal sealed record UiSnapshot(
+public sealed record UiSnapshot(
     IReadOnlyList<PetLine> Pets,
     IReadOnlyList<PluginLine> Plugins,
     SettingsView? Settings = null)

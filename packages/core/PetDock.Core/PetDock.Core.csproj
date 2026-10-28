@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
 
     <RootNamespace>PetDock.Core</RootNamespace>
     <AssemblyName>PetDock.Core</AssemblyName>
@@ -15,7 +16,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- WPF 的数据绑定在 XmlLanguage.GetSpecificCulture() 里要真文化；InvariantGlobalization
+         会让 'en-us' 解析成不变文化而抛 XamlParseException（2026-10-28 插件页首次渲染实测）。 -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 
     <!-- 应用图标（2026-10-26）：仓库自绘的像素猫，assets/icons/icon.ico 是多分辨率 ICO。

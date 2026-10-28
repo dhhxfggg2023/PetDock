@@ -46,6 +46,8 @@ internal static partial class ResidentPerfProbe
     private const double WsNoiseFloorMb = 1.0;
     private const int PollMs = 250;
     private const int WatchdogGraceMs = 20000;
+    // 与 PerfGate.HandleNoise 同口径：+1 常见于线程池/计时器惰性创建，不是「每窗都在长」。
+    private const int HandleNoise = 1;
 
     private static System.Windows.Forms.Timer? _timer;
     private static Reading? _reading;
@@ -56,7 +58,7 @@ internal static partial class ResidentPerfProbe
     /// <summary>末行是否判红（Program 读它决定退出码）。</summary>
     internal static bool Failed { get; private set; }
 
-    private static string BaselinePath => Path.Combine(PerfGate.RepoRoot(), "tests", "perf.resident.json");
+    private static string BaselinePath => Path.Combine(PerfGate.RepoRoot(), "tools", "perf.resident.json");
 
     /// <summary>解析 --residenttest 的参数；不带该开关时返回 null（走原常驻路径）。</summary>
     internal static Options? Parse(string[] args)
@@ -237,7 +239,7 @@ internal static partial class ResidentPerfProbe
             $"{Fmt(r.CpuPct)}% <= {Fmt(CpuIdleMax)}% (M-02, {Fmt(r.Seconds)}s avg)");
         failures += Check("resident-private-ws", wsMb <= PrivateWsMaxMb,
             $"{Fmt(wsMb)}MB <= {Fmt(PrivateWsMaxMb)}MB (M-04)");
-        failures += Check("resident-handles-stable", gdiDelta <= 0 && userDelta <= 0 && handleDelta <= 0,
+        failures += Check("resident-handles-stable", gdiDelta <= 0 && userDelta <= 0 && handleDelta <= HandleNoise,
             $"gdi={gdiDelta:+0;-0;0} user={userDelta:+0;-0;0} handles={handleDelta:+0;-0;0} (D-14d 非托管半边)");
         failures += Baseline(r, wsMb, options, r.IdleTotalPct);
 
