@@ -45,7 +45,7 @@ internal static class DyberPetImporter
     public sealed class LayoutRejectException(string message) : Exception(message);
 
     /// <summary>转换入口：探布局 → 读动作表 → 枚举帧 → 产 pack。返回动作名 → 帧数/fps（审计行与自检用）。</summary>
-    public static ImportResult Import(string sourceDir, string outDir)
+    public static ImportResult Import(string sourceDir, string outDir, bool bundleFrames = false)
     {
         LayoutProbe probe = DyberPetLayout.Probe(sourceDir);
         Console.Error.WriteLine($"dyberpet-layout {probe.Layout} confidence={Fmt(probe.Confidence)}"
@@ -169,7 +169,7 @@ internal static class DyberPetImporter
         }
 
         ClipOutput defaultClip = clips.First(c => string.Equals(c.Name, defaultAnimation, StringComparison.Ordinal));
-        WritePack(outDir, clips, defaultClip, maxW, maxH, sourceDir);
+        WritePack(outDir, clips, defaultClip, maxW, maxH, sourceDir, bundleFrames);
         ImportProvenance.Write(outDir, sourceDir, probe, actions, clips, skipped, focus, loopSet, petRoot);
         PackSelfCheck.Run(outDir, clips, maxW, maxH, focus);
 
@@ -345,8 +345,18 @@ internal static class DyberPetImporter
         return numbered.OrderBy(t => t.N).Select(t => t.Path).ToList();
     }
 
-    /// <summary>落盘：petdock-sample.json + anim/*.json（帧=绝对路径只读引用，契约 §2.8）。</summary>
-    private static void WritePack(string outDir, List<ClipOutput> clips, ClipOutput defaultClip, int w, int h, string sourceDir)
+    /// <summary>
+    /// 落盘：petdock-sample.json + anim/*.json。CLI 默认仍写绝对路径只读引用（契约 §2.8，不入库）；
+    /// 宿主导入（bundleFrames=true）把帧复制进包内并写相对路径，导入后不依赖用户原目录。
+    /// </summary>
+    private static void WritePack(
+        string outDir,
+        List<ClipOutput> clips,
+        ClipOutput defaultClip,
+        int w,
+        int h,
+        string sourceDir,
+        bool bundleFrames)
     {
         Directory.CreateDirectory(outDir);
         Directory.CreateDirectory(Path.Combine(outDir, AnimDirName));
@@ -355,7 +365,9 @@ internal static class DyberPetImporter
         {
             ["schemaVersion"] = 1,
             ["name"] = Path.GetFileName(sourceDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)),
-            ["author"] = "imported from DyberPet pack (read-only reference; assets NOT bundled)",
+            ["author"] = bundleFrames
+                ? "imported from DyberPet pack (assets bundled)"
+                : "imported from DyberPet pack (read-only reference; assets NOT bundled)",
             ["license"] = "UNLICENSED-third-party (see dyberpet-provenance.json; 原规格 52 §5 只读引用不入库)",
             ["naturalSize"] = new Dictionary<string, object?> { ["w"] = w, ["h"] = h },
             ["preferredFps"] = defaultClip.Fps,
@@ -370,14 +382,50 @@ internal static class DyberPetImporter
 
         foreach (ClipOutput clip in clips)
         {
+            IReadOnlyList<string> frames = bundleFrames
+                ? BundleFrames(outDir, clip)
+                : clip.Frames.ToList();
             var clipJson = new Dictionary<string, object?>
             {
-                ["frames"] = clip.Frames.ToList(),
+                ["frames"] = frames,
                 ["fps"] = clip.Fps,
                 ["loop"] = clip.Loop,
             };
             WriteJson(Path.Combine(outDir, AnimDirName, clip.Name + ".json"), clipJson);
         }
+    }
+
+    /// <summary>把一帧帧复制到包内 img/&lt;clip&gt;/，返回相对路径（正斜杠，PackLoader 按包根解析）。</summary>
+    private static IReadOnlyList<string> BundleFrames(string outDir, ClipOutput clip)
+    {
+        string relativeDir = Path.Combine("img", SafeName(clip.Name));
+        string fullDir = Path.Combine(outDir, relativeDir);
+        Directory.CreateDirectory(fullDir);
+
+        var frames = new List<string>();
+        foreach (string frame in clip.Frames)
+        {
+            string name = Path.GetFileName(frame);
+            File.Copy(frame, Path.Combine(fullDir, name), overwrite: true);
+            frames.Add((relativeDir + "/" + name).Replace('\\', '/'));
+        }
+
+        return frames;
+    }
+
+    private static string SafeName(string name)
+    {
+        char[] invalid = Path.GetInvalidFileNameChars();
+        var chars = name.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (Array.IndexOf(invalid, chars[i]) >= 0)
+            {
+                chars[i] = '_';
+            }
+        }
+
+        return new string(chars);
     }
 
     internal static void WriteJson(string path, object payload)

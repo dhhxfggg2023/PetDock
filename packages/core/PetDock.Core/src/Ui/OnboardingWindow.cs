@@ -45,7 +45,7 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     private readonly Panel[] _steps;
     private readonly Label _error = new();
     private readonly ThemedRadio _zh = new() { Text = I18n.Get("ui.onboarding.language.zh"), Name = "onboarding-language-zh" };
-    private readonly ThemedRadio _en = new() { Text = "English (en-US)", Name = "onboarding-language-en" };
+    private readonly ThemedRadio _en = new() { Text = I18n.Get("ui.onboarding.language.en"), Name = "onboarding-language-en" };
     private readonly ThemedButton _next = new() { Text = I18n.Get(FinishKey), Name = "onboarding-next", Primary = true };
     private readonly ThemedButton _skip = new() { Text = I18n.Get("ui.onboarding.skip"), Name = "onboarding-skip" };
 

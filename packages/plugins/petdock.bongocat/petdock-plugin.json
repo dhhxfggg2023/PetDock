@@ -1,6 +1,6 @@
 {
   "id": "com.petdock.bongocat.interaction",
-  "name": "BongoCat (PetDock rewrite)",
+  "name": "键盘猫（内置重写）",
   "version": "0.1.0",
   "api": { "major": 1, "minor": 0 },
   "kind": "brain",

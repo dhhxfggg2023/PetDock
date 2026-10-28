@@ -1,6 +1,6 @@
 {
   "id": "com.petdock.dyberpet.importer",
-  "name": "DyberPet Pack Importer",
+  "name": "DyberPet 素材包导入器",
   "version": "0.1.0",
   "api": {
     "major": 1,
@@ -9,7 +9,7 @@
   "kind": "importer",
   "tier": 0,
   "capabilities": [],
-  "defaultEnabled": false,
+  "defaultEnabled": true,
   "entry": "PetDock.DyberPetImporter/bin/Release/net8.0-windows/PetDock.DyberPetImporter.dll",
   "license": {
     "spdx": "CC0-1.0"

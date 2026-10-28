@@ -87,8 +87,6 @@
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" Style="{DynamicResource Pd.Body}"
                                                FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Id}" Style="{DynamicResource Pd.Muted}"
-                                               FontSize="10.5" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="{Binding Source}" Style="{DynamicResource Pd.Dim}"
                                            VerticalAlignment="Center" />

@@ -47,12 +47,6 @@ internal sealed partial class UiHost
     /// </summary>
     private void InstallKeyboardHookIfGranted()
     {
-        // 用户停过钩子之后不可恢复（原规格 18 §1「不可由插件恢复」）：这里直接不再看。
-        if (_hooksPaused)
-        {
-            return;
-        }
-
         if (_keyHook is not null || _pet is null || _host is null)
         {
             return;

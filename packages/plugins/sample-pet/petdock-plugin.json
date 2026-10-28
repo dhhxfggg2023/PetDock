@@ -1,6 +1,6 @@
 {
   "id": "petdock.sample.petimage",
-  "name": "Sample Pet Image Content",
+  "name": "示例图片宠物",
   "version": "0.1.0",
   "api": { "major": 1, "minor": 0 },
   "kind": "presenter",

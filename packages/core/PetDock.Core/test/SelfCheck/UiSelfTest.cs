@@ -40,7 +40,6 @@ internal static class UiSelfTest
             // 都显示键名本身 —— 断键的判据于是两侧都是键名，绿得毫无内容。
             I18n.Load(I18n.DefaultLanguage);
             TrayItems();
-            TrayHookSticky();
             // 2026-10-28 WPF 壳：页面全部来自 IUiPage 插件；这里验壳本身（预览上下文 + 假页面）。
             UiWorkspaceChecks.Run(Check);
             PanelSingleton();
@@ -134,36 +133,23 @@ internal static class UiSelfTest
     /// <summary>收尾账本：CHECK 行全部过它，SKIP 只从它出（见 SkipLedger.cs）。</summary>
     private static readonly SkipLedger Ledger = new(Emit);
 
-    /// <summary>§1：五项、顺序固定、id 稳定（宠物项 = pet-1，只数由桌面决定）。</summary>
+    /// <summary>§1：主控面板 → 每宠物一条 → 退出，顺序固定、id 稳定。</summary>
     private static int TrayItems()
     {
         int failures = 0;
         UiCommand noop = Noop;
         using var tray = new TrayHost(
-            new[] { new PetMenuItem("sample-pet", noop, noop, noop, noop) },
-            noop, noop, noop, noop);
+            new[] { new PetMenuItem("sample-pet", noop, noop, noop) },
+            noop, noop);
         IReadOnlyList<string> order = tray.ItemOrder;
-        bool expected = order.Count == 5
-            && order[0] == "toggle-all"
-            && order[1] == "panel"
-            && order[2] == "pet-1"
-            && order[3] == "pause-hooks"
-            && order[4] == "exit";
+        bool expected = order.Count == 3
+            && order[0] == "panel"
+            && order[1] == "pet-1"
+            && order[2] == "exit";
         Check("ui-tray-items", expected, "items=" + string.Join(",", order));
         return failures;
     }
 
-    /// <summary>§1 强制项：暂停钩子必须始终可见（不能被隐藏）。</summary>
-    private static int TrayHookSticky()
-    {
-        int failures = 0;
-        UiCommand noop = Noop;
-        using var tray = new TrayHost(
-            new[] { new PetMenuItem("sample-pet", noop, noop, noop, noop) },
-            noop, noop, noop, noop);
-        Check("ui-tray-hook-item-sticky", tray.HookItemVisible, $"visible={tray.HookItemVisible}");
-        return failures;
-    }
 
     /// <summary>§2.5：再次点托盘只激活已有窗口（单实例）。</summary>
     private static int PanelSingleton()

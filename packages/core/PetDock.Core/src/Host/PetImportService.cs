@@ -52,19 +52,22 @@ internal sealed class PetImportService
     private readonly PetSurfaceRoster _roster;
     private readonly Func<PetInstance?> _currentPet;
     private readonly PetReplacedNotify _onPetReplaced;
+    private readonly IReadOnlyList<IPackImporter> _importers;
 
     public PetImportService(
         PetDataStore store,
         SwappableFrameSource frames,
         PetSurfaceRoster roster,
         Func<PetInstance?> currentPet,
-        PetReplacedNotify onPetReplaced)
+        PetReplacedNotify onPetReplaced,
+        IReadOnlyList<IPackImporter>? importers = null)
     {
         _store = store;
         _frames = frames;
         _roster = roster;
         _currentPet = currentPet;
         _onPetReplaced = onPetReplaced;
+        _importers = importers ?? Array.Empty<IPackImporter>();
     }
 
     /// <summary>
@@ -85,12 +88,29 @@ internal sealed class PetImportService
     public ImportResult Import(string sourceDir)
     {
         string stagedPath = string.Empty;
+        string conversionPath = string.Empty;
         PetDataStore.ActivePack? previousActive = null;
         try
         {
+            // 第三方格式先由插件转成标准包。转换失败就按导入失败回滚。
+            string stagedSource = sourceDir;
+            foreach (IPackImporter importer in _importers)
+            {
+                if (!importer.CanImport(sourceDir))
+                {
+                    continue;
+                }
+
+                conversionPath = _store.CreateStagingDirectory("convert");
+                importer.Import(sourceDir, conversionPath);
+                stagedSource = conversionPath;
+                KernelLog.Write($"import-converted importer={importer.Id} source={sourceDir}");
+                break;
+            }
+
             // 追加时必须把「当前选中」指回来（登记会把它指向新来的那只），所以先记下原值。
             previousActive = _store.ReadActive();
-            (string instanceId, string folder, string path) = _store.StagePack(sourceDir);
+            (string instanceId, string folder, string path) = _store.StagePack(stagedSource);
             stagedPath = path;
 
             // ② 登记：清单写失败 ⇒ 素材拷贝成了孤儿，回滚（不留半个状态）。
@@ -136,6 +156,13 @@ internal sealed class PetImportService
             string message = $"{error.GetType().Name}: {error.Message}";
             KernelLog.Write($"import-failed {message}");
             return ImportResult.Failure(Describe(error));
+        }
+        finally
+        {
+            if (conversionPath.Length > 0)
+            {
+                _store.Discard(conversionPath);
+            }
         }
     }
 

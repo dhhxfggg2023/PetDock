@@ -9,8 +9,12 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- AllowUnsafeBlocks 仅用于 PackSelfCheck 的 LockBits 像素扫描（悬停命中前提取证）。 -->
-    <!-- 有意不引用 PetDock.Sdk / PetDock.Core：kind=importer 不是 ABI 角色（PetSurfaceLoader surface-skip），
-         导入器是受信任宿主侧的独立转换程序（M3 契约 §3；WASM tier1 无文件读导入函数）。零新依赖边。 -->
+    <!-- 2026-10-28：importer 现在是 ABI 角色（IPackImporter），导入按钮能把第三方包
+         转成标准包再落盘；CLI 入口保留给独立调试。 -->
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
+  </ItemGroup>
 
 </Project>

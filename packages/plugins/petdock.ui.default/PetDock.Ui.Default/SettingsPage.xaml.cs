@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using PetDock.Core.Ui;
@@ -20,8 +19,6 @@ public partial class SettingsPage : UserControl, IUiPage
         StartupSection.Text = context.T("cp.settings.section.startup");
         StartupLabel.Text = context.T("cp.settings.startup");
         StartupHint.Text = context.T("cp.settings.startup.hint");
-        IdleLabel.Text = context.T("cp.settings.idleFrameLabel");
-        IdleHint.Text = context.T("cp.settings.idleFrame.note");
         AppearanceSection.Text = context.T("cp.settings.section.appearance");
         ThemeLabel.Text = context.T("cp.settings.theme");
         ThemeHint.Text = context.T("cp.settings.theme.hint");
@@ -30,8 +27,6 @@ public partial class SettingsPage : UserControl, IUiPage
         DiagnosticsSection.Text = context.T("cp.settings.section.diagnostics");
         OpenLogsButton.Content = context.T("cp.diag.openLogs");
         ExportButton.Content = context.T("cp.diag.exportBundle");
-        AuditButton.Content = context.T("cp.diag.viewAudit");
-        ApplyButton.Content = context.T("cp.settings.apply");
 
         ThemeSystem.Content = context.T("cp.settings.theme.system");
         ThemeLight.Content = context.T("cp.settings.theme.light");
@@ -74,7 +69,6 @@ public partial class SettingsPage : UserControl, IUiPage
             if (view is not null)
             {
                 StartupSwitch.IsChecked = view.StartupEnabled;
-                IdleBox.Text = view.IdleFrameBudgetMs.ToString("0.#", CultureInfo.InvariantCulture);
                 SelectTheme(view.Theme);
                 SelectMaterial(view.Material);
             }
@@ -105,34 +99,35 @@ public partial class SettingsPage : UserControl, IUiPage
     private string SelectedMaterial =>
         MaterialFrosted.IsChecked == true ? "frosted" : MaterialGlass.IsChecked == true ? "glass" : "opaque";
 
-    private void OnApply(object sender, RoutedEventArgs e)
+    /// <summary>设置项改动即生效：不再有「应用」按钮。</summary>
+    private void OnSettingChanged(object sender, RoutedEventArgs e)
     {
         if (_binding)
         {
             return;
         }
 
-        if (!double.TryParse(IdleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double idle)
-            || idle <= 0)
-        {
-            ShowStatus(_context.T("cp.settings.idleFrame.note"), ok: false);
-            return;
-        }
-
+        double idle = _context.Snapshot.Settings?.IdleFrameBudgetMs ?? 1000.0 / 30.0;
         string? problem = _context.ApplySettings(
             idle,
             StartupSwitch.IsChecked == true,
             SelectedMaterial,
             SelectedTheme);
-        ShowStatus(problem ?? _context.T("cp.settings.saved"), problem is null);
+        ShowStatus(problem);
         _context.Refresh();
     }
 
-    private void ShowStatus(string text, bool ok)
+    private void ShowStatus(string? problem)
     {
-        StatusText.Text = text;
-        StatusText.SetResourceReference(TextBlock.ForegroundProperty, ok ? "Pd.Good" : "Pd.Bad");
-        _context.SetStatus(text);
+        if (problem is null)
+        {
+            StatusText.Text = string.Empty;
+            return;
+        }
+
+        StatusText.Text = problem;
+        StatusText.SetResourceReference(TextBlock.ForegroundProperty, "Pd.Bad");
+        _context.SetStatus(problem);
     }
 
     private void OnOpenLogs(object sender, RoutedEventArgs e) => _context.OpenLogs();
@@ -142,6 +137,4 @@ public partial class SettingsPage : UserControl, IUiPage
         Window owner = Window.GetWindow(this);
         _context.ExportDiagnostics(owner is null ? IntPtr.Zero : new System.Windows.Interop.WindowInteropHelper(owner).Handle);
     }
-
-    private void OnAudit(object sender, RoutedEventArgs e) => _context.OpenAudit();
 }

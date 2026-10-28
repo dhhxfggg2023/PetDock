@@ -51,7 +51,6 @@ internal sealed partial class UiHost
                 _pet is null ? I18n.Get("ui.tray.kernelFallback") : primaryId,
                 () => MovePetById(primaryId),
                 () => PausePetById(primaryId),
-                () => HidePetById(primaryId),
                 () => RemovePetById(primaryId)));
         }
 
@@ -64,7 +63,6 @@ internal sealed partial class UiHost
                     entry.Title,
                     () => MovePetById(id),
                     () => PausePetById(id),
-                    () => HidePetById(id),
                     () => RemovePetById(id)));
             }
         }
@@ -164,18 +162,6 @@ internal sealed partial class UiHost
         }
     }
 
-    /// <summary>藏起这一只（只藏它，不动别的）。</summary>
-    private void HidePetById(string id)
-    {
-        if (IsPrimary(id))
-        {
-            _loop.Hide();
-            return;
-        }
-
-        _petSet?.Hide(id);
-    }
-
     /// <summary>
     /// 把这一只从桌上和清单里移除。
     /// 主窗那只的**实例**归 Program / CAS（RFC-15 §3.2），本片不在这里释放它 ——
@@ -212,39 +198,6 @@ internal sealed partial class UiHost
 
     private bool IsPrimary(string id) =>
         !_primaryRemoved && string.Equals(id, _pet?.Id ?? PrimaryPetId, System.StringComparison.Ordinal);
-
-    /// <summary>
-    /// 显示/隐藏宠物窗口。走 <see cref="ResidentFrameLoop"/>：显示就起泵、隐藏就停泵。
-    /// 直接摸窗口的 Show/Hide 会绕过「隐藏即停泵」——宠物看不见了，CPU 却还在烧（RFC-14 §2.2）。
-    /// </summary>
-    private void ToggleAll()
-    {
-        // RFC-37 §3.2：桌上有几只就切几只。可见性以主窗为准 —— 两套状态会让「切换全部」
-        // 只切一半（用户点一次，第二只不动）。
-        if (_petSet is not null)
-        {
-            _petSet.ToggleAll();
-            return;
-        }
-
-        _loop.Toggle();
-    }
-
-    /// <summary>
-    /// 停止全局输入钩子（原规格 18 §1 强制项，不可隐藏）。
-    /// 原规格 18:22 的字面要求是「立即卸载钩子线程（不可由插件恢复）」——所以这里是 Uninstall
-    /// 而不是 Pause：暂停仍然把回调注册在 OS 里，那不叫卸载。
-    /// 不可恢复：_keyHook 置空，且没有任何代码路径会再装回钩子（滴答器里的安装点也认
-    /// _hooksPaused 这个标记）。插件即便重载也不会让钩子回来，重启宿主才会。
-    /// </summary>
-    private void PauseHooks()
-    {
-        int installed = _keyHook?.IsInstalled == true ? 1 : 0;
-        _hooksPaused = true;
-        _keyHook?.Dispose();
-        _keyHook = null;
-        KernelLog.Write($"tray-pause-hooks uninstalled={installed} resumable=0");
-    }
 
     /// <summary>
     /// 退出确认（原规格 18 §1：退出是固定项，但要有一次确认）。

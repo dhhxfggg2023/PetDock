@@ -1,6 +1,6 @@
 {
   "id": "com.petdock.statenull",
-  "name": "Null State (PetDock built-in)",
+  "name": "空白状态层（内置）",
   "version": "0.1.0",
   "api": {
     "major": 1,

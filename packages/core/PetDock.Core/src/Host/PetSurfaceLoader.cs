@@ -122,6 +122,11 @@ public sealed partial class PetSurfaceRoster
 
     public bool HasContentProvider => ContentProvider is not null;
 
+    /// <summary>已装载的素材包导入器（kind=importer；按插件 id 排序）。</summary>
+    public IReadOnlyList<IPackImporter> Importers =>
+        _records.Where(r => r.Interface == typeof(IPackImporter))
+            .Select(r => (IPackImporter)r.Implementation).ToList();
+
     /// <summary>
     /// 名册里第一个视图实现建出的宠物实例（无视图 → null）。
     /// assetRoots 是宿主为本实例解析好的素材根（RFC-15 §3.2）：空 = 没给，
@@ -294,7 +299,7 @@ public sealed partial class PetSurfaceRoster
     /// <summary>这个实现类服务于哪些接口（一个类可以同时是内容源工厂与视图实现）。</summary>
     private static IEnumerable<Type> InterfacesFor(Type type)
     {
-        Type[] candidates = { typeof(IPetView), typeof(IBrain), typeof(IPointerSurface), typeof(IPetState), typeof(IFrameContentProvider) };
+        Type[] candidates = { typeof(IPetView), typeof(IBrain), typeof(IPointerSurface), typeof(IPetState), typeof(IFrameContentProvider), typeof(IPackImporter) };
         foreach (Type iface in candidates)
         {
             if (iface.IsAssignableFrom(type))
@@ -322,7 +327,17 @@ public sealed partial class PetSurfaceRoster
             return typeof(IPointerSurface);
         }
 
-        return kind == PluginKind.State ? typeof(IPetState) : null;
+        if (kind == PluginKind.State)
+        {
+            return typeof(IPetState);
+        }
+
+        if (kind == PluginKind.Importer)
+        {
+            return typeof(IPackImporter);
+        }
+
+        return null;
     }
 
     private SurfaceRecord? Find<T>() where T : class

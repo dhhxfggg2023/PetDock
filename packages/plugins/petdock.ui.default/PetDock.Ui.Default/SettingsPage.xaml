@@ -13,19 +13,6 @@
                 <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock x:Name="StartupSection" Style="{DynamicResource Pd.Section}" />
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock x:Name="StartupLabel" Style="{DynamicResource Pd.Body}" />
-                                <TextBlock x:Name="StartupHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
-                            </StackPanel>
-                            <ToggleButton Grid.Column="2" x:Name="StartupSwitch"
-                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center" />
-                        </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="180" />
@@ -33,14 +20,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock x:Name="IdleLabel" Style="{DynamicResource Pd.Body}" />
-                                <TextBlock x:Name="IdleHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
+                                <TextBlock x:Name="StartupLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="StartupHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBox x:Name="IdleBox" Style="{DynamicResource Pd.TextBox}" Width="110" />
-                                <TextBlock Text="ms" Style="{DynamicResource Pd.Dim}" Margin="8,0,0,0"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
+                            <ToggleButton Grid.Column="2" x:Name="StartupSwitch"
+                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center"
+                                          Click="OnSettingChanged" />
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -55,12 +40,15 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
                                 <TextBlock x:Name="ThemeLabel" Style="{DynamicResource Pd.Body}" />
-                                <TextBlock x:Name="ThemeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
+                                <TextBlock x:Name="ThemeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <RadioButton x:Name="ThemeSystem" GroupName="theme" Style="{DynamicResource Pd.Segment}" />
-                                <RadioButton x:Name="ThemeLight" GroupName="theme" Style="{DynamicResource Pd.Segment}" />
-                                <RadioButton x:Name="ThemeDark" GroupName="theme" Style="{DynamicResource Pd.Segment}" />
+                                <RadioButton x:Name="ThemeSystem" GroupName="theme" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="ThemeLight" GroupName="theme" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="ThemeDark" GroupName="theme" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
                             </StackPanel>
                         </Grid>
                         <Grid>
@@ -70,12 +58,15 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
                                 <TextBlock x:Name="MaterialLabel" Style="{DynamicResource Pd.Body}" />
-                                <TextBlock x:Name="MaterialHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
+                                <TextBlock x:Name="MaterialHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <RadioButton x:Name="MaterialOpaque" GroupName="material" Style="{DynamicResource Pd.Segment}" />
-                                <RadioButton x:Name="MaterialFrosted" GroupName="material" Style="{DynamicResource Pd.Segment}" />
-                                <RadioButton x:Name="MaterialGlass" GroupName="material" Style="{DynamicResource Pd.Segment}" />
+                                <RadioButton x:Name="MaterialOpaque" GroupName="material" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="MaterialFrosted" GroupName="material" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="MaterialGlass" GroupName="material" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -88,20 +79,14 @@
                             <Button x:Name="OpenLogsButton" Style="{DynamicResource Pd.SecondaryButton}"
                                     Click="OnOpenLogs" Margin="0,0,8,0" />
                             <Button x:Name="ExportButton" Style="{DynamicResource Pd.SecondaryButton}"
-                                    Click="OnExport" Margin="0,0,8,0" />
-                            <Button x:Name="AuditButton" Style="{DynamicResource Pd.SecondaryButton}"
-                                    Click="OnAudit" />
+                                    Click="OnExport" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
         </ScrollViewer>
 
-        <DockPanel Grid.Row="1" Margin="0,10,0,0" LastChildFill="True">
-            <Button x:Name="ApplyButton" DockPanel.Dock="Right" Style="{DynamicResource Pd.PrimaryButton}"
-                    Click="OnApply" />
-            <TextBlock x:Name="StatusText" Style="{DynamicResource Pd.Dim}" VerticalAlignment="Center"
-                       TextTrimming="CharacterEllipsis" />
-        </DockPanel>
+        <TextBlock Grid.Row="1" x:Name="StatusText" Style="{DynamicResource Pd.Dim}"
+                   Margin="2,8,0,0" TextTrimming="CharacterEllipsis" />
     </Grid>
 </UserControl>

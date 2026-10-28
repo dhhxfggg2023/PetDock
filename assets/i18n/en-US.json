@@ -1,12 +1,9 @@
 {
-  "ui.tray.toggleAll": "Show/hide all pets",
   "ui.tray.panel": "Control panel",
-  "ui.tray.pauseHooks": "Pause global input hooks",
   "ui.tray.exit": "Exit",
   "ui.tray.title.running": "PetDock — {0} pet(s) running",
   "ui.tray.pet.caption": "Pet: {0}",
   "ui.tray.pet.move": "Move",
   "ui.tray.pet.pause": "Pause",
-  "ui.tray.pet.hide": "Hide",
   "ui.tray.pet.remove": "Remove"
 }

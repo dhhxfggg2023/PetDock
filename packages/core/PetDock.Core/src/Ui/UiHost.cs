@@ -60,7 +60,6 @@ internal sealed partial class UiHost : ApplicationContext
     private readonly System.Windows.Forms.Timer _timer;
 
     private ControlPanel? _panel;
-    private bool _hooksPaused;
     private bool _hostStarted;
 
     /// <summary>主窗那只已经从清单里移除（RFC-37 §3.6）：它的实例归 Program，卸载要重启。</summary>
@@ -106,7 +105,8 @@ internal sealed partial class UiHost : ApplicationContext
                 frames,
                 frames.Roster,
                 () => _pet,
-                next => _pet = next);
+                next => _pet = next,
+                frames.Roster.Importers);
 
             // RFC-37 §3.5 片 2：装了集合就追加，摆不进去就退回替换（单窗装配、自检）。
             // 只数的同步也在这里：托盘那行提示文字写的是「N 只宠物运行中」。
@@ -143,9 +143,7 @@ internal sealed partial class UiHost : ApplicationContext
 
         _tray = new TrayHost(
             BuildPetMenu(),
-            ToggleAll,
             OpenPanel,
-            PauseHooks,
             ExitApp);
 
         _tray.SetPetCount(pet is null ? 0 : 1);
@@ -182,9 +180,6 @@ internal sealed partial class UiHost : ApplicationContext
 
     /// <summary>面板是否打开（自检用）。</summary>
     public bool PanelOpen => _panel is not null && !_panel.IsDisposed;
-
-    /// <summary>全局输入钩子是否已按用户要求停止（原规格 18 §1 强制项）。</summary>
-    public bool HooksPaused => _hooksPaused;
 
     /// <summary>宿主是否已经由滴答器启动（装载发生在消息泵起来之后，RFC-13 §2.4）。</summary>
     public bool HostStarted => _hostStarted;

@@ -38,6 +38,9 @@ using System.Runtime.CompilerServices;
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPetState))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IClipCatalog))]
 
+// 第三方素材包导入器（2026-10-28）：插件实现 IPackImporter，宿主按 kind=importer 装载。
+[assembly: TypeForwardedTo(typeof(PetDock.Hosting.IPackImporter))]
+
 // RFC-23 / 原规格 20 §3：插件日志面。插件写 `PluginLog.Info("...")`，归属由宿主开作用域决定。
 // 转发的是 core 里那唯一一份（与上面七个同一模式）：插件经 PetDock.Sdk 解析到的
 // 就是内核实际在用的类型，不是一份同签名的副本。

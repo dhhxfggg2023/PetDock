@@ -150,6 +150,16 @@ internal sealed partial class PetDataStore
         return ("user." + folder, folder, target);
     }
 
+    /// <summary>给导入器一个临时输出目录（位于 data/packs 下，不参与登记；调用方用完丢弃）。</summary>
+    public string CreateStagingDirectory(string prefix)
+    {
+        Directory.CreateDirectory(PacksDir);
+        string name = "." + prefix + "-" + Guid.NewGuid().ToString("N");
+        string path = Path.Combine(PacksDir, name);
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
     /// <summary>丢弃一次失败的暂存（导入校验没过时调用；只删本类刚建的目录）。</summary>
     public void Discard(string stagedPath)
     {

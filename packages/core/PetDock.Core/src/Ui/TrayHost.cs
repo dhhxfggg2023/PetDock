@@ -13,12 +13,11 @@ using PetDock.Core.Compositor;
 
 namespace PetDock.Core.Ui;
 
-/// <summary>托盘「宠物：<名称>」那一条：名字 + 四个命令（每条一个，命令由宿主按 id 路由）。</summary>
+/// <summary>托盘「宠物：<名称>」那一条：名字 + 三个命令（移动/暂停/移除，由宿主按 id 路由）。</summary>
 internal sealed record PetMenuItem(
     string Title,
     UiCommand Move,
     UiCommand Pause,
-    UiCommand Hide,
     UiCommand Remove);
 
 /// <summary>
@@ -32,18 +31,15 @@ internal sealed class TrayHost : IDisposable
     /// </summary>
     internal static readonly string[] ItemIds =
     {
-        "toggle-all",
         "panel",
-        "pet",
-        "pause-hooks",
         "exit",
     };
 
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu;
-    private readonly ToolStripMenuItem _toggleAll;
+    private readonly System.Windows.Forms.Timer _menuWatch;
+    private bool _menuArmed;
     private readonly ToolStripMenuItem _panelItem;
-    private readonly ToolStripMenuItem _pauseHooks;
     private readonly ToolStripMenuItem _exitItem;
     private readonly List<ToolStripMenuItem> _petItems = new();
     private IReadOnlyList<PetMenuItem> _pets = Array.Empty<PetMenuItem>();
@@ -51,40 +47,32 @@ internal sealed class TrayHost : IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// 每条宠物子菜单的四个子项**按显示顺序**对应的文案键。键是契约（判据断言它），
-    /// 文案在 `assets/i18n`（RFC-42）。顺序照 原规格 18 §1：移动 → 暂停 → 隐藏 → 移除。
+    /// 每条宠物子菜单的三个子项**按显示顺序**对应的文案键。键是契约（判据断言它），
+    /// 文案在 `assets/i18n`（RFC-42）。顺序：移动 → 暂停 → 移除。
     /// </summary>
     internal static readonly string[] PetChildKeys =
     {
         "ui.tray.pet.move",
         "ui.tray.pet.pause",
-        "ui.tray.pet.hide",
         "ui.tray.pet.remove",
     };
 
     public TrayHost(
         IReadOnlyList<PetMenuItem> pets,
-        UiCommand toggleAll,
         UiCommand openPanel,
-        UiCommand pauseHooks,
         UiCommand exit)
     {
         _menu = new ContextMenuStrip();
 
-        _toggleAll = new ToolStripMenuItem(I18n.Get("ui.tray.toggleAll"), null, (_, _) => toggleAll())
-        {
-            Name = "toggle-all",
-        };
+        // 宠物窗是 NOACTIVATE 分层窗，菜单拿不到激活，点空白处不会自动收起来。
+        // 菜单开着时用 50ms 的 UI 计时器看鼠标：按下且在菜单外就自己关掉。
+        _menuWatch = new System.Windows.Forms.Timer { Interval = 50 };
+        _menuWatch.Tick += (_, _) => CloseMenuIfClickedOutside();
+        _menu.Closed += (_, _) => _menuWatch.Stop();
+
         _panelItem = new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => openPanel())
         {
             Name = "panel",
-        };
-
-        // 强制项：原规格 18 §1「必须存在且不可隐藏」。Enabled 由宿主状态决定，
-        // 但 Visible 恒为 true——任何一条代码路径都不许把它藏起来。
-        _pauseHooks = new ToolStripMenuItem(I18n.Get("ui.tray.pauseHooks"), null, (_, _) => pauseHooks())
-        {
-            Name = "pause-hooks",
         };
 
         _exitItem = new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => exit())
@@ -94,10 +82,7 @@ internal sealed class TrayHost : IDisposable
 
         _menu.Items.AddRange(new ToolStripItem[]
         {
-            _toggleAll,
             _panelItem,
-            new ToolStripSeparator(),
-            _pauseHooks,
             new ToolStripSeparator(),
             _exitItem,
         });
@@ -140,7 +125,7 @@ internal sealed class TrayHost : IDisposable
 
     /// <summary>
     /// 重建宠物那几条子菜单（导入追加、移除之后调用）。插在「主控面板」与分隔线之间，
-    /// 顺序与 原规格 18 §1 一致：显示/隐藏全部 → 主控面板 → 每宠物一条 → 暂停钩子 → 退出。
+    /// 顺序：主控面板 → 每宠物一条 → 退出。
     /// </summary>
     public void SetPets(IReadOnlyList<PetMenuItem> pets)
     {
@@ -153,7 +138,7 @@ internal sealed class TrayHost : IDisposable
 
         _petItems.Clear();
 
-        int insertAt = 2; // 固定项 toggle-all / panel 之后
+        int insertAt = 1; // 「主控面板」之后
         for (int i = 0; i < pets.Count; i++)
         {
             PetMenuItem pet = pets[i];
@@ -168,7 +153,6 @@ internal sealed class TrayHost : IDisposable
                 {
                     0 => pet.Move,
                     1 => pet.Pause,
-                    2 => pet.Hide,
                     _ => pet.Remove,
                 };
                 item.DropDownItems.Add(new ToolStripMenuItem(I18n.Get(PetChildKeys[child]), null, (_, _) => command()));
@@ -186,9 +170,7 @@ internal sealed class TrayHost : IDisposable
     /// </summary>
     public void ReloadLanguage()
     {
-        _toggleAll.Text = I18n.Get("ui.tray.toggleAll");
         _panelItem.Text = I18n.Get("ui.tray.panel");
-        _pauseHooks.Text = I18n.Get("ui.tray.pauseHooks");
         _exitItem.Text = I18n.Get("ui.tray.exit");
         SetPets(_pets);
     }
@@ -196,9 +178,7 @@ internal sealed class TrayHost : IDisposable
     /// <summary>固定菜单项当前的显示文字（判据断言换语言后它真的变了）。</summary>
     public string FixedItemText(string id) => id switch
     {
-        "toggle-all" => _toggleAll.Text ?? string.Empty,
         "panel" => _panelItem.Text ?? string.Empty,
-        "pause-hooks" => _pauseHooks.Text ?? string.Empty,
         "exit" => _exitItem.Text ?? string.Empty,
         _ => string.Empty,
     };
@@ -221,9 +201,43 @@ internal sealed class TrayHost : IDisposable
         }
 
         _menu.Show(screen);
+        _menuArmed = false;
+        _menuWatch.Start();
     }
 
-    /// <summary>第 <paramref name="index"/> 条宠物子菜单的四个子项文案（自检用；顺序即显示顺序）。</summary>
+    /// <summary>菜单外按下鼠标就关闭菜单（托盘图标那条由系统菜单自己处理）。</summary>
+    private void CloseMenuIfClickedOutside()
+    {
+        if (!_menu.Visible)
+        {
+            _menuWatch.Stop();
+            return;
+        }
+
+        if (!_menuArmed)
+        {
+            // 打开菜单的那次右键还没松开；等它松开之后再开始看「点外面」。
+            if (Control.MouseButtons == MouseButtons.None)
+            {
+                _menuArmed = true;
+            }
+
+            return;
+        }
+
+        if (Control.MouseButtons == MouseButtons.None)
+        {
+            return;
+        }
+
+        if (!_menu.Bounds.Contains(Cursor.Position))
+        {
+            _menu.Close();
+            _menuWatch.Stop();
+        }
+    }
+
+    /// <summary>第 <paramref name="index"/> 条宠物子菜单的三个子项文案（自检用；顺序即显示顺序）。</summary>
     public IReadOnlyList<string> PetChildTitles(int index)
     {
         var titles = new List<string>();
@@ -296,14 +310,6 @@ internal sealed class TrayHost : IDisposable
         }
     }
 
-    /// <summary>
-    /// 强制项是否处于「可显示」状态——自检断言它永远为 true。
-    /// 用 Available 而不是 Visible：Visible 是运行时状态，宿主菜单从未 Show 过时恒为 false，
-    /// 断言它等于断言「菜单打开过」；Available 才是控制该条目能否出现的开关
-    /// （原规格 18 §1：暂停全局输入钩子是强制项，不得随宠物数或状态消失）。
-    /// </summary>
-    public bool HookItemVisible => _pauseHooks.Available;
-
     /// <summary>托盘提示文字随宠物数变化（原规格 18 §1）。</summary>
     public void SetPetCount(int count) => _icon.Text = I18n.Get("ui.tray.title.running", count);
 
@@ -311,7 +317,7 @@ internal sealed class TrayHost : IDisposable
     /// 托盘图标：原规格 18 §1 指定 assets/icons/icon-32.png。找不到就用系统默认图标——
     /// 缺图标不该阻止程序启动，但也不能静默换成自造图标（那会让「发行前替换占位图」这条消失）。
     /// </summary>
-    private static Icon LoadIcon()
+    internal static Icon LoadIcon()
     {
         try
         {
@@ -364,6 +370,7 @@ internal sealed class TrayHost : IDisposable
         _disposed = true;
         _icon.Visible = false;
         _icon.Dispose();
+        _menuWatch.Dispose();
         _menu.Dispose();
     }
 }

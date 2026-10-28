@@ -1,6 +1,6 @@
 {
   "id": "com.petdock.brainnull",
-  "name": "Null Brain (PetDock built-in)",
+  "name": "空白行为层（内置）",
   "version": "0.1.0",
   "api": {
     "major": 1,

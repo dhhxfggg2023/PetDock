@@ -128,16 +128,22 @@ internal static class UiShots
     private static UiSnapshot SampleSnapshot() => new(
         new[]
         {
-            new PetLine("sample-pet", "示例宠物", "assets/sample-pet", "idle", "51 MB"),
-            new PetLine("sample-pet-2", "示例宠物 2", "assets/sample-pet", "walk", "51 MB"),
+            new PetLine("sample-pet", "示例宠物", I18n.Get("cp.pets.source.builtin"),
+                I18n.Get("host.roster.state.running"), "51 MB"),
+            new PetLine("sample-pet-2", "示例宠物 2", I18n.Get("cp.pets.source.builtin"),
+                I18n.Get("host.roster.state.running"), "51 MB"),
         },
         new[]
         {
-            new PluginLine("petdock.brain.default", "默认行为层", "0.1.0", 0, "loaded", 0, "built-in"),
-            new PluginLine("petdock.state.null", "空状态层", "0.1.0", 0, "loaded", 0, "built-in"),
-            new PluginLine("petdock.ui.default", "默认界面", "0.1.0", 0, "loaded", 0, "built-in",
+            new PluginLine("petdock.brain.default", "默认行为层", "0.1.0", 0,
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin")),
+            new PluginLine("petdock.state.null", "空状态层", "0.1.0", 0,
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin")),
+            new PluginLine("petdock.ui.default", "默认界面", "0.1.0", 0,
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin"),
                 Essential: true),
-            new PluginLine("petdock.sample.petimage", "示例图片宠物", "0.1.0", 0, "loaded", 0, "built-in"),
+            new PluginLine("petdock.sample.petimage", "示例图片宠物", "0.1.0", 0,
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin")),
         },
         new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque"));
 }

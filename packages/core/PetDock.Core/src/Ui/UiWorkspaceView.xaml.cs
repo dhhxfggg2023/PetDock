@@ -34,6 +34,7 @@ public partial class UiWorkspaceView : UserControl
             .ToArray();
 
         InitializeComponent();
+        BrandSub.Text = I18n.Get("cp.brand.tagline");
         ApplyPalette();
         BuildNav();
 

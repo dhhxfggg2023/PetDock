@@ -32,37 +32,34 @@ internal static class TrayPetChecks
         CatalogRemoval(check);
     }
 
-    /// <summary>三只宠物 ⇒ 三条子菜单（pet-1..pet-3），每条四个子项、顺序照 §1。</summary>
+    /// <summary>三只宠物 ⇒ 三条子菜单（pet-1..pet-3），每条三个子项（移动/暂停/移除）。</summary>
     private static void TrayPerItem(Check check)
     {
         UiCommand noop = () => { };
         var pets = new List<PetMenuItem>
         {
-            new("alpha", noop, noop, noop, noop),
-            new("beta", noop, noop, noop, noop),
-            new("gamma", noop, noop, noop, noop),
+            new("alpha", noop, noop, noop),
+            new("beta", noop, noop, noop),
+            new("gamma", noop, noop, noop),
         };
 
-        using var tray = new TrayHost(pets, noop, noop, noop, noop);
+        using var tray = new TrayHost(pets, noop, noop);
         IReadOnlyList<string> order = tray.ItemOrder;
-        bool orderOk = order.Count == 7
-            && order[0] == "toggle-all"
-            && order[1] == "panel"
-            && order[2] == "pet-1"
-            && order[3] == "pet-2"
-            && order[4] == "pet-3"
-            && order[5] == "pause-hooks"
-            && order[6] == "exit";
+        bool orderOk = order.Count == 5
+            && order[0] == "panel"
+            && order[1] == "pet-1"
+            && order[2] == "pet-2"
+            && order[3] == "pet-3"
+            && order[4] == "exit";
 
         IReadOnlyList<string> children = tray.PetChildTitles(1);
         // 断言**键**而不是文案：文案搬进 assets/i18n 之后，断言中文的判据红的是判据（RFC-42 §3.4）。
         IReadOnlyList<string> keys = tray.PetChildKeyList(1);
-        bool childrenOk = children.Count == 4
-            && keys.Count == 4
+        bool childrenOk = children.Count == 3
+            && keys.Count == 3
             && keys[0] == "ui.tray.pet.move"
             && keys[1] == "ui.tray.pet.pause"
-            && keys[2] == "ui.tray.pet.hide"
-            && keys[3] == "ui.tray.pet.remove";
+            && keys[2] == "ui.tray.pet.remove";
 
         check("ui-tray-pet-per-item", orderOk && childrenOk && tray.PetItemCount == 3,
             $"items={string.Join(",", order)} keys={string.Join("/", keys)} children={string.Join("/", children)} count={tray.PetItemCount}");
@@ -76,13 +73,13 @@ internal static class TrayPetChecks
         int gamma = 0;
         var pets = new List<PetMenuItem>
         {
-            new("alpha", () => alpha++, () => alpha++, () => alpha++, () => alpha++),
-            new("beta", () => beta++, () => beta++, () => beta++, () => beta++),
-            new("gamma", () => gamma++, () => gamma++, () => gamma++, () => gamma++),
+            new("alpha", () => alpha++, () => alpha++, () => alpha++),
+            new("beta", () => beta++, () => beta++, () => beta++),
+            new("gamma", () => gamma++, () => gamma++, () => gamma++),
         };
 
-        using var tray = new TrayHost(pets, () => { }, () => { }, () => { }, () => { });
-        bool clicked = tray.ClickPetChild(1, 2); // beta 的「隐藏」
+        using var tray = new TrayHost(pets, () => { }, () => { });
+        bool clicked = tray.ClickPetChild(1, 2); // beta 的「移除」
         bool onlyBeta = clicked && alpha == 0 && beta == 1 && gamma == 0;
         check("ui-tray-pet-command-targets-own", onlyBeta,
             $"clicked={clicked} alpha={alpha} beta={beta} gamma={gamma}");
@@ -100,9 +97,7 @@ internal static class TrayPetChecks
             I18n.Load("zh-CN");
             UiCommand noop = () => { };
             using var tray = new TrayHost(
-                new List<PetMenuItem> { new("alpha", noop, noop, noop, noop) },
-                noop,
-                noop,
+                new List<PetMenuItem> { new("alpha", noop, noop, noop) },
                 noop,
                 noop);
 

@@ -1,6 +1,6 @@
 {
   "id": "com.petdock.spriteseq",
-  "name": "Sprite Sequence Presenter (PetDock built-in)",
+  "name": "逐帧序列绘制（内置）",
   "version": "0.1.0",
   "api": {
     "major": 1,

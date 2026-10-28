@@ -34,6 +34,7 @@ internal sealed class ControlPanel : Form
     public ControlPanel(IUiPageContext context, IReadOnlyList<IUiPage> pages, bool showWindow = true)
     {
         Text = I18n.Get("cp.title");
+        Icon = TrayHost.LoadIcon();
         StartPosition = FormStartPosition.CenterScreen;
         Theme.Apply(this);
         Width = Theme.Dip(this, 1040);
