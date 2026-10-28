@@ -121,7 +121,7 @@
   "cp.plugins.install.failed": "Install failed: {0}",
   "cp.plugins.remove": "Delete plugin",
   "cp.plugins.remove.confirmTitle": "Delete plugin",
-  "cp.plugins.remove.confirm": "Delete \"{0}\"? Its plugin folder will be removed; this cannot be undone.",
+  "cp.plugins.remove.confirm": "Delete \"{0}\"? Its folder is moved to plugins/.removed in the data folder, so you can take it back later.",
   "cp.plugins.remove.done": "Plugin deleted.",
   "cp.plugins.remove.unavailable": "Delete unavailable: the host does not manage a plugin folder.",
   "cp.plugins.remove.missing": "Plugin not found.",

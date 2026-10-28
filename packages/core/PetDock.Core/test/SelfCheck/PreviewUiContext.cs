@@ -50,6 +50,19 @@ internal sealed class PreviewUiContext : IUiPageContext
         LastStatusKind = UiStatusKind.Info;
     }
 
+    /// <summary>确认框的应答（判据默认放行；要验「取消路径」就把它设成 false）。</summary>
+    public bool ConfirmAnswer { get; set; } = true;
+
+    /// <summary>最后一次确认框的标题（判据断言页面确实问了，而不是直接动手）。</summary>
+    public string LastConfirmCaption { get; private set; } = string.Empty;
+
+    public bool Confirm(string text, string caption)
+    {
+        LastConfirmCaption = caption;
+        Commands.Add("confirm:" + caption);
+        return ConfirmAnswer;
+    }
+
     public string T(string key) => I18n.Get(key);
 
     public string T(string key, object arg0) => I18n.Get(key, arg0);

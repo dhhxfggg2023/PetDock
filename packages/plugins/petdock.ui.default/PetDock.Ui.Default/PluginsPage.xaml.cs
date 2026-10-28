@@ -187,13 +187,8 @@ public partial class PluginsPage : UserControl, IUiPage
             return;
         }
 
-        MessageBoxResult answer = System.Windows.MessageBox.Show(
-            Window.GetWindow(this),
-            _context.T("cp.plugins.remove.confirm", row.Name),
-            _context.T("cp.plugins.remove.confirmTitle"),
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-        if (answer != MessageBoxResult.OK)
+        // 走宿主自绘的置顶确认框：面板最大化时系统 MessageBox 会被压在宠物窗下面（看不见）。
+        if (!_context.Confirm(_context.T("cp.plugins.remove.confirm", row.Name), _context.T("cp.plugins.remove.confirmTitle")))
         {
             return;
         }

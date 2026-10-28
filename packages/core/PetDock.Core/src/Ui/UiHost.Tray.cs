@@ -51,7 +51,7 @@ internal sealed partial class UiHost
                 _pet is null ? I18n.Get("ui.tray.kernelFallback") : primaryId,
                 () => MovePetById(primaryId),
                 () => PausePetById(primaryId),
-                () => RemovePetById(primaryId)));
+                () => RemovePetByIdWithConfirm(primaryId)));
         }
 
         if (_petSet is not null)
@@ -63,7 +63,7 @@ internal sealed partial class UiHost
                     entry.Title,
                     () => MovePetById(id),
                     () => PausePetById(id),
-                    () => RemovePetById(id)));
+                    () => RemovePetByIdWithConfirm(id)));
             }
         }
 
@@ -160,6 +160,42 @@ internal sealed partial class UiHost
         {
             _pet.Resume("tray-resume");
         }
+    }
+
+    /// <summary>
+    /// 托盘「移除」：先问一句再动手。旧实现点一下就从桌上消失（主窗那只还要重启才真的卸载），
+    /// 而托盘菜单恰恰是最容易点错的地方 —— 没有确认就没有回头路。
+    /// </summary>
+    private void RemovePetByIdWithConfirm(string id)
+    {
+        string name = PetDisplayName(id);
+        if (!ConfirmDialog.Ask(I18n.Get("ui.tray.pet.removeConfirm", name), I18n.Get("ui.tray.pet.removeConfirmTitle")))
+        {
+            KernelLog.Write($"pet-remove-cancelled id={id}");
+            return;
+        }
+
+        RemovePetById(id);
+    }
+
+    /// <summary>这一只在界面上叫什么（主窗那只没有实例时用内核兜底文案）。</summary>
+    private string PetDisplayName(string id)
+    {
+        if (IsPrimary(id))
+        {
+            return _pet?.Id ?? I18n.Get("ui.tray.kernelFallback");
+        }
+
+        IReadOnlyList<PetWindowSet.Entry> entries = _petSet?.Entries() ?? System.Array.Empty<PetWindowSet.Entry>();
+        foreach (PetWindowSet.Entry entry in entries)
+        {
+            if (string.Equals(entry.Id, id, System.StringComparison.Ordinal))
+            {
+                return entry.Title;
+            }
+        }
+
+        return id;
     }
 
     /// <summary>

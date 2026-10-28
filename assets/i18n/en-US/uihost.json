@@ -8,6 +8,8 @@
   "ui.tray.kernelFallback": "(kernel fallback)",
   "ui.tray.exitConfirm": "Quit PetDock? Your pets will disappear from the desktop.",
   "ui.tray.exitConfirmTitle": "PetDock — Confirm quit",
+  "ui.tray.pet.removeConfirmTitle": "PetDock — Remove pet",
+  "ui.tray.pet.removeConfirm": "Remove \"{0}\" from the desktop? The pet-pack files stay in the data folder.",
   "ui.confirm.ok": "OK",
   "ui.confirm.cancel": "Cancel",
   "ui.workspace.empty.title": "No interface pages",

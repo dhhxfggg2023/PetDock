@@ -42,6 +42,8 @@ internal sealed partial class UiHost : IUiPageContext
         }
     }
 
+    bool IUiPageContext.Confirm(string text, string caption) => ConfirmDialog.Ask(text, caption);
+
     string IUiPageContext.T(string key) => I18n.Get(key);
 
     string IUiPageContext.T(string key, object arg0) => I18n.Get(key, arg0);

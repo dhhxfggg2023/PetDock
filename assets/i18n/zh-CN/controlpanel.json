@@ -121,7 +121,7 @@
   "cp.plugins.install.failed": "安装失败：{0}",
   "cp.plugins.remove": "删除选中插件",
   "cp.plugins.remove.confirmTitle": "删除插件",
-  "cp.plugins.remove.confirm": "确定删除「{0}」？插件目录会被移除，不可撤销。",
+  "cp.plugins.remove.confirm": "确定删除「{0}」？插件目录会被挪到数据目录的 plugins/.removed，需要时可以自己拿回来。",
   "cp.plugins.remove.done": "插件已删除。",
   "cp.plugins.remove.unavailable": "删除不可用：宿主没有接管插件目录。",
   "cp.plugins.remove.missing": "找不到这只插件。",

@@ -82,6 +82,12 @@ public interface IUiPageContext
     /// <summary>清掉状态栏（页面自己决定什么时候清，比如用户开始改输入）。</summary>
     void ClearStatus();
 
+    /// <summary>
+    /// 问一次「确定吗」。走宿主自绘的置顶确认框，不用系统 MessageBox：
+    /// 面板最大化时 MessageBox 会被压在宠物窗下面（真机取证见 Ui/PetDockDialog.cs）。
+    /// </summary>
+    bool Confirm(string text, string caption);
+
     /// <summary>取一条本地化文案；缺键返回键名本身（RFC-42 §3.2）。</summary>
     string T(string key);
 

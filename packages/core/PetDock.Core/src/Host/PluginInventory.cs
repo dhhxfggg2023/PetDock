@@ -6,6 +6,7 @@
 // 面板仍然只发意图，不自己动目录。
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using PetDock.Core.Compositor;
@@ -196,7 +197,7 @@ internal sealed class PluginInventory
         try
         {
             _host.Unload(pluginId).GetAwaiter().GetResult();
-            Directory.Delete(entry.Dir, recursive: true);
+            string trash = MoveToTrash(entry);
 
             if (_settings is not null)
             {
@@ -207,7 +208,7 @@ internal sealed class PluginInventory
                 });
             }
 
-            KernelLog.Write($"plugin-removed plugin={pluginId} dir={entry.Dir}");
+            KernelLog.Write($"plugin-removed plugin={pluginId} dir={entry.Dir} trash={trash}");
             return true;
         }
         catch (Exception ex)
@@ -215,6 +216,42 @@ internal sealed class PluginInventory
             error = $"{ex.GetType().Name}: {ex.Message}";
             KernelLog.Write($"plugin-remove-failed plugin={pluginId} {error}");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 删除 = 挪进 plugins/.removed/&lt;id&gt;-&lt;时间戳&gt;，不再 Directory.Delete 整棵树。
+    /// 一次误点不该把随程序发来的插件从盘上抹掉（没有重装入口，用户也找不回原文件）；
+    /// 扫描只认插件根下**直接**带清单的目录，.removed 里的这一层不会被当成插件再装一遍。
+    /// 跨卷时（仓库在 E:、数据在 C:）整棵树搬不过去，退回「复制 → 删源」。
+    /// </summary>
+    private string MoveToTrash(PluginEntry entry)
+    {
+        string stamp = DateTime.UtcNow.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture);
+        string trashRoot = Path.Combine(_userRoot, ".removed");
+        Directory.CreateDirectory(trashRoot);
+        string target = Path.Combine(trashRoot, entry.Id + "-" + stamp);
+        try
+        {
+            Directory.Move(entry.Dir, target);
+        }
+        catch (IOException)
+        {
+            CopyTree(entry.Dir, target);
+            Directory.Delete(entry.Dir, recursive: true);
+        }
+
+        return target;
+    }
+
+    private static void CopyTree(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            string destination = Path.Combine(target, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(file, destination, overwrite: true);
         }
     }
 

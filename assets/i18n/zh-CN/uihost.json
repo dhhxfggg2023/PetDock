@@ -8,6 +8,8 @@
   "ui.tray.kernelFallback": "(内核兜底)",
   "ui.tray.exitConfirm": "确定退出 PetDock？宠物会从桌面消失。",
   "ui.tray.exitConfirmTitle": "PetDock — 退出确认",
+  "ui.tray.pet.removeConfirmTitle": "PetDock — 移除宠物",
+  "ui.tray.pet.removeConfirm": "把「{0}」从桌面上移除？素材文件留在数据目录里，不会删除。",
   "ui.confirm.ok": "确定",
   "ui.confirm.cancel": "取消",
   "ui.workspace.empty.title": "没有可用的界面插件",
