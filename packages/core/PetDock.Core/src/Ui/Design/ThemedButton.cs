@@ -96,10 +96,12 @@ internal sealed class ThemedButton : Button
         Color ink;
         if (!Enabled)
         {
-            // 不可点：降成卡片底 + 暗字。不靠鼠标形状说「不能点」，也不像系统按钮那样整块发灰。
+            // 不可点：降成卡片底 + 最弱的字。不靠鼠标形状说「不能点」，
+            // 也不像系统按钮那样整块发灰；但必须和可点状态分得出来（2026-10-28 截图实测
+            // TextDim 与正文太接近，禁用按钮看起来仍能按）。
             fill = Theme.Surface;
             border = Theme.Line;
-            ink = Theme.TextDim;
+            ink = Theme.TextMuted;
         }
         else if (Primary)
         {

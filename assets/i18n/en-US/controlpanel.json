@@ -31,7 +31,7 @@
   "cp.plugins.disable": "Disable the selected plugin",
   "cp.plugins.enable": "Enable the selected plugin",
   "cp.plugins.disableHint": "The switch on the far right enables/disables a plugin: turning it off stops the plugin now and it will not load on the next start. Delete works for user-installed plugins only.",
-  "cp.plugins.empty": "No plugins loaded.",
+  "cp.plugins.empty": "No plugins. Click \"Install plugin…\" to choose a folder or zip.",
   "cp.plugins.count": "{0} plugin(s).",
   "cp.plugins.col.name": "Plugin",
   "cp.plugins.col.version": "Version",

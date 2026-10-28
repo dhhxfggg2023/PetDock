@@ -1863,6 +1863,21 @@
           "lines": 34
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28656,
+      "budget": 28800,
+      "note": "禁用按钮的暗字再降一档（净值 +2）：TextDim 与正文太接近，插件页/宠物页那几个「选中才可用」的按钮看起来仍能按；改用 TextMuted 并把原因写进注释。",
+      "attribution": [
+        {
+          "slice": "禁用态按钮文字对比度",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/ThemedButton.cs"
+          ],
+          "lines": 2
+        }
+      ]
     }
   ]
 }
