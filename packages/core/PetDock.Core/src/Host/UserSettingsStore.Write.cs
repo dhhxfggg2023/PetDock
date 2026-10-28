@@ -114,6 +114,12 @@ internal sealed partial class UserSettingsStore
             };
         }
 
+        // 宠物清单初始化标记：只在 true 时写键（false/缺失都表示「下次启动还要初始化」）。
+        if (value.PetCatalogInitialized == true)
+        {
+            doc["petCatalogInitialized"] = true;
+        }
+
         // 宠物窗口尺寸：128 是默认值，不写键；只有用户选过别的尺寸才落盘。
         if (value.PetSize is int petSize && petSize != UserSettings.DefaultPetSize)
         {

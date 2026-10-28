@@ -12,6 +12,12 @@
             <Button x:Name="ImportButton" DockPanel.Dock="Right"
                     Style="{DynamicResource Pd.PrimaryButton}"
                     Click="OnImportClick" />
+            <Button x:Name="DeleteButton" DockPanel.Dock="Right" Margin="0,0,8,0"
+                    Style="{DynamicResource Pd.DangerButton}"
+                    Click="OnDeleteClick" IsEnabled="False" />
+            <Button x:Name="DuplicateButton" DockPanel.Dock="Right" Margin="0,0,8,0"
+                    Style="{DynamicResource Pd.SecondaryButton}"
+                    Click="OnDuplicateClick" IsEnabled="False" />
             <TextBlock x:Name="CountText" Style="{DynamicResource Pd.Dim}"
                        VerticalAlignment="Center" />
         </DockPanel>

@@ -62,7 +62,8 @@ internal sealed partial class UiHost
             _host,
             SettingsView(),
             _inventory,
-            BuildExtraPetLines());
+            BuildExtraPetLines(),
+            _primaryRemoved ? null : _store?.ReadActive()?.InstanceId);
 
     /// <summary>
     /// 设置页的当前状态（读数来源：设置文件 + 注册表）。

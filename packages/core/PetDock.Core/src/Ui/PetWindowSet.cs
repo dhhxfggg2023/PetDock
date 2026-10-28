@@ -184,7 +184,7 @@ internal sealed partial class PetWindowSet : IDisposable
     /// 决定了失败能否回滚），这里只补窗口、帧源句柄、鼠标接线与帧循环。
     /// 失败返回 false 且不留残骸 —— 调用方据此退回替换语义，桌面上原来那几只不受影响。
     /// </summary>
-    public bool TryAdd(PetInstance instance, string packPath)
+    public bool TryAdd(PetInstance instance, string packPath, string? catalogId = null)
     {
         if (_disposed || instance is null)
         {
@@ -203,7 +203,8 @@ internal sealed partial class PetWindowSet : IDisposable
             FrameComposition.WireWindow(window, instance);
 
             var slot = new Slot(
-                instance, packPath, window, source, new ResidentFrameLoop(window), CatalogIdOf(packPath), instance.DisplayName);
+                instance, packPath, window, source, new ResidentFrameLoop(window),
+                catalogId ?? CatalogIdOf(packPath), instance.DisplayName);
             Add(slot);
 
             if (_started)

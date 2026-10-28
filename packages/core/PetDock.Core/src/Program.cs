@@ -164,6 +164,18 @@ internal static partial class Program
         // 必须在装载之前读 —— 「重启生效」的事实源就是这份设置。
         PetDataStore dataStore = PetDataStore.Resolve();
         UserSettings startupSettings = new UserSettingsStore(dataStore.Root).Load();
+
+        // 首次运行：把自带的会动示例宠物装进清单。装进去之后它和导入的宠物同一条路：
+        // 有 id、能多开、能删除；不再是「每次启动都重建、删不掉」的内置窗口。
+        I18n.Load(startupSettings.Language);
+        bool catalogReady = startupSettings.PetCatalogInitialized == true;
+        if (probe is null && !catalogReady)
+        {
+            catalogReady = EnsurePetCatalog(dataStore, startupSettings);
+        }
+
+        // 清单初始化过、且现在一只不剩 = 用户真的把宠物删光了：不要再重建内置默认宠物。
+        bool noDefaultPet = probe is null && catalogReady && dataStore.ReadPets().Count == 0;
         if (startupSettings.DisabledPlugins is { Count: > 0 } disabledIds)
         {
             KernelLog.Write($"startup-plugins-disabled count={disabledIds.Count}");
@@ -227,7 +239,8 @@ internal static partial class Program
             out SwappableFrameSource? frames,
             startupSettings.DisabledPlugins,
             startupSettings.EnabledPlugins,
-            respectStartupPolicy: true);
+            respectStartupPolicy: true,
+            allowDefaultPet: !noDefaultPet);
         ComposeOutcome? composed = Composition;
 
         // 恢复上次导入的宠物（RFC-15 §3.4 的清单里记着「当前选中哪一只」）。
@@ -276,7 +289,7 @@ internal static partial class Program
         // 到环形缓冲，并在摘要里写明「不是全量」。
         diagnostics.Trail = auditTrail;
 
-        var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore, diagnostics);
+        var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore, diagnostics, startHidden: noDefaultPet);
 
         // 帧循环是 UiHost 建的，诊断服务比它先存在 —— 帧读数只能事后回填（RFC-17 §3.2）。
         diagnostics.FrameLoop = host.Loop;

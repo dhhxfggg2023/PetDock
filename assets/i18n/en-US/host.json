@@ -81,5 +81,7 @@
   "host.startup.err.no-exe": "Cannot find the path of the current program, so the Windows startup entry was not set.",
   "host.startup.err.write-failed": "Writing the startup entry failed: {0}",
   "host.startup.err.remove-failed": "Removing the startup entry failed: {0}",
-  "host.settings.start-with-windows": "(see registry)"
+  "host.settings.start-with-windows": "(see registry)",
+  "host.pets.err.no-catalog": "The pet catalog is unreadable.",
+  "host.pets.err.not-found": "That pet is not in the catalog."
 }

@@ -80,6 +80,18 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    public string? DuplicatePet(string petId)
+    {
+        Commands.Add("duplicate-pet:" + petId);
+        return null;
+    }
+
+    public string? DeletePet(string petId)
+    {
+        Commands.Add("delete-pet:" + petId);
+        return null;
+    }
+
     public void AuthorizePlugin(string pluginId) => Commands.Add("authorize:" + pluginId);
 
     public void TogglePluginDisabled(string pluginId) => Commands.Add("toggle:" + pluginId);

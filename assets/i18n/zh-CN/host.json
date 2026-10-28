@@ -81,5 +81,7 @@
   "host.startup.err.no-exe": "找不到当前程序的路径，未能设置开机自启。",
   "host.startup.err.write-failed": "写入开机启动项失败：{0}",
   "host.startup.err.remove-failed": "移除开机启动项失败：{0}",
-  "host.settings.start-with-windows": "(见注册表)"
+  "host.settings.start-with-windows": "(见注册表)",
+  "host.pets.err.no-catalog": "宠物清单不可读。",
+  "host.pets.err.not-found": "清单里找不到这只宠物。"
 }

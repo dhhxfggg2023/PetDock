@@ -23,6 +23,7 @@ internal static class FirstUseChecks
             check("ui-settings-pet-card", false, "root=missing");
             check("ui-settings-pet-size", false, "root=missing");
             check("ui-settings-a11y", false, "root=missing");
+            check("ui-pets-duplicate-delete", false, "root=missing");
             return;
         }
 
@@ -82,6 +83,42 @@ internal static class FirstUseChecks
                 && !string.IsNullOrEmpty(AutomationProperties.GetName(small));
             check("ui-settings-a11y", a11y,
                 $"large={AutomationProperties.GetName(large!)} small={AutomationProperties.GetName(small!)}");
+
+            // 宠物页：选中一行之后「多开一只 / 删除选中」要能点，并且命令真的带着这一行的 id。
+            var petsContext = new PreviewUiContext(new UiSnapshot(
+                new[] { new PetLine("user.alpha", "Alpha", "已导入", "运行中", "1 MB") },
+                Array.Empty<PluginLine>(),
+                SettingsView.Default));
+            IUiPage? petsPage = UiPluginCatalog.Load(root, petsContext)
+                .SelectMany(plugin => plugin.CreatePages(petsContext))
+                .FirstOrDefault(page => string.Equals(page.Id, "pets", StringComparison.Ordinal));
+            FrameworkElement? petsView = petsPage?.CreateView();
+            var petRows = petsView?.FindName("Rows") as System.Windows.Controls.ListBox;
+            var duplicate = petsView?.FindName("DuplicateButton") as System.Windows.Controls.Button;
+            var delete = petsView?.FindName("DeleteButton") as System.Windows.Controls.Button;
+            if (petRows is not null)
+            {
+                petRows.SelectedIndex = 0;
+            }
+
+            bool selected = duplicate?.IsEnabled == true && delete?.IsEnabled == true;
+            if (duplicate is not null)
+            {
+                duplicate.RaiseEvent(new RoutedEventArgs(
+                    System.Windows.Controls.Primitives.ButtonBase.ClickEvent, duplicate));
+            }
+
+            if (delete is not null)
+            {
+                delete.RaiseEvent(new RoutedEventArgs(
+                    System.Windows.Controls.Primitives.ButtonBase.ClickEvent, delete));
+            }
+
+            bool commandsWired = selected
+                && petsContext.Commands.Contains("duplicate-pet:user.alpha")
+                && petsContext.Commands.Contains("delete-pet:user.alpha");
+            check("ui-pets-duplicate-delete", commandsWired,
+                $"selected={selected} commands={string.Join(",", petsContext.Commands)}");
         }
         catch (Exception error)
         {
@@ -90,6 +127,7 @@ internal static class FirstUseChecks
             check("ui-settings-pet-card", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-pet-size", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-a11y", false, error.GetType().Name + ": " + error.Message);
+            check("ui-pets-duplicate-delete", false, error.GetType().Name + ": " + error.Message);
         }
     }
 }

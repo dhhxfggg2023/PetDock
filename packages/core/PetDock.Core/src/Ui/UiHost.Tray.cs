@@ -46,7 +46,7 @@ internal sealed partial class UiHost
 
         if (!_primaryRemoved)
         {
-            string primaryId = _pet?.Id ?? PrimaryPetId;
+            string primaryId = _store?.ReadActive()?.InstanceId ?? _pet?.Id ?? PrimaryPetId;
             items.Add(new PetMenuItem(
                 _pet is null ? I18n.Get("ui.tray.kernelFallback") : _pet.DisplayName,
                 () => MovePetById(primaryId),
@@ -210,8 +210,8 @@ internal sealed partial class UiHost
         {
             _primaryRemoved = true;
             _loop.Hide();
-            _store?.RemoveFromCatalog(_pet?.Id ?? string.Empty);
-            KernelLog.Write($"pet-remove-primary id={_pet?.Id ?? "(none)"} deferred=restart");
+            _store?.RemoveFromCatalog(_store.ReadActive()?.InstanceId ?? _pet?.Id ?? string.Empty);
+            KernelLog.Write($"pet-remove-primary id={id} deferred=restart");
             RefreshTrayPets();
             return;
         }
@@ -232,8 +232,34 @@ internal sealed partial class UiHost
         _tray.SetPetCount(LivePetCount());
     }
 
+    /// <summary>
+    /// 把主窗那只重新摆上桌（用户删光宠物后第一次导入/恢复时用）。
+    /// 只负责「显示 + 起泵 + 重建托盘」，不重建实例——实例已由导入编排建好。
+    /// </summary>
+    private void ShowPrimaryPet()
+    {
+        if (!_primaryRemoved)
+        {
+            return;
+        }
+
+        _primaryRemoved = false;
+        if (_petShown)
+        {
+            _loop.Start();
+        }
+
+        RefreshTrayPets();
+    }
+
+    /// <summary>
+    /// 这个 id 是不是主窗那只。比较两套 id：实例 id（旧托盘/内部路由）与清单 id（面板行）。
+    /// 两者在多开之后不再相等，只认其中一个会让「删除主窗那只」落到「找不到」。
+    /// </summary>
     private bool IsPrimary(string id) =>
-        !_primaryRemoved && string.Equals(id, _pet?.Id ?? PrimaryPetId, System.StringComparison.Ordinal);
+        !_primaryRemoved
+        && (string.Equals(id, _pet?.Id ?? PrimaryPetId, System.StringComparison.Ordinal)
+            || string.Equals(id, _store?.ReadActive()?.InstanceId, System.StringComparison.Ordinal));
 
     /// <summary>
     /// 退出确认（原规格 18 §1：退出是固定项，但要有一次确认）。

@@ -26,7 +26,8 @@ internal static partial class Program
         out SwappableFrameSource? frames,
         IReadOnlyCollection<string>? disabledPlugins = null,
         IReadOnlyCollection<string>? enabledPlugins = null,
-        bool respectStartupPolicy = false)
+        bool respectStartupPolicy = false,
+        bool allowDefaultPet = true)
     {
         ComposeOutcome outcome = FrameComposition.Compose(
             phase,
@@ -34,7 +35,8 @@ internal static partial class Program
             host,
             disabledPlugins,
             enabledPlugins,
-            respectStartupPolicy);
+            respectStartupPolicy,
+            allowDefaultPet);
         if (outcome.Instance is not null && host is not null)
         {
             outcome.Instance.SuspendPort = FrameComposition.SuspendPortFor(host);

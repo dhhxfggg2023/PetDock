@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 29400,
+  "budget": 29800,
   "history": [
     {
       "date": "2026-10-18",
@@ -2094,6 +2094,37 @@
             "packages/core/PetDock.Core/src/Host/PetInstance.cs"
           ],
           "lines": 80
+        }
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 29697,
+      "budget": 29800,
+      "note": "第七轮（用户：默认用会动的示例宠物、宠物要能删除、同一个也能多开）：首次运行把 assets/sample-pet 复制进数据区并登记为示例宠物（petCatalogInitialized 一次性标记，删光后不再自动装回）；宠物页新增「多开一只 / 删除选中」，多开只是在清单里加一条指向同一目录的条目（#2/#3），删除最后一个引用才删目录；主窗/槽位命令改用清单 id，修掉多开之后实例 id 撞车；删光宠物后启动不再造内置默认宠物（UiHost 可 startHidden）。实测 29285 → 29697（+412）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "首次运行示例宠物入清单 + 多开/删除 + 清单 id 路由 + 无默认宠物启动",
+          "files": [
+            "packages/core/PetDock.Core/src/Program.Pets.cs",
+            "packages/core/PetDock.Core/src/Program.cs",
+            "packages/core/PetDock.Core/src/Program.Compose.cs",
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs",
+            "packages/core/PetDock.Core/src/Host/PetDataStore.Catalog.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.Write.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.Commands.cs"
+          ],
+          "lines": 412
         }
       ]
     }

@@ -203,6 +203,15 @@ internal sealed partial class UserSettingsStore
                 }
             }
 
+            // 宠物清单是否已初始化（2026-10-28 第七轮）：首次运行把示例宠物装进清单，
+            // 之后即使用户把宠物全删了也不自动装回来。缺失 = 还没初始化过。
+            bool? petCatalogInitialized = null;
+            if (obj["petCatalogInitialized"] is JsonValue initialized
+                && initialized.TryGetValue(out bool initializedValue))
+            {
+                petCatalogInitialized = initializedValue;
+            }
+
             // 宠物窗口尺寸（2026-10-28）：越界值由 Clamped() 拉回，坏值当没设过。
             int? petSize = null;
             if (obj["petSize"] is JsonNode sizeNode)
@@ -219,7 +228,7 @@ internal sealed partial class UserSettingsStore
 
             return new UserSettings(
                 period, language, onboarding, petPosition, petPositions,
-                disabledPlugins, material, themeMode, enabledPlugins, petSize).Clamped();
+                disabledPlugins, material, themeMode, enabledPlugins, petSize, petCatalogInitialized).Clamped();
         }
         catch (Exception error)
         {

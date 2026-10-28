@@ -57,7 +57,8 @@ internal static class FrameComposition
         PluginHost? host = null,
         IReadOnlyCollection<string>? disabledPlugins = null,
         IReadOnlyCollection<string>? enabledPlugins = null,
-        bool respectStartupPolicy = false)
+        bool respectStartupPolicy = false,
+        bool allowDefaultPet = true)
     {
         PetSurfaceRoster roster = PetSurfaceRoster.Discover(
             PluginHost.ProbePluginsRoot(),
@@ -75,6 +76,14 @@ internal static class FrameComposition
         // 这一行让「明明导入了两只却只看到一只」在日志里可查，而不是靠猜。
         KernelLog.Write(
             $"surface-catalog registered={PetDataStore.Resolve().ReadPets().Count} shown=1 reason=v1-single-window");
+
+        if (!allowDefaultPet)
+        {
+            // 用户已经把宠物删光了：只交出空内容 + 名册，导入仍然能用（名册是导入的前提），
+            // 但不再偷偷装配一只默认宠物。窗口留给内核纯色兜底，UiHost 会把它藏起来。
+            return new ComposeOutcome(
+                SolidFrameContent.KernelFallback(), string.Empty, "no-default-pet", null, roster);
+        }
 
         if (roster.View is not null)
         {

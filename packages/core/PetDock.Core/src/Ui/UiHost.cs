@@ -74,9 +74,11 @@ internal sealed partial class UiHost : ApplicationContext
         SwappableFrameSource? frames = null,
         UiConsentPort? consent = null,
         UserSettingsStore? settings = null,
-        DiagnosticService? diagnostics = null)
+        DiagnosticService? diagnostics = null,
+        bool startHidden = false)
     {
         _window = window;
+        _primaryRemoved = startHidden;
         _initialPet = pet;
         _pet = pet;
         _host = host;
@@ -106,7 +108,11 @@ internal sealed partial class UiHost : ApplicationContext
                 frames,
                 frames.Roster,
                 () => _pet,
-                next => _pet = next,
+                next =>
+                {
+                    _pet = next;
+                    ShowPrimaryPet();
+                },
                 frames.Roster.Importers);
 
             // RFC-37 §3.5 片 2：装了集合就追加，摆不进去就退回替换（单窗装配、自检）。
@@ -257,7 +263,10 @@ internal sealed partial class UiHost : ApplicationContext
         if (!_petShown)
         {
             _petShown = true;
-            _loop.Start();
+            if (!_primaryRemoved)
+            {
+                _loop.Start();
+            }
 
             // 托盘图标与宠物窗同一条理由（RFC-14 §2.2）：构造期没有消息泵，而外壳的 NIM_ADD
             // 握手要等本进程回消息——装载一忙就超时，图标静默地不进托盘（2026-10-26 实测）。

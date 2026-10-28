@@ -4,7 +4,7 @@
   "cp.tab.pets": "Pets",
   "cp.tab.plugins": "Plugins",
   "cp.tab.settings": "Settings",
-  "cp.page.pets.hint": "Import asset packs and see every pet running on this desktop",
+  "cp.page.pets.hint": "Import packs; select a pet to open another copy or delete it",
   "cp.page.plugins.hint": "Install, enable or delete plugins; disabling stops it now and skips it on the next launch",
   "cp.page.settings.hint": "Startup, language, pet, appearance, diagnostics and about",
   "cp.pets.name.builtin": "Built-in pet",
@@ -148,5 +148,18 @@
   "cp.plugins.toggle.essential": "This system plugin cannot be disabled.",
   "cp.plugins.toggle.failed": "Could not save the plugin switch: {0}",
   "cp.plugins.authorize.failed": "The permission review did not finish; see the log.",
-  "cp.plugins.authorize.unavailable": "Permission review is unavailable: the host has no consent port."
+  "cp.plugins.authorize.unavailable": "Permission review is unavailable: the host has no consent port.",
+  "cp.pets.defaultName": "Sample pet",
+  "cp.pets.copyName": "{0} ({1})",
+  "cp.pets.duplicate": "Open another",
+  "cp.pets.duplicate.done": "Opened another copy.",
+  "cp.pets.duplicate.missing": "That pet is no longer in the list.",
+  "cp.pets.duplicate.unavailable": "Opening another copy is unavailable: the host has no pet window set.",
+  "cp.pets.duplicate.failed": "Could not open another copy; see the log.",
+  "cp.pets.delete": "Delete selected",
+  "cp.pets.deleteConfirmTitle": "Delete pet",
+  "cp.pets.deleteConfirm": "Delete “{0}” permanently? Its files will be removed from the data folder; this cannot be undone.",
+  "cp.pets.delete.done": "Deleted.",
+  "cp.pets.delete.missing": "That pet is no longer in the list.",
+  "cp.pets.delete.failed": "Could not delete it; see the log."
 }

@@ -5,8 +5,10 @@
 // （实测 421 行）—— 拆出来的代价只是多一个 partial 文件头，收益是不必为了 21 行去抬 D-03c。
 using System;
 using System.Globalization;
+using System.IO;
 using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
+using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
@@ -62,4 +64,129 @@ internal sealed partial class PetDataStore
         KernelLog.Write($"data-store-remove-catalog id={instanceId} left={kept.Count} active={(string?)catalog["active"] ?? "(none)"}");
         return true;
     }
+    /// <summary>按清单 id 找一只（找不到或目录已消失时 null）。</summary>
+    public ActivePack? Find(string instanceId)
+    {
+        foreach (ActivePack pack in ReadPets())
+        {
+            if (string.Equals(pack.InstanceId, instanceId, StringComparison.Ordinal))
+            {
+                return pack;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 给同一只宠物再开一只（2026-10-28 第七轮「同一个桌宠也能多开」）：
+    /// 清单里新增一条**指向同一个素材目录**的条目，id 用 #2/#3 区分。
+    /// 不复制素材：多开的每只只是同一个包的另一个实例，删掉一只不影响其余几只。
+    /// </summary>
+    public ActivePack AddInstance(string baseId, string displayName)
+    {
+        JsonObject catalog = ReadCatalog();
+        if (catalog["pets"] is not JsonArray pets)
+        {
+            throw new InvalidOperationException(I18n.Get("host.pets.err.no-catalog"));
+        }
+
+        string? folder = null;
+        string stem = baseId;
+        foreach (JsonNode? item in pets)
+        {
+            if (item is not JsonObject entry)
+            {
+                continue;
+            }
+
+            string? id = (string?)entry["id"];
+            if (string.Equals(id, baseId, StringComparison.Ordinal))
+            {
+                folder = (string?)entry["folder"];
+                int hash = baseId.IndexOf('#', StringComparison.Ordinal);
+                if (hash > 0)
+                {
+                    stem = baseId[..hash];
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            throw new InvalidOperationException(I18n.Get("host.pets.err.not-found"));
+        }
+
+        int n = 2;
+        string nextId;
+        while (true)
+        {
+            nextId = stem + "#" + n.ToString(CultureInfo.InvariantCulture);
+            bool exists = false;
+            foreach (JsonNode? item in pets)
+            {
+                if (item is JsonObject entry && string.Equals((string?)entry["id"], nextId, StringComparison.Ordinal))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists)
+            {
+                break;
+            }
+
+            n++;
+        }
+
+        pets.Add(new JsonObject
+        {
+            ["id"] = nextId,
+            ["folder"] = folder,
+            ["name"] = string.IsNullOrWhiteSpace(displayName) ? nextId : displayName,
+        });
+        catalog["pets"] = pets;
+        catalog["agent_id"] = "host";
+        catalog["timestamp"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+        SaveCatalog(catalog);
+        KernelLog.Write($"data-store-add-instance id={nextId} folder={folder}");
+        return new ActivePack(nextId, Path.Combine(PacksDir, folder), displayName);
+    }
+
+    /// <summary>
+    /// 删除一只宠物的素材目录，但只在**没有任何清单条目再引用它**时动手。
+    /// 多开让「同一个目录」被多条条目引用；删第一只时删目录，其余几只就一起没了。
+    /// 只删数据区 packs/ 下的目录：assets/sample-pet 这类发行物素材永远不碰。
+    /// </summary>
+    public bool DeletePackIfUnreferenced(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        string full = Path.GetFullPath(path);
+        string packs = Path.GetFullPath(PacksDir);
+        if (!full.StartsWith(packs + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            KernelLog.Write($"data-store-delete-refused path={full} reason=outside-packs");
+            return false;
+        }
+
+        foreach (ActivePack pack in ReadPets())
+        {
+            if (string.Equals(Path.GetFullPath(pack.Path), full, StringComparison.OrdinalIgnoreCase))
+            {
+                KernelLog.Write($"data-store-delete-kept path={full} reason=still-referenced ref={pack.InstanceId}");
+                return false;
+            }
+        }
+
+        Discard(full);
+        bool gone = !Directory.Exists(full);
+        KernelLog.Write($"data-store-delete-pack path={full} gone={gone}");
+        return gone;
+    }
+
 }

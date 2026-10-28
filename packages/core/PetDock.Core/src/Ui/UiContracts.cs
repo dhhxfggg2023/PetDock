@@ -130,6 +130,12 @@ public interface IUiPageContext
     /// <summary>移除一只宠物（确认框由页面自己弹，宿主只执行）。</summary>
     string? RemovePet(string petId);
 
+    /// <summary>给同一只再开一个实例；返回 null = 成功。</summary>
+    string? DuplicatePet(string petId);
+
+    /// <summary>彻底删除一只（含最后一份素材）；返回 null = 成功。</summary>
+    string? DeletePet(string petId);
+
     /// <summary>对某个插件发起授权复核（弹窗在宿主侧）。</summary>
     void AuthorizePlugin(string pluginId);
 

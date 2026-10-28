@@ -20,9 +20,12 @@ internal sealed partial class PetWindowSet
     /// <summary>一条可以下命令的槽位（托盘的每一项就是它）。</summary>
     internal sealed record Entry(string Id, string Title, Slot Slot);
 
-    /// <summary>槽位的稳定 id：有实例就用实例 id，没有（自检形态）就用素材包目录名。</summary>
+    /// <summary>
+    /// 槽位的稳定 id：优先清单 id（多开之后实例 id 会撞车——同一前缀的每只都一样），
+    /// 其次实例 id，最后（自检形态）用素材包目录名。
+    /// </summary>
     public static string IdOf(Slot slot) =>
-        slot.Instance?.Id ?? Path.GetFileName(slot.PackPath);
+        slot.PetId ?? slot.Instance?.Id ?? Path.GetFileName(slot.PackPath);
 
     /// <summary>托盘上显示的名字：清单里的显示名；旧条目没有名字时才回落目录名。不编造宠物名。</summary>
     public static string TitleOf(Slot slot) =>

@@ -30,7 +30,8 @@ internal sealed record UserSettings(
     string? Material = null,
     string? ThemeMode = null,
     IReadOnlyList<string>? EnabledPlugins = null,
-    int? PetSize = null)
+    int? PetSize = null,
+    bool? PetCatalogInitialized = null)
 {
     /// <summary>清单版本（原规格 17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
@@ -96,6 +97,7 @@ internal sealed record UserSettings(
         + " plugins-enabled=" + (EnabledPlugins is null ? 0 : EnabledPlugins.Count)
         + " material=" + (Material ?? "opaque")
         + " pet-size=" + (PetSize?.ToString(CultureInfo.InvariantCulture) ?? "(default)")
+        + " pet-catalog=" + (PetCatalogInitialized == true ? "initialized" : "(new)")
         + " start-with-windows=" + I18n.Get("host.settings.start-with-windows");
 
     /// <summary>位置的读数写法；没存过就叫 none（不是 0,0 —— 两者语义不同，RFC-22 §4）。</summary>

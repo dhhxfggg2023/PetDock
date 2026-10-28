@@ -4,7 +4,7 @@
   "cp.tab.pets": "宠物",
   "cp.tab.plugins": "插件",
   "cp.tab.settings": "设置",
-  "cp.page.pets.hint": "导入素材包，查看桌面上在跑的全部宠物",
+  "cp.page.pets.hint": "导入素材包，选中后可多开一只或彻底删除",
   "cp.page.plugins.hint": "安装、启用或删除插件；停用会立即停下，下次启动不再装载",
   "cp.page.settings.hint": "开机自启、语言、宠物、外观、诊断与关于",
   "cp.pets.name.builtin": "内置宠物",
@@ -148,5 +148,18 @@
   "cp.plugins.toggle.essential": "这是系统必需插件，不能停用。",
   "cp.plugins.toggle.failed": "没能保存插件开关：{0}",
   "cp.plugins.authorize.failed": "授权复核没有完成，详情见日志。",
-  "cp.plugins.authorize.unavailable": "授权复核不可用：宿主没有接管。"
+  "cp.plugins.authorize.unavailable": "授权复核不可用：宿主没有接管。",
+  "cp.pets.defaultName": "示例宠物",
+  "cp.pets.copyName": "{0}（{1}）",
+  "cp.pets.duplicate": "多开一只",
+  "cp.pets.duplicate.done": "已多开一只。",
+  "cp.pets.duplicate.missing": "找不到这只宠物。",
+  "cp.pets.duplicate.unavailable": "多开不可用：宿主没有接管宠物集合。",
+  "cp.pets.duplicate.failed": "多开失败，详情见日志。",
+  "cp.pets.delete": "删除选中",
+  "cp.pets.deleteConfirmTitle": "删除宠物",
+  "cp.pets.deleteConfirm": "彻底删除「{0}」？素材文件会从数据目录删除，不能撤销。",
+  "cp.pets.delete.done": "已删除。",
+  "cp.pets.delete.missing": "找不到这只宠物。",
+  "cp.pets.delete.failed": "删除失败，详情见日志。"
 }

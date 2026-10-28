@@ -19,6 +19,8 @@ public partial class PetsPage : UserControl, IUiPage
         InitializeComponent();
 
         ImportButton.Content = context.T("cp.pets.import");
+        DuplicateButton.Content = context.T("cp.pets.duplicate");
+        DeleteButton.Content = context.T("cp.pets.delete");
         ColName.Text = context.T("cp.pets.col.name");
         ColSource.Text = context.T("cp.pets.col.source");
         ColState.Text = context.T("cp.pets.col.state");
@@ -27,6 +29,7 @@ public partial class PetsPage : UserControl, IUiPage
         EmptyNote.Text = string.Empty;
 
         Rows.ItemsSource = _rows;
+        Rows.SelectionChanged += (_, _) => UpdateActions();
         // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
         // 构造期只订阅一次是不够的——第二次进入页面后 Changed 就再也不会到达。
         Loaded += (_, _) =>
@@ -73,6 +76,67 @@ public partial class PetsPage : UserControl, IUiPage
         {
             Rows.SelectedItem = _rows.FirstOrDefault(row => string.Equals(row.Id, selected, StringComparison.Ordinal));
         }
+
+        UpdateActions();
+    }
+
+    private string? SelectedPetId => (Rows.SelectedItem as PetRow)?.Id;
+
+    private void UpdateActions()
+    {
+        bool has = SelectedPetId is not null;
+        DuplicateButton.IsEnabled = has;
+        DeleteButton.IsEnabled = has;
+    }
+
+    /// <summary>多开：同一个素材包再开一只（不复制磁盘素材）；失败走错误条。</summary>
+    private void OnDuplicateClick(object sender, RoutedEventArgs e)
+    {
+        string? id = SelectedPetId;
+        if (id is null)
+        {
+            return;
+        }
+
+        string? problem = _context.DuplicatePet(id);
+        if (problem is not null)
+        {
+            ShowError(problem);
+            return;
+        }
+
+        HideError();
+        _context.SetStatus(_context.T("cp.pets.duplicate.done"), UiStatusKind.Success);
+        _context.Refresh();
+    }
+
+    /// <summary>删除：先确认，再连素材目录一起删（最后一个引用才删）。</summary>
+    private void OnDeleteClick(object sender, RoutedEventArgs e)
+    {
+        string? id = SelectedPetId;
+        if (id is null)
+        {
+            return;
+        }
+
+        string name = (Rows.SelectedItem as PetRow)?.Name ?? id;
+        if (!_context.Confirm(
+            _context.T("cp.pets.deleteConfirm", name),
+            _context.T("cp.pets.deleteConfirmTitle")))
+        {
+            return;
+        }
+
+        string? problem = _context.DeletePet(id);
+        if (problem is not null)
+        {
+            ShowError(problem);
+            return;
+        }
+
+        HideError();
+        _context.SetStatus(_context.T("cp.pets.delete.done"), UiStatusKind.Success);
+        _context.Refresh();
     }
 
     private async void OnImportClick(object sender, RoutedEventArgs e)

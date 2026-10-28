@@ -77,6 +77,44 @@ internal static class PetSetChecks
         {
             TryDelete(root);
         }
+
+        MultiOpen(check);
+    }
+
+    /// <summary>多开 = 清单里两条指向同一目录；删一条不删素材，删最后一条才删目录。</summary>
+    private static void MultiOpen(Check check)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "petdock-multi-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        try
+        {
+            var store = new PetDataStore(root);
+            (string id, string folder, string path) = Stage(store, root, "alpha-pack");
+            store.RegisterActive(id, folder, "守岸人");
+
+            PetDataStore.ActivePack added = store.AddInstance(id, "守岸人（2）");
+            IReadOnlyList<PetDataStore.ActivePack> packs = store.ReadPets();
+            bool two = packs.Count == 2
+                && !string.Equals(packs[0].InstanceId, packs[1].InstanceId, StringComparison.Ordinal)
+                && string.Equals(packs[0].Path, packs[1].Path, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(added.Name, "守岸人（2）", StringComparison.Ordinal);
+
+            store.RemoveFromCatalog(id);
+            bool kept = !store.DeletePackIfUnreferenced(path) && Directory.Exists(path);
+
+            store.RemoveFromCatalog(added.InstanceId);
+            bool gone = store.DeletePackIfUnreferenced(path) && !Directory.Exists(path);
+
+            check("ui-catalog-multi-open", two && kept && gone,
+                $"two={two} kept={kept} gone={gone} ids={Describe(packs)}");
+        }
+        catch (Exception error)
+        {
+            check("ui-catalog-multi-open", false, "exception: " + error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            TryDelete(root);
+        }
     }
 
     private static (string Id, string Folder, string Path) Stage(PetDataStore store, string root, string name)

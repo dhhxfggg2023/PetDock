@@ -54,6 +54,10 @@ internal sealed partial class UiHost : IUiPageContext
 
     string? IUiPageContext.RemovePet(string petId) => RemovePetFromPanel(petId);
 
+    string? IUiPageContext.DuplicatePet(string petId) => DuplicatePetFromPanel(petId);
+
+    string? IUiPageContext.DeletePet(string petId) => DeletePetFromPanel(petId);
+
     void IUiPageContext.AuthorizePlugin(string pluginId) => AuthorizePlugin(pluginId);
 
     void IUiPageContext.TogglePluginDisabled(string pluginId) => TogglePluginDisabled(pluginId);
