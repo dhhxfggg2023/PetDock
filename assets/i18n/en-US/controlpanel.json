@@ -32,7 +32,7 @@
   "cp.plugins.enable": "Enable the selected plugin",
   "cp.plugins.disableHint": "The switch on the far right enables/disables a plugin: turning it off stops the plugin now and it will not load on the next start. Delete works for user-installed plugins only.",
   "cp.plugins.empty": "No plugins loaded.",
-  "cp.plugins.count": "{0} plugin(s). The switch on the far right enables/disables a plugin; Authorize opens the capability dialog; delete works for user-installed plugins only.",
+  "cp.plugins.count": "{0} plugin(s).",
   "cp.plugins.col.name": "Plugin",
   "cp.plugins.col.version": "Version",
   "cp.plugins.col.granted": "Granted capabilities",

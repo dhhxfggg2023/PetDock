@@ -32,7 +32,7 @@
   "cp.plugins.enable": "启用选中插件",
   "cp.plugins.disableHint": "列表最右边的开关就是启用/停用：关掉会立刻停下这只插件，下次启动不再装载；删除只对用户安装的插件可用。",
   "cp.plugins.empty": "尚无插件装载。",
-  "cp.plugins.count": "共 {0} 个插件。最右边的开关启用/停用；授权按钮打开能力弹窗；删除只对用户安装的插件可用。",
+  "cp.plugins.count": "共 {0} 个插件。",
   "cp.plugins.col.name": "插件名",
   "cp.plugins.col.version": "版本",
   "cp.plugins.col.granted": "已授权能力数",
