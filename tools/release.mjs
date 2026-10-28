@@ -26,6 +26,27 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACTS = path.join(REPO_ROOT, 'artifacts');
 
+/**
+ * 宿主已经自带、插件目录里不该再带一份的程序集。
+ *
+ * .NET 插件 publish 时会把 ProjectReference 闭包整个复制到自己的输出目录：每个插件都带
+ * PetDock.Core.dll/.exe/.pdb/.deps.json/.runtimeconfig.json 和 Wasmtime（含原生 dll），
+ * 实测每个插件多出约 16 MB，七个插件就是一百多 MB 的纯重复。插件运行时由默认加载上下文
+ * 解析到宿主根目录里的同一份程序集（同名同版本），插件目录里的副本永远不会被优先加载。
+ *
+ * PetDock.Sdk.dll 不在名单里：宿主本体不使用 SDK，根目录没有它，插件仍需自带。
+ */
+const HOST_ASSEMBLY_NAMES = new Set([
+  'PetDock.Core.dll',
+  'PetDock.Core.exe',
+  'PetDock.Core.pdb',
+  'PetDock.Core.deps.json',
+  'PetDock.Core.runtimeconfig.json',
+  'Wasmtime.Dotnet.dll',
+  'Wasmtime.Dotnet.pdb',
+  'wasmtime.dll',
+]);
+
 function argValue(flag) {
   const i = process.argv.indexOf(flag);
   return i >= 0 && i + 1 < process.argv.length ? process.argv[i + 1] : null;
@@ -198,6 +219,41 @@ function pruneForeignRids(root) {
   return removed;
 }
 
+/**
+ * 剪掉插件目录里重复携带的宿主程序集（见 §HOST_ASSEMBLY_NAMES）。
+ *
+ * 只扫 plugins/ 下；宿主根目录的文件一律不动。剪完顺手清掉空目录，免得 zip 里留下
+ * 一排空壳（runtimes/win-x64/native/ 之类）。
+ */
+function prunePluginHostCopies(root) {
+  const pluginsRoot = path.join(root, 'plugins');
+  let removed = 0;
+  for (const file of walkFiles(pluginsRoot)) {
+    if (HOST_ASSEMBLY_NAMES.has(path.basename(file))) {
+      fs.rmSync(file, { force: true });
+      removed += 1;
+    }
+  }
+  const clean = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        clean(path.join(dir, entry.name));
+      }
+    }
+    if (path.resolve(dir) !== path.resolve(pluginsRoot) && fs.readdirSync(dir).length === 0) {
+      fs.rmdirSync(dir);
+    }
+  };
+  clean(pluginsRoot);
+  return removed;
+}
+
 function totalBytes(dir) {
   return walkFiles(dir).reduce((sum, file) => sum + fs.statSync(file).size, 0);
 }
@@ -255,6 +311,14 @@ function auditOutput(outDir, version) {
       fail(`${path.relative(outDir, file)} 未声明 license.spdx`);
     }
   }
+  // ④.5 插件目录不得重复携带宿主程序集（§HOST_ASSEMBLY_NAMES）：宿主根目录已有同一份，
+  //      插件里再带一份只会把包撑大，且掩盖「插件到底依赖了什么」。
+  for (const file of walkFiles(pluginsDir)) {
+    if (HOST_ASSEMBLY_NAMES.has(path.basename(file))) {
+      fail(`插件目录重复携带宿主程序集 ${path.relative(outDir, file).replaceAll('\\', '/')}`);
+    }
+  }
+
   if (manifestCount === 0) {
     // 发布物里一个插件都没有 = 装完什么也看不见，这不是可发布的形态。
     fail('发布物里没有任何插件 manifest —— 装完不会有宠物');
@@ -485,6 +549,10 @@ function main() {
   // ②.5 剪掉非 win-x64 的 RID 资源（§pruneForeignRids：体积 + 永远不会被加载）
   const prunedRids = pruneForeignRids(target);
   console.log(`PRUNED runtimes non-win-x64=${prunedRids}`);
+
+  // ②.5b 剪掉插件里重复的宿主程序集（§prunePluginHostCopies：体积 + 同一份程序集只该有一处）
+  const prunedHost = prunePluginHostCopies(target);
+  console.log(`PRUNED plugin host-copies=${prunedHost}`);
 
   // ②.6 写便携标记（RFC-25 §3.3）：core 的 PetDataStore.Resolve 见到它就把数据区落在
   //      <程序目录>\data，整个文件夹因此自包含 —— 复制到哪都能跑，删掉目录就是卸载干净。
