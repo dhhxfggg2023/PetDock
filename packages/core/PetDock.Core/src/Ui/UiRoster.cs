@@ -12,6 +12,28 @@ namespace PetDock.Core.Ui;
 internal static class UiRoster
 {
     /// <summary>
+    /// 宠物从哪来：用户导入的、发行物自带的、还是内核兜底的桩件。
+    /// 不直接显示 <see cref="PetInstance.SourceKind"/> —— 那是 "dll"/"stub"，用户看不懂，
+    /// 也不回答「这只宠物是从哪来的」（2026-10-28 实测面板里整列写着 dll）。
+    /// </summary>
+    private static string DescribeSource(PetInstance pet)
+    {
+        if (pet.Imported)
+        {
+            return I18n.Get("cp.pets.source.imported");
+        }
+
+        if (string.Equals(pet.SourceKind, "stub", StringComparison.Ordinal))
+        {
+            return I18n.Get("cp.pets.source.builtin");
+        }
+
+        return string.IsNullOrEmpty(pet.SourceKind)
+            ? I18n.Get("ui.roster.source.kernelFallback")
+            : I18n.Get("cp.pets.source.plugin");
+    }
+
+    /// <summary>
     /// 装配一次快照。pets 允许为空（常驻路径只装配一个实例，且装配失败时确实没有宠物）；
     /// plugins 来自宿主只读花名册；settings 与 inventory 由调用方给出。
     /// </summary>
@@ -28,7 +50,7 @@ internal static class UiRoster
             pets.Add(new PetLine(
                 Id: pet.Id,
                 Name: pet.Id,
-                Source: string.IsNullOrEmpty(pet.SourceKind) ? I18n.Get("ui.roster.source.kernelFallback") : pet.SourceKind,
+                Source: DescribeSource(pet),
                 State: PluginHost.DescribeInstanceState(pet.State)
                     + (pet.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty),
                 Memory: ProcessMemoryMb()));

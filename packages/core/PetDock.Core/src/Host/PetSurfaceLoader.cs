@@ -130,7 +130,11 @@ public sealed partial class PetSurfaceRoster
     /// 名册里的实现对象是装载时创建的那一个，两个实例共用它 ⇒ 新实例初始化时
     /// 旧实例还在用它，旧实例一释放就把新宠物一起带走了（视图实现大多不抗重复 init）。
     /// </summary>
-    public PetInstance? BuildInstance(string instanceIdPrefix, IReadOnlyList<string>? assetRoots = null, bool freshView = false)
+    public PetInstance? BuildInstance(
+        string instanceIdPrefix,
+        IReadOnlyList<string>? assetRoots = null,
+        bool freshView = false,
+        bool imported = false)
     {
         IPetView? view = View;
         if (view is null)
@@ -147,7 +151,7 @@ public sealed partial class PetSurfaceRoster
         // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
         string? brainPluginId = Find<IBrain>()?.PluginId;
         PetInstance instance = new(
-            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId);
+            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported);
         AttachStateStore(instance, assetRoots);
         return instance;
     }

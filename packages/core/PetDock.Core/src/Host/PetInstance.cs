@@ -41,7 +41,8 @@ public sealed partial class PetInstance : IDisposable
         string pluginId,
         string sourceKind,
         IReadOnlyList<string>? assetRoots = null,
-        string? brainPluginId = null)
+        string? brainPluginId = null,
+        bool imported = false)
     {
         Id = instanceId;
         View = view;
@@ -51,6 +52,7 @@ public sealed partial class PetInstance : IDisposable
         PluginId = pluginId;
         BrainPluginId = string.IsNullOrEmpty(brainPluginId) ? pluginId : brainPluginId!;
         SourceKind = sourceKind;
+        Imported = imported;
         AssetRoots = assetRoots ?? Array.Empty<string>();
         Display = new DegradationChain();
         Arbiter = new HostArbiter(this);
@@ -74,6 +76,12 @@ public sealed partial class PetInstance : IDisposable
 
     /// <summary>视图面是怎么来的：声明式 dll 探测（"dll"）或宿主内注册的桩件（"stub"）。</summary>
     public string SourceKind { get; }
+
+    /// <summary>
+    /// 素材是不是用户导进来的（而不是发行物自带的示例）。面板的「来源」列看它：
+    /// <see cref="SourceKind"/> 说的是视图怎么装的（dll/stub），那是内部词，不是用户问的「这只从哪来」。
+    /// </summary>
+    public bool Imported { get; }
 
     /// <summary>原规格 11 §3 的视图接口实现。</summary>
     public IPetView View { get; }

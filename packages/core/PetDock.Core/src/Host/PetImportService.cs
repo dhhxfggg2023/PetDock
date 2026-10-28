@@ -96,7 +96,7 @@ internal sealed class PetImportService
             _store.RegisterActive(instanceId, folder);
 
             // ③ 重建实例：素材根按 RFC-15 §3.2 第 3 跳显式传给视图实现。
-            PetInstance? next = _roster.BuildInstance("import", new[] { path }, freshView: true);
+            PetInstance? next = _roster.BuildInstance("import", new[] { path }, freshView: true, imported: true);
             if (next is null)
             {
                 throw new InvalidOperationException(I18n.Get("host.import.err.no-view"));
@@ -158,7 +158,7 @@ internal sealed class PetImportService
 
         try
         {
-            PetInstance? instance = roster.BuildInstance("import", new[] { active.Path }, freshView: true);
+            PetInstance? instance = roster.BuildInstance("import", new[] { active.Path }, freshView: true, imported: true);
             if (instance is null)
             {
                 KernelLog.Write($"import-restore-miss instance={active.InstanceId} reason=no-view");

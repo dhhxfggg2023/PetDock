@@ -103,7 +103,7 @@ internal sealed partial class PetWindowSet : IDisposable
         PetInstance? instance = null;
         try
         {
-            instance = roster.BuildInstance("resident-set", new[] { pack.Path }, freshView: true);
+            instance = roster.BuildInstance("resident-set", new[] { pack.Path }, freshView: true, imported: true);
             if (instance is null)
             {
                 KernelLog.Write($"pet-set-skip pack={pack.InstanceId} reason=no-view");

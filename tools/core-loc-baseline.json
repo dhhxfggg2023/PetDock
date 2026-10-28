@@ -1844,6 +1844,25 @@
           "lines": 54
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28654,
+      "budget": 28800,
+      "note": "宠物来源列不再把内部词 dll/stub 给用户看（净值 +34）：实例记「素材是不是用户导进来的」，面板显示 已导入/内置/插件；列名从「来源生态」改成「来源」，因为这一列一直装的是来源而不是生态。",
+      "attribution": [
+        {
+          "slice": "宠物来源标签与导入出处",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs",
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs"
+          ],
+          "lines": 34
+        }
+      ]
     }
   ]
 }

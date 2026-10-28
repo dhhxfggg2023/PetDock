@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PetDock.Core.PetRuntime;
 using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
@@ -29,6 +30,21 @@ internal static class PetPanelChecks
             "ui-pet-roster-multi",
             snapshot.Pets.Count == 1 && string.Equals(snapshot.Pets[0].Id, "run.second", StringComparison.Ordinal),
             $"pets={snapshot.Pets.Count} first={snapshot.Pets.FirstOrDefault()?.Id ?? "(none)"}");
+
+        // 来源列不能把内部词（dll/stub）直接给用户看；导入与否也不能只有一个「已导入」。
+        using var builtin = new PetInstance(
+            "resident.demo", new StubView(), null, Array.Empty<IPointerSurface>(), null,
+            "petdock.stub.view", "stub");
+        using var imported = new PetInstance(
+            "import.demo", new StubView(), null, Array.Empty<IPointerSurface>(), null,
+            "petdock.stub.view", "dll", imported: true);
+        string builtinSource = UiRoster.Build(builtin, null).Pets[0].Source;
+        string importedSource = UiRoster.Build(imported, null).Pets[0].Source;
+        check(
+            "ui-pet-source-label",
+            string.Equals(builtinSource, I18n.Get("cp.pets.source.builtin"), StringComparison.Ordinal)
+                && string.Equals(importedSource, I18n.Get("cp.pets.source.imported"), StringComparison.Ordinal),
+            $"builtin={builtinSource} imported={importedSource}");
 
         string? removed = null;
         using var panel = new ControlPanel(
