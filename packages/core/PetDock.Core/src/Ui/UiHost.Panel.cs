@@ -29,6 +29,7 @@ internal sealed partial class UiHost
             && !string.Equals(wanted, I18n.Language, StringComparison.OrdinalIgnoreCase))
         {
             I18n.Load(wanted);
+            _tray.ReloadLanguage();
             KernelLog.Write($"i18n-reloaded lang={I18n.Language} via=panel-open");
             if (_panel is not null && !_panel.IsDisposed)
             {

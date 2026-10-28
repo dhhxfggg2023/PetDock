@@ -1827,6 +1827,23 @@
           "lines": -13
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28620,
+      "budget": 28800,
+      "note": "语言选择立即生效（净值 +54）：打开面板早已按设置重建文案，托盘菜单却还是构造期的旧文案，于是选 English 后托盘仍是中文；现在换语言时托盘连同每宠物条目一起重建，引导完成也走同一条路径。",
+      "attribution": [
+        {
+          "slice": "语言选择即时生效（托盘重建）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Onboarding.cs"
+          ],
+          "lines": 54
+        }
+      ]
     }
   ]
 }

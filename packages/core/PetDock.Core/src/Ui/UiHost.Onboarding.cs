@@ -92,8 +92,28 @@ internal sealed partial class UiHost
         }
         finally
         {
+            ReloadLanguageAfterOnboarding();
             AttachOnboarding(null);
         }
+    }
+
+    /// <summary>
+    /// 引导选的语言在验收这一步就生效：重读文案表并重建托盘菜单。
+    /// 不这么做的话，用户选了 English 却还看到中文托盘，直到下一次重启——
+    /// 那句「选完就生效」就成了空话（当前窗口已关，重建它没有意义）。
+    /// </summary>
+    private void ReloadLanguageAfterOnboarding()
+    {
+        string? wanted = _settings?.Load().Language;
+        if (string.IsNullOrWhiteSpace(wanted)
+            || string.Equals(wanted, I18n.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        I18n.Load(wanted);
+        _tray.ReloadLanguage();
+        KernelLog.Write($"i18n-reloaded lang={I18n.Language} via=onboarding");
     }
 
     /// <summary>

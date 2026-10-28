@@ -41,8 +41,12 @@ internal sealed class TrayHost : IDisposable
 
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu;
+    private readonly ToolStripMenuItem _toggleAll;
+    private readonly ToolStripMenuItem _panelItem;
     private readonly ToolStripMenuItem _pauseHooks;
+    private readonly ToolStripMenuItem _exitItem;
     private readonly List<ToolStripMenuItem> _petItems = new();
+    private IReadOnlyList<PetMenuItem> _pets = Array.Empty<PetMenuItem>();
     private bool _registered;
     private bool _disposed;
 
@@ -67,11 +71,11 @@ internal sealed class TrayHost : IDisposable
     {
         _menu = new ContextMenuStrip();
 
-        var toggle = new ToolStripMenuItem(I18n.Get("ui.tray.toggleAll"), null, (_, _) => toggleAll())
+        _toggleAll = new ToolStripMenuItem(I18n.Get("ui.tray.toggleAll"), null, (_, _) => toggleAll())
         {
             Name = "toggle-all",
         };
-        var panel = new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => openPanel())
+        _panelItem = new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => openPanel())
         {
             Name = "panel",
         };
@@ -83,19 +87,19 @@ internal sealed class TrayHost : IDisposable
             Name = "pause-hooks",
         };
 
-        var exitItem = new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => exit())
+        _exitItem = new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => exit())
         {
             Name = "exit",
         };
 
         _menu.Items.AddRange(new ToolStripItem[]
         {
-            toggle,
-            panel,
+            _toggleAll,
+            _panelItem,
             new ToolStripSeparator(),
             _pauseHooks,
             new ToolStripSeparator(),
-            exitItem,
+            _exitItem,
         });
 
         SetPets(pets);
@@ -140,6 +144,7 @@ internal sealed class TrayHost : IDisposable
     /// </summary>
     public void SetPets(IReadOnlyList<PetMenuItem> pets)
     {
+        _pets = new List<PetMenuItem>(pets);
         foreach (ToolStripMenuItem old in _petItems)
         {
             _menu.Items.Remove(old);
@@ -174,6 +179,33 @@ internal sealed class TrayHost : IDisposable
 
         _icon?.SetTextSafe(I18n.Get("ui.tray.title.running", pets.Count));
     }
+
+    /// <summary>
+    /// 语言切换后按当前文案表重建所有文字（固定项 + 每宠物一条 + 托盘提示）。
+    /// 菜单对象不重建：右键宠物与托盘图标共用这一份，换语言只该换字，不该换入口。
+    /// </summary>
+    public void ReloadLanguage()
+    {
+        _toggleAll.Text = I18n.Get("ui.tray.toggleAll");
+        _panelItem.Text = I18n.Get("ui.tray.panel");
+        _pauseHooks.Text = I18n.Get("ui.tray.pauseHooks");
+        _exitItem.Text = I18n.Get("ui.tray.exit");
+        SetPets(_pets);
+    }
+
+    /// <summary>固定菜单项当前的显示文字（判据断言换语言后它真的变了）。</summary>
+    public string FixedItemText(string id) => id switch
+    {
+        "toggle-all" => _toggleAll.Text ?? string.Empty,
+        "panel" => _panelItem.Text ?? string.Empty,
+        "pause-hooks" => _pauseHooks.Text ?? string.Empty,
+        "exit" => _exitItem.Text ?? string.Empty,
+        _ => string.Empty,
+    };
+
+    /// <summary>第 <paramref name="index"/> 条宠物子菜单当前显示的名称（判据用）。</summary>
+    public string PetItemTitle(int index) =>
+        (index >= 0 && index < _petItems.Count ? _petItems[index].Text : string.Empty) ?? string.Empty;
 
     /// <summary>
     /// 在屏幕坐标处弹出同一份菜单（2026-10-26 用户要求「右键宠物弹菜单」）。

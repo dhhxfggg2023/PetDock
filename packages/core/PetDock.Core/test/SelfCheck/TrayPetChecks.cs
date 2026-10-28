@@ -20,11 +20,13 @@ internal static class TrayPetChecks
         {
             TrayPerItem(check);
             TrayCommandTargetsOwn(check);
+            TrayLanguageReload(check);
         }
         catch (Exception error)
         {
             check("ui-tray-pet-per-item", false, "exception: " + error.GetType().Name);
             check("ui-tray-pet-command-targets-own", false, "exception: " + error.GetType().Name);
+            check("ui-tray-language-reload", false, "exception: " + error.GetType().Name);
         }
 
         CatalogRemoval(check);
@@ -84,6 +86,45 @@ internal static class TrayPetChecks
         bool onlyBeta = clicked && alpha == 0 && beta == 1 && gamma == 0;
         check("ui-tray-pet-command-targets-own", onlyBeta,
             $"clicked={clicked} alpha={alpha} beta={beta} gamma={gamma}");
+    }
+
+    /// <summary>
+    /// 换语言后托盘文字真的跟着换：固定项、每宠物一条、托盘提示都要用新文案表重建。
+    /// 只换 I18n 不重建菜单，用户看到的是「设置里选了 English，托盘还是中文」。
+    /// </summary>
+    private static void TrayLanguageReload(Check check)
+    {
+        string original = I18n.Language;
+        try
+        {
+            I18n.Load("zh-CN");
+            UiCommand noop = () => { };
+            using var tray = new TrayHost(
+                new List<PetMenuItem> { new("alpha", noop, noop, noop, noop) },
+                noop,
+                noop,
+                noop,
+                noop);
+
+            string zhPanel = tray.FixedItemText("panel");
+            string zhPet = tray.PetItemTitle(0);
+
+            I18n.Load("en-US");
+            tray.ReloadLanguage();
+            string enPanel = tray.FixedItemText("panel");
+            string enPet = tray.PetItemTitle(0);
+
+            bool ok = !string.Equals(zhPanel, enPanel, StringComparison.Ordinal)
+                && !string.Equals(zhPet, enPet, StringComparison.Ordinal)
+                && string.Equals(enPanel, I18n.Get("ui.tray.panel"), StringComparison.Ordinal)
+                && enPet.Contains("alpha", StringComparison.Ordinal);
+            check("ui-tray-language-reload", ok,
+                $"panel={zhPanel}→{enPanel} pet={zhPet}→{enPet}");
+        }
+        finally
+        {
+            I18n.Load(original);
+        }
     }
 
     /// <summary>

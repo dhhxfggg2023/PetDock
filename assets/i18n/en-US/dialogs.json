@@ -34,7 +34,7 @@
   "ui.onboarding.title": "PetDock — First-run setup",
   "ui.onboarding.language.zh": "简体中文 (zh-CN)",
   "ui.onboarding.language.title": "Choose the interface language",
-  "ui.onboarding.language.note": "This step only saves your choice: the interface switches to that language after PetDock restarts.",
+  "ui.onboarding.language.note": "When you finish this step, the interface and tray menu switch to the language you chose.",
   "ui.onboarding.finish": "Finish",
   "ui.onboarding.skip": "Skip setup",
   "ui.onboarding.through.caption": "Clicks on the pet's transparent areas reach whatever is below it; this is expected",
