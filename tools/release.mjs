@@ -73,6 +73,12 @@ function plan(version) {
       why: '引导第 2 步要放置的示例宠物（RFC-16 §3.3）；缺它，发行版启动时 PackLoader 找不到素材会抛 FileNotFoundException',
     },
     {
+      from: path.join('assets', 'i18n'),
+      to: path.join('assets', 'i18n'),
+      kind: 'tree',
+      why: '界面文案表（RFC-42 §3.2）；缺它每个键都回落到键名本身，托盘提示会显示 ui.tray.title.running',
+    },
+    {
       from: 'LICENSE',
       to: 'LICENSE',
       kind: 'file',
@@ -273,7 +279,14 @@ function auditOutput(outDir, version) {
     fail('发布物缺 assets/sample-pet/petdock-sample.json（引导要放置的示例宠物）');
   }
 
-  // ⑧ 便携件必须在（RFC-25 §3.2）：用户拿到的 zip 里必须有便携标记与 INSTALL.md。
+  // ⑧ 文案表必须在（RFC-42 §3.2）。这条曾经缺失：发布物只搬 icons/sample-pet，
+  // 发行版里 I18n.Get 全部回落到键名，托盘提示直接显示「ui.tray.title.running」。
+  const i18n = path.join(outDir, 'assets', 'i18n', 'zh-CN.json');
+  if (!fs.existsSync(i18n)) {
+    fail('发布物缺 assets/i18n/zh-CN.json（界面文案表）');
+  }
+
+  // ⑨ 便携件必须在（RFC-25 §3.2）：用户拿到的 zip 里必须有便携标记与 INSTALL.md。
   //    标记缺失 = 数据区跑回 %LOCALAPPDATA%，「一个文件夹」就不成立了；这条守的就是这个退化。
   for (const name of ['petdock.portable', 'INSTALL.md']) {
     if (!fs.existsSync(path.join(outDir, name))) {
@@ -281,7 +294,7 @@ function auditOutput(outDir, version) {
     }
   }
 
-  // ⑨ 发布物里不许有非 win-x64 的 RID 资源：它们永远不会被加载，却把包撑到 242 MB
+  // ⑩ 发布物里不许有非 win-x64 的 RID 资源：它们永远不会被加载，却把包撑到 242 MB
   //    （RFC-25 §2）。剪枝在 §pruneForeignRids，这条守「剪漏了」。
   for (const file of walkFiles(outDir)) {
     const rel = path.relative(outDir, file).replaceAll('\\', '/');
