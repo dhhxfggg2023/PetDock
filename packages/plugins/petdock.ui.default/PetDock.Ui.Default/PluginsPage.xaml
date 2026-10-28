@@ -13,10 +13,10 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button x:Name="InstallButton" Style="{DynamicResource Pd.SecondaryButton}"
                         Click="OnInstallClick" Margin="0,0,8,0" />
-                <Button x:Name="RemoveButton" Style="{DynamicResource Pd.GhostButton}"
-                        Click="OnRemoveClick" />
                 <Button x:Name="AuthorizeButton" Style="{DynamicResource Pd.SecondaryButton}"
-                        Click="OnAuthorizeClick" Margin="8,0,0,0" />
+                        Click="OnAuthorizeClick" />
+                <Button x:Name="RemoveButton" Style="{DynamicResource Pd.DangerButton}"
+                        Click="OnRemoveClick" Margin="8,0,0,0" ToolTipService.ShowOnDisabled="True" />
             </StackPanel>
             <TextBlock x:Name="CountText" Style="{DynamicResource Pd.Dim}" VerticalAlignment="Center" />
         </DockPanel>

@@ -136,14 +136,17 @@ internal static class UiShots
         new[]
         {
             new PluginLine("petdock.brain.default", "默认行为层", "0.1.0", 0,
-                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin")),
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin"),
+                Removable: true),
             new PluginLine("petdock.state.null", "空状态层", "0.1.0", 0,
-                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin")),
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin"),
+                Removable: true),
             new PluginLine("petdock.ui.default", "默认界面", "0.1.0", 0,
                 I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin"),
                 Essential: true),
             new PluginLine("petdock.sample.petimage", "示例图片宠物", "0.1.0", 0,
-                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin")),
+                I18n.Get("cp.plugins.state.running"), 0, I18n.Get("cp.plugins.origin.builtin"),
+                Removable: true),
         },
         new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque"));
 }

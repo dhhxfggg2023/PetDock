@@ -114,6 +114,9 @@
             <Setter Property="Foreground" Value="{DynamicResource Pd.TextDim}" />
             <Setter Property="Padding" Value="10,6" />
         </Style>
+        <Style x:Key="Pd.DangerButton" TargetType="Button" BasedOn="{StaticResource Pd.SecondaryButton}">
+            <Setter Property="Foreground" Value="{DynamicResource Pd.Bad}" />
+        </Style>
         <Style x:Key="Pd.NavButton" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource Pd.TextDim}" />
             <Setter Property="FontSize" Value="13.5" />

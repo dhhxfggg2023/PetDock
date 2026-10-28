@@ -1940,6 +1940,23 @@
           "lines": 39
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 27910,
+      "budget": 28800,
+      "note": "插件删除范围（净值 +33，含九项修复中未记账的增量）：只有清单声明 essential 的系统必需插件不可删，内置的可选插件与用户安装插件都可删；删除前先卸载，再移除插件目录并清掉两条设置名单。插件页把删除按钮改成危险色并放到最右，首次进入自动选中首行，系统必需插件选中时禁用并说明原因。",
+      "attribution": [
+        {
+          "slice": "插件删除策略与插件页删除入口（含九项修复未记账的 +30）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs",
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs",
+            "packages/core/PetDock.Core/src/Ui/UiWorkspaceView.xaml"
+          ],
+          "lines": 33
+        }
+      ]
     }
   ]
 }

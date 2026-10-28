@@ -51,7 +51,7 @@ public sealed class PluginRow : INotifyPropertyChanged
     public bool Loaded { get; }
     public bool Removable { get; }
 
-    /// <summary>随包界面插件：停用它会让面板没有页面，开关必须禁用。</summary>
+    /// <summary>系统必需插件（清单 essential）：不能停用，也不能删除；界面必须说明原因。</summary>
     public bool Essential { get; }
 
     public bool CanToggle => !Essential;

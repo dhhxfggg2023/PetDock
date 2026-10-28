@@ -75,6 +75,11 @@ public partial class PluginsPage : UserControl, IUiPage
             {
                 Rows.SelectedItem = _rows.FirstOrDefault(row => string.Equals(row.Id, selected, StringComparison.Ordinal));
             }
+            else if (_rows.Count > 0)
+            {
+                // 首次进入先选中第一行：否则「删除/授权」永远是灰的，用户会以为没有这两个动作。
+                Rows.SelectedIndex = 0;
+            }
         }
         finally
         {
@@ -92,6 +97,9 @@ public partial class PluginsPage : UserControl, IUiPage
     {
         PluginRow? row = Selected;
         RemoveButton.IsEnabled = row is not null && row.Removable;
+        RemoveButton.ToolTip = row is null
+            ? null
+            : _context.T(row.Removable ? "cp.plugins.remove.hint" : "cp.plugins.remove.essential");
         AuthorizeButton.IsEnabled = row is not null;
     }
 

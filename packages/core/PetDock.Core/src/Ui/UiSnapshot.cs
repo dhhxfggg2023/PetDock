@@ -17,7 +17,8 @@ public sealed record PetLine(
     string Memory);
 
 /// <summary>插件页一行。Granted 是当前有效的能力句柄数（原规格 14 §2「能力是句柄」）。
-/// Id 放最前：插件页的两个入口要「对某个插件说话」，必须有 id（RFC-13 §2.6）。</summary>
+/// Id 放最前：插件页的两个入口要「对某个插件说话」，必须有 id（RFC-13 §2.6）。
+/// Removable 只由清单 essential 决定；内置的可选插件同样可删，系统必需的不可删。</summary>
 public sealed record PluginLine(
     string Id,
     string Name,

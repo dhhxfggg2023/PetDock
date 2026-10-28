@@ -13,7 +13,8 @@ using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
-/// <summary>插件页一行的管理视角（纯值）。Origin 是 builtin / user；Removable 只对用户插件为真。</summary>
+/// <summary>插件页一行的管理视角（纯值）。Origin 是 builtin / user；Removable 由清单的 essential 决定：
+/// 系统必需的插件不可删，其余（含内置的可选插件）都可以删。</summary>
 public sealed record PluginEntry(
     string Id,
     string Name,
@@ -28,7 +29,8 @@ public sealed record PluginEntry(
     string Dir);
 
 /// <summary>插件目录的合并视图 + 开/关/删三个动作。线程模型：方法可以在后台线程调用，
-/// 宿主动作由 PluginHost 自己封送到调度线程；文件动作只碰用户根。</summary>
+/// 宿主动作由 PluginHost 自己封送到调度线程；删除只碰扫描到的插件目录，系统必需插件由
+/// 清单 essential 保护。</summary>
 internal sealed class PluginInventory
 {
     private readonly PluginHost _host;
@@ -89,7 +91,7 @@ internal sealed class PluginInventory
                 new List<string>(manifest.Capabilities),
                 isLoaded,
                 EffectiveEnabled(manifest.Id, settings, isLoaded, manifest.DefaultEnabled, userOwned),
-                userOwned,
+                !manifest.Essential,
                 manifest.Essential,
                 userOwned ? "user" : "builtin",
                 dir));
@@ -156,8 +158,8 @@ internal sealed class PluginInventory
         }
     }
 
-    /// <summary>删除一只**用户装进来的**插件：先卸载，再删目录，最后从两个设置表里清掉。
-    /// 内置插件不可删（删了下次启动又从发行目录长出来，还会让设置里的 id 变成孤儿）。</summary>
+    /// <summary>删除一只非系统必需的插件：先卸载，再删目录，最后从两个设置表里清掉。
+    /// 内置与用户安装走同一条路径；系统必需的插件由清单声明 essential，绝不能从界面上删掉。</summary>
     public bool Remove(string pluginId, out string? error)
     {
         error = null;
@@ -177,9 +179,9 @@ internal sealed class PluginInventory
             return false;
         }
 
-        if (!entry.Removable)
+        if (entry.Essential || !entry.Removable)
         {
-            error = I18n.Get("cp.plugins.remove.builtin");
+            error = I18n.Get("cp.plugins.remove.essential");
             return false;
         }
 

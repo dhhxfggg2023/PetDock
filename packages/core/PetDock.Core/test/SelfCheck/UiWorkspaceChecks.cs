@@ -3,6 +3,7 @@
 // 不加载真实插件（真实插件的截图在 UiShots，命令面单测在插件自己的工程）。
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -22,6 +23,7 @@ internal static class UiWorkspaceChecks
         UnknownPage(check);
         Render(check);
         EmptyWorkspace(check);
+        PluginDeleteAffordance(check);
     }
 
     private static void OrderedPages(Report check)
@@ -74,6 +76,54 @@ internal static class UiWorkspaceChecks
         panel.SetStatus("saved");
         check("ui-workspace-status", string.Equals(panel.Workspace.StatusTextValue, "saved", StringComparison.Ordinal),
             "status=" + panel.Workspace.StatusTextValue);
+    }
+
+    /// <summary>插件页的删除入口：可选插件选中后可用，系统必需插件选中后禁用并说明原因。</summary>
+    private static void PluginDeleteAffordance(Report check)
+    {
+        string? root = PluginHost.ProbePluginsRoot();
+        if (root is null)
+        {
+            check("ui-plugin-delete-affordance", false, "root=missing");
+            return;
+        }
+
+        var context = new PreviewUiContext(new UiSnapshot(
+            Array.Empty<PetLine>(),
+            new[]
+            {
+                new PluginLine("builtin.optional", "可选插件", "0.1.0", 0, "运行中", 0, "内置",
+                    Removable: true),
+                new PluginLine("builtin.required", "系统插件", "0.1.0", 0, "运行中", 0, "内置",
+                    Essential: true),
+            }));
+
+        try
+        {
+            IUiPage? page = UiPluginCatalog.Load(root, context)
+                .SelectMany(plugin => plugin.CreatePages(context))
+                .FirstOrDefault(candidate => string.Equals(candidate.Id, "plugins", StringComparison.Ordinal));
+            FrameworkElement? view = page?.CreateView();
+            var rows = view?.FindName("Rows") as System.Windows.Controls.ListBox;
+            var remove = view?.FindName("RemoveButton") as System.Windows.Controls.Button;
+            if (rows is null || remove is null)
+            {
+                check("ui-plugin-delete-affordance", false, "controls=missing");
+                return;
+            }
+
+            rows.SelectedIndex = 0;
+            bool optionalEnabled = remove.IsEnabled;
+            rows.SelectedIndex = 1;
+            string? tip = remove.ToolTip as string;
+            bool requiredDisabled = !remove.IsEnabled && !string.IsNullOrEmpty(tip);
+            check("ui-plugin-delete-affordance", optionalEnabled && requiredDisabled,
+                $"optional={optionalEnabled} requiredDisabled={requiredDisabled}");
+        }
+        catch (Exception error)
+        {
+            check("ui-plugin-delete-affordance", false, $"{error.GetType().Name}: {error.Message}");
+        }
     }
 
     private static void UnknownPage(Report check)

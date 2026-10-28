@@ -21,6 +21,7 @@ internal static class PluginManageChecks
     private const string OptInId = "com.petdock.myfirstbrain";
     private const string UserId = "com.example.userpack";
     private const string InstallId = "com.example.installme";
+    private const string EssentialId = "com.example.systempack";
 
     public static void Run(Check check)
     {
@@ -74,6 +75,7 @@ internal static class PluginManageChecks
 
         WritePlugin(Path.Combine(builtin, "trusted"), TrustedId, "1.0.0", "main.js");
         WritePlugin(Path.Combine(builtin, "firstbrain"), OptInId, "1.0.0", "main.js", defaultEnabled: false);
+        WritePlugin(Path.Combine(builtin, "system"), EssentialId, "1.0.0", "main.js", essential: true);
         WritePlugin(Path.Combine(user, UserId), UserId, "1.0.0", "main.js");
 
         var store = new UserSettingsStore(data);
@@ -92,7 +94,7 @@ internal static class PluginManageChecks
         ManifestDefaults(check, builtin);
         Rows(check, inventory);
         EnableByPolicy(check, inventory, store);
-        BuiltinNotRemovable(check, inventory);
+        RemovalPolicy(check, inventory, store);
         Installer(check, root, inventory, store);
     }
 
@@ -101,9 +103,11 @@ internal static class PluginManageChecks
     {
         PluginManifest? on = ManifestValidator.Validate(Path.Combine(builtin, "trusted")).Ok;
         PluginManifest? off = ManifestValidator.Validate(Path.Combine(builtin, "firstbrain")).Ok;
-        bool ok = on is not null && on.DefaultEnabled && off is not null && !off.DefaultEnabled;
+        PluginManifest? system = ManifestValidator.Validate(Path.Combine(builtin, "system")).Ok;
+        bool ok = on is not null && on.DefaultEnabled && off is not null && !off.DefaultEnabled
+            && system is not null && system.Essential;
         check("plugin-manifest-default-enabled", ok,
-            $"on={on?.DefaultEnabled} off={off?.DefaultEnabled}");
+            $"on={on?.DefaultEnabled} off={off?.DefaultEnabled} essential={system?.Essential}");
     }
 
     private static void Rows(Check check, PluginInventory inventory)
@@ -111,8 +115,10 @@ internal static class PluginManageChecks
         IReadOnlyList<PluginEntry> rows = inventory.Rows();
         PluginEntry? trusted = rows.FirstOrDefault(r => r.Id == TrustedId);
         PluginEntry? user = rows.FirstOrDefault(r => r.Id == UserId);
-        bool ok = trusted is not null && user is not null
-            && trusted.Origin == "builtin" && trusted.Enabled && !trusted.Removable
+        PluginEntry? essential = rows.FirstOrDefault(r => r.Id == EssentialId);
+        bool ok = trusted is not null && user is not null && essential is not null
+            && trusted.Origin == "builtin" && trusted.Enabled && trusted.Removable
+            && essential.Essential && !essential.Removable
             && user.Origin == "user" && !user.Enabled && user.Removable
             && rows.Any(r => r.Id == OptInId && !r.Enabled);
         check("plugin-inventory-rows", ok,
@@ -139,13 +145,25 @@ internal static class PluginManageChecks
             $"ok={enabled} error={enableError} enabled={afterEnable.EnabledPlugins?.Count} disabled={afterEnable.DisabledPlugins?.Count}");
     }
 
-    private static void BuiltinNotRemovable(Check check, PluginInventory inventory)
+    /// <summary>系统必需插件拒绝删除；内置的可选插件删除目录并清掉设置里的两条名单。</summary>
+    private static void RemovalPolicy(Check check, PluginInventory inventory, UserSettingsStore store)
     {
+        bool essentialRefused = !inventory.Remove(EssentialId, out string? essentialError)
+            && !string.IsNullOrEmpty(essentialError)
+            && inventory.Rows().Any(r => r.Id == EssentialId);
+        check("plugin-inventory-remove-essential", essentialRefused,
+            $"refused={essentialRefused} error={essentialError}");
+
+        PluginEntry? trusted = inventory.Rows().FirstOrDefault(r => r.Id == TrustedId);
         bool removed = inventory.Remove(TrustedId, out string? error);
-        check("plugin-inventory-remove-builtin", !removed && !string.IsNullOrEmpty(error)
-            && Directory.Exists(Path.Combine(inventory.UserRoot, UserId))
-            && inventory.Rows().Any(r => r.Id == TrustedId),
-            $"removed={removed} error={error}");
+        UserSettings after = store.Load();
+        bool gone = removed && trusted is not null
+            && !Directory.Exists(trusted.Dir)
+            && !inventory.Rows().Any(r => r.Id == TrustedId)
+            && (after.EnabledPlugins is null || !after.EnabledPlugins.Contains(TrustedId))
+            && (after.DisabledPlugins is null || !after.DisabledPlugins.Contains(TrustedId));
+        check("plugin-inventory-remove-builtin", gone,
+            $"removed={removed} error={error} gone={gone}");
     }
 
     /// <summary>安装器：准备/落位、覆盖安装、zip 路径逃逸、坏清单。</summary>
@@ -205,12 +223,16 @@ internal static class PluginManageChecks
     }
 
     /// <summary>一个能通过清单校验的最小 tier 0 插件（声明式，不需要执行体）。</summary>
-    private static void WritePlugin(string dir, string id, string version, string entry, bool? defaultEnabled = null)
+    private static void WritePlugin(string dir, string id, string version, string entry, bool? defaultEnabled = null, bool essential = false)
     {
         Directory.CreateDirectory(dir);
         string flag = defaultEnabled is null
             ? string.Empty
             : "  \"defaultEnabled\": " + (defaultEnabled.Value ? "true" : "false") + ",\n";
+        if (essential)
+        {
+            flag += "  \"essential\": true,\n";
+        }
         string manifest =
             "{\n"
             + "  \"id\": \"" + id + "\",\n"

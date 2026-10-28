@@ -18,8 +18,8 @@ PetDock 是一个「万物皆可插件」的桌宠宿主：**内核只负责把�
 - **示例宠物** — `sample-pet` 呈现器 + `PetDock.SamplePet` 素材包，首次运行即可看到一只在桌面上小范围散步的宠物。
 - **主控面板** — WPF 壳 + 页面插件：导航、页头、状态条与主题由内核提供，宠物 / 插件 / 设置三页
   由 first-party 插件 `petdock.ui.default` 贡献；第三方界面插件可以加自己的页，壳不需要改。
-- **插件管理** — 从界面安装（文件夹或 zip）、启用 / 停用、删除用户插件；内置插件不可删除，
-  随包界面插件（清单 `essential: true`）不可停用——它是唯一的面板入口。
+- **插件管理** — 从界面安装（文件夹或 zip）、启用 / 停用、删除插件；只有清单声明
+  `essential: true` 的系统必需插件不能删（随包界面插件是唯一的面板入口，同样不能停用）。
 - **发布管线** — `node tools/release.mjs` + `node tools/pack.mjs`，产出解压即用的 portable zip。
 - **门禁** — `npm run lint`（七道静态门禁）与 `node tools/verify.mjs`（六层：静态 → 构建 →
   窗口/事件自检 → UI 自检 → 性能 → 发布物自检）。仓库没有 CI 工作流，门禁在本机执行。
@@ -57,10 +57,10 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 
 ## 插件从哪里来
 
-- **内置**：`packages/plugins/`，随源码树提供，只读。
+- **内置**：`packages/plugins/`，随发行目录提供；除系统必需插件外，内置插件也可以从面板删除。
 - **用户**：`<data>/plugins/`（便携发行版是程序旁的 `data\\plugins`，否则 `%LOCALAPPDATA%\\PetDock\\plugins`）。
   面板里的「安装插件…」把文件夹或 zip 解到 `.staging/`，校验清单与入口后再搬进正式目录；
-  同名插件先备份为 `.bak-时间戳`。删除只允许针对用户插件。
+  同名插件先备份为 `.bak-时间戳`。删除会卸载插件并移除它的插件目录；`essential` 插件拒绝删除。
 
 ### 启动时谁会申请授权
 
