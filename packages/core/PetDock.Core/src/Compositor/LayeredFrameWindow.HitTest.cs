@@ -35,8 +35,20 @@ internal sealed partial class LayeredFrameWindow
             return false;
         }
 
-        // Hits 内部已经实现了「hitmap > alpha，且 alpha === 0 永远放行」（FrameTypes.cs:61）。
-        m.Result = surface.Hits(x, y) ? (IntPtr)HitClient : (IntPtr)HitTransparent;
+        // 命中测试是 UI 线程上的消息处理：这里绝不能让异常冒到 WinForms 的默认
+        // 「Unhandled exception」对话框（用户只会看到反复弹框）。真出了异常就当作
+        // 这一点穿透，并把类型与消息留在内核日志里 —— 下一次移动还能恢复。
+        try
+        {
+            // Hits 内部已经实现了「hitmap > alpha，且 alpha === 0 永远放行」（FrameTypes.cs:61）。
+            m.Result = surface.Hits(x, y) ? (IntPtr)HitClient : (IntPtr)HitTransparent;
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"hit-test-failed {error.GetType().Name}: {error.Message}");
+            m.Result = (IntPtr)HitTransparent;
+        }
+
         return true;
     }
 

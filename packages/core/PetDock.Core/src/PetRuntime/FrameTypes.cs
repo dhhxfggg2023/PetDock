@@ -19,6 +19,11 @@ public sealed class BitmapHandle
     {
         Id = id;
         Bitmap = bitmap;
+        // 尺寸在构造时（帧泵线程、发布给 UI 之前）拍下来：UI 命中测试绝不能碰
+        // Bitmap.Width —— GDI+ 的 Image.get_Width 在另一线程 LockBits 时会抛
+        // 「Object is currently in use elsewhere」。
+        PixelWidth = bitmap.Width;
+        PixelHeight = bitmap.Height;
     }
 
     /// <summary>句柄编号（审计与自检用，单调递增，不复用）。</summary>
@@ -27,13 +32,13 @@ public sealed class BitmapHandle
     /// <summary>位图本体。格式恒为 Format32bppPArgb（构造处强制）。</summary>
     public Bitmap Bitmap { get; }
 
-    /// <summary>物理像素尺寸（帧缓冲取图的尺寸，不是 原规格 11 的逻辑像素 Size）。</summary>
-    public int PixelWidth => Bitmap.Width;
+    /// <summary>物理像素尺寸（构造时拍下，不读 Bitmap.Width；见构造函数注释）。</summary>
+    public int PixelWidth { get; }
 
-    public int PixelHeight => Bitmap.Height;
+    public int PixelHeight { get; }
 
     /// <summary>物理像素总数——hitmap 的长度必须是它（原规格 11 §2.2 与位图同尺寸）。</summary>
-    public int PixelCount => Bitmap.Width * Bitmap.Height;
+    public int PixelCount => PixelWidth * PixelHeight;
 
     public override string ToString() => $"bitmap#{Id} {PixelWidth}x{PixelHeight}";
 }
@@ -49,6 +54,16 @@ public sealed record Frame(
     PetRect? ClearRect = null,
     byte[]? Hitmap = null)
 {
+    private byte[]? _alphaPlane;
+
+    /// <summary>
+    /// 帧同步点预先拍下的 alpha 平面（每像素 1 字节，与位图同尺寸）。
+    /// 命中测试跑在 UI 线程，而帧泵线程会 LockBits 同一张位图；GDI+ 并发锁同一张图会抛
+    /// 「Object is currently in use elsewhere」。这里在取帧线程把 alpha 拷出来，UI 只读数组，
+    /// 不再碰 GDI+ 位图。null = 还没拍（自检/测试直接构造的帧走旧回退路径）。
+    /// </summary>
+    public byte[]? AlphaPlane => _alphaPlane;
+
     /// <summary>
     /// RFC-41 §3.3 的命中阈值：2 的幂（`alpha &gt;&gt; 4 != 0` 即可判），约 6.3% 不透明。
     /// 为什么是 16：实测（RFC-41 §2.4）`alpha ∈ [1,15]` 只有 23 个像素（0.14%），
@@ -94,12 +109,58 @@ public sealed record Frame(
         return Hitmap[index] != 0;
     }
 
+    /// <summary>
+    /// 在帧同步点（取帧线程）把 alpha 通道拷成平面。幂等；写 _alphaPlane 发生在
+    /// 该帧被发布给 UI 之前，UI 读到的要么是旧帧、要么是已填好的新帧。
+    /// </summary>
+    internal void CacheAlpha()
+    {
+        if (_alphaPlane is not null)
+        {
+            return;
+        }
+
+        int width = BitmapHandle.PixelWidth;
+        int height = BitmapHandle.PixelHeight;
+        var plane = new byte[width * height];
+        BitmapData data = BitmapHandle.Bitmap.LockBits(
+            new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb);
+        try
+        {
+            unsafe
+            {
+                byte* scan = (byte*)data.Scan0.ToPointer();
+                int stride = data.Stride;
+                for (int y = 0; y < height; y++)
+                {
+                    byte* row = scan + (stride >= 0 ? y * stride : (height - 1 - y) * -stride);
+                    int at = y * width;
+                    for (int x = 0; x < width; x++)
+                    {
+                        plane[at + x] = row[(x * 4) + 3];
+                    }
+                }
+            }
+        }
+        finally
+        {
+            BitmapHandle.Bitmap.UnlockBits(data);
+        }
+
+        _alphaPlane = plane;
+    }
+
     /// <summary>预乘位图某点的 alpha。越界返回 0（穿透）。</summary>
     public byte AlphaAt(int x, int y)
     {
         if (x < 0 || y < 0 || x >= BitmapHandle.PixelWidth || y >= BitmapHandle.PixelHeight)
         {
             return 0;
+        }
+
+        if (_alphaPlane is not null)
+        {
+            return _alphaPlane[(y * BitmapHandle.PixelWidth) + x];
         }
 
         unsafe

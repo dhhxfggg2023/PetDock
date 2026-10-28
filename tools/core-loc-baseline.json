@@ -1878,6 +1878,23 @@
           "lines": 2
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28731,
+      "budget": 28800,
+      "note": "命中测试不再碰 GDI+ 位图（净值 +75）：WM_NCHITTEST 在 UI 线程读 Bitmap.Width/LockBits，而帧泵线程同时在画同一张图，GDI+ 抛 Object is currently in use elsewhere 弹默认异常框。BitmapHandle 构造时拍下宽高，Frame 在帧同步点把 alpha 拷成平面，UI 只读只读数据；WndProc 再加一层兜底日志。",
+      "attribution": [
+        {
+          "slice": "命中测试的 GDI+ 竞态修复",
+          "files": [
+            "packages/core/PetDock.Core/src/PetRuntime/FrameTypes.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.Frames.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.HitTest.cs"
+          ],
+          "lines": 75
+        }
+      ]
     }
   ]
 }

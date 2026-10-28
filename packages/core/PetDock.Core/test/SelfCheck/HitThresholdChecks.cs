@@ -50,6 +50,7 @@ internal static class HitThresholdChecks
             FringePasses(check, frame);
             AtThresholdHits(check, frame);
             AlphaZeroStillPasses(check, handle);
+            SurvivesBitmapDispose(check);
             SurfaceWired(check);
             Tier1Consumes(check);
         }
@@ -127,6 +128,40 @@ internal static class HitThresholdChecks
         check("hit-threshold-alpha-zero-still-passes", !zero && control,
             $"alpha={withMap.AlphaAt(5, 5)} (5,5)={zero} expect=False hitmap=all-1"
             + $" control(8,8)={control} expect=True");
+    }
+
+    /// <summary>
+    /// 命中测试不得在 UI 线程碰 GDI+ 位图：CacheAlpha 之后即使位图被另一线程 dispose，
+    /// PixelWidth/PixelHeight 与 alpha 平面仍是普通字段/数组，HitsAt 必须照常回答。
+    /// 防的是真实弹框的根因（Image.get_Width → Object is currently in use elsewhere）。
+    /// </summary>
+    private static void SurvivesBitmapDispose(Report check)
+    {
+        var registry = new BitmapRegistry();
+        Bitmap bitmap = Premultiplied(FrameSide, FrameSide, AlphaMap);
+        BitmapHandle handle = registry.Acquire(bitmap);
+        Frame frame = new(handle, new PetSize(FrameSide, FrameSide), 1.0);
+        frame.CacheAlpha();
+        int width = handle.PixelWidth;
+        int height = handle.PixelHeight;
+        bitmap.Dispose();
+
+        bool centre;
+        bool corner;
+        try
+        {
+            centre = frame.HitsAt(8, 8);
+            corner = frame.HitsAt(0, 0);
+        }
+        catch (Exception error)
+        {
+            check("hit-threshold-survives-bitmap-dispose", false,
+                $"{error.GetType().Name}: {error.Message}");
+            return;
+        }
+
+        check("hit-threshold-survives-bitmap-dispose", centre && !corner,
+            $"centre={centre} corner={corner} size={width}x{height} source=cached-alpha");
     }
 
     /// <summary>

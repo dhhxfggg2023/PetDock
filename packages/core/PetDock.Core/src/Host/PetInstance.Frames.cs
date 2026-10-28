@@ -51,6 +51,7 @@ public sealed partial class PetInstance
                 Bitmaps.Acquire(placeholder),
                 new PetSize(Target.PixelWidth, Target.PixelHeight),
                 Target.Scale);
+            still.CacheAlpha();
             Swap(placeholder, still);
             Frames++;
             LastFailure = $"placeholder tier={Display.Tier}";
@@ -64,6 +65,7 @@ public sealed partial class PetInstance
             frame = View.QueryFrame(nowMs);
         }
         CheckFrame(frame);
+        frame.CacheAlpha();
         Swap(frame.BitmapHandle.Bitmap, frame);
         Frames++;
         return frame;
