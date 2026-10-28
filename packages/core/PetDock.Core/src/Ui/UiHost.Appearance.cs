@@ -21,10 +21,16 @@ internal sealed partial class UiHost
         Theme.Mode = theme;
         if (themeChanged && _panel is not null && !_panel.IsDisposed)
         {
+            // 设置项是即时生效的：这次调用就发生在 WPF 单选按钮的 Checked 事件里。
+            // 当场 Dispose 掉承载这个事件的面板会把事件源一起拆掉（WinForms/WPF 互操作下
+            // 会留下「对象正在别处使用」一类的竞态），所以把重建排到当前消息之后。
             ControlPanel stale = _panel;
             _panel = null;
-            stale.Dispose();
-            OpenPanel();
+            stale.BeginInvoke((System.Windows.Forms.MethodInvoker)(() =>
+            {
+                stale.Dispose();
+                OpenPanel();
+            }));
         }
 
         if (_panel is null || _panel.IsDisposed)
