@@ -150,6 +150,9 @@ internal sealed partial class ControlPanel
         _idleFrameBox.FitToFont(96);
         _idleFrameBox.Width = Theme.Dip(dpi, 120);
         _applyButton.FitToText();
+        _openLogsButton.FitToText();
+        _exportBundleButton.FitToText();
+        _auditButton.FitToText();
 
         _materialSwitch.SetOptions(
             (Theme.MaterialToken(MaterialKind.Opaque), I18n.Get("cp.settings.material.opaque")),
@@ -165,6 +168,27 @@ internal sealed partial class ControlPanel
         _themeSwitch.Select(Theme.ModeToken(Theme.Mode), raise: false);
         _themeSwitch.Width = Theme.Dip(dpi, 240);
 
+        // 三个诊断入口排成一行：三行各带说明会把默认高度的设置页顶出滚动区，
+        // 最后一行只露出半句说明（2026-10-28 截图实测）。它们本来就是同一类只读动作。
+        int gap = Theme.Dip(dpi, Theme.SpaceSm);
+        _openLogsButton.Margin = new Padding(0, 0, gap, 0);
+        _exportBundleButton.Margin = new Padding(0, 0, gap, 0);
+        _auditButton.Margin = Padding.Empty;
+        var diagnosticBar = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            BackColor = Theme.Bg,
+            Name = "diagnostic-tools",
+        };
+        diagnosticBar.Controls.Add(_openLogsButton);
+        diagnosticBar.Controls.Add(_exportBundleButton);
+        diagnosticBar.Controls.Add(_auditButton);
+        diagnosticBar.Size = diagnosticBar.GetPreferredSize(Size.Empty);
+
         // 一页 = 若干段 + 每段若干行；页面只声明内容，坐标与间距交给 FormGrid。
         Panel stack = FormGrid.Stack(page);
         FormGrid.Fill(stack, new Control[]
@@ -178,9 +202,8 @@ internal sealed partial class ControlPanel
             FormGrid.Row(page, I18n.Get("cp.settings.material"), _materialSwitch, I18n.Get("cp.settings.material.hint")),
             FormGrid.Gap(page),
             FormGrid.Section(page, I18n.Get("cp.settings.section.diagnostics")),
-            FormGrid.Row(page, I18n.Get(DiagnosticLogsRow), _openLogsButton, I18n.Get("cp.settings.logDir.note")),
-            FormGrid.Row(page, I18n.Get(DiagnosticBundleRow), _exportBundleButton, I18n.Get("cp.settings.bundle.note")),
-            FormGrid.Row(page, I18n.Get("cp.settings.row.audit"), _auditButton, null),
+            // 这三个入口的名字已经说清各自做什么；再挂一行说明会把 96dpi 下的页面顶出滚动区。
+            FormGrid.Row(page, I18n.Get("cp.settings.row.diagnosticTools"), diagnosticBar),
         });
 
         // 底栏：状态 + 唯一的保存按钮。设置页只有这一个提交口，其它控件改的只是草稿。

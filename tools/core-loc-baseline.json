@@ -1811,6 +1811,22 @@
           "lines": 103
         }
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "measured": 28566,
+      "budget": 28800,
+      "note": "设置页诊断入口并成一行（净值 -13）：三行各带说明在 96dpi 默认高度下把页面顶进滚动区，最后一行只露出半句说明；同时退役只服务旧只读列表的 SettingsRowTexts/DiagnosticControlNames 与五个失效 i18n 键。",
+      "attribution": [
+        {
+          "slice": "设置页诊断区合并与失效读数 API 退役",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Settings.cs",
+            "packages/core/PetDock.Core/src/Ui/ControlPanel.Diagnostics.cs"
+          ],
+          "lines": -13
+        }
+      ]
     }
   ]
 }

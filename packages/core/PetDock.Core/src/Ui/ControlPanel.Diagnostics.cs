@@ -1,4 +1,4 @@
-// 设置页的诊断入口（RFC-17 §3.4 / §3.5；原规格 18 §2.3 的两行）。
+// 设置页的诊断区（RFC-17 §3.4 / §3.5）：三个只读入口，排在同一个表单行里。
 //
 // 面板只**发出意图**（与设置页的「应用」同款纪律）：面板不碰文件系统、不碰进程。
 // 宿主侧执行完把一句话回来说，面板把它显示成内联状态标签 —— 不弹模态框（原规格 18 §5）。
@@ -40,10 +40,6 @@ internal sealed partial class ControlPanel
     /// <summary>诊断动作的回调形状：给一个动作名，宿主侧回成败与一句话（失败原因是文案）。</summary>
     internal delegate (bool Ok, string Message) DiagnosticCommand(string op);
 
-    /// <summary>设置页诊断入口的控件名（自检按它们断言入口存在）。</summary>
-    public IReadOnlyList<string> DiagnosticControlNames =>
-        new[] { _openLogsButton.Name, _exportBundleButton.Name, _auditButton.Name };
-
     /// <summary>诊断动作名（自检按它调宿主侧回调，不靠模拟点击）。</summary>
     public const string DiagnosticOpOpenLogs = "open-logs";
 
@@ -53,35 +49,8 @@ internal sealed partial class ControlPanel
     /// <summary>诊断动作名：打开审计流水的只读视图。</summary>
     public const string DiagnosticOpViewAudit = "view-audit";
 
-    /// <summary>设置页诊断两行的行名**键**（判据断键：文案在 assets/i18n，会跟着语言变）。</summary>
-    public const string DiagnosticLogsRow = "cp.settings.row.diagnosticLogs", DiagnosticBundleRow = "cp.settings.row.diagnosticBundle";
-
     /// <summary>给设置页装一个宿主侧的诊断回调（构造时传入）。</summary>
     public void SetDiagnosticCommand(DiagnosticCommand? command) => _diagnosticCommand = command;
-
-    /// <summary>
-    /// 设置页列表当前所有行的文字（自检断言诊断两行不再是「(未接线)」）。
-    /// 走的是**共享列表**（面板四页共用一个 ListView），所以自检要先切到设置页。
-    /// </summary>
-    public IReadOnlyList<string> SettingsRowTexts
-    {
-        get
-        {
-            var texts = new List<string>();
-            foreach (ListViewItem item in _list.Items)
-            {
-                var cells = new List<string>();
-                foreach (ListViewItem.ListViewSubItem sub in item.SubItems)
-                {
-                    cells.Add(sub.Text);
-                }
-
-                texts.Add(string.Join(" | ", cells));
-            }
-
-            return texts;
-        }
-    }
 
     /// <summary>
     /// 自检入口：直接走宿主侧回调（与点按钮同一条路），
@@ -95,10 +64,6 @@ internal sealed partial class ControlPanel
         _openLogsButton.Click += (_, _) => RunDiagnostic(DiagnosticOpOpenLogs);
         _exportBundleButton.Click += (_, _) => RunDiagnostic(DiagnosticOpExportBundle);
         _auditButton.Click += (_, _) => RunDiagnostic(DiagnosticOpViewAudit);
-
-        _openLogsButton.FitToText();
-        _exportBundleButton.FitToText();
-        _auditButton.FitToText();
     }
 
     /// <summary>
