@@ -11,6 +11,9 @@
 // 一次性判定：读 settings.json 的可空字段 onboardingCompletedVersion（RFC-16 §3.1）。
 // 写盘一律「读出 → 改一个字段 → 整份写回」（RFC-16 §3.2），
 // 绝不能凭记忆造一份 UserSettings 写回去 —— 那会把设置页写的字段抹掉。
+//
+// 2026-10-28：语言选择搬进设置页。引导只写一次性标记、不再碰 Language，
+// 所以这里也没有「引导结束后重载语言」这一步 —— 没有选择就没有要生效的东西。
 using System;
 using PetDock.Core.Compositor;
 using PetDock.Hosting;
@@ -92,28 +95,8 @@ internal sealed partial class UiHost
         }
         finally
         {
-            ReloadLanguageAfterOnboarding();
             AttachOnboarding(null);
         }
-    }
-
-    /// <summary>
-    /// 引导选的语言在验收这一步就生效：重读文案表并重建托盘菜单。
-    /// 不这么做的话，用户选了 English 却还看到中文托盘，直到下一次重启——
-    /// 那句「选完就生效」就成了空话（当前窗口已关，重建它没有意义）。
-    /// </summary>
-    private void ReloadLanguageAfterOnboarding()
-    {
-        string? wanted = _settings?.Load().Language;
-        if (string.IsNullOrWhiteSpace(wanted)
-            || string.Equals(wanted, I18n.Language, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        I18n.Load(wanted);
-        _tray.ReloadLanguage();
-        KernelLog.Write($"i18n-reloaded lang={I18n.Language} via=onboarding");
     }
 
     /// <summary>
@@ -123,11 +106,11 @@ internal sealed partial class UiHost
     internal void AttachOnboarding(OnboardingWindow? window) => _onboarding = window;
 
     /// <summary>
-    /// 引导写设置：读出 → 改一个字段 → 整份写回。
-    /// language = null 表示不改语言；complete = true 表示写一次性标记。
+    /// 引导写设置：读出 → 改一个字段 → 整份写回。只写一次性标记，不碰 Language
+    /// （语言是设置页的事实，引导替用户改它才是越权）。
     /// 写失败返回 false 并带上原因（引导据此内联提示「下次启动还会出现」）。
     /// </summary>
-    private bool WriteOnboardingSettings(string? language, bool complete, out string error)
+    private bool WriteOnboardingSettings(bool complete, out string error)
     {
         error = string.Empty;
         UserSettingsStore? store = _settings;
@@ -142,7 +125,6 @@ internal sealed partial class UiHost
             UserSettings previous = store.Load();
             var updated = previous with
             {
-                Language = language ?? previous.Language,
                 OnboardingCompletedVersion = complete
                     ? UserSettings.OnboardingVersion
                     : previous.OnboardingCompletedVersion,

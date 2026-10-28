@@ -24,6 +24,7 @@ internal static class UiWorkspaceChecks
         Render(check);
         EmptyWorkspace(check);
         PluginDeleteAffordance(check);
+        SettingsLanguageSwitch(check);
     }
 
     private static void OrderedPages(Report check)
@@ -123,6 +124,47 @@ internal static class UiWorkspaceChecks
         catch (Exception error)
         {
             check("ui-plugin-delete-affordance", false, $"{error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    /// <summary>设置页的语言入口：绑定时读当前语言，选另一门时向宿主发命令（2026-10-28 搬出引导）。</summary>
+    private static void SettingsLanguageSwitch(Report check)
+    {
+        string? root = PluginHost.ProbePluginsRoot();
+        if (root is null)
+        {
+            check("ui-settings-language-switch", false, "root=missing");
+            return;
+        }
+
+        var context = new PreviewUiContext(new UiSnapshot(
+            Array.Empty<PetLine>(),
+            Array.Empty<PluginLine>(),
+            new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque")));
+
+        try
+        {
+            IUiPage? page = UiPluginCatalog.Load(root, context)
+                .SelectMany(plugin => plugin.CreatePages(context))
+                .FirstOrDefault(candidate => string.Equals(candidate.Id, "settings", StringComparison.Ordinal));
+            FrameworkElement? view = page?.CreateView();
+            var zh = view?.FindName("LanguageZh") as System.Windows.Controls.RadioButton;
+            var en = view?.FindName("LanguageEn") as System.Windows.Controls.RadioButton;
+            if (zh is null || en is null)
+            {
+                check("ui-settings-language-switch", false, "controls=missing");
+                return;
+            }
+
+            bool reflectsSnapshot = zh.IsChecked == true && en.IsChecked != true;
+            en.IsChecked = true;
+            bool emitted = context.Commands.Contains("language:en-US");
+            check("ui-settings-language-switch", reflectsSnapshot && emitted,
+                $"snapshot={reflectsSnapshot} emitted={emitted} commands={string.Join(",", context.Commands)}");
+        }
+        catch (Exception error)
+        {
+            check("ui-settings-language-switch", false, $"{error.GetType().Name}: {error.Message}");
         }
     }
 

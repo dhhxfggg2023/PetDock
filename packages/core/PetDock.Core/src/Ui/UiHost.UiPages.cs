@@ -62,6 +62,8 @@ internal sealed partial class UiHost : IUiPageContext
             Theme.ParseMaterial(material),
             Theme.ParseMode(theme));
 
+    string? IUiPageContext.SetLanguage(string language) => SetLanguageFromPanel(language);
+
     void IUiPageContext.OpenLogs() => RunDiagnostic(ControlPanel.DiagnosticOpOpenLogs);
 
     void IUiPageContext.ExportDiagnostics(IntPtr owner) => RunDiagnostic(ControlPanel.DiagnosticOpExportBundle);

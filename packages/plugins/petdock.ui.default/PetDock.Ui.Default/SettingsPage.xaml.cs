@@ -19,6 +19,13 @@ public partial class SettingsPage : UserControl, IUiPage
         StartupSection.Text = context.T("cp.settings.section.startup");
         StartupLabel.Text = context.T("cp.settings.startup");
         StartupHint.Text = context.T("cp.settings.startup.hint");
+        LanguageSection.Text = context.T("cp.settings.section.language");
+        LanguageLabel.Text = context.T("cp.settings.language");
+        LanguageHint.Text = context.T("cp.settings.language.hint");
+        // 语言选项永远用各自的语言写（简体中文 / English）：用户切到看不懂的语言时，
+        // 还能凭这两个词走回来。所以它们不随界面语言翻译表变化。
+        LanguageZh.Content = context.T("cp.settings.language.zh");
+        LanguageEn.Content = context.T("cp.settings.language.en");
         AppearanceSection.Text = context.T("cp.settings.section.appearance");
         ThemeLabel.Text = context.T("cp.settings.theme");
         ThemeHint.Text = context.T("cp.settings.theme.hint");
@@ -69,6 +76,7 @@ public partial class SettingsPage : UserControl, IUiPage
             if (view is not null)
             {
                 StartupSwitch.IsChecked = view.StartupEnabled;
+                SelectLanguage(view.Language);
                 SelectTheme(view.Theme);
                 SelectMaterial(view.Material);
             }
@@ -77,6 +85,13 @@ public partial class SettingsPage : UserControl, IUiPage
         {
             _binding = false;
         }
+    }
+
+    private void SelectLanguage(string? code)
+    {
+        bool english = string.Equals(code, "en-US", StringComparison.OrdinalIgnoreCase);
+        LanguageEn.IsChecked = english;
+        LanguageZh.IsChecked = !english;
     }
 
     private void SelectTheme(string? token)
@@ -113,6 +128,22 @@ public partial class SettingsPage : UserControl, IUiPage
             StartupSwitch.IsChecked == true,
             SelectedMaterial,
             SelectedTheme);
+        ShowStatus(problem);
+        _context.Refresh();
+    }
+
+    /// <summary>
+    /// 语言改动即生效：宿主换文案表并重建面板。这里只发意图，不自己 Dispose 任何东西 ——
+    /// 这次调用发生在单选按钮的 Checked 事件里，拆掉承载事件的页面是自找竞态。
+    /// </summary>
+    private void OnLanguageChanged(object sender, RoutedEventArgs e)
+    {
+        if (_binding)
+        {
+            return;
+        }
+
+        string? problem = _context.SetLanguage(LanguageEn.IsChecked == true ? "en-US" : "zh-CN");
         ShowStatus(problem);
         _context.Refresh();
     }

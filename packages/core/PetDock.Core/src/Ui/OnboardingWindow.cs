@@ -1,7 +1,10 @@
-// 首次运行引导窗（RFC-16 §3.3 的三步控件树）。
+// 首次运行引导窗（RFC-16 §3.3）。
 //
-// 为什么引导是**窗**而不是面板的一页：原规格 18 §2.5 把主控面板的四页钉死了（判据 ui-panel-pages），
-// 而引导是**一次性**的、不属于常驻界面的四页。托盘也不能加第六项（原规格 18 §1 被 ui-tray-items 钉死）。
+// 为什么引导是**窗**而不是面板的一页：原规格 18 §2.5 把主控面板的页钉死了（判据 ui-panel-pages），
+// 而引导是**一次性**的、不属于常驻界面。托盘也不能加第六项（原规格 18 §1 被 ui-tray-items 钉死）。
+//
+// 2026-10-28：语言选择从引导里搬进设置页（默认中文）。引导只剩一页「使用提示」，
+// 不再写语言 —— 用户的语言是设置页的事实，引导没有资格替用户改它。
 //
 // 线程：全部在 UI 线程。窗以模态方式打开（ShowDialog），模态窗自带消息循环，
 // 宿主的滴答器在模态期间**仍会触发** —— 所以宿主必须知道引导窗开着（见 UiHost.Onboarding.cs），
@@ -18,18 +21,16 @@ using PetDock.Core.Ui.Design;
 
 namespace PetDock.Core.Ui;
 
-/// <summary>首次运行引导窗：一页（选语言 + 穿透提示）。</summary>
+/// <summary>首次运行引导窗：一页（使用提示）。</summary>
 internal sealed partial class OnboardingWindow : PetDockDialog
 {
     /// <summary>
     /// 写设置（宿主侧执行：读出 → 改一个字段 → 整份写回）。
-    /// language = null 表示不改语言；complete = true 表示写一次性标记。
-    /// 返回 false = 写失败，error 有值。
+    /// complete = true 表示写一次性标记。返回 false = 写失败，error 有值。
     /// </summary>
-    internal delegate bool WriteSettings(string? language, bool complete, out string error);
+    internal delegate bool WriteSettings(bool complete, out string error);
 
-    // 常量是**键名**，不是文案（RFC-42 §3.4 第 3 条）：判据引用键，文案将来在 assets/i18n 的表里；
-    // 这一片还没有表，I18n.Get 原样返回键，缺键就显示键名本身。
+    // 常量是**键名**，不是文案（RFC-42 §3.4 第 3 条）：判据引用键，文案在 assets/i18n 的表里。
 
     /// <summary>页面里必须原样出现的说明的键。</summary>
     public const string ThroughCaptionKey = "ui.onboarding.through.caption";
@@ -44,8 +45,6 @@ internal sealed partial class OnboardingWindow : PetDockDialog
 
     private readonly Panel[] _steps;
     private readonly Label _error = new();
-    private readonly ThemedRadio _zh = new() { Text = I18n.Get("ui.onboarding.language.zh"), Name = "onboarding-language-zh" };
-    private readonly ThemedRadio _en = new() { Text = I18n.Get("ui.onboarding.language.en"), Name = "onboarding-language-en" };
     private readonly ThemedButton _next = new() { Text = I18n.Get(FinishKey), Name = "onboarding-next", Primary = true };
     private readonly ThemedButton _skip = new() { Text = I18n.Get("ui.onboarding.skip"), Name = "onboarding-skip" };
 
@@ -67,13 +66,11 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         MaximizeBox = false;
         ShowInTaskbar = false;
         Theme.Apply(this);
-        // 高度按「三步里最长的那一步」定：第一、二步内容少，留太多空白会读成界面没画完
-        // （2026-10-28 截图实测）。
-        ClientSize = new Size(Theme.Dip(this, 560), Theme.Dip(this, 336));
+        // 高度按这一页的正文定（2026-10-28 截图实测）：标题 36 + 说明 52 + 间隔 16 + 屏下列 32 + 入口 56
+        // = 192，上下内边距各 24，按钮条 36 —— 多出来的空白会把「还没画完」读成界面坏了。
+        ClientSize = new Size(Theme.Dip(this, 560), Theme.Dip(this, 280));
 
-        // 2026-10-28：删掉「放置示例宠物」与独立的穿透说明页。用户问的「第二个选择框」
-        // 就是那页里的大示意框 —— 它不是选项，删掉；提示并到语言页，一次看完。
-        _steps = new[] { BuildLanguageStep(hasPet) };
+        _steps = new[] { BuildUsageStep(hasPet) };
 
         BuildBody();
         BuildFooter();
@@ -85,11 +82,8 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     /// <summary>当前是第几步（0 起）。</summary>
     public int StepIndex => _index;
 
-    /// <summary>一共几步（恒为 1：语言与使用提示同页）。</summary>
+    /// <summary>一共几步（恒为 1：使用提示一页看完）。</summary>
     public int StepCount => _steps.Length;
-
-    /// <summary>用户选的语言（读单选框，不读界面文案 —— 文案不随选择变化）。</summary>
-    public string SelectedLanguage => _en.Checked ? "en-US" : "zh-CN";
 
     /// <summary>内联错误条当前是否可见。</summary>
     public bool ErrorShown => _errorShown;
@@ -106,14 +100,14 @@ internal sealed partial class OnboardingWindow : PetDockDialog
     /// <summary>引导是否已经走完（完成或跳过）。</summary>
     public bool Finished => _finished;
 
-    /// <summary>按钮当前文案（来自 <see cref="NextButtonKey"/>，不随语言选择变化）。</summary>
+    /// <summary>按钮当前文案（来自 <see cref="NextButtonKey"/>）。</summary>
     public string NextButtonText => _next.Text;
 
     /// <summary>按钮当前文案的键（判据断言这个键，不断言中文字面量）。</summary>
     public string NextButtonKey => FinishKey;
 
     /// <summary>
-    /// 某一步里所有标签的文案（判据读它断言 原规格 18 §4 的两句话**原样出现**在界面上，
+    /// 某一步里所有标签的文案（判据读它断言说明**原样出现**在界面上，
     /// 而不是出现在某个常量里 —— 读常量只能证明常量没被改，证明不了文案真的在窗上）。
     /// </summary>
     public string CollectStepText(int index)
@@ -126,6 +120,32 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         var text = new System.Text.StringBuilder();
         CollectText(_steps[index], text);
         return text.ToString();
+    }
+
+    /// <summary>某一步里的单选框数量（判据用：引导不再让用户选语言，这里必须是 0）。</summary>
+    public int RadioButtonCount(int index)
+    {
+        if (index < 0 || index >= _steps.Length)
+        {
+            return 0;
+        }
+
+        int count = 0;
+        CollectRadios(_steps[index], ref count);
+        return count;
+    }
+
+    private static void CollectRadios(Control parent, ref int count)
+    {
+        foreach (Control child in parent.Controls)
+        {
+            if (child is RadioButton)
+            {
+                count++;
+            }
+
+            CollectRadios(child, ref count);
+        }
     }
 
     private static void CollectText(Control parent, System.Text.StringBuilder text)
@@ -141,62 +161,23 @@ internal sealed partial class OnboardingWindow : PetDockDialog
         }
     }
 
-    /// <summary>选语言（自检与判据驱动用；等价于点单选框）。</summary>
-    public void SelectLanguage(string code)
-    {
-        bool english = string.Equals(code, "en-US", StringComparison.Ordinal);
-        _en.Checked = english;
-        _zh.Checked = !english;
-    }
-
-    /// <summary>下一步（最后一步上是「完成」）。</summary>
-    public void GoNext()
-    {
-        // 第 1 步的「下一步」就把语言写下去（RFC-16 §3.3）：
-        // 用户选了语言却因为中途关窗而丢掉选择，是没道理的事。
-        if (_index == 0 && !SaveLanguage())
-        {
-            return;
-        }
-
-        if (_index < _steps.Length - 1)
-        {
-            _index++;
-            ShowStep();
-            return;
-        }
-
-        Finish();
-    }
+    /// <summary>下一步（一页只有「完成」）。</summary>
+    public void GoNext() => Finish();
 
     /// <summary>跳过引导（跳过也要写一次性标记 —— 否则每次启动都弹）。</summary>
-    public void Skip() => Complete(completeOnboarding: true, saveLanguage: false);
+    public void Skip() => Complete(completeOnboarding: true);
 
     /// <summary>完成引导。</summary>
-    public void Finish() => Complete(completeOnboarding: true, saveLanguage: true);
-
-    /// <summary>第 1 步：只写语言，不写标记。</summary>
-    private bool SaveLanguage()
-    {
-        ClearError();
-        if (_writeSettings(SelectedLanguage, complete: false, out string error))
-        {
-            return true;
-        }
-
-        _markerError = error;
-        ShowError(I18n.Get("ui.onboarding.error.languageSave", error));
-        return false;
-    }
+    public void Finish() => Complete(completeOnboarding: true);
 
     /// <summary>
-    /// 收尾：把一次性标记（以及语言）一起写出去。
+    /// 收尾：把一次性标记写出去。
     /// 写失败**不写标记**也不关窗：内联提示「下次启动还会出现」，让用户能立刻重试。
     /// </summary>
-    private void Complete(bool completeOnboarding, bool saveLanguage)
+    private void Complete(bool completeOnboarding)
     {
         ClearError();
-        if (!_writeSettings(saveLanguage ? SelectedLanguage : null, completeOnboarding, out string error))
+        if (!_writeSettings(completeOnboarding, out string error))
         {
             _markerError = error;
             _markerWritten = false;

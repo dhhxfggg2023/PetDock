@@ -4,11 +4,15 @@
 //
 // 口径：--uitest --shots <目录>；96dpi 与 144dpi 各一套、浅色与深色各一套。
 // 渲染不依赖窗口显示（无前台、锁屏也能跑），所以不再有旧的 SHOT-SKIP 分支。
+//
+// 引导窗是 WinForms 模态框，WPF 的壳截图拍不到它（2026-10-28：改引导文案的判据只看得到字，
+// 看不到样子，而「留太多空白会读成界面没画完」恰恰只有看图才发现）。所以它单独走 DrawToBitmap。
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using PetDock.Core.Ui;
@@ -79,8 +83,62 @@ internal static class UiShots
             Theme.Mode = original;
         }
 
+        count += CaptureOnboarding(dir, emit);
         emit("SHOT-OK n=" + count + " dir=" + dir);
         return count;
+    }
+
+    /// <summary>引导窗逐档 DPI 拍一张（窗在构造时按 DPI 定型，所以每档重建一次）。</summary>
+    private static int CaptureOnboarding(string dir, LineSink emit)
+    {
+        int count = 0;
+        int savedDpi = Theme.SimulatedDpi;
+        try
+        {
+            foreach (int dpi in new[] { 96, 144 })
+            {
+                Theme.SetSimulatedDpi(dpi);
+                using var window = new OnboardingWindow(WriteNothing, hasPet: true);
+
+                // DrawToBitmap 只画「已经建过窗、画过一次」的控件树：没显示过的窗拍出来是空白
+                // （2026-10-28 实测）。所以摆到屏幕外显示一次再拍，用户看不到它。
+                window.StartPosition = FormStartPosition.Manual;
+                window.Location = new System.Drawing.Point(-32000, -32000);
+                window.Show();
+                System.Windows.Forms.Application.DoEvents();
+                window.PerformLayout();
+                try
+                {
+                    using var bitmap = new System.Drawing.Bitmap(window.Width, window.Height);
+                    window.DrawToBitmap(bitmap, new System.Drawing.Rectangle(0, 0, window.Width, window.Height));
+                    string name = "onboarding@" + dpi.ToString() + ".png";
+                    bitmap.Save(Path.Combine(dir, name), System.Drawing.Imaging.ImageFormat.Png);
+                    emit("SHOT " + name + " " + bitmap.Width + "x" + bitmap.Height);
+                    count++;
+                }
+                finally
+                {
+                    window.Hide();
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            emit("SHOT-FAIL onboarding " + error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            Theme.SetSimulatedDpi(savedDpi);
+        }
+
+        return count;
+    }
+
+    /// <summary>截图用的写设置回调：不落盘（截图不该改这台机器的设置）。</summary>
+    private static bool WriteNothing(bool complete, out string error)
+    {
+        error = string.Empty;
+        return true;
     }
 
     private static void Capture(FrameworkElement workspace, string path, int dpi)

@@ -32,6 +32,28 @@
 
                 <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
                     <StackPanel>
+                        <TextBlock x:Name="LanguageSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="LanguageLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="LanguageHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <RadioButton x:Name="LanguageZh" GroupName="language" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnLanguageChanged" />
+                                <RadioButton x:Name="LanguageEn" GroupName="language" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnLanguageChanged" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
                         <TextBlock x:Name="AppearanceSection" Style="{DynamicResource Pd.Section}" />
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>

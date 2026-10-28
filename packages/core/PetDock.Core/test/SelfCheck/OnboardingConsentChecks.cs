@@ -30,7 +30,7 @@ internal static class OnboardingConsentChecks
     private const int EnqueueWaitMs = 500;
 
     /// <summary>引导窗的写设置回调（判据里不真的写盘，返回成功即可）。</summary>
-    private static bool AcceptSettings(string? language, bool complete, out string error)
+    private static bool AcceptSettings(bool complete, out string error)
     {
         error = string.Empty;
         return true;

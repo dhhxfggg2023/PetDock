@@ -13,6 +13,9 @@ internal static class I18n
 {
     internal const string DefaultLanguage = "zh-CN";
 
+    /// <summary>随包发行的界面语言（与 assets/i18n 下的目录同名）。加语言时两处一起加。</summary>
+    private static readonly string[] Supported = { "zh-CN", "en-US" };
+
     private static Dictionary<string, string> _table = new(StringComparer.Ordinal);
     private static Dictionary<string, string> _fallback = new(StringComparer.Ordinal);
 
@@ -83,6 +86,30 @@ internal static class I18n
         string.Format(CultureInfo.InvariantCulture, Get(key), arg0, arg1);
 
     internal static bool Has(string key) => _table.ContainsKey(key) || _fallback.ContainsKey(key);
+
+    /// <summary>
+    /// 把任意来源的语言代码规整成表里的规范写法（大小写不敏感）；不支持返回 null。
+    /// 设置页传什么都不能让 <see cref="Load"/> 去读一个不存在的目录 —— 那样会静默退回中文，
+    /// 用户以为切了语言却没变，比直接拒绝更难查。
+    /// </summary>
+    internal static string? Canonical(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return null;
+        }
+
+        string trimmed = language.Trim();
+        foreach (string candidate in Supported)
+        {
+            if (string.Equals(candidate, trimmed, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>判据用：把缺键计数归零，跑完再问「这趟缺了几个」。</summary>
     internal static void ResetMissingCount() => MissingCount = 0;

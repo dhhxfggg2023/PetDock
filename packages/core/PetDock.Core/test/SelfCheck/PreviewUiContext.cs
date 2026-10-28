@@ -76,6 +76,12 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    public string? SetLanguage(string language)
+    {
+        Commands.Add("language:" + language);
+        return null;
+    }
+
     public void OpenLogs() => Commands.Add("logs");
 
     public void ExportDiagnostics(IntPtr owner) => Commands.Add("export");

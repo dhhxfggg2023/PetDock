@@ -32,16 +32,13 @@
 
 
   "ui.onboarding.title": "PetDock — 首次运行引导",
-  "ui.onboarding.language.zh": "简体中文",
-  "ui.onboarding.language.en": "English",
-  "ui.onboarding.language.title": "选择界面语言",
-  "ui.onboarding.language.note": "完成这一步后，界面文案与托盘菜单会立即切换到你选的语言。",
+  "ui.onboarding.usage.title": "开始使用",
+  "ui.onboarding.usage.note": "语言、外观与开机自启都在主控面板的「设置」页，随时可以改。",
   "ui.onboarding.finish": "完成",
   "ui.onboarding.skip": "跳过引导",
   "ui.onboarding.through.caption": "宠物透明区域可以点到下面的东西，这是正常的",
   "ui.onboarding.through.tip": "入口：右键宠物弹出菜单（主控面板、退出），\n双击宠物直接打开主控面板。",
   "ui.onboarding.no-pet": "当前没有可显示的宠物，使用提示已省略。",
-  "ui.onboarding.error.languageSave": "{0}（语言选择未能保存）",
   "ui.onboarding.error.completeSave": "{0}（引导完成状态未能保存，下次启动还会出现）",
   "ui.onboarding.error.noSettings": "没有设置存储",
   "ui.onboarding.error.settingsFailed": "设置未能保存：{0}",

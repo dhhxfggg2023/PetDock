@@ -1,9 +1,9 @@
 // 首次运行引导的判据（RFC-16 §4）。
 //
 // 2026-10-28 删掉「放置示例宠物」步与独立的穿透说明页（用户问的「第二个选择框」就是
-// 那页的大示意框）。引导只剩一页：选语言 + 透明区提示。判据跟着改：不再测示例包的
-// 复制/登记/换源（那是导入服务的判据，见 ImportChecks），改为钉住「正好一页」，
-// 并保留设置落盘、错误内联与帧透明区。
+// 那页的大示意框）。同一天语言选择搬进设置页，引导只剩一页「使用提示」。
+// 判据跟着改：不再测示例包的复制/登记/换源（那是导入服务的判据，见 ImportChecks），
+// 改为钉住「正好一页、没有语言选择」，并保留设置落盘、错误内联与帧透明区。
 using System;
 using System.Linq;
 using System.Text.Json.Nodes;
@@ -27,8 +27,8 @@ internal static class OnboardingChecks
         "ui-onboarding-not-repeated",
         "ui-onboarding-marker-survives-settings-write",
         "ui-onboarding-state-audit-fields",
-        "ui-onboarding-language-persisted",
-        "ui-onboarding-language-is-choice-only",
+        "ui-onboarding-no-language-choice",
+        "ui-onboarding-keeps-language",
         "ui-onboarding-through-caption",
         "ui-onboarding-inline-error",
         "ui-onboarding-no-modal-error",
@@ -62,7 +62,7 @@ internal static class OnboardingChecks
         var store = new UserSettingsStore(root);
 
         // 写设置要「读出 → 改一个字段 → 整份写回」（RFC-16 §3.2）。
-        bool WriteSettings(string? language, bool complete, out string error)
+        bool WriteSettings(bool complete, out string error)
         {
             error = string.Empty;
             try
@@ -70,7 +70,6 @@ internal static class OnboardingChecks
                 UserSettings previous = store.Load();
                 store.Save(previous with
                 {
-                    Language = language ?? previous.Language,
                     OnboardingCompletedVersion = complete
                         ? UserSettings.OnboardingVersion
                         : previous.OnboardingCompletedVersion,
@@ -88,16 +87,14 @@ internal static class OnboardingChecks
         {
             check("ui-onboarding-one-step", window.StepCount == 1, $"steps={window.StepCount}");
 
-            // 语言与使用提示同页：选择语言不改变这一页的任何文案。
-            string beforeKey = window.NextButtonKey;
-            window.SelectLanguage("en-US");
-            string afterKey = window.NextButtonKey;
-            string afterText = window.NextButtonText;
-            check("ui-onboarding-language-is-choice-only",
-                string.Equals(beforeKey, afterKey, StringComparison.Ordinal)
-                && afterKey.StartsWith("ui.onboarding.", StringComparison.Ordinal)
-                && string.Equals(afterText, I18n.Get(afterKey), StringComparison.Ordinal),
-                $"before={beforeKey} after={afterKey} text={afterText}");
+            // 引导不再让用户选语言：整页没有单选框。语言是设置页的事实（默认中文），
+            // 引导替用户改它才是越权 —— 页面只负责指路（「设置页里随时可以改」）。
+            int radios = window.RadioButtonCount(0);
+            string usageText = window.CollectStepText(0);
+            bool pointsToSettings = usageText.Contains(I18n.Get("ui.onboarding.usage.note"), StringComparison.Ordinal);
+            check("ui-onboarding-no-language-choice",
+                radios == 0 && pointsToSettings,
+                $"radios={radios} points-to-settings={pointsToSettings}");
 
             // 穿透说明原样出现在这一页（断言键解析出的那句，不是中文原文）。
             string throughText = window.CollectStepText(0);
@@ -105,11 +102,12 @@ internal static class OnboardingChecks
                 throughText.Contains(I18n.Get(OnboardingWindow.ThroughCaptionKey), StringComparison.Ordinal),
                 $"key={OnboardingWindow.ThroughCaptionKey} text={throughText.Replace('\n', '|')}");
 
-            // 一次「完成」：语言与一次性标记一起写进 settings.json。
+            // 一次「完成」：只写一次性标记，语言保持默认中文不变（引导不越权改语言）。
+            string languageBefore = store.Load().Language;
             window.GoNext();
-            check("ui-onboarding-language-persisted",
-                string.Equals(store.Load().Language, "en-US", StringComparison.Ordinal),
-                $"language={store.Load().Language}");
+            check("ui-onboarding-keeps-language",
+                string.Equals(store.Load().Language, languageBefore, StringComparison.Ordinal),
+                $"before={languageBefore} after={store.Load().Language}");
             check("ui-onboarding-runs-once",
                 window.MarkerWritten && store.Load().OnboardingCompletedVersion == UserSettings.OnboardingVersion,
                 $"written={window.MarkerWritten} marker={store.Load().OnboardingCompletedVersion}");
@@ -145,7 +143,7 @@ internal static class OnboardingChecks
 
         // ⑦ 写盘失败：内联错误条、不弹模态框（失败不弹模态是界面纪律）。
         using (var failing = new OnboardingWindow(
-                   (string? language, bool complete, out string error) =>
+                   (bool complete, out string error) =>
                    {
                        error = "设置未能保存：判据注入的失败";
                        return false;

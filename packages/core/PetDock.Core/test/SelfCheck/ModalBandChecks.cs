@@ -149,7 +149,7 @@ internal static class ModalBandChecks
         return topmost;
     }
 
-    private static bool WriteNothing(string? language, bool complete, out string error)
+    private static bool WriteNothing(bool complete, out string error)
     {
         error = string.Empty;
         return true;
