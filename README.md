@@ -48,7 +48,7 @@ dotnet run --project packages/core/PetDock.Core -c Release -- --uitest --shots <
 # 校验插件清单（门禁与插件作者共用同一套规则）
 dotnet run --project packages/core/PetDock.Core -c Release -- --validate-plugins <插件目录或根>
 
-# 导入用户自备的 DyberPet 角色包（只读引用，不复制素材）
+# CLI 转换用户自备的 DyberPet 角色包（只读引用，不复制素材；面板里的「导入素材包」会把帧复制进包内）
 dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPetImporter -c Release -- --in <角色包目录> --out <输出目录>
 ```
 
@@ -70,7 +70,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `com.petdock.brainnull` / `com.petdock.statenull` / `com.petdock.spriteseq` | 开 | 内核自带的空实现与示例呈现器 |
 | `petdock.sample.petimage` | 开 | 示例宠物呈现器 |
 | `com.petdock.bongocat.interaction` | **关** | 其他桌宠生态的适配插件，需要键盘钩子，默认不装载 |
-| `com.petdock.dyberpet.importer` | **关** | DyberPet 导入器，用到时才开 |
+| `com.petdock.dyberpet.importer` | 开 | 桌面宠物素材包导入器（含 DyberPet 包）：只在导入时转换，不申请能力，不装载桌宠 |
 | `com.petdock.myfirstbrain` | **关** | tier-1 JS 示例脑，用到时才开 |
 
 规则是「显式停用 > 显式启用 > 默认」：默认开的插件不会弹授权窗（内置信任集静默授予），
