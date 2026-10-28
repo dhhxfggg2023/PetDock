@@ -108,16 +108,26 @@ internal sealed partial class UiHost
         // 凭记忆造一份 UserSettings 写回去会抹掉引导的一次性标记：
         // 用户在引导里做完（标记已写），随后在设置页点一次「应用」，标记被抹，
         // 下次启动引导又弹一遍。这里的 `with` 表达式保住其余字段。
-        UserSettings previous = _settings?.Load() ?? UserSettings.Default;
-        var updated = previous with
+        string? materialToken = Design.Theme.MaterialToken(material);
+        string? themeToken = Design.Theme.ModeToken(theme);
+        UserSettings updated = (_settings?.Load() ?? UserSettings.Default) with
         {
             IdleFrameBudgetMs = idleFrameBudgetMs,
-            Material = Design.Theme.MaterialToken(material),
-            ThemeMode = Design.Theme.ModeToken(theme),
+            Material = materialToken,
+            ThemeMode = themeToken,
         };
         try
         {
-            _settings?.Save(updated);
+            if (_settings is not null)
+            {
+                // 原子写：拿到的是「落盘时」的最新一份，不会把别人刚写的字段改回去。
+                updated = _settings.Update(current => current with
+                {
+                    IdleFrameBudgetMs = idleFrameBudgetMs,
+                    Material = materialToken,
+                    ThemeMode = themeToken,
+                });
+            }
         }
         catch (Exception error)
         {

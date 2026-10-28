@@ -127,6 +127,7 @@ internal sealed partial class UiHost
 
         try
         {
+            // 原子读-改-写（UserSettingsStore.Update）：切语言/记位置同时发生时不互相覆盖。
             UserSettings current = store.Load();
             var ids = current.DisabledPlugins is null
                 ? new List<string>()
@@ -146,8 +147,22 @@ internal sealed partial class UiHost
                 ids.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
             }
 
-            store.Save(current with { DisabledPlugins = ids });
-            KernelLog.Write($"plugin-disabled-persisted plugin={pluginId} disabled={(disabled ? 1 : 0)} count={ids.Count}");
+            // 写的时候再读一遍：上面判断完之后，切语言/记位置可能已经写过盘，
+            // 拿着旧快照 Save 会把它们刚写的字段改回去。
+            int count = store.Update(actual =>
+            {
+                var next = actual.DisabledPlugins is null
+                    ? new List<string>()
+                    : new List<string>(actual.DisabledPlugins);
+                next.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
+                if (disabled)
+                {
+                    next.Add(pluginId);
+                }
+
+                return actual with { DisabledPlugins = next };
+            }).DisabledPlugins?.Count ?? 0;
+            KernelLog.Write($"plugin-disabled-persisted plugin={pluginId} disabled={(disabled ? 1 : 0)} count={count}");
         }
         catch (Exception error)
         {

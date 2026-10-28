@@ -18,10 +18,20 @@ using PetDock.Core.Compositor;
 namespace PetDock.Hosting;
 
 /// <summary>用户设置的读写（原规格 17 §1 的 UserSettings 形态）。</summary>
-internal sealed class UserSettingsStore
+internal sealed partial class UserSettingsStore
 {
     /// <summary>设置文件名（与 pets.json 同级，都在数据区根下）。</summary>
     public const string SettingsFile = "settings.json";
+
+    /// <summary>
+    /// 设置文件的写门。UI 线程（切语言、应用设置）与后台线程（插件启停、记窗口位置）会同时
+    /// 改同一份 settings.json，而每条改动都是「读出 → 改一个字段 → 整份写回」：不串起来，
+    /// 后写的那个拿着旧快照把前一个刚写的字段改回去，用户看到的是「设置自己变回去了」。
+    ///
+    /// 静态而不是实例字段：store 按数据目录 new 出来，同一个文件可能有多个实例，
+    /// 门必须跟着文件走。（同一条纪律的现成写法见 Host/StateStore.cs 的 Gates。）
+    /// </summary>
+    private static readonly SemaphoreSlim WriteGate = new(1, 1);
 
     private readonly string _path;
 
@@ -202,91 +212,6 @@ internal sealed class UserSettingsStore
         }
     }
 
-    /// <summary>
-    /// 写设置。两阶段提交 + 原规格 17 §4 要求的 agent_id 与 timestamp。
-    /// 写失败抛异常（调用方负责把失败说清楚，不能假装存上了）。
-    ///
-    /// 整份重写（RFC-16 §3.2 的纪律）：调用方必须**先读出再改一个字段**，
-    /// 不能凭记忆造一份 UserSettings 写回来 —— 那会把别的字段抹掉
-    /// （典型后果：引导写完一次性标记，用户随后在设置页点一次「应用」，标记被抹，引导又弹一次）。
-    /// </summary>
-    public void Save(UserSettings settings)
-    {
-        UserSettings value = settings.Clamped();
-        var doc = new JsonObject
-        {
-            ["schemaVersion"] = UserSettings.SchemaVersion,
-            ["agent_id"] = "host",
-            ["timestamp"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
-            ["idleFrameBudgetMs"] = value.IdleFrameBudgetMs,
-            ["language"] = value.Language,
-        };
-
-        // 界面材质（原规格 18 §2.7）：只在不是默认值时写这个键——「没这个键」= 不透明，
-        // 这样旧文件不需要迁移，而选了磨砂/玻璃的人重开程序还在。
-        if (value.Material is { Length: > 0 } material && material != "opaque")
-        {
-            doc["material"] = material;
-        }
-
-        // 界面亮度：与材质同一条纪律——「system」是默认，不写键；显式选过浅/深才落盘。
-        if (value.ThemeMode is "light" or "dark")
-        {
-            doc["themeMode"] = value.ThemeMode;
-        }
-
-        // 引导的一次性判定（RFC-16 §3.1）。没做过就**不写这个键**，
-        // 而不是写 null —— 「键不存在」与「键存在但为 null」在演化上是两件事，
-        // 前者明确是「这一版还没有这个概念」。
-        if (value.OnboardingCompletedVersion is int onboarding)
-        {
-            doc["onboardingCompletedVersion"] = onboarding;
-        }
-
-        // 窗口位置（RFC-22 §3.2）：没存过就不写这个键（与引导标记同一条纪律）。
-        if (value.PetPosition is Point position)
-        {
-            doc["petPosition"] = new JsonObject
-            {
-                ["x"] = position.X,
-                ["y"] = position.Y,
-            };
-        }
-
-        // 逐宠物位置（RFC-37 §7 第 4 条）：键是清单 id。空表 / null 就不写这个键（与引导标记同一条纪律）。
-        // 按 key 的 Ordinal 序写：同一份数据每次落盘的字节序一致，diff 里不会出现无意义的重排。
-        if (value.PetPositions is { Count: > 0 } positions)
-        {
-            var keys = new List<string>(positions.Keys);
-            keys.Sort(StringComparer.Ordinal);
-            var positionDoc = new JsonObject();
-            foreach (string key in keys)
-            {
-                Point entry = positions[key];
-                positionDoc[key] = new JsonObject { ["x"] = entry.X, ["y"] = entry.Y };
-            }
-
-            doc["petPositions"] = positionDoc;
-        }
-
-        // 用户关掉 / 打开的插件（空表 / null 就不写这个键）。排序后写，字节序稳定。
-        WriteStringArray(doc, "pluginsDisabled", value.DisabledPlugins);
-        WriteStringArray(doc, "pluginsEnabled", value.EnabledPlugins);
-
-        string? dir = System.IO.Path.GetDirectoryName(_path);
-        if (!string.IsNullOrEmpty(dir))
-        {
-            Directory.CreateDirectory(dir);
-        }
-
-        string temp = _path + ".tmp";
-        File.WriteAllText(
-            temp,
-            doc.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
-            new UTF8Encoding(false));
-        File.Move(temp, _path, overwrite: true);
-    }
-
     /// <summary>读一个字符串数组字段：只收非空且不重复的字符串，坏条目跳过（同一条「不让脏数据卡启动」纪律）。</summary>
     private static List<string>? ReadStringArray(JsonObject obj, string key)
     {
@@ -313,25 +238,4 @@ internal sealed class UserSettingsStore
         return ids;
     }
 
-    /// <summary>写一个字符串数组字段（排序后写，字节序稳定；空表不写键）。</summary>
-    private static void WriteStringArray(JsonObject doc, string key, IReadOnlyList<string>? ids)
-    {
-        if (ids is not { Count: > 0 })
-        {
-            return;
-        }
-
-        var sorted = new List<string>(ids);
-        sorted.Sort(StringComparer.Ordinal);
-        var array = new JsonArray();
-        foreach (string id in sorted)
-        {
-            // 用 JsonValue.Create 而不是 array.Add(id)：泛型 Add<T> 会把字符串包成
-            // JsonValueCustomized<string>，写出时要求 JsonSerializerOptions 带 TypeInfoResolver，
-            // 否则运行期抛 InvalidOperationException（与 DiagnosticSections.ToJsonArray 同一个坑）。
-            array.Add(JsonValue.Create(id)!);
-        }
-
-        doc[key] = array;
-    }
 }

@@ -122,14 +122,12 @@ internal sealed partial class UiHost
 
         try
         {
-            UserSettings previous = store.Load();
-            var updated = previous with
+            store.Update(current => current with
             {
                 OnboardingCompletedVersion = complete
                     ? UserSettings.OnboardingVersion
-                    : previous.OnboardingCompletedVersion,
-            };
-            store.Save(updated);
+                    : current.OnboardingCompletedVersion,
+            });
             return true;
         }
         catch (Exception ex)

@@ -43,8 +43,7 @@ internal sealed partial class UiHost
         // 读出 → 改一个字段 → 整份写回：凭记忆造一份 UserSettings 会抹掉引导标记等字段。
         try
         {
-            UserSettings previous = store.Load();
-            store.Save(previous with { Language = wanted });
+            store.Update(current => current with { Language = wanted });
         }
         catch (Exception error)
         {

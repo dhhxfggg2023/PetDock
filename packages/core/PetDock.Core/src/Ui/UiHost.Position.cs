@@ -130,8 +130,7 @@ internal sealed partial class UiHost
 
         try
         {
-            UserSettings current = _settings.Load();
-            _settings.Save(current with { PetPosition = next });
+            _settings.Update(current => current with { PetPosition = next });
             _lastSavedPosition = next;
             KernelLog.Write($"pet-position-saved x={x} y={y} target=settings");
         }
@@ -223,7 +222,7 @@ internal sealed partial class UiHost
         try
         {
             // `Save` 对 null 字段不写键 ⇒ 旧键真的从文件里消失（RFC-16 §3.2 的读-改-写）。
-            _settings.Save(settings with { PetPosition = null });
+            _settings.Update(current => current with { PetPosition = null });
             KernelLog.Write($"pet-position-migrated x={legacy.X} y={legacy.Y}");
         }
         catch (Exception error)

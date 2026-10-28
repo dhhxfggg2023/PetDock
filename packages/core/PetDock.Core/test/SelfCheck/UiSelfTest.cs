@@ -72,6 +72,8 @@ internal static class UiSelfTest
             PetWindowChecks.Run(Check);
             // RFC-37 §7 第 4 条：位置按宠物持久化（ui-pet-position-persist-*）。
             PetPositionChecks.Run(Check);
+            // 2026-10-28 审计 P0：设置落盘只有一个写者（ui-settings-update-*）。
+            SettingsStoreChecks.Run(Check);
             TrayPetChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);

@@ -110,32 +110,40 @@ internal sealed class PluginInventory
         {
             if (_settings is not null)
             {
-                UserSettings current = _settings.Load();
-                List<string> disabled = current.DisabledPlugins is null
-                    ? new List<string>()
-                    : new List<string>(current.DisabledPlugins);
-                List<string> enabledIds = current.EnabledPlugins is null
-                    ? new List<string>()
-                    : new List<string>(current.EnabledPlugins);
-
-                if (enabled)
+                // 原子读-改-写（UserSettingsStore.Update）：插件启停跑在后台线程，切语言/记位置
+                // 在 UI 线程，各写各的那一份快照会把对方刚写的字段改回去。
+                _settings.Update(actual =>
                 {
-                    disabled.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
-                    if (!enabledIds.Contains(pluginId, StringComparer.Ordinal))
-                    {
-                        enabledIds.Add(pluginId);
-                    }
-                }
-                else
-                {
-                    enabledIds.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
-                    if (!disabled.Contains(pluginId, StringComparer.Ordinal))
-                    {
-                        disabled.Add(pluginId);
-                    }
-                }
+                    List<string> latestDisabled = actual.DisabledPlugins is null
+                        ? new List<string>()
+                        : new List<string>(actual.DisabledPlugins);
+                    List<string> latestEnabled = actual.EnabledPlugins is null
+                        ? new List<string>()
+                        : new List<string>(actual.EnabledPlugins);
 
-                _settings.Save(current with { DisabledPlugins = disabled, EnabledPlugins = enabledIds });
+                    if (enabled)
+                    {
+                        latestDisabled.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
+                        if (!latestEnabled.Contains(pluginId, StringComparer.Ordinal))
+                        {
+                            latestEnabled.Add(pluginId);
+                        }
+                    }
+                    else
+                    {
+                        latestEnabled.RemoveAll(id => string.Equals(id, pluginId, StringComparison.Ordinal));
+                        if (!latestDisabled.Contains(pluginId, StringComparer.Ordinal))
+                        {
+                            latestDisabled.Add(pluginId);
+                        }
+                    }
+
+                    return actual with
+                    {
+                        DisabledPlugins = latestDisabled,
+                        EnabledPlugins = latestEnabled,
+                    };
+                });
             }
 
             if (enabled)
@@ -192,14 +200,11 @@ internal sealed class PluginInventory
 
             if (_settings is not null)
             {
-                UserSettings current = _settings.Load();
-                List<string> disabled = current.DisabledPlugins is null
-                    ? new List<string>()
-                    : current.DisabledPlugins.Where(id => id != pluginId).ToList();
-                List<string> enabledIds = current.EnabledPlugins is null
-                    ? new List<string>()
-                    : current.EnabledPlugins.Where(id => id != pluginId).ToList();
-                _settings.Save(current with { DisabledPlugins = disabled, EnabledPlugins = enabledIds });
+                _settings.Update(current => current with
+                {
+                    DisabledPlugins = current.DisabledPlugins?.Where(id => id != pluginId).ToList(),
+                    EnabledPlugins = current.EnabledPlugins?.Where(id => id != pluginId).ToList(),
+                });
             }
 
             KernelLog.Write($"plugin-removed plugin={pluginId} dir={entry.Dir}");

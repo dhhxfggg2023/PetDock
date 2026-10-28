@@ -173,7 +173,16 @@ internal sealed partial class PetWindowSet
             }
 
             map[id] = point;
-            Settings.Save(current with { PetPositions = map });
+
+            // 写的时候再读一遍再改：这几毫秒里别的入口（切语言、插件启停）可能已写过盘。
+            Settings.Update(actual =>
+            {
+                var next = actual.PetPositions is null
+                    ? new Dictionary<string, Point>(StringComparer.Ordinal)
+                    : new Dictionary<string, Point>(actual.PetPositions, StringComparer.Ordinal);
+                next[id] = point;
+                return actual with { PetPositions = next };
+            });
             KernelLog.Write($"pet-set-position-saved id={id} x={point.X} y={point.Y}");
             return true;
         }
