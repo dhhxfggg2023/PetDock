@@ -121,8 +121,10 @@ internal static partial class Theme
 
     /// <summary>
     /// 高对比度色板：一律用系统的高对比度前景/背景/控件色，不发明颜色。
-    /// 不用 Highlight 做选中底：页面选中态的前景仍是 Text，而不是 HighlightText，
-    /// 用 Highlight 当底会出现「深底深字」。层次靠 Line（系统前景色）与 AccentSoft（控件色）表达；
+    /// 不用 Highlight 做**选中底**：页面选中态的前景仍是 Text，而不是 HighlightText，
+    /// 用 Highlight 当底会出现「深底深字」；选中底用 AccentSoft（控件色）。
+    /// 但主按钮/进度条/滑块需要「有色块」：Accent 用 Highlight 配 OnAccent=HighlightText，
+    /// 否则 Accent 与 Line 同为前景色，进度条会整条同色、看不出走了多少。
     /// Good/Warn/Bad 在系统色里没有对应语义，统一用前景色，状态由文字本身说明。
     /// </summary>
     private static Palette HighContrastPalette()
@@ -139,10 +141,10 @@ internal static partial class Theme
             Text: text,
             TextDim: text,
             TextMuted: text,
-            Accent: text,
-            AccentHover: text,
+            Accent: System.Drawing.SystemColors.Highlight,
+            AccentHover: System.Drawing.SystemColors.Highlight,
             AccentSoft: control,
-            OnAccent: window,
+            OnAccent: System.Drawing.SystemColors.HighlightText,
             Good: text,
             Warn: text,
             Bad: text,

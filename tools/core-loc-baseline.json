@@ -2159,9 +2159,9 @@
     },
     {
       "date": "2026-10-29",
-      "measured": 29919,
+      "measured": 29921,
       "budget": 30000,
-      "note": "第八轮续：第三方 importer 转换阶段进度。新增可选接口 IPackImporterProgress（旧 IPackImporter 不动，旧导入器不实现也能用），DyberPet 导入器按帧报告并在帧边界响应取消；宿主把帧进度写到确定态进度条。为守住 D-03c 400 行，进度上报拆出 UiHost.Work.Progress.cs。实测 29843 → 29919（+76）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "note": "第八轮续：第三方 importer 转换阶段进度。新增可选接口 IPackImporterProgress（旧 IPackImporter 不动，旧导入器不实现也能用），DyberPet 导入器按帧报告并在帧边界响应取消；宿主把帧进度写到确定态进度条。为守住 D-03c 400 行，进度上报拆出 UiHost.Work.Progress.cs。另把高对比度 Accent 改用系统 Highlight（否则进度条/滑块与 Line 同色）。实测 29843 → 29921（+78）。判据面在 test/SelfCheck，按 D-03a 不计。",
       "attribution": [
         {
           "slice": "可选转换进度契约（接口/委托/进度记录）",
@@ -2184,6 +2184,13 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.Work.cs"
           ],
           "lines": 39
+        },
+        {
+          "slice": "高对比度 Accent 改用系统 Highlight（进度条/滑块可见）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/Theme.Colors.cs"
+          ],
+          "lines": 2
         }
       ]
     }

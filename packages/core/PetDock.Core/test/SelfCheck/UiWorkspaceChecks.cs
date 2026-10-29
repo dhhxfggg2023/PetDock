@@ -87,11 +87,13 @@ internal static class UiWorkspaceChecks
             using var panel = new ControlPanel(new PreviewUiContext(), Array.Empty<IUiPage>(), showWindow: false);
             var bg = panel.Workspace.Resources["Pd.Bg"] as SolidColorBrush;
             var fg = panel.Workspace.Resources["Pd.Text"] as SolidColorBrush;
+            var accent = panel.Workspace.Resources["Pd.Accent"] as SolidColorBrush;
             bool ok = Theme.IsHighContrast
                 && bg?.Color == MediaColor(System.Drawing.SystemColors.Window)
-                && fg?.Color == MediaColor(System.Drawing.SystemColors.WindowText);
+                && fg?.Color == MediaColor(System.Drawing.SystemColors.WindowText)
+                && accent?.Color == MediaColor(System.Drawing.SystemColors.Highlight);
             check("ui-theme-high-contrast", ok,
-                $"hc={Theme.IsHighContrast} bg={bg?.Color} text={fg?.Color}");
+                $"hc={Theme.IsHighContrast} bg={bg?.Color} text={fg?.Color} accent={accent?.Color}");
         }
         catch (Exception error)
         {
