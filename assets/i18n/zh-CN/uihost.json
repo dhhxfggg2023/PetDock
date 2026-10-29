@@ -26,6 +26,7 @@
   "ui.bubble.poke3": "我在呢。",
   "ui.bubble.drag": "放我下来～",
   "ui.bubble.drop": "站稳了。",
+  "ui.bubble.throw": "飞起来啦～",
   "ui.work.busy": "已有另一个操作正在进行，请等它结束。",
   "ui.work.failed": "操作失败，详情见日志。",
   "ui.workspace.version": "v{0}"

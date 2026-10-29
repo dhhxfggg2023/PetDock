@@ -116,6 +116,8 @@ internal sealed partial class UiHost
         window.Tapped += () => window.ShowSpeech(PokeLine());
         window.Dragged += () => window.ShowSpeech(I18n.Get("ui.bubble.drag"));
         window.Dropped += () => window.ShowSpeech(I18n.Get("ui.bubble.drop"));
+        window.PhysicsStarted += () => window.ShowSpeech(I18n.Get("ui.bubble.throw"));
+        window.PhysicsLanded += () => window.ShowSpeech(I18n.Get("ui.bubble.drop"));
     }
 
     /// <summary>随机挑一句通用点按台词；具体宠物想说什么留给后续的素材包/行为插件。</summary>

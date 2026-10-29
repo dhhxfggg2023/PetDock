@@ -133,6 +133,13 @@ internal static class PetWindowChecks
             check("ui-pet-feedback",
                 taps == 1 && drags == 1 && drops == 1 && bubble,
                 $"taps={taps} drags={drags} drops={drops} bubble={bubble}");
+
+            // 抛掷：给一个初速度后必须真的进入物理，并在超时前落地/收住。
+            window.StartThrowForCheck(700.0, -500.0);
+            bool flying = window.PhysicsActive;
+            bool landed = WaitFor(5000, () => !window.PhysicsActive);
+            check("ui-pet-throw", flying && landed,
+                $"flying={flying} landed={landed}");
         }
         catch (Exception error)
         {

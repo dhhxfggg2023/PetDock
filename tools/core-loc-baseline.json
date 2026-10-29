@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 30600,
+  "budget": 30900,
   "history": [
     {
       "date": "2026-10-18",
@@ -2276,6 +2276,45 @@
           "slice": "Snapshot 返回前补元数据",
           "files": [
             "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 3
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 30723,
+      "budget": 30900,
+      "note": "第八轮产品补齐 P2：拖拽抛掷与重力/落地弹跳。LayeredFrameWindow 从最近两帧光标采样算初速度，抛掷期间窗口层独占运动；FrameComposition 在 PhysicsStarted/Ended 时暂停/恢复 brain 的 moveTo，避免行为层每帧把宠物拉回散步目标。实测 30471 → 30723（+252）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "抛掷物理与窗口生命周期",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Physics.cs"
+          ],
+          "lines": 237
+        },
+        {
+          "slice": "拖拽采样与松手进入物理",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs"
+          ],
+          "lines": 5
+        },
+        {
+          "slice": "抛掷期间暂停/恢复 brain",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs",
+            "packages/core/PetDock.Core/src/Host/PetInstance.Brain.cs"
+          ],
+          "lines": 7
+        },
+        {
+          "slice": "抛掷/落地气泡与窗口清理",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
           ],
           "lines": 3
         }

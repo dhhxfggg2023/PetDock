@@ -49,7 +49,7 @@ public sealed partial class PetInstance
     public void TickBrain(int dtMs, WorldSnapshot world)
     {
         Ticks++;
-        if (Brain is null)
+        if (Brain is null || ExternalMotion)
         {
             return;
         }

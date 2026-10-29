@@ -72,6 +72,9 @@ public sealed partial class PetInstance : IDisposable
     /// </summary>
     public string DisplayName { get; }
 
+    /// <summary>窗口层正在接管运动（抛掷/落地）：brain 的 moveTo 在这段时间被暂停，避免把宠物拉回散步目标。</summary>
+    internal bool ExternalMotion { get; set; }
+
     /// <summary>提供本实例视图面的插件 id（宿主侧记账用；ABI 里没有这个概念）。</summary>
     public string PluginId { get; }
 

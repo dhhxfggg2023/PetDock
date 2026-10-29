@@ -205,6 +205,10 @@ internal static class FrameComposition
     {
         WirePointer(window, instance);
         instance.Arbiter.WindowMover = window.MoveTo;
+
+        // 抛掷期间让窗口层独占运动：brain 的 moveTo 会每帧把宠物拉回原目标。
+        window.PhysicsStarted += () => instance.ExternalMotion = true;
+        window.PhysicsEnded += () => instance.ExternalMotion = false;
     }
 
     internal static void WirePointer(LayeredFrameWindow window, PetInstance instance)

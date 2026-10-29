@@ -245,6 +245,7 @@ internal sealed partial class LayeredFrameWindow
         Capture = true;
         _dragOffset = new Point(e.X, e.Y);
         _downWindowPos = CurrentPosition;
+        BeginDragSample();
     }
 
     private void OnMouseMove(object? sender, MouseEventArgs e)
@@ -259,6 +260,7 @@ internal sealed partial class LayeredFrameWindow
 
         Point cursor = Cursor.Position;
         SetWindowPosition(cursor.X - _dragOffset.X, cursor.Y - _dragOffset.Y);
+        NoteDragSample();
 
         if (!_dragMoved)
         {
@@ -302,6 +304,8 @@ internal sealed partial class LayeredFrameWindow
             ["position"] = new System.Text.Json.Nodes.JsonArray(pos.X, pos.Y),
         });
 
+        bool thrown = TryStartThrow();
+
         // 双击判定只认「点」：窗口没被拖走才算（拖动落地不参与，见 NoteTap 的注释）。
         bool tapped = !_dragMoved
             && Math.Abs(pos.X - _downWindowPos.X) <= TapSlopPixels
@@ -314,7 +318,7 @@ internal sealed partial class LayeredFrameWindow
         {
             _hasLastTap = false;
             _tapTimer.Stop();
-            if (_dragMoved)
+            if (_dragMoved && !thrown)
             {
                 try
                 {
@@ -338,6 +342,7 @@ internal sealed partial class LayeredFrameWindow
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         _tapTimer.Stop();
+        StopThrow(landed: false);
         RaisePointerCancel("closing");
         base.OnFormClosing(e);
     }

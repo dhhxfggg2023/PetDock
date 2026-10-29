@@ -26,6 +26,7 @@
   "ui.bubble.poke3": "I'm here.",
   "ui.bubble.drag": "Put me down!",
   "ui.bubble.drop": "Steady now.",
+  "ui.bubble.throw": "Wheee!",
   "ui.work.busy": "Another operation is still running; wait for it to finish.",
   "ui.work.failed": "The operation failed. See the log for details.",
   "ui.workspace.version": "v{0}"
