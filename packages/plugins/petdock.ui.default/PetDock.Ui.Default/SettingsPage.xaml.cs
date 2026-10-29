@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using PetDock.Core.Ui;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -11,6 +12,8 @@ public partial class SettingsPage : UserControl, IUiPage
 {
     private readonly IUiPageContext _context;
     private bool _binding;
+    private bool _ready;
+    private bool _petSizeDragging;
 
     public SettingsPage(IUiPageContext context)
     {
@@ -32,9 +35,9 @@ public partial class SettingsPage : UserControl, IUiPage
         PetNameHint.Text = context.T("cp.settings.pet.current.hint");
         PetSizeLabel.Text = context.T("cp.settings.pet.size");
         PetSizeHint.Text = context.T("cp.settings.pet.size.hint");
-        PetSizeSmall.Content = context.T("cp.settings.pet.size.small");
-        PetSizeMedium.Content = context.T("cp.settings.pet.size.medium");
-        PetSizeLarge.Content = context.T("cp.settings.pet.size.large");
+        PetSizeSmall.Text = context.T("cp.settings.pet.size.small");
+        PetSizeMedium.Text = context.T("cp.settings.pet.size.medium");
+        PetSizeLarge.Text = context.T("cp.settings.pet.size.large");
         AppearanceSection.Text = context.T("cp.settings.section.appearance");
         ThemeLabel.Text = context.T("cp.settings.theme");
         ThemeHint.Text = context.T("cp.settings.theme.hint");
@@ -58,9 +61,7 @@ public partial class SettingsPage : UserControl, IUiPage
         // 无障碍：自绘模板的控件没有可读文本，读屏只能靠显式名字。
         AutomationProperties.SetName(StartupSwitch, StartupLabel.Text);
         AutomationProperties.SetName(PetNameText, PetNameLabel.Text);
-        AutomationProperties.SetName(PetSizeSmall, PetSizeSmall.Content?.ToString() ?? "small");
-        AutomationProperties.SetName(PetSizeMedium, PetSizeMedium.Content?.ToString() ?? "medium");
-        AutomationProperties.SetName(PetSizeLarge, PetSizeLarge.Content?.ToString() ?? "large");
+        AutomationProperties.SetName(PetSizeSlider, PetSizeLabel.Text);
         AutomationProperties.SetName(OpenLogsButton, OpenLogsButton.Content?.ToString() ?? "logs");
         AutomationProperties.SetName(ExportButton, ExportButton.Content?.ToString() ?? "export");
         AutomationProperties.SetName(AuditButton, AuditButton.Content?.ToString() ?? "audit");
@@ -72,7 +73,17 @@ public partial class SettingsPage : UserControl, IUiPage
             context.Changed += OnChanged;
             Bind();
         };
-        Unloaded += (_, _) => context.Changed -= OnChanged;
+        Unloaded += (_, _) =>
+        {
+            context.Changed -= OnChanged;
+            _petSizeDragging = false;
+        };
+
+        // 拖动过程中只更新读数，松手才落盘/改窗口（每次 ValueChanged 都写盘会让拖拽变卡）。
+        AddHandler(Thumb.DragStartedEvent, new DragStartedEventHandler((_, _) => _petSizeDragging = true));
+        AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(OnPetSizeDragCompleted));
+
+        _ready = true;
         Bind();
     }
 
@@ -102,7 +113,7 @@ public partial class SettingsPage : UserControl, IUiPage
                 SelectLanguage(view.Language);
                 SelectTheme(view.Theme);
                 SelectMaterial(view.Material);
-                SelectPetSize(view.PetSize);
+                BindPetSize(view.PetSize);
                 PetNameText.Text = string.IsNullOrWhiteSpace(view.PetName)
                     ? _context.T("cp.settings.pet.none")
                     : view.PetName;
@@ -136,26 +147,43 @@ public partial class SettingsPage : UserControl, IUiPage
         MaterialGlass.IsChecked = token == "glass";
     }
 
-    /// <summary>三档尺寸（96/128/160）；其他值按中号显示，实际生效值仍以宿主快照为准。</summary>
-    private void SelectPetSize(int size)
+    /// <summary>把快照里的尺寸放上滑块；写读数但不触发落盘（_binding 拦住 ValueChanged）。</summary>
+    private void BindPetSize(int size)
     {
-        PetSizeSmall.IsChecked = size <= 96;
-        PetSizeLarge.IsChecked = size >= 160;
-        PetSizeMedium.IsChecked = size > 96 && size < 160;
+        int clamped = Math.Clamp(size, (int)PetSizeSlider.Minimum, (int)PetSizeSlider.Maximum);
+        PetSizeSlider.Value = clamped;
+        PetSizeValue.Text = _context.T("cp.settings.pet.size.value", clamped);
     }
 
-    private int SelectedPetSize =>
-        PetSizeSmall.IsChecked == true ? 96 : PetSizeLarge.IsChecked == true ? 160 : 128;
-
-    /// <summary>尺寸改动即生效：主窗与其余几只一起改，窗口不重建。</summary>
-    private void OnPetSizeChanged(object sender, RoutedEventArgs e)
+    /// <summary>拖动中只更新读数；松手才真正落盘（见 OnPetSizeDragCompleted）。</summary>
+    private void OnPetSizeValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_binding)
+        if (!_ready || _binding)
         {
             return;
         }
 
-        string? problem = _context.SetPetSize(SelectedPetSize);
+        int size = (int)Math.Round(e.NewValue, MidpointRounding.AwayFromZero);
+        PetSizeValue.Text = _context.T("cp.settings.pet.size.value", size);
+        if (!_petSizeDragging)
+        {
+            ApplyPetSize(size);
+        }
+    }
+
+    private void OnPetSizeDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        _petSizeDragging = false;
+        if (_ready && !_binding)
+        {
+            ApplyPetSize((int)Math.Round(PetSizeSlider.Value, MidpointRounding.AwayFromZero));
+        }
+    }
+
+    /// <summary>尺寸改动即生效：主窗与其余几只一起改，窗口不重建。</summary>
+    private void ApplyPetSize(int size)
+    {
+        string? problem = _context.SetPetSize(size);
         ShowStatus(problem);
         _context.Refresh();
     }

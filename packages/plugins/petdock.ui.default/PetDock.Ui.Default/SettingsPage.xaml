@@ -76,14 +76,31 @@
                                 <TextBlock x:Name="PetSizeLabel" Style="{DynamicResource Pd.Body}" />
                                 <TextBlock x:Name="PetSizeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <RadioButton x:Name="PetSizeSmall" GroupName="petsize" Style="{DynamicResource Pd.Segment}"
-                                             Checked="OnPetSizeChanged" />
-                                <RadioButton x:Name="PetSizeMedium" GroupName="petsize" Style="{DynamicResource Pd.Segment}"
-                                             Checked="OnPetSizeChanged" />
-                                <RadioButton x:Name="PetSizeLarge" GroupName="petsize" Style="{DynamicResource Pd.Segment}"
-                                             Checked="OnPetSizeChanged" />
-                            </StackPanel>
+                            <Grid Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="54" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Slider Grid.Row="0" Grid.Column="0" x:Name="PetSizeSlider"
+                                        Style="{DynamicResource Pd.Slider}"
+                                        Minimum="64" Maximum="256" Value="128"
+                                        SmallChange="8" LargeChange="16" TickFrequency="1"
+                                        IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                        ValueChanged="OnPetSizeValueChanged" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="PetSizeValue"
+                                           Style="{DynamicResource Pd.Body}" FontWeight="SemiBold"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           TextAlignment="Right" />
+                                <Grid Grid.Row="1" Grid.Column="0" Margin="0,2,0,0">
+                                    <TextBlock x:Name="PetSizeSmall" Style="{DynamicResource Pd.Muted}" HorizontalAlignment="Left" />
+                                    <TextBlock x:Name="PetSizeMedium" Style="{DynamicResource Pd.Muted}" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="PetSizeLarge" Style="{DynamicResource Pd.Muted}" HorizontalAlignment="Right" />
+                                </Grid>
+                            </Grid>
                         </Grid>
                     </StackPanel>
                 </Border>

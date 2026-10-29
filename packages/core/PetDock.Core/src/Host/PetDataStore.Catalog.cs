@@ -6,6 +6,8 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using PetDock.Core.Compositor;
 using PetDock.Core.Ui;
@@ -76,6 +78,80 @@ internal sealed partial class PetDataStore
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 旧清单条目没有 name 的补名（2026-10-29）：从素材包自己的 petdock-sample.json 读 name。
+    /// 只补空值，不覆盖用户已经看到的名字；读不到就保持 ReadPets 的「回落到目录名」。
+    /// 启动时调一次：补完立即落盘，之后每次启动都是零写入。
+    /// </summary>
+    public int MigrateMissingNames()
+    {
+        JsonObject catalog = ReadCatalog();
+        if (catalog["pets"] is not JsonArray pets)
+        {
+            return 0;
+        }
+
+        int filled = 0;
+        foreach (JsonNode? item in pets)
+        {
+            if (item is not JsonObject entry
+                || !string.IsNullOrWhiteSpace((string?)entry["name"])
+                || (string?)entry["folder"] is not string folder
+                || string.IsNullOrWhiteSpace(folder))
+            {
+                continue;
+            }
+
+            string? name = ReadPackDisplayName(Path.Combine(PacksDir, folder));
+            if (name is null)
+            {
+                continue;
+            }
+
+            entry["name"] = name;
+            filled++;
+        }
+
+        if (filled == 0)
+        {
+            return 0;
+        }
+
+        catalog["agent_id"] = "host";
+        catalog["timestamp"] = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+        SaveCatalog(catalog);
+        KernelLog.Write($"data-store-name-migration filled={filled}");
+        return filled;
+    }
+
+    /// <summary>素材包清单里的显示名；文件缺失、坏 JSON 或没有 name 都返回 null（不猜名字）。</summary>
+    private static string? ReadPackDisplayName(string packDir)
+    {
+        string manifest = Path.Combine(packDir, "petdock-sample.json");
+        if (!File.Exists(manifest))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(manifest, Encoding.UTF8));
+            if (!doc.RootElement.TryGetProperty("name", out JsonElement value)
+                || value.ValueKind != JsonValueKind.String)
+            {
+                return null;
+            }
+
+            string? name = value.GetString();
+            return string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"data-store-name-migration-skip path={packDir} {error.GetType().Name}");
+            return null;
+        }
     }
 
     /// <summary>

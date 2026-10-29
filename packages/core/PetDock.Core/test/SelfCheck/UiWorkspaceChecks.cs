@@ -27,6 +27,7 @@ internal static class UiWorkspaceChecks
         PluginDeleteAffordance(check);
         SettingsLanguageSwitch(check);
         ThemeSwitchKeepsPanel(check);
+        ThemeHighContrast(check);
     }
 
     /// <summary>
@@ -70,6 +71,41 @@ internal static class UiWorkspaceChecks
             Theme.Mode = before;
         }
     }
+
+    /// <summary>
+    /// 高对比度：系统色优先于用户选的亮/暗。色板必须直接用系统前景/背景，
+    /// 否则在「黑底黄字」这类主题上自绘界面会把对比度又降回去。
+    /// </summary>
+    private static void ThemeHighContrast(Report check)
+    {
+        bool? before = Theme.HighContrastOverride;
+        ThemeMode mode = Theme.Mode;
+        try
+        {
+            Theme.HighContrastOverride = true;
+            Theme.Mode = ThemeMode.Light;
+            using var panel = new ControlPanel(new PreviewUiContext(), Array.Empty<IUiPage>(), showWindow: false);
+            var bg = panel.Workspace.Resources["Pd.Bg"] as SolidColorBrush;
+            var fg = panel.Workspace.Resources["Pd.Text"] as SolidColorBrush;
+            bool ok = Theme.IsHighContrast
+                && bg?.Color == MediaColor(System.Drawing.SystemColors.Window)
+                && fg?.Color == MediaColor(System.Drawing.SystemColors.WindowText);
+            check("ui-theme-high-contrast", ok,
+                $"hc={Theme.IsHighContrast} bg={bg?.Color} text={fg?.Color}");
+        }
+        catch (Exception error)
+        {
+            check("ui-theme-high-contrast", false, error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            Theme.HighContrastOverride = before;
+            Theme.Mode = mode;
+        }
+    }
+
+    private static Color MediaColor(System.Drawing.Color color) =>
+        Color.FromArgb(color.A, color.R, color.G, color.B);
 
     private static void OrderedPages(Report check)
     {

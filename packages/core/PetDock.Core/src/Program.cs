@@ -168,6 +168,21 @@ internal static partial class Program
         // 首次运行：把自带的会动示例宠物装进清单。装进去之后它和导入的宠物同一条路：
         // 有 id、能多开、能删除；不再是「每次启动都重建、删不掉」的内置窗口。
         I18n.Load(startupSettings.Language);
+
+        // 旧清单条目没有 name：从素材包清单补一次（只补空值）。必须在 EnsurePetCatalog
+        // 之前跑 —— 已经初始化过的清单不会再进那条分支，迁移不能挂在那儿。
+        if (probe is null)
+        {
+            try
+            {
+                dataStore.MigrateMissingNames();
+            }
+            catch (Exception error)
+            {
+                KernelLog.Write($"pet-catalog-name-migration-failed {error.GetType().Name}: {error.Message}");
+            }
+        }
+
         bool catalogReady = startupSettings.PetCatalogInitialized == true;
         if (probe is null && !catalogReady)
         {

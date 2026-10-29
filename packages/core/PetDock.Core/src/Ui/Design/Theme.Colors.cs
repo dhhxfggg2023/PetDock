@@ -4,6 +4,7 @@
 // 只要读 Theme.X 就自动跟着主题走。
 using System;
 using System.Drawing;
+using System.Windows;
 
 namespace PetDock.Core.Ui.Design;
 
@@ -97,14 +98,68 @@ internal static partial class Theme
         set => _mode = value;
     }
 
-    /// <summary>当前实际生效的色板（System 模式下按系统设置解析）。</summary>
-    private static Palette Colors =>
-        _mode switch
+    /// <summary>
+    /// 判据用的高对比度覆盖（null = 读系统设置）。生产路径从不设置它；
+    /// 自检用它在普通桌面上也能量到高对比度色板。
+    /// </summary>
+    internal static bool? HighContrastOverride { get; set; }
+
+    /// <summary>系统是否处于高对比度模式（读不到按否）。</summary>
+    public static bool IsHighContrast => HighContrastOverride ?? DetectHighContrast();
+
+    private static bool DetectHighContrast()
+    {
+        try
         {
-            ThemeMode.Light => LightPalette,
-            ThemeMode.Dark => DarkPalette,
-            _ => SystemUsesLight() ? LightPalette : DarkPalette,
-        };
+            return SystemParameters.HighContrast;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 高对比度色板：一律用系统的高对比度前景/背景/控件色，不发明颜色。
+    /// 不用 Highlight 做选中底：页面选中态的前景仍是 Text，而不是 HighlightText，
+    /// 用 Highlight 当底会出现「深底深字」。层次靠 Line（系统前景色）与 AccentSoft（控件色）表达；
+    /// Good/Warn/Bad 在系统色里没有对应语义，统一用前景色，状态由文字本身说明。
+    /// </summary>
+    private static Palette HighContrastPalette()
+    {
+        Color window = System.Drawing.SystemColors.Window;
+        Color text = System.Drawing.SystemColors.WindowText;
+        Color control = System.Drawing.SystemColors.Control;
+        return new Palette(
+            Bg: window,
+            BgDeep: control,
+            Surface: window,
+            SurfaceHover: control,
+            Line: text,
+            Text: text,
+            TextDim: text,
+            TextMuted: text,
+            Accent: text,
+            AccentHover: text,
+            AccentSoft: control,
+            OnAccent: window,
+            Good: text,
+            Warn: text,
+            Bad: text,
+            BadSurface: window,
+            WarnSurface: window);
+    }
+
+    /// <summary>当前实际生效的色板（高对比度优先，其次亮/暗，System 模式下按系统设置解析）。</summary>
+    private static Palette Colors =>
+        IsHighContrast
+            ? HighContrastPalette()
+            : _mode switch
+            {
+                ThemeMode.Light => LightPalette,
+                ThemeMode.Dark => DarkPalette,
+                _ => SystemUsesLight() ? LightPalette : DarkPalette,
+            };
 
     /// <summary>现在是不是浅色（供窗口装饰、材质、判据判断）。</summary>
     public static bool IsLight => Colors.Text.R < 0x80;

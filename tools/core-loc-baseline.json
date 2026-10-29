@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 29800,
+  "budget": 29900,
   "history": [
     {
       "date": "2026-10-18",
@@ -2125,6 +2125,35 @@
             "packages/core/PetDock.Core/src/Ui/PetWindowSet.Commands.cs"
           ],
           "lines": 412
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 29843,
+      "budget": 29900,
+      "note": "第八轮可选打磨：宠物尺寸从三档改为连续滑块（XAML/插件侧，不计内核 LOC）；旧 pets.json 缺 name 时从素材包 petdock-sample.json 补名；高对比度模式改用系统前景/背景/控件色。实测 29697 → 29843（+146）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "旧清单缺 name 的迁移与素材包清单读取",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetDataStore.Catalog.cs"
+          ],
+          "lines": 76
+        },
+        {
+          "slice": "高对比度色板（系统色回退）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/Design/Theme.Colors.cs"
+          ],
+          "lines": 55
+        },
+        {
+          "slice": "启动时执行清单补名",
+          "files": [
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": 15
         }
       ]
     }

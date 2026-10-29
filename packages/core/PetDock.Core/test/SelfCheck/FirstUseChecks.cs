@@ -7,7 +7,6 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using PetDock.Core.Ui;
-using RadioButton = System.Windows.Controls.RadioButton;
 
 namespace PetDock.Hosting;
 
@@ -63,26 +62,29 @@ internal static class FirstUseChecks
             FrameworkElement? petView = petSettings?.CreateView();
             var petNameText = petView?.FindName("PetNameText") as TextBlock;
             var aboutVersion = petView?.FindName("AboutVersionText") as TextBlock;
-            var large = petView?.FindName("PetSizeLarge") as RadioButton;
-            bool petCard = petNameText?.Text == "守岸人" && aboutVersion?.Text == "9.9.9" && large?.IsChecked == true;
+            var petSize = petView?.FindName("PetSizeSlider") as Slider;
+            var petSizeValue = petView?.FindName("PetSizeValue") as TextBlock;
+            bool petCard = petNameText?.Text == "守岸人" && aboutVersion?.Text == "9.9.9"
+                && petSize?.Value == 160
+                && petSizeValue?.Text.Contains("160", StringComparison.Ordinal) == true;
             check("ui-settings-pet-card", petCard,
-                $"name={petNameText?.Text} version={aboutVersion?.Text} large={large?.IsChecked}");
+                $"name={petNameText?.Text} version={aboutVersion?.Text} size={petSize?.Value} value={petSizeValue?.Text}");
 
-            var small = petView?.FindName("PetSizeSmall") as RadioButton;
-            if (small is not null)
+            if (petSize is not null)
             {
-                small.IsChecked = true;
+                petSize.Value = 96;
             }
-            bool sizeWired = petContext.Commands.Contains("pet-size:96");
+            bool sizeWired = petContext.Commands.Contains("pet-size:96")
+                && petSizeValue?.Text.Contains("96", StringComparison.Ordinal) == true;
             check("ui-settings-pet-size", sizeWired,
-                $"checked={small?.IsChecked} commands={string.Join(",", petContext.Commands)}");
+                $"size={petSize?.Value} value={petSizeValue?.Text} commands={string.Join(",", petContext.Commands)}");
 
-            bool a11y = large is not null
-                && !string.IsNullOrEmpty(AutomationProperties.GetName(large))
-                && small is not null
-                && !string.IsNullOrEmpty(AutomationProperties.GetName(small));
+            bool a11y = petSize is not null
+                && !string.IsNullOrEmpty(AutomationProperties.GetName(petSize))
+                && petSizeValue is not null
+                && !string.IsNullOrEmpty(petSizeValue.Text);
             check("ui-settings-a11y", a11y,
-                $"large={AutomationProperties.GetName(large!)} small={AutomationProperties.GetName(small!)}");
+                $"sizeName={AutomationProperties.GetName(petSize!)} value={petSizeValue?.Text}");
 
             // 宠物页：选中一行之后「多开一只 / 删除选中」要能点，并且命令真的带着这一行的 id。
             var petsContext = new PreviewUiContext(new UiSnapshot(

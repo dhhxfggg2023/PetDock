@@ -224,6 +224,52 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- 连续尺寸滑块（2026-10-29）：自绘轨道/拇指，颜色只认主题令牌；
+             默认 WPF 模板用的是系统色，在深色底上看不见。 -->
+        <Style x:Key="Pd.Slider" TargetType="Slider">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource Pd.FocusVisual}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Pd.Accent}" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="16" Height="16" Cursor="Hand">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{DynamicResource Pd.Accent}"
+                                                         Stroke="{DynamicResource Pd.Surface}" StrokeThickness="2" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                                                        Background="{DynamicResource Pd.Line}" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="Pd.TextBox" TargetType="TextBox">
             <Setter Property="Background" Value="{DynamicResource Pd.Surface}" />
             <Setter Property="Foreground" Value="{DynamicResource Pd.Text}" />

@@ -79,6 +79,7 @@ internal static class PetSetChecks
         }
 
         MultiOpen(check);
+        MigrateNames(check);
     }
 
     /// <summary>多开 = 清单里两条指向同一目录；删一条不删素材，删最后一条才删目录。</summary>
@@ -110,6 +111,43 @@ internal static class PetSetChecks
         catch (Exception error)
         {
             check("ui-catalog-multi-open", false, "exception: " + error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            TryDelete(root);
+        }
+    }
+
+    /// <summary>旧清单没有 name 时从素材包清单补；只补空值，读不到就保持回落到目录名。</summary>
+    private static void MigrateNames(Check check)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "petdock-names-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        try
+        {
+            string named = Path.Combine(root, "packs", "old-pack");
+            string unnamed = Path.Combine(root, "packs", "no-manifest");
+            Directory.CreateDirectory(named);
+            Directory.CreateDirectory(unnamed);
+            File.WriteAllText(Path.Combine(named, "petdock-sample.json"), """{"name":"守岸人"}""");
+            File.WriteAllText(
+                Path.Combine(root, "pets.json"),
+                """{"schemaVersion":1,"active":"user.old-pack","pets":[{"id":"user.old-pack","folder":"old-pack"},{"id":"user.no-manifest","folder":"no-manifest"}]}""");
+
+            var store = new PetDataStore(root);
+            int filled = store.MigrateMissingNames();
+            IReadOnlyList<PetDataStore.ActivePack> packs = new PetDataStore(root).ReadPets();
+            int again = new PetDataStore(root).MigrateMissingNames();
+            bool ok = filled == 1
+                && packs.Count == 2
+                && string.Equals(packs[0].Name, "守岸人", StringComparison.Ordinal)
+                && string.Equals(packs[1].Name, "no-manifest", StringComparison.Ordinal)
+                && again == 0;
+            check("ui-catalog-name-migration", ok,
+                $"filled={filled} again={again} names={string.Join(",", packs.Select(pack => pack.Name))}");
+        }
+        catch (Exception error)
+        {
+            check("ui-catalog-name-migration", false, "exception: " + error.GetType().Name + ": " + error.Message);
         }
         finally
         {
