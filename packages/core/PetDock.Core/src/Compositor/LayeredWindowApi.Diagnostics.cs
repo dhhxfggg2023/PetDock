@@ -35,6 +35,14 @@ internal static partial class Win32
         return $"0x{hwnd.ToInt64():X} pid={pid} ({ProcessNameOf(pid)}) class={cls} style=0x{style:X} title={title}";
     }
 
+    /// <summary>窗口的类名（拓扑过滤用：桌面、任务栏这些 class 不是家具）。取不到返回空串。</summary>
+    internal static string ClassNameOf(IntPtr hwnd)
+    {
+        var buffer = new StringBuilder(256);
+        int length = GetClassName(hwnd, buffer, buffer.Capacity);
+        return length > 0 ? buffer.ToString() : string.Empty;
+    }
+
     /// <summary>进程名（诊断用）；取不到就如实写 (unknown)，不要编一个名字出来。</summary>
     internal static string ProcessNameOf(uint pid)
     {

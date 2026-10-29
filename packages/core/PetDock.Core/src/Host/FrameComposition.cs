@@ -204,6 +204,12 @@ internal static class FrameComposition
     internal static void WireWindow(LayeredFrameWindow window, PetInstance instance)
     {
         WirePointer(window, instance);
+
+        // 桌面拓扑：抛掷可以落在别的窗口顶边上（只读矩形，不读内容）。
+        window.Platforms = DesktopTopology.Shared.Surfaces;
+
+        // 素材包声明的命中区（归一化）：有声明就只在这些框里可点（见 LayeredFrameWindow.HitTest）。
+        window.HitBoxes = PetHitRegions.ForPack(instance.AssetRoots.Count > 0 ? instance.AssetRoots[0] : null);
         instance.Arbiter.WindowMover = window.MoveTo;
 
         // 抛掷期间让窗口层独占运动：brain 的 moveTo 会每帧把宠物拉回原目标。

@@ -155,6 +155,8 @@ const sample = {
       },
     },
   },
+  // 命中区（归一化）：声明之后只在这一块里算点中，装饰件不再可点。
+  hitRegions: [{ id: 'body', x: 0.12, y: 0.15, w: 0.76, h: 0.8 }],
   state: { schemaVersion: 1, position: { x: 0, y: 0 } },
 }
 fs.writeFileSync(path.join(outDir, 'petdock-sample.json'), JSON.stringify(sample, null, 2) + '\n')

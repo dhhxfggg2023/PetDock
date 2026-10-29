@@ -91,6 +91,10 @@ internal static class UiSelfTest
             AgentChecks.Run(Check);
             // 2026-10-29：素材包自带台词（点按/抛掷/落地优先说包里的句子）。
             PackLinesChecks.Run(Check);
+            // 2026-10-29 窗口拓扑：抛掷的落点选择（纯几何）。
+            PhysicsSupportChecks.Run(Check);
+            // 2026-10-29 素材包命中区：归一化热区（有声明才收窄可点范围）。
+            PackHitRegionChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

@@ -4,6 +4,7 @@
 // 不该知道「松手时的瞬时速度」。抛掷期间宿主暂停 brain 的 moveTo（FrameComposition 接线），
 // 否则行为层每帧把宠物拉回原来的散步目标，物理就白算了。
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using PetDock.Core.PetRuntime;
@@ -33,6 +34,14 @@ internal sealed partial class LayeredFrameWindow
     private long _dragPrevMs;
     private long _dragLastMs;
     private bool _hasDragSample;
+    private System.Windows.Forms.Timer? _supportTimer;
+    private int _restingTop = int.MinValue;
+
+    /// <summary>
+    /// 桌面上的可落脚面（别的窗口的矩形）。宿主注入；null = 只有屏幕地板。
+    /// 返回的是只读快照，可以每次调用都取一份（拓扑自己带缓存）。
+    /// </summary>
+    internal Func<IReadOnlyList<Rectangle>>? Platforms { get; set; }
 
     /// <summary>抛掷开始（宿主暂停 brain 的 moveTo，并显示一句「飞起来」）。</summary>
     internal event PetTapHookSignature? PhysicsStarted;
@@ -49,6 +58,7 @@ internal sealed partial class LayeredFrameWindow
     /// <summary>按下时重置采样；上一次抛掷如果还在飞，先收掉（用户抓住了）。</summary>
     internal void BeginDragSample()
     {
+        EndResting();
         if (_throwing)
         {
             StopThrow(landed: false);
@@ -113,6 +123,7 @@ internal sealed partial class LayeredFrameWindow
 
     private void StartThrow(int x, int y, double vx, double vy, bool announce)
     {
+        EndResting();
         _throwX = x;
         _throwY = y;
         _throwVx = Math.Clamp(vx, -ThrowMaxSpeed, ThrowMaxSpeed);
@@ -145,6 +156,7 @@ internal sealed partial class LayeredFrameWindow
         _throwTickMs = now;
         _throwElapsedMs += (int)(dt * 1000);
 
+        double previousY = _throwY;
         _throwVy += ThrowGravity * dt;
         _throwX += _throwVx * dt;
         _throwY += _throwVy * dt;
@@ -169,19 +181,44 @@ internal sealed partial class LayeredFrameWindow
             _throwVy = Math.Abs(_throwVy) * ThrowBounce;
         }
 
-        bool hitFloor = false;
-        if (_throwY + height >= area.Bottom)
+        bool hitSupport = false;
+        int supportTop = area.Bottom;
+
+        // 先看别的窗口的顶边：只在下落时认，且必须「这次跨过」它。
+        if (_throwVy > 0 && Platforms?.Invoke() is { Count: > 0 } surfaces)
+        {
+            var pet = new Rectangle((int)Math.Round(_throwX), (int)Math.Round(_throwY), width, height);
+            int previousBottom = (int)Math.Round(previousY) + height;
+            int newBottom = (int)Math.Round(_throwY) + height;
+            if (PhysicsSupport.TryFind(pet, previousBottom, newBottom, area, surfaces, out int top))
+            {
+                _throwY = top - height;
+                _throwVy = -Math.Abs(_throwVy) * ThrowBounce;
+                _throwVx *= 0.82;
+                hitSupport = true;
+                supportTop = top;
+            }
+        }
+
+        if (!hitSupport && _throwY + height >= area.Bottom)
         {
             _throwY = Math.Max(area.Top, area.Bottom - height);
             _throwVy = -Math.Abs(_throwVy) * ThrowBounce;
             _throwVx *= 0.82;
-            hitFloor = true;
+            hitSupport = true;
+            supportTop = area.Bottom;
         }
 
         SetWindowPosition((int)Math.Round(_throwX), (int)Math.Round(_throwY));
 
-        if (hitFloor && Math.Abs(_throwVy) < 70 && Math.Abs(_throwVx) < 40)
+        if (hitSupport && Math.Abs(_throwVy) < 70 && Math.Abs(_throwVx) < 40)
         {
+            // 落在别的窗口顶上：开始盯这个面（走出边缘或窗口没了就继续掉）。
+            if (supportTop != area.Bottom)
+            {
+                BeginResting(supportTop);
+            }
+
             StopThrow(landed: true);
             return;
         }
@@ -190,6 +227,58 @@ internal sealed partial class LayeredFrameWindow
         {
             StopThrow(landed: true);
         }
+    }
+
+    /// <summary>开始盯「站在别的窗口顶上」这件事（每 40ms 一次，比物理帧慢，误差肉眼看不出来）。</summary>
+    private void BeginResting(int top)
+    {
+        _restingTop = top;
+        _supportTimer ??= new System.Windows.Forms.Timer { Interval = 40 };
+        _supportTimer.Tick -= OnSupportTick;
+        _supportTimer.Tick += OnSupportTick;
+        _supportTimer.Start();
+    }
+
+    /// <summary>不再站着了（被抓住 / 换位置 / 已经掉下去）。</summary>
+    private void EndResting()
+    {
+        _restingTop = int.MinValue;
+        _supportTimer?.Stop();
+    }
+
+    /// <summary>
+    /// 支撑监视：走出窗口边缘、窗口被关掉或被挪走，都要重新落下去 ——
+    /// 否则宠物会停在半空，看起来像卡住了。
+    /// </summary>
+    private void OnSupportTick(object? sender, EventArgs e)
+    {
+        if (_restingTop == int.MinValue || IsDisposed)
+        {
+            EndResting();
+            return;
+        }
+
+        Rectangle rect = Bounds;
+        if (Math.Abs(rect.Bottom - _restingTop) > 2)
+        {
+            EndResting();
+            return;
+        }
+
+        IReadOnlyList<Rectangle>? surfaces = Platforms?.Invoke();
+        if (surfaces is null || surfaces.Count == 0)
+        {
+            EndResting();
+            return;
+        }
+
+        if (PhysicsSupport.HasSupport(rect, _restingTop, surfaces))
+        {
+            return;
+        }
+
+        EndResting();
+        StartThrow(rect.Left, rect.Top, 0, 0, announce: true);
     }
 
     private void StopThrow(bool landed)
@@ -231,6 +320,9 @@ internal sealed partial class LayeredFrameWindow
     private void DisposeThrow()
     {
         StopThrow(landed: false);
+        EndResting();
+        _supportTimer?.Dispose();
+        _supportTimer = null;
         _throwTimer?.Dispose();
         _throwTimer = null;
     }

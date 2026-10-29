@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 32200,
+  "budget": 32800,
   "history": [
     {
       "date": "2026-10-18",
@@ -2509,6 +2509,91 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs"
           ],
           "lines": 30
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 32499,
+      "budget": 32800,
+      "note": "两笔一起记：（一）台词语言层（5b525a4，+116）；（二）桌面窗口拓扑（抛掷落在别的窗口顶边上）与素材包命中区（归一化热区）。实测 31903 → 32499（+596）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "台词表带语言层与前缀回落",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetPackLines.cs"
+          ],
+          "lines": 18
+        },
+        {
+          "slice": "台词表解析（上限/去重/坏形状当没声明）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetPackLinesReader.cs"
+          ],
+          "lines": 97
+        },
+        {
+          "slice": "按界面语言在现场解析台词",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs"
+          ],
+          "lines": 1
+        },
+        {
+          "slice": "桌面窗口拓扑（只读矩形、250ms 缓存、排除桌面与隐藏窗）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/DesktopTopology.cs"
+          ],
+          "lines": 110
+        },
+        {
+          "slice": "落点选择纯函数（重叠/跨过/不下吸/走出边缘）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/PhysicsSupport.cs"
+          ],
+          "lines": 106
+        },
+        {
+          "slice": "归一化命中矩形",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/HitBox.cs"
+          ],
+          "lines": 24
+        },
+        {
+          "slice": "从素材包读命中区（夹取/零面积丢弃/上限 8）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetHitRegions.cs"
+          ],
+          "lines": 101
+        },
+        {
+          "slice": "命中裁决支持命中区（声明后收窄可点范围）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.HitTest.cs"
+          ],
+          "lines": 33
+        },
+        {
+          "slice": "物理：先试窗口顶边再落地板 + 支撑监视（走出边缘就掉）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Physics.cs"
+          ],
+          "lines": 92
+        },
+        {
+          "slice": "取窗口类名（拓扑过滤桌面/任务栏）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredWindowApi.Diagnostics.cs"
+          ],
+          "lines": 8
+        },
+        {
+          "slice": "接线：拓扑与命中区",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+          ],
+          "lines": 6
         }
       ]
     }
