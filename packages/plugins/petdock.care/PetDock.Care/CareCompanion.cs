@@ -8,6 +8,7 @@
 // 所以数值统一在 _gate 里改，Report 交出去的是新建的字符串快照（不是可变对象本身）。
 using System;
 using System.Globalization;
+using System.IO;
 using System.Threading.Tasks;
 using PetDock.Core.PetRuntime;
 
@@ -34,6 +35,9 @@ public sealed class CareCompanion : IPetCompanion
     private bool _lowFedSaid;
     private bool _lowVimSaid;
 
+    /// <summary>本插件音效目录（Assembly.Location 旁的 sounds/）；解析不出来就不出声。</summary>
+    private string? _soundRoot;
+
     public InterfaceMeta Meta => new("petdock.care", "1.0.0");
 
     private static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -46,6 +50,7 @@ public sealed class CareCompanion : IPetCompanion
             _state = context.State;
             _host = context.Host;
             _texts = CareTexts.For(context.Host.Language);
+            _soundRoot = ResolveSoundRoot();
             _values.Load(context.State, now);
 
             // 离线折旧从上次落盘算起；没有落盘过（At == now）时补零。
@@ -181,6 +186,8 @@ public sealed class CareCompanion : IPetCompanion
             _values.Save(_state, Now);
         }
 
+        // 音效交给宿主播（静音、缺文件、不阻塞帧泵都在那一侧统一处理）。
+        PlaySound(commandId);
         _host?.CommitState();
         return say;
     }
@@ -215,6 +222,38 @@ public sealed class CareCompanion : IPetCompanion
 
         _host?.CommitState();
         return Task.CompletedTask;
+    }
+
+    private static string? ResolveSoundRoot()
+    {
+        try
+        {
+            string? location = typeof(CareCompanion).Assembly.Location;
+            if (string.IsNullOrEmpty(location))
+            {
+                return null;
+            }
+
+            string? dir = Path.GetDirectoryName(location);
+            return string.IsNullOrEmpty(dir) ? null : Path.Combine(dir, "sounds");
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>命令 id 与音效文件名一一对应（feed/play/rest）；没有文件时宿主会记一行日志。</summary>
+    private void PlaySound(string commandId)
+    {
+        ICompanionHost? host = _host;
+        string? root = _soundRoot;
+        if (host is null || string.IsNullOrEmpty(root))
+        {
+            return;
+        }
+
+        host.PlaySound(Path.Combine(root, commandId + ".wav"));
     }
 
     private string StatusLine() =>

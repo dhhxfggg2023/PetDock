@@ -75,6 +75,13 @@ public interface ICompanionHost
 
     /// <summary>说一句话；空串 / 全空白 = 不说。</summary>
     void Say(string text);
+
+    /// <summary>
+    /// 请宿主播一个音效文件（WAV；路径由插件自己解析，宿主只决定播不播、播不播得出来）。
+    /// 静音开关、缺文件、格式不支持都由宿主统一处理并记日志；插件不该自己 new 播放器 ——
+    /// 「用户关了声音」只有一个落点才不可能漏。这不是新能力（见 SoundBoard 的注释）。
+    /// </summary>
+    void PlaySound(string soundPath);
 }
 
 /// <summary>陪伴层的初始化上下文（与 <see cref="BrainContext"/> 同形：实例 id / 状态层 / 预算 / 宿主口子）。</summary>

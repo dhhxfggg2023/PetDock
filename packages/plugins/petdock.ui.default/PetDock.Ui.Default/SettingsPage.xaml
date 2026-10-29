@@ -107,6 +107,26 @@
 
                 <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
                     <StackPanel>
+                        <TextBlock x:Name="SoundSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="SoundLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="SoundHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="2" x:Name="SoundSwitch"
+                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center"
+                                          Click="OnSettingChanged" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
                         <TextBlock x:Name="AppearanceSection" Style="{DynamicResource Pd.Section}" />
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>

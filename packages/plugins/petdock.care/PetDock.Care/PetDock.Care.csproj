@@ -22,4 +22,13 @@
     <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
   </ItemGroup>
 
+  <!--
+    音效随插件走（不塞进 assets/）：它们只属于这一层玩法，发布物里与 dll 同目录，
+    插件按 Assembly.Location 旁边的 sounds/ 找自己。CopyToOutputDirectory 让
+    dotnet publish 一起带上（release.mjs 的插件发布走的就是 publish）。
+  -->
+  <ItemGroup>
+    <Content Include="sounds\*.wav" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

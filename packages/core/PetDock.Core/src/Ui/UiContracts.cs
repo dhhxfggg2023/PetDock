@@ -180,7 +180,12 @@ public interface IUiPageContext
     Task<UiCommandResult> PurgePluginAsync(string dirName);
 
     /// <summary>应用设置。返回 null = 成功；否则是失败或部分失败的原因。</summary>
-    string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, string material, string theme);
+    string? ApplySettings(
+        double idleFrameBudgetMs,
+        bool startWithWindows,
+        string material,
+        string theme,
+        bool soundEnabled);
 
     /// <summary>改宠物窗口的像素边长（64..256）。返回 null = 成功；否则是给用户看的原因。</summary>
     string? SetPetSize(int size);

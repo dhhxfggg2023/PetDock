@@ -32,6 +32,9 @@ public sealed partial class PetInstance
     /// <summary>说一句话的出口（由窗口层接到 <see cref="LayeredFrameWindow"/> 的气泡上）。</summary>
     public event CompanionSpeechDelegate? Speech;
 
+    /// <summary>本实例的音效出口（随实例释放；静音是进程级的，见 <see cref="SoundBoard"/>）。</summary>
+    public SoundBoard Sounds { get; } = new();
+
     /// <summary>
     /// 装上陪伴层（装配期由名册调用一次）。每次实例化都用**新的**实现对象：
     /// 名册里登记的是类型，不是共享单例 —— 两只宠物共用一个陪伴对象会互相改对方的数值。
@@ -279,6 +282,8 @@ public sealed partial class PetInstance
                 _owner.SayText(text);
             }
         }
+
+        public void PlaySound(string soundPath) => _owner.Sounds.Play(soundPath);
     }
 
     /// <summary>

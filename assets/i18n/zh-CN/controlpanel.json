@@ -169,5 +169,8 @@
   "cp.pets.detail.unknown": "未声明",
   "cp.pets.importConfirm": "导入这个素材包？\n{0}",
   "cp.pets.importConfirmTitle": "导入素材包",
-  "cp.pets.care.title": "陪伴层"
+  "cp.pets.care.title": "陪伴层",
+  "cp.settings.section.sound": "声音",
+  "cp.settings.sound": "音效",
+  "cp.settings.sound.hint": "关掉后桌面上所有宠物都不出声"
 }

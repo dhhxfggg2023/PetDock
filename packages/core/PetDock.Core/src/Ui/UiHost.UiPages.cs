@@ -79,12 +79,14 @@ internal sealed partial class UiHost : IUiPageContext
         double idleFrameBudgetMs,
         bool startWithWindows,
         string material,
-        string theme) =>
+        string theme,
+        bool soundEnabled) =>
         ApplySettings(
             idleFrameBudgetMs,
             startWithWindows,
             Theme.ParseMaterial(material),
-            Theme.ParseMode(theme));
+            Theme.ParseMode(theme),
+            soundEnabled);
 
     string? IUiPageContext.SetPetSize(int size) => SetPetSizeFromPanel(size);
 

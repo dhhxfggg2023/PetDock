@@ -66,7 +66,8 @@ public sealed record SettingsView(
     string? Material = null,
     int PetSize = 128,
     string? PetName = null,
-    string? Version = null)
+    string? Version = null,
+    bool SoundEnabled = true)
 {
     /// <summary>没有设置可读时的默认状态。</summary>
     public static SettingsView Default { get; } = new(

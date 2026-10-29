@@ -125,9 +125,16 @@ internal sealed class PreviewUiContext : IUiPageContext
         return Task.FromResult(UiCommandResult.Success());
     }
 
-    public string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, string material, string theme)
+    public string? ApplySettings(
+        double idleFrameBudgetMs,
+        bool startWithWindows,
+        string material,
+        string theme,
+        bool soundEnabled)
     {
-        Commands.Add("settings:" + idleFrameBudgetMs.ToString("0.###") + ":" + startWithWindows + ":" + material + ":" + theme);
+        Commands.Add(
+            "settings:" + idleFrameBudgetMs.ToString("0.###") + ":" + startWithWindows + ":" + material + ":" + theme
+            + ":sound=" + soundEnabled);
         return null;
     }
 

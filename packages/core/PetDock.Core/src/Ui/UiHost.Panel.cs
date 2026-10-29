@@ -83,7 +83,8 @@ internal sealed partial class UiHost
             settings.Material,
             settings.PetSize ?? UserSettings.DefaultPetSize,
             _primaryRemoved ? null : _pet?.DisplayName,
-            AppVersion);
+            AppVersion,
+            settings.SoundEnabled != false);
     }
 
     /// <summary>
@@ -92,7 +93,12 @@ internal sealed partial class UiHost
     /// 每一步都可能失败，失败要说清楚是哪一步——「已保存设置，但开机自启未生效」比「保存失败」诚实。
     /// 返回 null = 全部成功；返回字符串 = 失败或部分失败的原因。
     /// </summary>
-    private string? ApplySettings(double idleFrameBudgetMs, bool startWithWindows, Design.MaterialKind material, Design.ThemeMode theme)
+    private string? ApplySettings(
+        double idleFrameBudgetMs,
+        bool startWithWindows,
+        Design.MaterialKind material,
+        Design.ThemeMode theme,
+        bool soundEnabled)
     {
         var problems = new List<string>();
 
@@ -122,6 +128,7 @@ internal sealed partial class UiHost
             IdleFrameBudgetMs = idleFrameBudgetMs,
             Material = materialToken,
             ThemeMode = themeToken,
+            SoundEnabled = soundEnabled,
         };
         try
         {
@@ -133,6 +140,7 @@ internal sealed partial class UiHost
                     IdleFrameBudgetMs = idleFrameBudgetMs,
                     Material = materialToken,
                     ThemeMode = themeToken,
+                    SoundEnabled = soundEnabled,
                 });
             }
         }
@@ -150,6 +158,9 @@ internal sealed partial class UiHost
 
         // ④ 立即推给帧泵（不用重启）。这一步不会失败：越界值在 FramePump 里被拉回合法区间。
         _loop.SetTargetFrameMs(idleFrameBudgetMs);
+
+        // ⑤ 静音立即生效（进程级开关；已经响着的那一条不打断 —— 打断反而像故障）。
+        SoundBoard.Enabled = soundEnabled;
         KernelLog.Write(
             $"settings-applied idle={updated.IdleFrameBudgetMs:0.0}ms startup={startWithWindows} material={updated.Material}");
 

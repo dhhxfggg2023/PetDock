@@ -83,6 +83,8 @@ internal static class UiSelfTest
             TrayPetChecks.Run(Check);
             // 2026-10-29 P4：陪伴层（ui-companion-*）—— 插件挂载、命令/动作转发、状态往返。
             CompanionChecks.Run(Check);
+            // 2026-10-29 P4 音频：宿主侧播放的决定（静音 / 缺文件 / 格式）与设置默认值。
+            SoundChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

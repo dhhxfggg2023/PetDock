@@ -97,6 +97,8 @@ internal sealed partial class UiHost : ApplicationContext
             // 文案表在**任何界面对象构造之前**加载：缺表时每个键显示键名本身（RFC-42 §3.2），
             // 而不是让空字符串把界面画成一片空白。
             I18n.Load(loaded.Language);
+            // 静音在构造任何宠物窗口之前定下来：用户关了声音，启动时就不该先响一声。
+            SoundBoard.Enabled = loaded.SoundEnabled != false;
             KernelLog.Write($"settings-loaded {loaded.Describe()}");
         }
 

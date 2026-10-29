@@ -5,6 +5,7 @@
 // 不用桩件顶替：这一条要同时证明「名册真的认出了 contributes.companions」。
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text.Json.Nodes;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Ui;
@@ -152,6 +153,13 @@ internal static class CompanionChecks
                 host.Commits >= 1 && fedAfter > fed,
                 $"commits={host.Commits} fed={fedAfter:0.##}");
 
+            // 命令要顺带请宿主播音效（P4 音频）：路径由插件自己拼，文件必须真的在发布产物里。
+            string? sound = host.Sounds.Find(path => path.EndsWith("feed.wav", StringComparison.OrdinalIgnoreCase));
+            check(
+                "ui-audio-companion",
+                sound is not null && File.Exists(sound),
+                $"requested={sound ?? "(none)"} exists={sound is not null && File.Exists(sound)}");
+
             second.InitAsync(new CompanionContext("companion-check", "Check", state, Budget, host))
                 .GetAwaiter()
                 .GetResult();
@@ -214,6 +222,9 @@ internal static class CompanionChecks
 
         public List<string> Said { get; } = new();
 
+        /// <summary>插件请宿主播放的音效（判据：命令之后真的请求了，且文件在）。</summary>
+        public List<string> Sounds { get; } = new();
+
         public bool CommitState()
         {
             Commits++;
@@ -227,5 +238,7 @@ internal static class CompanionChecks
                 Said.Add(text);
             }
         }
+
+        public void PlaySound(string soundPath) => Sounds.Add(soundPath);
     }
 }

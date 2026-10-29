@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 31800,
+  "budget": 32000,
   "history": [
     {
       "date": "2026-10-18",
@@ -2402,6 +2402,84 @@
             "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs"
           ],
           "lines": -44
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 31783,
+      "budget": 32000,
+      "note": "P4 音频第一层：宿主侧音效（SoundBoard：静音唯一落点、缺文件/格式不支持可见、不阻塞帧泵），陪伴层口子加 PlaySound，设置页加音效开关（进程级静音），petdock.care 带三条 wav。实测 31600 → 31783（+183）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "宿主侧音效（播放 / 静音 / 失败可见 / 注入桩件）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/SoundBoard.cs"
+          ],
+          "lines": 147
+        },
+        {
+          "slice": "陪伴层口子加 PlaySound 与实例的音效出口",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.Companion.cs"
+          ],
+          "lines": 5
+        },
+        {
+          "slice": "实例释放时停掉播放器",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+          ],
+          "lines": 1
+        },
+        {
+          "slice": "设置项 SoundEnabled 与读数",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "ICompanionHost.PlaySound 的契约注释",
+          "files": [
+            "packages/core/PetDock.Core/src/PetRuntime/Companion.cs"
+          ],
+          "lines": 7
+        },
+        {
+          "slice": "IUiPageContext.ApplySettings 增加静音参数",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs"
+          ],
+          "lines": 5
+        },
+        {
+          "slice": "设置落盘与立即生效（记得住、马上静音）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 11
+        },
+        {
+          "slice": "页面实现转发新参数",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "启动时按设置定静音（别先响一声）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "设置页快照带静音状态",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+          ],
+          "lines": 1
         }
       ]
     }

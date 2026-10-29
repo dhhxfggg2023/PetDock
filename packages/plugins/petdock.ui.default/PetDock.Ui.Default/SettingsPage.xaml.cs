@@ -38,6 +38,9 @@ public partial class SettingsPage : UserControl, IUiPage
         PetSizeSmall.Text = context.T("cp.settings.pet.size.small");
         PetSizeMedium.Text = context.T("cp.settings.pet.size.medium");
         PetSizeLarge.Text = context.T("cp.settings.pet.size.large");
+        SoundSection.Text = context.T("cp.settings.section.sound");
+        SoundLabel.Text = context.T("cp.settings.sound");
+        SoundHint.Text = context.T("cp.settings.sound.hint");
         AppearanceSection.Text = context.T("cp.settings.section.appearance");
         ThemeLabel.Text = context.T("cp.settings.theme");
         ThemeHint.Text = context.T("cp.settings.theme.hint");
@@ -60,6 +63,7 @@ public partial class SettingsPage : UserControl, IUiPage
 
         // 无障碍：自绘模板的控件没有可读文本，读屏只能靠显式名字。
         AutomationProperties.SetName(StartupSwitch, StartupLabel.Text);
+        AutomationProperties.SetName(SoundSwitch, SoundLabel.Text);
         AutomationProperties.SetName(PetNameText, PetNameLabel.Text);
         AutomationProperties.SetName(PetSizeSlider, PetSizeLabel.Text);
         AutomationProperties.SetName(OpenLogsButton, OpenLogsButton.Content?.ToString() ?? "logs");
@@ -110,6 +114,7 @@ public partial class SettingsPage : UserControl, IUiPage
             if (view is not null)
             {
                 StartupSwitch.IsChecked = view.StartupEnabled;
+                SoundSwitch.IsChecked = view.SoundEnabled;
                 SelectLanguage(view.Language);
                 SelectTheme(view.Theme);
                 SelectMaterial(view.Material);
@@ -207,7 +212,8 @@ public partial class SettingsPage : UserControl, IUiPage
             idle,
             StartupSwitch.IsChecked == true,
             SelectedMaterial,
-            SelectedTheme);
+            SelectedTheme,
+            SoundSwitch.IsChecked == true);
         ShowStatus(problem);
         _context.Refresh();
     }
