@@ -14,7 +14,20 @@ public sealed record PetLine(
     string Name,
     string Source,
     string State,
-    string Memory);
+    string Memory)
+{
+    /// <summary>标准包声明的作者（没有就 null；界面显示「未声明」而不是编一个）。</summary>
+    public string? Author { get; init; }
+
+    /// <summary>标准包声明的许可（字符串；对象形式取 spdx/name）。</summary>
+    public string? License { get; init; }
+
+    /// <summary>素材包目录（只读展示，不用于写操作）。</summary>
+    public string? Path { get; init; }
+
+    /// <summary>包内 icon.png/thumbnail.png 的绝对路径；没有就 null。</summary>
+    public string? IconPath { get; init; }
+}
 
 /// <summary>插件页一行。Granted 是当前有效的能力句柄数（原规格 14 §2「能力是句柄」）。
 /// Id 放最前：插件页的两个入口要「对某个插件说话」，必须有 id（RFC-13 §2.6）。

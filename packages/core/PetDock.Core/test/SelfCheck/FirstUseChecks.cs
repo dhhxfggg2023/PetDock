@@ -88,7 +88,15 @@ internal static class FirstUseChecks
 
             // 宠物页：选中一行之后「多开一只 / 删除选中」要能点，并且命令真的带着这一行的 id。
             var petsContext = new PreviewUiContext(new UiSnapshot(
-                new[] { new PetLine("user.alpha", "Alpha", "已导入", "运行中", "1 MB") },
+                new[]
+                {
+                    new PetLine("user.alpha", "Alpha", "已导入", "运行中", "1 MB")
+                    {
+                        Author = "Alice",
+                        License = "CC0-1.0",
+                        Path = "C:\\packs\\alpha",
+                    },
+                },
                 Array.Empty<PluginLine>(),
                 SettingsView.Default));
             IUiPage? petsPage = UiPluginCatalog.Load(root, petsContext)
@@ -121,6 +129,13 @@ internal static class FirstUseChecks
                 && petsContext.Commands.Contains("delete-pet:user.alpha");
             check("ui-pets-duplicate-delete", commandsWired,
                 $"selected={selected} commands={string.Join(",", petsContext.Commands)}");
+
+            var detailAuthor = petsView?.FindName("DetailAuthor") as TextBlock;
+            var detailLicense = petsView?.FindName("DetailLicense") as TextBlock;
+            bool detail = detailAuthor?.Text.Contains("Alice", StringComparison.Ordinal) == true
+                && detailLicense?.Text.Contains("CC0-1.0", StringComparison.Ordinal) == true;
+            check("ui-pets-detail", detail,
+                $"author={detailAuthor?.Text} license={detailLicense?.Text}");
         }
         catch (Exception error)
         {
@@ -130,6 +145,7 @@ internal static class FirstUseChecks
             check("ui-settings-pet-size", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-a11y", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-duplicate-delete", false, error.GetType().Name + ": " + error.Message);
+            check("ui-pets-detail", false, error.GetType().Name + ": " + error.Message);
         }
     }
 }

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 30400,
+  "budget": 30600,
   "history": [
     {
       "date": "2026-10-18",
@@ -2242,6 +2242,42 @@
             "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
           ],
           "lines": 5
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 30471,
+      "budget": 30600,
+      "note": "第八轮产品补齐 P1：宠物页显示素材包元数据（作者/许可/目录/图标）。新增只读元数据读取器（标准包 petdock-sample.json 的 author/license/naturalSize/icon），PetLine 增加 init 字段（不改构造签名），UiHost 快照统一补；面板加选中详情条。实测 30299 → 30471（+172）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "素材包元数据读取器",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetPackMetadata.cs"
+          ],
+          "lines": 117
+        },
+        {
+          "slice": "快照补元数据",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Metadata.cs"
+          ],
+          "lines": 39
+        },
+        {
+          "slice": "PetLine 元数据字段",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+          ],
+          "lines": 13
+        },
+        {
+          "slice": "Snapshot 返回前补元数据",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 3
         }
       ]
     }

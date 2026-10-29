@@ -1,8 +1,10 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using PetDock.Core.Ui;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -29,7 +31,11 @@ public partial class PetsPage : UserControl, IUiPage
         EmptyNote.Text = string.Empty;
 
         Rows.ItemsSource = _rows;
-        Rows.SelectionChanged += (_, _) => UpdateActions();
+        Rows.SelectionChanged += (_, _) =>
+        {
+            UpdateActions();
+            UpdateDetail();
+        };
         // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
         // 构造期只订阅一次是不够的——第二次进入页面后 Changed 就再也不会到达。
         Loaded += (_, _) =>
@@ -78,6 +84,7 @@ public partial class PetsPage : UserControl, IUiPage
         }
 
         UpdateActions();
+        UpdateDetail();
     }
 
     private string? SelectedPetId => (Rows.SelectedItem as PetRow)?.Id;
@@ -88,6 +95,50 @@ public partial class PetsPage : UserControl, IUiPage
         DuplicateButton.IsEnabled = has;
         DeleteButton.IsEnabled = has;
     }
+
+    /// <summary>选中一行时显示作者/许可/目录；没有声明就写「未声明」，不从目录名猜。</summary>
+    private void UpdateDetail()
+    {
+        PetRow? row = Rows.SelectedItem as PetRow;
+        if (row is null)
+        {
+            DetailBar.Visibility = Visibility.Collapsed;
+            DetailIcon.Source = null;
+            DetailIconFrame.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        DetailBar.Visibility = Visibility.Visible;
+        DetailAuthor.Text = _context.T("cp.pets.detail.author", ValueOrUnknown(row.Author));
+        DetailLicense.Text = _context.T("cp.pets.detail.license", ValueOrUnknown(row.License));
+        DetailPath.Text = _context.T("cp.pets.detail.path", ValueOrUnknown(row.Path));
+
+        DetailIcon.Source = null;
+        DetailIconFrame.Visibility = Visibility.Collapsed;
+        if (string.IsNullOrWhiteSpace(row.IconPath) || !File.Exists(row.IconPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.UriSource = new Uri(row.IconPath, UriKind.Absolute);
+            bitmap.EndInit();
+            bitmap.Freeze();
+            DetailIcon.Source = bitmap;
+            DetailIconFrame.Visibility = Visibility.Visible;
+        }
+        catch (Exception)
+        {
+            // 图标坏了不影响文字信息；下一次选中会重试。
+        }
+    }
+
+    private string ValueOrUnknown(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? _context.T("cp.pets.detail.unknown") : value;
 
     /// <summary>多开：同一个素材包再开一只（不复制磁盘素材）；失败走错误条。</summary>
     private void OnDuplicateClick(object sender, RoutedEventArgs e)

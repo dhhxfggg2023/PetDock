@@ -162,5 +162,9 @@
   "cp.pets.deleteConfirm": "彻底删除「{0}」？素材文件会从数据目录删除，不能撤销。",
   "cp.pets.delete.done": "已删除。",
   "cp.pets.delete.missing": "找不到这只宠物。",
-  "cp.pets.delete.failed": "删除失败，详情见日志。"
+  "cp.pets.delete.failed": "删除失败，详情见日志。",
+  "cp.pets.detail.author": "作者：{0}",
+  "cp.pets.detail.license": "许可：{0}",
+  "cp.pets.detail.path": "目录：{0}",
+  "cp.pets.detail.unknown": "未声明"
 }

@@ -14,6 +14,10 @@ public sealed class PetRow
         Source = line.Source;
         State = line.State;
         Memory = line.Memory;
+        Author = line.Author;
+        License = line.License;
+        Path = line.Path;
+        IconPath = line.IconPath;
     }
 
     public string Id { get; }
@@ -21,6 +25,10 @@ public sealed class PetRow
     public string Source { get; }
     public string State { get; }
     public string Memory { get; }
+    public string? Author { get; }
+    public string? License { get; }
+    public string? Path { get; }
+    public string? IconPath { get; }
 }
 
 /// <summary>插件页一行。Enabled 是唯一可写的字段（行内开关）。</summary>

@@ -80,6 +80,7 @@ internal static class PetSetChecks
 
         MultiOpen(check);
         MigrateNames(check);
+        PackMetadata(check);
     }
 
     /// <summary>多开 = 清单里两条指向同一目录；删一条不删素材，删最后一条才删目录。</summary>
@@ -148,6 +149,38 @@ internal static class PetSetChecks
         catch (Exception error)
         {
             check("ui-catalog-name-migration", false, "exception: " + error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            TryDelete(root);
+        }
+    }
+
+    /// <summary>标准包元数据：作者、对象形式的许可、画布尺寸、包内图标。</summary>
+    private static void PackMetadata(Check check)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "petdock-meta-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        try
+        {
+            string pack = Path.Combine(root, "pack");
+            Directory.CreateDirectory(pack);
+            File.WriteAllText(
+                Path.Combine(pack, "petdock-sample.json"),
+                """{"author":"Alice","license":{"spdx":"CC0-1.0"},"naturalSize":{"w":64,"h":80}}""");
+            File.WriteAllBytes(Path.Combine(pack, "icon.png"), new byte[] { 1, 2, 3 });
+            PetPackMetadata? meta = PetPackMetadataReader.Read(pack);
+            bool ok = meta is not null
+                && string.Equals(meta.Author, "Alice", StringComparison.Ordinal)
+                && string.Equals(meta.License, "CC0-1.0", StringComparison.Ordinal)
+                && meta.NaturalWidth == 64
+                && meta.NaturalHeight == 80
+                && meta.IconPath is not null;
+            check("ui-catalog-pack-metadata", ok,
+                $"author={meta?.Author} license={meta?.License} size={meta?.NaturalWidth}x{meta?.NaturalHeight} icon={meta?.IconPath is not null}");
+        }
+        catch (Exception error)
+        {
+            check("ui-catalog-pack-metadata", false, "exception: " + error.GetType().Name + ": " + error.Message);
         }
         finally
         {

@@ -56,14 +56,17 @@ internal sealed partial class UiHost
     }
 
     /// <summary>取一次快照（面板每次重绘都调用它，不缓存）。</summary>
-    public UiSnapshot Snapshot() =>
-        UiRoster.Build(
+    public UiSnapshot Snapshot()
+    {
+        UiSnapshot snapshot = UiRoster.Build(
             _primaryRemoved ? null : _pet,
             _host,
             SettingsView(),
             _inventory,
             BuildExtraPetLines(),
             _primaryRemoved ? null : _store?.ReadActive()?.InstanceId);
+        return DecoratePetMetadata(snapshot);
+    }
 
     /// <summary>
     /// 设置页的当前状态（读数来源：设置文件 + 注册表）。

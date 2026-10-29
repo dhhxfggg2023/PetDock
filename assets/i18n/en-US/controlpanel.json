@@ -162,5 +162,9 @@
   "cp.pets.deleteConfirm": "Delete “{0}” permanently? Its files will be removed from the data folder; this cannot be undone.",
   "cp.pets.delete.done": "Deleted.",
   "cp.pets.delete.missing": "That pet is no longer in the list.",
-  "cp.pets.delete.failed": "Could not delete it; see the log."
+  "cp.pets.delete.failed": "Could not delete it; see the log.",
+  "cp.pets.detail.author": "Author: {0}",
+  "cp.pets.detail.license": "License: {0}",
+  "cp.pets.detail.path": "Folder: {0}",
+  "cp.pets.detail.unknown": "Not declared"
 }

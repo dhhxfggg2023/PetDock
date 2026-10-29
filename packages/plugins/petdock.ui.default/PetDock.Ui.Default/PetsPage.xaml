@@ -28,6 +28,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Margin="18,14,18,10">
@@ -101,7 +102,29 @@
                                TextAlignment="Center" />
                 </StackPanel>
 
-                <Border Grid.Row="2" x:Name="ErrorBar" Visibility="Collapsed" Margin="14,8,14,14"
+                <Border Grid.Row="2" x:Name="DetailBar" Visibility="Collapsed" Margin="18,8,18,4"
+                        Background="{DynamicResource Pd.SurfaceHover}" CornerRadius="10" Padding="12,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="DetailIconFrame" Width="54" Height="54" CornerRadius="8"
+                                Background="{DynamicResource Pd.AccentSoft}" Visibility="Collapsed">
+                            <Image x:Name="DetailIcon" Stretch="Uniform" Margin="4" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock x:Name="DetailAuthor" Style="{DynamicResource Pd.Body}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="DetailLicense" Style="{DynamicResource Pd.Dim}"
+                                       Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="DetailPath" Style="{DynamicResource Pd.Muted}"
+                                       Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="3" x:Name="ErrorBar" Visibility="Collapsed" Margin="14,8,14,14"
                         Background="{DynamicResource Pd.BadSurface}" CornerRadius="9" Padding="12,9">
                     <TextBlock x:Name="ErrorText" Foreground="{DynamicResource Pd.Bad}"
                                FontSize="12.5" TextWrapping="Wrap" />
