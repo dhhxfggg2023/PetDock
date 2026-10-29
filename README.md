@@ -71,6 +71,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `petdock.sample.petimage` | 开 | 示例宠物呈现器 |
 | `com.petdock.bongocat.interaction` | **关** | 其他桌宠生态的适配插件，需要键盘钩子，默认不装载 |
 | `com.petdock.dyberpet.importer` | 开 | 桌面宠物素材包导入器（含 DyberPet 包）：只在导入时转换，不申请能力，不装载桌宠 |
+| `com.petdock.atlas.importer` | 开 | Codex Pets / OpenPets 固定图集导入器（1536×1872、8×9、57 帧）：转成标准包，不引用原图集 |
 | `com.petdock.myfirstbrain` | **关** | tier-1 JS 示例脑，用到时才开 |
 
 规则是「显式停用 > 显式启用 > 默认」：默认开的插件不会弹授权窗（内置信任集静默授予），

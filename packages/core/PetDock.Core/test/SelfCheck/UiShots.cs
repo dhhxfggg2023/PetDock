@@ -63,6 +63,17 @@ internal static class UiShots
                 foreach (IUiPage page in pages)
                 {
                     panel.ShowPage(page.Id);
+                    if (string.Equals(page.Id, "pets", StringComparison.Ordinal))
+                    {
+                        // 截图里选中第一行，才能看到详情条（否则它按设计是收起的）。
+                        FrameworkElement petsView = page.CreateView();
+                        if (petsView.FindName("Rows") is System.Windows.Controls.ListBox rows
+                            && rows.Items.Count > 0)
+                        {
+                            rows.SelectedIndex = 0;
+                        }
+                    }
+
                     foreach (int dpi in new[] { 96, 144 })
                     {
                         string path = Path.Combine(
