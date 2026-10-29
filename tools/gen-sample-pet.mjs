@@ -140,6 +140,12 @@ const sample = {
     { id: 'hover', clip: 'anim/hover.json' },
   ],
   defaultAnimation: 'idle',
+  // 素材包自己的台词（P4 之后新增）：点按/抛掷/落地优先说这里的句子，缺了才用宿主通用句。
+  lines: {
+    poke: ['我是示例宠物。', '今天也在桌面上。', '戳我做什么？'],
+    throw: ['要被扔出去啦！'],
+    drop: ['安全着陆。'],
+  },
   state: { schemaVersion: 1, position: { x: 0, y: 0 } },
 }
 fs.writeFileSync(path.join(outDir, 'petdock-sample.json'), JSON.stringify(sample, null, 2) + '\n')

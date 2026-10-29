@@ -23,7 +23,7 @@ namespace PetDock.Core.Ui;
 internal sealed partial class PetWindowSet : IDisposable
 {
     /// <summary>给每只宠物窗接点击/拖动反馈（宿主侧实现；集合不反向依赖 UiHost）。</summary>
-    internal delegate void PetWindowAttach(LayeredFrameWindow window);
+    internal delegate void PetWindowAttach(LayeredFrameWindow window, System.Func<string?> packId);
 
     /// <summary>新槽位登记时调用；已存在的槽位由 <see cref="UiHost.AttachPetSet"/> 补接。</summary>
     internal PetWindowAttach? WindowAttached { get; set; }
@@ -181,7 +181,7 @@ internal sealed partial class PetWindowSet : IDisposable
         WireContextMenu(slot.Window);
         WireDoubleClick(slot.Window);
         _slots.Add(slot);
-        WindowAttached?.Invoke(slot.Window);
+        WindowAttached?.Invoke(slot.Window, () => IdOf(slot));
     }
 
     /// <summary>

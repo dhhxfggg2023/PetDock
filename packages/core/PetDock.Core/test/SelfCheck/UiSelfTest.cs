@@ -89,6 +89,8 @@ internal static class UiSelfTest
             AtlasImportChecks.Run(Check);
             // 2026-10-29 P4 第三块：agent 状态（本机文件驱动，ui-agent-*）。
             AgentChecks.Run(Check);
+            // 2026-10-29：素材包自带台词（点按/抛掷/落地优先说包里的句子）。
+            PackLinesChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

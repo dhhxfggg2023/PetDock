@@ -16,7 +16,8 @@ internal sealed record PetPackMetadata(
     string? License,
     string? IconPath,
     int NaturalWidth,
-    int NaturalHeight);
+    int NaturalHeight,
+    PetPackLines Lines);
 
 internal static class PetPackMetadataReader
 {
@@ -64,7 +65,8 @@ internal static class PetPackMetadataReader
                 LicenseText(root),
                 icon,
                 width,
-                height);
+                height,
+                PetPackLines.Read(root));
         }
         catch (Exception error)
         {

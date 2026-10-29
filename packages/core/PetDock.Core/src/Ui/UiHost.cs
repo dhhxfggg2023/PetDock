@@ -168,7 +168,7 @@ internal sealed partial class UiHost : ApplicationContext
         // 双击宠物 → 打开主控面板（2026-10-27）：托盘图标在发行布局里可能不进外壳，
         // 「界面上什么也点不开」不能只靠托盘兜住。与托盘菜单「主控面板」同一个动作。
         _window.DoubleClicked += OpenPanel;
-        AttachPetFeedback(_window);
+        AttachPetFeedback(_window, () => _store?.ReadActive()?.InstanceId);
 
         // 滴答器在这里起：装载期的授权询问必须等消息泵起来才有地方弹窗（RFC-13 §2.4）。
         _timer = new System.Windows.Forms.Timer { Interval = TickMs };
@@ -224,7 +224,7 @@ internal sealed partial class UiHost : ApplicationContext
         {
             slot.Window.ContextRequested += ShowPetMenu;
             slot.Window.DoubleClicked += OpenPanel;
-            AttachPetFeedback(slot.Window);
+            AttachPetFeedback(slot.Window, () => PetWindowSet.IdOf(slot));
         }
 
         RefreshTrayPets();

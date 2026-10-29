@@ -110,20 +110,50 @@ internal sealed partial class UiHost
         return null;
     }
 
-    /// <summary>把点击/拖动反馈接到一只宠物窗上（主窗与额外槽位共用）。</summary>
-    private void AttachPetFeedback(LayeredFrameWindow window)
+    /// <summary>
+    /// 把点击/拖动反馈接到一只宠物窗上（主窗与额外槽位共用）。
+    /// packId 是**惰性**的：同一个主窗换过素材包之后还要说新包的话，
+    /// 接线时就把 id 固定下来会让旧台词一直跟着用户。
+    /// </summary>
+    private void AttachPetFeedback(LayeredFrameWindow window, Func<string?> packId)
     {
-        window.Tapped += () => window.ShowSpeech(PokeLine());
+        window.Tapped += () => window.ShowSpeech(PokeLine(packId()));
         window.Dragged += () => window.ShowSpeech(I18n.Get("ui.bubble.drag"));
-        window.Dropped += () => window.ShowSpeech(I18n.Get("ui.bubble.drop"));
-        window.PhysicsStarted += () => window.ShowSpeech(I18n.Get("ui.bubble.throw"));
-        window.PhysicsLanded += () => window.ShowSpeech(I18n.Get("ui.bubble.drop"));
+        window.Dropped += () => window.ShowSpeech(PackLine(packId(), lines => lines.Drop) ?? I18n.Get("ui.bubble.drop"));
+        window.PhysicsStarted += () => window.ShowSpeech(PackLine(packId(), lines => lines.Throw) ?? I18n.Get("ui.bubble.throw"));
+        window.PhysicsLanded += () => window.ShowSpeech(PackLine(packId(), lines => lines.Drop) ?? I18n.Get("ui.bubble.drop"));
     }
 
-    /// <summary>随机挑一句通用点按台词；具体宠物想说什么留给后续的素材包/行为插件。</summary>
-    private static string PokeLine()
+    /// <summary>
+    /// 素材包自带的台词（标准包清单里的 "lines"）。每次点按都读一次小 JSON：
+    /// 这是用户点了才发生的事，而缓存会让换包之后还在说旧词。
+    /// </summary>
+    private PetPackLines PackLinesOf(string? petId)
     {
-        int index = Random.Shared.Next(3) + 1;
-        return I18n.Get("ui.bubble.poke" + index);
+        if (petId is null || _store?.Find(petId) is not { } pack)
+        {
+            return PetPackLines.Empty;
+        }
+
+        return PetPackMetadataReader.Read(pack.Path)?.Lines ?? PetPackLines.Empty;
+    }
+
+    /// <summary>点按：优先这只宠物自己的台词，没声明才用宿主通用句。</summary>
+    private string PokeLine(string? petId)
+    {
+        IReadOnlyList<string> lines = PackLinesOf(petId).Poke;
+        if (lines.Count > 0)
+        {
+            return lines[Random.Shared.Next(lines.Count)];
+        }
+
+        return I18n.Get("ui.bubble.poke" + (Random.Shared.Next(3) + 1));
+    }
+
+    /// <summary>包声明的那一组台词里随机一句；没有就返回 null（调用方回落到宿主通用句）。</summary>
+    private string? PackLine(string? petId, Func<PetPackLines, IReadOnlyList<string>> pick)
+    {
+        IReadOnlyList<string> lines = pick(PackLinesOf(petId));
+        return lines.Count == 0 ? null : lines[Random.Shared.Next(lines.Count)];
     }
 }

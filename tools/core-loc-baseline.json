@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 32000,
+  "budget": 32200,
   "history": [
     {
       "date": "2026-10-18",
@@ -2480,6 +2480,35 @@
             "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
           ],
           "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 31903,
+      "budget": 32200,
+      "note": "素材包自带台词（点按/抛掷/落地优先说包里的句子）：新增 PetPackLines 读取器（上限 8 句、60 字、去重、坏形状当没声明），元数据带出，接线接到 UiHost 的反馈口。实测 31783 → 31903（+120）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "素材包台词读取与上限",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetPackLines.cs"
+          ],
+          "lines": 88
+        },
+        {
+          "slice": "元数据带出台词",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetPackMetadata.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "点按/抛掷/落地改用包台词（含惰性包 id 接线）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs"
+          ],
+          "lines": 30
         }
       ]
     }
