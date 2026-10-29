@@ -95,6 +95,8 @@ internal static class UiSelfTest
             PhysicsSupportChecks.Run(Check);
             // 2026-10-29 素材包命中区：归一化热区（有声明才收窄可点范围）。
             PackHitRegionChecks.Run(Check);
+            // 2026-10-29 端到端：真的落在假拓扑上、真的走出边缘掉下去、真的按命中区判 WM_NCHITTEST。
+            WindowTopologyChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

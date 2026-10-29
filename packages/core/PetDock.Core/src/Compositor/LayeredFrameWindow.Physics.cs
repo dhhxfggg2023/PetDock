@@ -266,13 +266,15 @@ internal sealed partial class LayeredFrameWindow
         }
 
         IReadOnlyList<Rectangle>? surfaces = Platforms?.Invoke();
-        if (surfaces is null || surfaces.Count == 0)
+        if (surfaces is null)
         {
+            // 拓扑整个被关掉（自检 / 没有宿主）：不再监视，别让宠物莫名其妙开始自由落体。
             EndResting();
             return;
         }
 
-        if (PhysicsSupport.HasSupport(rect, _restingTop, surfaces))
+        // 空列表 ≠ 关闭：桌面上一块可落脚的面都没有了（窗口全关），必须掉下去。
+        if (surfaces.Count > 0 && PhysicsSupport.HasSupport(rect, _restingTop, surfaces))
         {
             return;
         }
