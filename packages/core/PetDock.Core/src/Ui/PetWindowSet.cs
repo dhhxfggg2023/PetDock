@@ -22,6 +22,11 @@ namespace PetDock.Core.Ui;
 
 internal sealed partial class PetWindowSet : IDisposable
 {
+    /// <summary>给每只宠物窗接点击/拖动反馈（宿主侧实现；集合不反向依赖 UiHost）。</summary>
+    internal delegate void PetWindowAttach(LayeredFrameWindow window);
+
+    /// <summary>新槽位登记时调用；已存在的槽位由 <see cref="UiHost.AttachPetSet"/> 补接。</summary>
+    internal PetWindowAttach? WindowAttached { get; set; }
     /// <summary>相邻两只的水平间距（物理像素）：128 的帧宽 + 12 的空隙，看得出是两只。</summary>
     private const int SpacingX = 140;
 
@@ -176,6 +181,7 @@ internal sealed partial class PetWindowSet : IDisposable
         WireContextMenu(slot.Window);
         WireDoubleClick(slot.Window);
         _slots.Add(slot);
+        WindowAttached?.Invoke(slot.Window);
     }
 
     /// <summary>

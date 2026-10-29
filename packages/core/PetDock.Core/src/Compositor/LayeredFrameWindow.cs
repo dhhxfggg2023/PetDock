@@ -316,6 +316,8 @@ internal sealed partial class LayeredFrameWindow : Form
     {
         if (disposing)
         {
+            _speech?.Dispose();
+            _tapTimer.Dispose();
             _frame?.Dispose();
             if (_ownsContent)
             {

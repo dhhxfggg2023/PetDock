@@ -109,4 +109,19 @@ internal sealed partial class UiHost
         RefreshUi();
         return null;
     }
+
+    /// <summary>把点击/拖动反馈接到一只宠物窗上（主窗与额外槽位共用）。</summary>
+    private void AttachPetFeedback(LayeredFrameWindow window)
+    {
+        window.Tapped += () => window.ShowSpeech(PokeLine());
+        window.Dragged += () => window.ShowSpeech(I18n.Get("ui.bubble.drag"));
+        window.Dropped += () => window.ShowSpeech(I18n.Get("ui.bubble.drop"));
+    }
+
+    /// <summary>随机挑一句通用点按台词；具体宠物想说什么留给后续的素材包/行为插件。</summary>
+    private static string PokeLine()
+    {
+        int index = Random.Shared.Next(3) + 1;
+        return I18n.Get("ui.bubble.poke" + index);
+    }
 }

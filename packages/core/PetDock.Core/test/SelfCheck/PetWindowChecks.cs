@@ -22,6 +22,7 @@ internal static class PetWindowChecks
     {
         PlanChecks(check);
         SetChecks(check);
+        FeedbackChecks(check);
     }
 
     /// <summary>清单 → 「还要摆哪几只」是纯的：判决不必造窗口就能验。</summary>
@@ -104,6 +105,42 @@ internal static class PetWindowChecks
             primaryLoop?.Dispose();
             primary?.Dispose();
             second?.Dispose();
+        }
+    }
+
+    /// <summary>点击/拖动/落地三条反馈都接到同一个窗口，且气泡真的能开能收。</summary>
+    private static void FeedbackChecks(Check check)
+    {
+        LayeredFrameWindow? window = null;
+        try
+        {
+            window = new LayeredFrameWindow();
+            int taps = 0;
+            int drags = 0;
+            int drops = 0;
+            window.Tapped += () => taps++;
+            window.Dragged += () => drags++;
+            window.Dropped += () => drops++;
+            window.RaiseTappedForCheck();
+            window.RaiseDraggedForCheck();
+            window.RaiseDroppedForCheck();
+
+            window.Show();
+            Application.DoEvents();
+            window.ShowSpeech("测试");
+            bool bubble = window.SpeechVisible;
+            window.HideSpeechForCheck();
+            check("ui-pet-feedback",
+                taps == 1 && drags == 1 && drops == 1 && bubble,
+                $"taps={taps} drags={drags} drops={drops} bubble={bubble}");
+        }
+        catch (Exception error)
+        {
+            check("ui-pet-feedback", false, error.GetType().Name + ": " + error.Message);
+        }
+        finally
+        {
+            window?.Dispose();
         }
     }
 

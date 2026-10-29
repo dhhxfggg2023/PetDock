@@ -38,10 +38,25 @@ internal sealed partial class LayeredFrameWindow
     /// </summary>
     internal event PetTapHookSignature? DoubleClicked;
 
+    /// <summary>单击（等过系统双击间隔、确认不是双击）—— 宿主接一句气泡反馈。</summary>
+    internal event PetTapHookSignature? Tapped;
+
+    /// <summary>拖拽越过 TapSlopPixels 时触发一次（不是每次 MouseMove）。</summary>
+    internal event PetTapHookSignature? Dragged;
+
+    /// <summary>拖拽落地（拖动过、且松手）。</summary>
+    internal event PetTapHookSignature? Dropped;
+
     /// <summary>上一次「点了一下但没拖动」的时刻与光标位置（双击判定用；系统阈值见 NoteTap）。</summary>
     private DateTime _lastTapAt;
     private Point _lastTapPos;
     private bool _hasLastTap;
+
+    /// <summary>等待「第二下」的计时器：超时才算单击，否则会先弹气泡再打开面板。</summary>
+    private readonly System.Windows.Forms.Timer _tapTimer = new();
+
+    /// <summary>本次按下是否已经越过拖拽阈值（只触发一次 Dragged）。</summary>
+    private bool _dragMoved;
 
     /// <summary>按下时的窗口位置：抬起来还在这里 = 这是一次「点」，不是一次「拖」。</summary>
     private (int X, int Y) _downWindowPos;
@@ -68,10 +83,16 @@ internal sealed partial class LayeredFrameWindow
             _hasLastTap = true;
             _lastTapAt = now;
             _lastTapPos = cursor;
+            _tapTimer.Stop();
+            _tapTimer.Interval = SystemInformation.DoubleClickTime;
+            _tapTimer.Tick -= OnTapTimer;
+            _tapTimer.Tick += OnTapTimer;
+            _tapTimer.Start();
             return;
         }
 
         _hasLastTap = false;
+        _tapTimer.Stop();
         try
         {
             DoubleClicked?.Invoke();
@@ -83,11 +104,40 @@ internal sealed partial class LayeredFrameWindow
         }
     }
 
+    /// <summary>双击计时器到点：等过系统双击间隔还没有第二下，才把这次算作单击。</summary>
+    private void OnTapTimer(object? sender, EventArgs e)
+    {
+        _tapTimer.Stop();
+        if (!_hasLastTap)
+        {
+            return;
+        }
+
+        _hasLastTap = false;
+        try
+        {
+            Tapped?.Invoke();
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"tap-failed {error.GetType().Name}: {error.Message}");
+        }
+    }
+
     /// <summary>
     /// 判据专用（先例：`RaiseContextRequestedForCheck`）：自检没有真鼠标，而生产路径（NoteTap）
     /// 除了阈值判定只剩「抛事件」，所以让判据从同一个事件进。
     /// </summary>
     internal void RaiseDoubleClickedForCheck() => DoubleClicked?.Invoke();
+
+    /// <summary>判据专用：从同一事件入口验证单击已接线。</summary>
+    internal void RaiseTappedForCheck() => Tapped?.Invoke();
+
+    /// <summary>判据专用：从同一事件入口验证拖拽已接线。</summary>
+    internal void RaiseDraggedForCheck() => Dragged?.Invoke();
+
+    /// <summary>判据专用：从同一事件入口验证落地已接线。</summary>
+    internal void RaiseDroppedForCheck() => Dropped?.Invoke();
 
     /// <summary>会话期间的鼠标捕获是否由本窗持有（会话结束必须还回去）。</summary>
     private bool _pointerCapture;
@@ -191,6 +241,7 @@ internal sealed partial class LayeredFrameWindow
         }
 
         _dragging = true;
+        _dragMoved = false;
         Capture = true;
         _dragOffset = new Point(e.X, e.Y);
         _downWindowPos = CurrentPosition;
@@ -208,6 +259,26 @@ internal sealed partial class LayeredFrameWindow
 
         Point cursor = Cursor.Position;
         SetWindowPosition(cursor.X - _dragOffset.X, cursor.Y - _dragOffset.Y);
+
+        if (!_dragMoved)
+        {
+            (int X, int Y) moved = CurrentPosition;
+            if (Math.Abs(moved.X - _downWindowPos.X) > TapSlopPixels
+                || Math.Abs(moved.Y - _downWindowPos.Y) > TapSlopPixels)
+            {
+                _dragMoved = true;
+                _tapTimer.Stop();
+                _hasLastTap = false;
+                try
+                {
+                    Dragged?.Invoke();
+                }
+                catch (Exception error)
+                {
+                    KernelLog.Write($"drag-feedback-failed {error.GetType().Name}: {error.Message}");
+                }
+            }
+        }
     }
 
     private void OnMouseUp(object? sender, MouseEventArgs e)
@@ -232,7 +303,8 @@ internal sealed partial class LayeredFrameWindow
         });
 
         // 双击判定只认「点」：窗口没被拖走才算（拖动落地不参与，见 NoteTap 的注释）。
-        bool tapped = Math.Abs(pos.X - _downWindowPos.X) <= TapSlopPixels
+        bool tapped = !_dragMoved
+            && Math.Abs(pos.X - _downWindowPos.X) <= TapSlopPixels
             && Math.Abs(pos.Y - _downWindowPos.Y) <= TapSlopPixels;
         if (tapped)
         {
@@ -241,6 +313,18 @@ internal sealed partial class LayeredFrameWindow
         else
         {
             _hasLastTap = false;
+            _tapTimer.Stop();
+            if (_dragMoved)
+            {
+                try
+                {
+                    Dropped?.Invoke();
+                }
+                catch (Exception error)
+                {
+                    KernelLog.Write($"drop-feedback-failed {error.GetType().Name}: {error.Message}");
+                }
+            }
         }
     }
 
@@ -253,6 +337,7 @@ internal sealed partial class LayeredFrameWindow
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        _tapTimer.Stop();
         RaisePointerCancel("closing");
         base.OnFormClosing(e);
     }

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 30000,
+  "budget": 30400,
   "history": [
     {
       "date": "2026-10-18",
@@ -2191,6 +2191,57 @@
             "packages/core/PetDock.Core/src/Ui/Design/Theme.Colors.cs"
           ],
           "lines": 2
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 30299,
+      "budget": 30400,
+      "note": "第八轮产品补齐 P0：点击/拖动/落地反馈与头顶气泡。LayeredFrameWindow 增加单击（等过系统双击间隔）/拖动/落地事件，UiHost 接通用台词并显示 PetSpeechBubble；气泡是独立置顶、不抢焦点、不挡鼠标的窗，随宠物移动。实测 29921 → 30299（+378）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "头顶气泡窗（绘制/定位/跟随/生命周期）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetSpeechBubble.cs"
+          ],
+          "lines": 226
+        },
+        {
+          "slice": "窗口侧气泡接线（ShowSpeech/OnMove）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Speech.cs"
+          ],
+          "lines": 41
+        },
+        {
+          "slice": "单击/拖动/落地事件与双击计时器",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs"
+          ],
+          "lines": 85
+        },
+        {
+          "slice": "宿主侧点击/拖动反馈与通用台词",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs"
+          ],
+          "lines": 15
+        },
+        {
+          "slice": "额外宠物槽位的反馈接线",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"
+          ],
+          "lines": 6
+        },
+        {
+          "slice": "主窗反馈接线与气泡生命周期",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
+          ],
+          "lines": 5
         }
       ]
     }
