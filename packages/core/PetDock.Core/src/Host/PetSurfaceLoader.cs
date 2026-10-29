@@ -127,70 +127,12 @@ public sealed partial class PetSurfaceRoster
         _records.Where(r => r.Interface == typeof(IPackImporter))
             .Select(r => (IPackImporter)r.Implementation).ToList();
 
-    /// <summary>
-    /// 名册里第一个视图实现建出的宠物实例（无视图 → null）。
-    /// assetRoots 是宿主为本实例解析好的素材根（RFC-15 §3.2）：空 = 没给，
-    /// 视图实现回落到它自己的定位逻辑。
-    /// freshView = true 时用**新的一份**实现对象建实例（换宠物要用）：
-    /// 名册里的实现对象是装载时创建的那一个，两个实例共用它 ⇒ 新实例初始化时
-    /// 旧实例还在用它，旧实例一释放就把新宠物一起带走了（视图实现大多不抗重复 init）。
-    /// </summary>
-    public PetInstance? BuildInstance(
-        string instanceIdPrefix,
-        IReadOnlyList<string>? assetRoots = null,
-        bool freshView = false,
-        bool imported = false,
-        string? displayName = null)
-    {
-        IPetView? view = View;
-        if (view is null)
-        {
-            return null;
-        }
-
-        string pluginId = Find<IPetView>()!.PluginId;
-        if (freshView)
-        {
-            view = FreshView(view);
-        }
-
-        // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
-        string? brainPluginId = Find<IBrain>()?.PluginId;
-        PetInstance instance = new(
-            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported, displayName);
-        AttachStateStore(instance, assetRoots);
-        return instance;
-    }
-
-    /// <summary>
-    /// 造一份新的视图实现对象（同一类型、无参构造）。
-    /// 造不出来就退回原对象：换宠物失败时旧宠物还在，不该因为「造不出新对象」就空桌。
-    /// </summary>
-    private static IPetView FreshView(IPetView original)
-    {
-        try
-        {
-            Type type = original.GetType();
-            if (type.GetConstructor(Type.EmptyTypes) is null)
-            {
-                return original;
-            }
-
-            return Activator.CreateInstance(type) as IPetView ?? original;
-        }
-        catch (Exception error)
-        {
-            KernelLog.Write($"surface-fresh-view-failed {error.GetType().Name}: {error.Message}");
-            return original;
-        }
-    }
-
     /// <summary>一行诊断（自检与日志共用）。</summary>
     public string Describe() =>
         $"root={Root} dirs={DiscoveredDirs} valid={ValidManifests} invalid={InvalidManifests}"
         + $" records={_records.Count} view={(HasView ? ViewTypeName : "(none)")}"
         + $" provider={(HasContentProvider ? "yes" : "no")} rejected={_rejected.Count}"
-        + $" overruns={_overruns.Count}";
+        + $" overruns={_overruns.Count} companions={CompanionTypes}";
 
     /// <summary>登记一个宿主内建的实现（自检桩件走这条路）。</summary>
     internal void Add(string pluginId, string typeName, Type iface, object implementation)
@@ -202,7 +144,9 @@ public sealed partial class PetSurfaceRoster
     private void LoadPlugin(string dir, PluginManifest manifest)
     {
         Type? target = InterfaceFor(manifest.Kind);
-        if (target is null)
+        IReadOnlyList<string>? companions = DeclaredCompanions(manifest);
+        bool hasCompanions = companions is { Count: > 0 };
+        if (target is null && !hasCompanions)
         {
             KernelLog.Write($"surface-skip plugin={manifest.Id} kind={manifest.Kind.Value} (not an ABI role in M2)");
             return;
@@ -254,6 +198,18 @@ public sealed partial class PetSurfaceRoster
         {
             _rejected.Add(new SurfaceRejection(manifest.Id, "types-unreadable"));
             KernelLog.Write($"surface-reject plugin={manifest.Id} err=ReflectionTypeLoadException first={error.LoaderExceptions.FirstOrDefault()?.Message}");
+            return;
+        }
+
+        if (hasCompanions)
+        {
+            RegisterCompanions(manifest, assembly);
+        }
+
+        if (target is null)
+        {
+            // 只贡献陪伴层的 service 插件：没有角色实现要登记，装载到此为止（不是失败）。
+            KernelLog.Write($"surface-companions-only plugin={manifest.Id} types={CompanionTypes}");
             return;
         }
 

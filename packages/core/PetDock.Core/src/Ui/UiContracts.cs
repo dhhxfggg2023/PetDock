@@ -72,6 +72,25 @@ public sealed record TrashLine(
     string RemovedAt,
     bool Restorable);
 
+/// <summary>
+/// 宠物页的一枚陪伴层按钮。<see cref="Label"/> 由插件本地化（宿主不认识「喂食」是什么，
+/// 只负责把按钮摆出来、把点击转回插件）。
+/// </summary>
+public sealed record CompanionCommandLine(string CommandId, string Label);
+
+/// <summary>
+/// 一只宠物的一行陪伴层状态（CompanionId = 陪伴层插件的接口 id）。
+/// 宿主只做转述：Title/Status/Detail 全是插件给的快照文本，宿主不解释也不改写。
+/// </summary>
+public sealed record CompanionLine(
+    string PetId,
+    string PetName,
+    string CompanionId,
+    string Title,
+    string Status,
+    string Detail,
+    IReadOnlyList<CompanionCommandLine> Commands);
+
 /// <summary>状态条的口吻：info 是计数与提示，success 是「做成了」，problem 是「没做成，原因在这里」。</summary>
 public enum UiStatusKind
 {
@@ -181,4 +200,16 @@ public interface IUiPageContext
 
     /// <summary>打开审计流水。</summary>
     void OpenAudit();
+
+    /// <summary>
+    /// 桌上所有宠物的陪伴层状态（没有陪伴层的宠物不出现）。即时读，不随 Snapshot 缓存：
+    /// 它在两次 Changed 之间也会变（时间在走），页面要刷新时自己再读一次。
+    /// </summary>
+    IReadOnlyList<CompanionLine> Companions { get; }
+
+    /// <summary>
+    /// 执行一枚陪伴层按钮。返回 null = 成功；非空 = 给用户看的原因（找不到宠物/角色，或插件抛异常）。
+    /// 动作要说的话由宿主走同一个气泡说出去，页面不用再显示一遍。
+    /// </summary>
+    string? InvokeCompanionCommand(string petId, string companionId, string commandId);
 }

@@ -21,6 +21,7 @@ public partial class PetsPage : UserControl, IUiPage
     {
         _context = context;
         InitializeComponent();
+        InitCare();
 
         ImportButton.Content = context.T("cp.pets.import");
         DuplicateButton.Content = context.T("cp.pets.duplicate");
@@ -87,6 +88,7 @@ public partial class PetsPage : UserControl, IUiPage
 
         UpdateActions();
         UpdateDetail();
+        RefreshCare();
     }
 
     private string? SelectedPetId => (Rows.SelectedItem as PetRow)?.Id;

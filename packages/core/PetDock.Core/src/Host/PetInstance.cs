@@ -208,8 +208,10 @@ public sealed partial class PetInstance : IDisposable
         }
 
         AttachView(pixelWidth, pixelHeight, scale);
-        InitBrain(new ResourceBudget(
-            FrameBudgetGuard.FrameBudgetMs, FrameBudgetGuard.IdleFrameBudgetMs, pixelWidth * pixelHeight));
+        var budget = new ResourceBudget(
+            FrameBudgetGuard.FrameBudgetMs, FrameBudgetGuard.IdleFrameBudgetMs, pixelWidth * pixelHeight);
+        InitBrain(budget);
+        InitCompanions(budget);
 
         if (State == InstanceState.Imported)
         {
@@ -319,6 +321,9 @@ public sealed partial class PetInstance : IDisposable
         }
 
         _disposed = true;
+
+        // 陪伴层先下线：它们可能在 Dispose 里写最后一笔状态，写完再由宿主统一落盘。
+        DisposeCompanions();
 
         // RFC-24 §6.3 的提交点：释放前把缓冲落盘（位置这类宿主键最后一次更新的地方就在这附近）。
         // 放在 detach 之前：detach 失败也要落盘，否则「客户端崩了」与「正常退出」的状态不一样。

@@ -16,12 +16,12 @@ internal static partial class ManifestValidator
 {
     public const string ManifestFileName = "petdock-plugin.json";
 
-    // 原规格 21 contributes 六键 + 2026-10-28 的界面贡献点 pages = 七键。其中两键的字面值含
-    // D-03b 黑名单词，不可整词落盘 → 运行期拼接。
-    // "assets" 是素材声明数组（每项 {type, path}），另六键值为字符串数组。
+    // 原规格 21 contributes 六键 + 2026-10-28 的 pages + 2026-10-29 的 companions = 八键。
+    // 其中两键的字面值含 D-03b 黑名单词，不可整词落盘 → 运行期拼接。
+    // "assets" 是素材声明数组（每项 {type, path}），另七键值为字符串数组（companions 的值是实现类型全名）。
     public static readonly string[] ContributeKeys =
     {
-        "importers", "pres" + "enters", "brains", "interact" + "ions", "states", "assets", "pages",
+        "importers", "pres" + "enters", "brains", "interact" + "ions", "states", "assets", "pages", "companions",
     };
 
     // 原规格 21 顶层必填九键（contributes / experimental 可选）。

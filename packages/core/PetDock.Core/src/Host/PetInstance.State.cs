@@ -12,22 +12,40 @@ namespace PetDock.Hosting;
 public sealed partial class PetInstance
 {
     /// <summary>
+    /// 状态层的门（2026-10-29）：窗口移动在 UI 线程写位置，陪伴层的 tick 在帧泵线程写自己的键。
+    /// 两条线程共用同一个缓冲区，所以写入方必须进同一道门 —— 陪伴层的 State 代理也拿这一个对象。
+    /// </summary>
+    private readonly object _stateGate = new();
+
+    /// <summary>状态层的互斥对象（给陪伴层的状态代理用；不暴露可写状态本身）。</summary>
+    internal object StateGate => _stateGate;
+
+    /// <summary>
     /// 换上落盘层（RFC-24 §6.3）：装配期由 roster 调用一次，之后只有本实例自己用它提交。
     /// 为什么不是 public setter：状态层的归属必须是「每实例恰好一个」，多一个写入口就有
     /// 两个缓冲同时声称自己是真身（这正是 原规格 11 §6 三条约束要防的事）。
     /// </summary>
-    internal void InstallStateLayer(IPetState? layer) => StateLayer = layer;
+    internal void InstallStateLayer(IPetState? layer)
+    {
+        lock (_stateGate)
+        {
+            StateLayer = layer;
+        }
+    }
 
     /// <summary>宿主写自己的状态键（位置）：走与插件补丁同一个缓冲区，然后由提交点落盘。</summary>
     public bool WriteHostState(string key, JsonNode? value)
     {
-        if (StateLayer is not PersistentPetState persistent)
+        lock (_stateGate)
         {
-            return false;
-        }
+            if (StateLayer is not PersistentPetState persistent)
+            {
+                return false;
+            }
 
-        persistent.WriteHost(key, value);
-        return true;
+            persistent.WriteHost(key, value);
+            return true;
+        }
     }
 
     /// <summary>
@@ -36,23 +54,32 @@ public sealed partial class PetInstance
     /// </summary>
     public bool CommitState()
     {
-        if (StateLayer is not PersistentPetState persistent)
+        lock (_stateGate)
         {
-            return false;
-        }
+            if (StateLayer is not PersistentPetState persistent)
+            {
+                return false;
+            }
 
-        bool ok = persistent.TryCommit(out StateCommitException? refusal);
-        if (!ok)
-        {
-            LastFailure = $"state-commit {refusal!.Reason}";
-        }
+            bool ok = persistent.TryCommit(out StateCommitException? refusal);
+            if (!ok)
+            {
+                LastFailure = $"state-commit {refusal!.Reason}";
+            }
 
-        return ok;
+            return ok;
+        }
     }
 
     /// <summary>
     /// 读上一次落盘的位置（窗口重建时用）。读不到 / 没接落盘层 → null。
     /// 读走内存缓冲区，不碰磁盘（原规格 11:201 的读语义）。
     /// </summary>
-    public JsonNode? ReadState(string key) => StateLayer?.Read(key);
+    public JsonNode? ReadState(string key)
+    {
+        lock (_stateGate)
+        {
+            return StateLayer?.Read(key);
+        }
+    }
 }

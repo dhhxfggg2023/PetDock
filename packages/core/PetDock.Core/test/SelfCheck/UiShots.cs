@@ -46,6 +46,20 @@ internal static class UiShots
             {
                 Theme.Mode = light ? ThemeMode.Light : ThemeMode.Dark;
                 var context = new PreviewUiContext(SampleSnapshot());
+                // 陪伴层那一块也要在截图里（P4）：宠物页没有陪伴行时它是收起的，收起的块拍不到。
+                context.CompanionRows.Add(new CompanionLine(
+                    "sample-pet",
+                    "示例宠物",
+                    "petdock.care",
+                    I18n.Get("cp.pets.care.title"),
+                    "饱腹 78 · 心情 66 · 体力 52",
+                    "亲密 Lv.2 · 第 3 天",
+                    new[]
+                    {
+                        new CompanionCommandLine("feed", "喂食"),
+                        new CompanionCommandLine("play", "玩耍"),
+                        new CompanionCommandLine("rest", "休息"),
+                    }));
                 IReadOnlyList<IUiPlugin> plugins = UiPluginCatalog.Load(root, context);
                 IUiPage[] pages = plugins
                     .SelectMany(plugin => plugin.CreatePages(context))

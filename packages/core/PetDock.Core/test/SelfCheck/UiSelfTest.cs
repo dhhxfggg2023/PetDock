@@ -81,6 +81,8 @@ internal static class UiSelfTest
             // 2026-10-28 审计 P0：设置落盘只有一个写者（ui-settings-update-*）。
             SettingsStoreChecks.Run(Check);
             TrayPetChecks.Run(Check);
+            // 2026-10-29 P4：陪伴层（ui-companion-*）—— 插件挂载、命令/动作转发、状态往返。
+            CompanionChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

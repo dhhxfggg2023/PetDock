@@ -168,5 +168,6 @@
   "cp.pets.detail.path": "Folder: {0}",
   "cp.pets.detail.unknown": "Not declared",
   "cp.pets.importConfirm": "Import this pet pack?\n{0}",
-  "cp.pets.importConfirmTitle": "Import pet pack"
+  "cp.pets.importConfirmTitle": "Import pet pack",
+  "cp.pets.care.title": "Companion"
 }

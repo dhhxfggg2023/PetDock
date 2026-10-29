@@ -209,6 +209,16 @@ internal static class FrameComposition
         // 抛掷期间让窗口层独占运动：brain 的 moveTo 会每帧把宠物拉回原目标。
         window.PhysicsStarted += () => instance.ExternalMotion = true;
         window.PhysicsEnded += () => instance.ExternalMotion = false;
+
+        // 桌面动作 → 陪伴层（2026-10-29）：气泡与陪伴层收的是同一批时刻，不另造一套判定。
+        window.Tapped += () => instance.NotifyCompanions(CompanionGesture.Poke);
+        window.Dragged += () => instance.NotifyCompanions(CompanionGesture.Drag);
+        window.Dropped += () => instance.NotifyCompanions(CompanionGesture.Drop);
+        window.PhysicsStarted += () => instance.NotifyCompanions(CompanionGesture.Throw);
+        window.PhysicsLanded += () => instance.NotifyCompanions(CompanionGesture.Land);
+
+        // 陪伴层说的话走窗口的同一个气泡；PostSpeech 负责把帧泵线程的话排回窗口线程。
+        instance.Speech += window.PostSpeech;
     }
 
     internal static void WirePointer(LayeredFrameWindow window, PetInstance instance)

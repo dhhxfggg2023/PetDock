@@ -51,6 +51,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "petdock.importer.codex", "p
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PetDock.AtlasImporter", "packages\plugins\petdock.importer.codex\PetDock.AtlasImporter\PetDock.AtlasImporter.csproj", "{4587E9F8-F0E9-4865-AB2A-B4C268B4ED47}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "petdock.care", "petdock.care", "{C80B0CAD-5345-4891-ACD5-8EEE5CDFFCFB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PetDock.Care", "packages\plugins\petdock.care\PetDock.Care\PetDock.Care.csproj", "{334E1CCA-5682-48B7-B3F4-74217F8EBAD2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -104,6 +108,10 @@ Global
 		{4587E9F8-F0E9-4865-AB2A-B4C268B4ED47}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4587E9F8-F0E9-4865-AB2A-B4C268B4ED47}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4587E9F8-F0E9-4865-AB2A-B4C268B4ED47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{334E1CCA-5682-48B7-B3F4-74217F8EBAD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{334E1CCA-5682-48B7-B3F4-74217F8EBAD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{334E1CCA-5682-48B7-B3F4-74217F8EBAD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{334E1CCA-5682-48B7-B3F4-74217F8EBAD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5F37913D-F1D9-4A56-84D9-D269A16D7DE1} = {00494AD3-2709-4B68-A7BA-4815861C9AEF}
@@ -129,5 +137,6 @@ Global
 		{50D46645-29FB-42BD-AA5C-B097C5174C3F} = {F130503F-592C-4B18-ADDF-F3181C0AF05F}
 		{5F248901-447E-4CCF-8DF0-DBAC36680E6E} = {A7A9E824-2929-4FAF-8A44-AAC4753F334C}
 		{4587E9F8-F0E9-4865-AB2A-B4C268B4ED47} = {5F248901-447E-4CCF-8DF0-DBAC36680E6E}
+		{334E1CCA-5682-48B7-B3F4-74217F8EBAD2} = {C80B0CAD-5345-4891-ACD5-8EEE5CDFFCFB}
 	EndGlobalSection
 EndGlobal

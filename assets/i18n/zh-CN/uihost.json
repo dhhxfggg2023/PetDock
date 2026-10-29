@@ -29,5 +29,7 @@
   "ui.bubble.throw": "飞起来啦～",
   "ui.work.busy": "已有另一个操作正在进行，请等它结束。",
   "ui.work.failed": "操作失败，详情见日志。",
-  "ui.workspace.version": "v{0}"
+  "ui.workspace.version": "v{0}",
+  "ui.companion.missing": "找不到这只宠物的陪伴层，列表可能已经变了。",
+  "ui.companion.failed": "陪伴层没有完成这次操作，详情见日志。"
 }

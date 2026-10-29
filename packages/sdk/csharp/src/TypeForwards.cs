@@ -64,3 +64,18 @@ using System.Runtime.CompilerServices;
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.PluginLine))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.PetReading))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.SettingsView))]
+
+// 陪伴层 ABI（2026-10-29，P4 第一块）：与上面同一模式 —— core 声明、sdk 转发、插件实现。
+// 转发 IPetCompanion 是必须的：宿主用 typeof(IPetCompanion).IsAssignableFrom(type) 检定类型，
+// 不转发会让插件实现的是另一份同名接口，检定恒假（t6 的教训，见文件头）。
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.IPetCompanion))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.CompanionContext))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.ICompanionHost))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.CompanionGesture))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.CompanionTick))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.CompanionReport))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.PetRuntime.CompanionCommand))]
+
+// 面板的陪伴行（IUiPageContext.Companions / InvokeCompanionCommand 的载荷），页面插件要用。
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.CompanionLine))]
+[assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.CompanionCommandLine))]

@@ -29,6 +29,7 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Margin="18,14,18,10">
@@ -124,7 +125,51 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Row="3" x:Name="ErrorBar" Visibility="Collapsed" Margin="14,8,14,14"
+                <StackPanel Grid.Row="3" x:Name="CarePanel" Visibility="Collapsed" Margin="18,6,18,8">
+                    <TextBlock x:Name="CareTitle" Style="{DynamicResource Pd.Muted}" Margin="0,0,0,6" />
+                    <ItemsControl x:Name="CareRows">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" MinWidth="96">
+                                        <TextBlock Text="{Binding PetName}" Style="{DynamicResource Pd.Body}"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Title}" Style="{DynamicResource Pd.Muted}"
+                                                   Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Status}" Style="{DynamicResource Pd.Body}" />
+                                        <TextBlock Text="{Binding Detail}" Style="{DynamicResource Pd.Muted}"
+                                                   Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Commands}"
+                                                  VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Content="{Binding Label}" Tag="{Binding}"
+                                                        Style="{DynamicResource Pd.SecondaryButton}"
+                                                        Margin="6,0,0,0" Padding="10,3"
+                                                        Click="OnCareCommandClick" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <Border Grid.Row="4" x:Name="ErrorBar" Visibility="Collapsed" Margin="14,8,14,14"
                         Background="{DynamicResource Pd.BadSurface}" CornerRadius="9" Padding="12,9">
                     <TextBlock x:Name="ErrorText" Foreground="{DynamicResource Pd.Bad}"
                                FontSize="12.5" TextWrapping="Wrap" />

@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 30900,
+  "budget": 31800,
   "history": [
     {
       "date": "2026-10-18",
@@ -2317,6 +2317,91 @@
             "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs"
           ],
           "lines": 3
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 31600,
+      "budget": 31800,
+      "note": "P4 插件线第一块：陪伴层（companion）ABI 与宿主半边、名册按类型为每实例新造、面板的陪伴区、内置 petdock.care 插件。实测 30723 → 31600（+877）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "陪伴层 ABI（接口 / 上下文 / 报告 / 动作）",
+          "files": [
+            "packages/core/PetDock.Core/src/PetRuntime/Companion.cs"
+          ],
+          "lines": 165
+        },
+        {
+          "slice": "陪伴层宿主半边（初始化 / tick / 事件 / 命令 / 状态代理）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.Companion.cs"
+          ],
+          "lines": 375
+        },
+        {
+          "slice": "名册的实例化半边（拆出 BuildInstance，新增按类型登记与制造）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.Instances.cs"
+          ],
+          "lines": 158
+        },
+        {
+          "slice": "面板半边（IUiPageContext.Companions 与命令路由）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Companions.cs"
+          ],
+          "lines": 114
+        },
+        {
+          "slice": "跨线程说话（帧泵 → 窗口线程的气泡）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Speech.cs"
+          ],
+          "lines": 34
+        },
+        {
+          "slice": "页面契约的两行读数与命令",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs"
+          ],
+          "lines": 31
+        },
+        {
+          "slice": "状态层的共享门（UI 线程位置写 vs 帧线程陪伴写）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.State.cs"
+          ],
+          "lines": 27
+        },
+        {
+          "slice": "窗口接线：动作与说话",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+          ],
+          "lines": 10
+        },
+        {
+          "slice": "实例生命周期：初始化与下线",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+          ],
+          "lines": 5
+        },
+        {
+          "slice": "帧源：每帧 tick 与事件转发",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetFrameSource.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "名册主文件因拆出实例化半边而缩小",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs"
+          ],
+          "lines": -44
         }
       ]
     }

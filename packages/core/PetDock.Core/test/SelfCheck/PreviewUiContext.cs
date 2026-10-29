@@ -148,4 +148,15 @@ internal sealed class PreviewUiContext : IUiPageContext
     public void ExportDiagnostics(IntPtr owner) => Commands.Add("export");
 
     public void OpenAudit() => Commands.Add("audit");
+
+    /// <summary>判据可注入的陪伴层行（默认空；宠物页有行才画那一块）。</summary>
+    public List<CompanionLine> CompanionRows { get; } = new();
+
+    public IReadOnlyList<CompanionLine> Companions => CompanionRows;
+
+    public string? InvokeCompanionCommand(string petId, string companionId, string commandId)
+    {
+        Commands.Add("companion:" + petId + ":" + companionId + ":" + commandId);
+        return null;
+    }
 }

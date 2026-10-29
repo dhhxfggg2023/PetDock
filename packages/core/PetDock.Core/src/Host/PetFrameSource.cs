@@ -139,6 +139,7 @@ public sealed class PetFrameSource
             PublishPointerMove(_probe.LastScreenCursor);
 
             _instance.TickBrain(frameDt, world);
+            _instance.TickCompanions(frameDt, world);
             // RFC-35 §3.3：原规格 11:260 的 10 秒会话预算要有人每帧问一次 —— 此前 EnforceSessionBudget
             // 在全仓零调用方，卡住的会话永远不会被宿主取消。
             _instance.EnforceSessionBudget(nowMs);
@@ -286,20 +287,21 @@ public sealed class PetFrameSource
     private void OnBusEvent(PetEvent evt)
     {
         IBrain? brain = _instance.Brain;
-        if (brain is null)
+        if (brain is not null)
         {
-            return;
+            try
+            {
+                brain.OnEvent(evt);
+            }
+            catch (Exception error)
+            {
+                KernelLog.Write($"brain-on-event-failed instance={_instance.Id} type={evt.Type}"
+                    + $" {error.GetType().Name}: {error.Message}");
+            }
         }
 
-        try
-        {
-            brain.OnEvent(evt);
-        }
-        catch (Exception error)
-        {
-            KernelLog.Write($"brain-on-event-failed instance={_instance.Id} type={evt.Type}"
-                + $" {error.GetType().Name}: {error.Message}");
-        }
+        // 陪伴层与 brain 收同一串事件；没有 brain 的实例也必须收到（否则「只有陪伴层」的装配看不到事件）。
+        _instance.NotifyCompanions(evt);
     }
 
     /// <summary>首次取帧时把实例推到 running —— init/describe/attach 的顺序写在 PetInstance 里。</summary>
