@@ -118,7 +118,7 @@ internal sealed partial class UiHost
     private void AttachPetFeedback(LayeredFrameWindow window, Func<string?> packId)
     {
         window.Tapped += () => window.ShowSpeech(PokeLine(packId()));
-        window.Dragged += () => window.ShowSpeech(I18n.Get("ui.bubble.drag"));
+        window.Dragged += () => window.ShowSpeech(PackLine(packId(), lines => lines.Drag) ?? I18n.Get("ui.bubble.drag"));
         window.Dropped += () => window.ShowSpeech(PackLine(packId(), lines => lines.Drop) ?? I18n.Get("ui.bubble.drop"));
         window.PhysicsStarted += () => window.ShowSpeech(PackLine(packId(), lines => lines.Throw) ?? I18n.Get("ui.bubble.throw"));
         window.PhysicsLanded += () => window.ShowSpeech(PackLine(packId(), lines => lines.Drop) ?? I18n.Get("ui.bubble.drop"));
@@ -128,14 +128,15 @@ internal sealed partial class UiHost
     /// 素材包自带的台词（标准包清单里的 "lines"）。每次点按都读一次小 JSON：
     /// 这是用户点了才发生的事，而缓存会让换包之后还在说旧词。
     /// </summary>
-    private PetPackLines PackLinesOf(string? petId)
+    private PackLineSet PackLinesOf(string? petId)
     {
         if (petId is null || _store?.Find(petId) is not { } pack)
         {
-            return PetPackLines.Empty;
+            return PackLineSet.Empty;
         }
 
-        return PetPackMetadataReader.Read(pack.Path)?.Lines ?? PetPackLines.Empty;
+        // 语言在读取点决定：素材包按界面语言覆盖台词，换语言之后点一下就说新语言。
+        return PetPackMetadataReader.Read(pack.Path)?.Lines.For(I18n.Language) ?? PackLineSet.Empty;
     }
 
     /// <summary>点按：优先这只宠物自己的台词，没声明才用宿主通用句。</summary>
@@ -151,7 +152,7 @@ internal sealed partial class UiHost
     }
 
     /// <summary>包声明的那一组台词里随机一句；没有就返回 null（调用方回落到宿主通用句）。</summary>
-    private string? PackLine(string? petId, Func<PetPackLines, IReadOnlyList<string>> pick)
+    private string? PackLine(string? petId, Func<PackLineSet, IReadOnlyList<string>> pick)
     {
         IReadOnlyList<string> lines = pick(PackLinesOf(petId));
         return lines.Count == 0 ? null : lines[Random.Shared.Next(lines.Count)];

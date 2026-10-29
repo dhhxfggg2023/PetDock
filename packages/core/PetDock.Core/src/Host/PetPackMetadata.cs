@@ -66,7 +66,7 @@ internal static class PetPackMetadataReader
                 icon,
                 width,
                 height,
-                PetPackLines.Read(root));
+                PetPackLinesReader.Read(root));
         }
         catch (Exception error)
         {

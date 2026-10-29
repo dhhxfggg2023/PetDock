@@ -143,8 +143,17 @@ const sample = {
   // 素材包自己的台词（P4 之后新增）：点按/抛掷/落地优先说这里的句子，缺了才用宿主通用句。
   lines: {
     poke: ['我是示例宠物。', '今天也在桌面上。', '戳我做什么？'],
+    drag: ['放我下来～'],
     throw: ['要被扔出去啦！'],
     drop: ['安全着陆。'],
+    languages: {
+      'en-US': {
+        poke: ["I'm the sample pet.", 'Still on your desktop.', 'Why poke me?'],
+        drag: ['Put me down!'],
+        throw: ['Wheee!'],
+        drop: ['Safe landing.'],
+      },
+    },
   },
   state: { schemaVersion: 1, position: { x: 0, y: 0 } },
 }
