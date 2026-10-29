@@ -85,6 +85,8 @@ internal static class UiSelfTest
             CompanionChecks.Run(Check);
             // 2026-10-29 P4 音频：宿主侧播放的决定（静音 / 缺文件 / 格式）与设置默认值。
             SoundChecks.Run(Check);
+            // 2026-10-29 图集导入：几何契约（v1/v2）、错误尺寸、WebP 缺 codec 时的 png 回退。
+            AtlasImportChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

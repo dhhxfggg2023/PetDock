@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using PetDock.Core.PetRuntime;
 using PetDock.Hosting;
 
 namespace PetDock.AtlasImporter;
@@ -19,10 +20,20 @@ namespace PetDock.AtlasImporter;
 public sealed class AtlasPackImporter : IPackImporter, IPackImporterProgress
 {
     private const int AtlasWidth = 1536;
-    private const int AtlasHeight = 1872;
     private const int CellWidth = 192;
     private const int CellHeight = 208;
-    private const int Columns = 8;
+
+    /// <summary>
+    /// 认识的两个几何：v1 = 8×9（1872 高），v2 = 8×11（2288 高）。
+    /// v2 多出来的两行**不导入**：它们的语义没有公开契约，猜一个行名就等于编造素材含义。
+    /// 只认「前 9 行仍是同一顺序」这一条——它由 v1 的契约固定，v2 若改了顺序本工具会读错，
+    /// 所以 provenance 里记下高度与版本，出问题能一眼看出是哪种图集。
+    /// </summary>
+    private static readonly IReadOnlyDictionary<int, string> KnownHeights = new Dictionary<int, string>
+    {
+        [1872] = "v1",
+        [2288] = "v2",
+    };
 
     private static readonly (string Id, int Frames, double Fps, bool Loop)[] Rows =
     {
@@ -71,16 +82,21 @@ public sealed class AtlasPackImporter : IPackImporter, IPackImporterProgress
         string? description = Text(root, "description");
         string? sourceUrl = Text(root, "sourceUrl");
 
-        BitmapDecoder decoder = BitmapDecoder.Create(
-            new Uri(Path.GetFullPath(sheetPath)),
-            BitmapCreateOptions.PreservePixelFormat,
-            BitmapCacheOption.OnLoad);
-        BitmapSource atlas = decoder.Frames[0];
-        atlas.Freeze();
-        if (atlas.PixelWidth != AtlasWidth || atlas.PixelHeight != AtlasHeight)
+        BitmapSource atlas = DecodeSheet(sheetPath);
+        if (atlas.PixelWidth != AtlasWidth || !KnownHeights.ContainsKey(atlas.PixelHeight))
         {
             throw new InvalidDataException(
-                $"图集必须是 {AtlasWidth}×{AtlasHeight}，实际 {atlas.PixelWidth}×{atlas.PixelHeight}");
+                $"图集必须是 {AtlasWidth}×{string.Join(" 或 ", KnownHeights.Keys)}"
+                + $"（v1 / v2），实际 {atlas.PixelWidth}×{atlas.PixelHeight}");
+        }
+
+        int rows = atlas.PixelHeight / CellHeight;
+        int extraRows = rows - Rows.Length;
+        if (extraRows > 0)
+        {
+            PluginLog.Info(
+                $"atlas version={KnownHeights[atlas.PixelHeight]} rows={rows} ignored-extra-rows={extraRows}"
+                + "（多出来的行没有公开语义，不导入）");
         }
 
         int total = Rows.Sum(row => row.Frames);
@@ -149,11 +165,13 @@ public sealed class AtlasPackImporter : IPackImporter, IPackImporterProgress
                 ["atlas"] = new Dictionary<string, object?>
                 {
                     ["width"] = AtlasWidth,
-                    ["height"] = AtlasHeight,
+                    ["height"] = atlas.PixelHeight,
+                    ["version"] = KnownHeights[atlas.PixelHeight],
                     ["cellWidth"] = CellWidth,
                     ["cellHeight"] = CellHeight,
                     ["rows"] = Rows.Select(row => row.Id).ToArray(),
                     ["frames"] = total,
+                    ["ignoredRows"] = Math.Max(0, rows - Rows.Length),
                 },
             });
             report?.Invoke(new PackImportProgress(total, total));
@@ -163,6 +181,44 @@ public sealed class AtlasPackImporter : IPackImporter, IPackImporterProgress
             // 输出目录由宿主/CLI 的调用方负责清理；这里不递归删用户指定的目录。
             throw;
         }
+    }
+
+    /// <summary>
+    /// 解码图集。失败时给一条能照着做的原因：WebP 能不能读取决于本机 WIC codec，
+    /// 而「读不出来」这句话对用户没有下一个动作 —— 明确告诉他换成 PNG 再试。
+    /// </summary>
+    private static BitmapSource DecodeSheet(string sheetPath)
+    {
+        try
+        {
+            BitmapDecoder decoder = BitmapDecoder.Create(
+                new Uri(Path.GetFullPath(sheetPath)),
+                BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            BitmapSource atlas = decoder.Frames[0];
+            atlas.Freeze();
+            return atlas;
+        }
+        catch (Exception error)
+        {
+            bool webp = string.Equals(Path.GetExtension(sheetPath), ".webp", StringComparison.OrdinalIgnoreCase);
+            string hint = webp
+                ? "本机没有可用的 WebP 解码器（WIC codec）：把同一张图集转成同名 .png 放在旁边再导入"
+                : "图集文件读不出来（可能已损坏，或不是 PNG / WebP）";
+            throw new InvalidDataException($"{Path.GetFileName(sheetPath)} 解码失败：{hint}", error);
+        }
+    }
+
+    /// <summary>同一目录里有没有同名 .png（用来绕开本机缺失的 WebP codec）。</summary>
+    private static string? PngSibling(string sheetPath)
+    {
+        if (!string.Equals(Path.GetExtension(sheetPath), ".webp", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        string png = Path.ChangeExtension(sheetPath, ".png");
+        return File.Exists(png) ? png : null;
     }
 
     private static int RowOf(string id)
@@ -200,12 +256,20 @@ public sealed class AtlasPackImporter : IPackImporter, IPackImporterProgress
 
         string root = Path.GetFullPath(sourceDir) + Path.DirectorySeparatorChar;
         string full = Path.GetFullPath(Path.Combine(sourceDir, relative));
-        return full.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? full : null;
+        if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // 同名 PNG 优先：WebP 能不能解码取决于本机 codec，而导入结果与编码方式无关，
+        // 所以有能读的那一份就不去赌读不出来的那一份。
+        return PngSibling(full) ?? full;
     }
 
     private static string? FindSheetByExtension(string sourceDir)
     {
-        foreach (string name in new[] { "spritesheet.webp", "spritesheet.png" })
+        // PNG 在前：理由同 ResolveSheet 里的同名优先（WIC 的 WebP 支持不是必然的）。
+        foreach (string name in new[] { "spritesheet.png", "spritesheet.webp" })
         {
             if (File.Exists(Path.Combine(sourceDir, name)))
             {
