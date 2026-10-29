@@ -97,6 +97,8 @@ internal static class UiSelfTest
             PackHitRegionChecks.Run(Check);
             // 2026-10-29 端到端：真的落在假拓扑上、真的走出边缘掉下去、真的按命中区判 WM_NCHITTEST。
             WindowTopologyChecks.Run(Check);
+            // 2026-10-29 天体模式：轨道半径、近快远慢、中心退化、夹回屏内。
+            CelestialChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

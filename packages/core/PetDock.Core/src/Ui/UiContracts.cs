@@ -185,7 +185,8 @@ public interface IUiPageContext
         bool startWithWindows,
         string material,
         string theme,
-        bool soundEnabled);
+        bool soundEnabled,
+        bool celestialMode);
 
     /// <summary>改宠物窗口的像素边长（64..256）。返回 null = 成功；否则是给用户看的原因。</summary>
     string? SetPetSize(int size);

@@ -102,6 +102,20 @@
                                 </Grid>
                             </Grid>
                         </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="CelestialLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="CelestialHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="2" x:Name="CelestialSwitch"
+                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center"
+                                          Click="OnSettingChanged" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

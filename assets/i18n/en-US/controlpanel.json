@@ -172,5 +172,7 @@
   "cp.pets.care.title": "Companion",
   "cp.settings.section.sound": "Sound",
   "cp.settings.sound": "Sound effects",
-  "cp.settings.sound.hint": "Turn off to mute every pet at once"
+  "cp.settings.sound.hint": "Turn off to mute every pet at once",
+  "cp.settings.celestial": "Celestial mode",
+  "cp.settings.celestial.hint": "Pets orbit the desktop centre together; dragging or throwing takes over"
 }

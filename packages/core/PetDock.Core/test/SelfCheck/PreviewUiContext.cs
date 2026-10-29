@@ -130,11 +130,12 @@ internal sealed class PreviewUiContext : IUiPageContext
         bool startWithWindows,
         string material,
         string theme,
-        bool soundEnabled)
+        bool soundEnabled,
+        bool celestialMode)
     {
         Commands.Add(
             "settings:" + idleFrameBudgetMs.ToString("0.###") + ":" + startWithWindows + ":" + material + ":" + theme
-            + ":sound=" + soundEnabled);
+            + ":sound=" + soundEnabled + ":celestial=" + celestialMode);
         return null;
     }
 

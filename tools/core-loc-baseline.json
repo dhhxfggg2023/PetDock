@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 32800,
+  "budget": 33000,
   "history": [
     {
       "date": "2026-10-18",
@@ -2594,6 +2594,77 @@
             "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
           ],
           "lines": 6
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 32724,
+      "budget": 33000,
+      "note": "天体模式（可选运动模式）：宿主级公转（近快远慢、竖直压扁、拖动/抛掷让位）+ 设置页开关；另含 942e4a1 里支撑监视对「空拓扑」的修复（+3）。实测 32499 → 32724（+225）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "轨道数学（半径反推、角速度、压扁、夹回屏内）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/CelestialMotion.cs"
+          ],
+          "lines": 60
+        },
+        {
+          "slice": "宿主半边（开关、30ms 计时器、让位规则）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Celestial.cs"
+          ],
+          "lines": 142
+        },
+        {
+          "slice": "设置字段与读数",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "页面契约多一个开关",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs"
+          ],
+          "lines": 1
+        },
+        {
+          "slice": "落盘与立即生效",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 7
+        },
+        {
+          "slice": "页面实现转发开关",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "启动时读设置、第一帧后起公转",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 7
+        },
+        {
+          "slice": "设置页快照带开关状态",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+          ],
+          "lines": 1
+        },
+        {
+          "slice": "支撑监视：空拓扑必须掉（942e4a1 的修复）",
+          "files": [
+            "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Physics.cs"
+          ],
+          "lines": 3
         }
       ]
     }

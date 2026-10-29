@@ -67,7 +67,8 @@ public sealed record SettingsView(
     int PetSize = 128,
     string? PetName = null,
     string? Version = null,
-    bool SoundEnabled = true)
+    bool SoundEnabled = true,
+    bool CelestialMode = false)
 {
     /// <summary>没有设置可读时的默认状态。</summary>
     public static SettingsView Default { get; } = new(

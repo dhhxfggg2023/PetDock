@@ -84,7 +84,8 @@ internal sealed partial class UiHost
             settings.PetSize ?? UserSettings.DefaultPetSize,
             _primaryRemoved ? null : _pet?.DisplayName,
             AppVersion,
-            settings.SoundEnabled != false);
+            settings.SoundEnabled != false,
+            settings.CelestialMode == true);
     }
 
     /// <summary>
@@ -98,7 +99,8 @@ internal sealed partial class UiHost
         bool startWithWindows,
         Design.MaterialKind material,
         Design.ThemeMode theme,
-        bool soundEnabled)
+        bool soundEnabled,
+        bool celestialMode)
     {
         var problems = new List<string>();
 
@@ -129,6 +131,7 @@ internal sealed partial class UiHost
             Material = materialToken,
             ThemeMode = themeToken,
             SoundEnabled = soundEnabled,
+            CelestialMode = celestialMode,
         };
         try
         {
@@ -141,6 +144,7 @@ internal sealed partial class UiHost
                     Material = materialToken,
                     ThemeMode = themeToken,
                     SoundEnabled = soundEnabled,
+                    CelestialMode = celestialMode,
                 });
             }
         }
@@ -161,6 +165,9 @@ internal sealed partial class UiHost
 
         // ⑤ 静音立即生效（进程级开关；已经响着的那一条不打断 —— 打断反而像故障）。
         SoundBoard.Enabled = soundEnabled;
+
+        // ⑥ 天体模式立即生效（打开时宿主独占运动，关掉把属主还给行为层）。
+        ApplyCelestialMode(celestialMode);
         KernelLog.Write(
             $"settings-applied idle={updated.IdleFrameBudgetMs:0.0}ms startup={startWithWindows} material={updated.Material}");
 

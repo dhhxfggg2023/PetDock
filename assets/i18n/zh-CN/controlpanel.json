@@ -172,5 +172,7 @@
   "cp.pets.care.title": "陪伴层",
   "cp.settings.section.sound": "声音",
   "cp.settings.sound": "音效",
-  "cp.settings.sound.hint": "关掉后桌面上所有宠物都不出声"
+  "cp.settings.sound.hint": "关掉后桌面上所有宠物都不出声",
+  "cp.settings.celestial": "天体模式",
+  "cp.settings.celestial.hint": "多只宠物一起时绕桌面中心转圈；拖动或抛掷时让位"
 }

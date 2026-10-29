@@ -99,6 +99,7 @@ internal sealed partial class UiHost : ApplicationContext
             I18n.Load(loaded.Language);
             // 静音在构造任何宠物窗口之前定下来：用户关了声音，启动时就不该先响一声。
             SoundBoard.Enabled = loaded.SoundEnabled != false;
+            _celestial = loaded.CelestialMode == true;
             KernelLog.Write($"settings-loaded {loaded.Describe()}");
         }
 
@@ -284,6 +285,12 @@ internal sealed partial class UiHost : ApplicationContext
             // RFC-37 §3.2：其余的几只按主窗**恢复后**的位置挨着摆上桌。
             // 放在 TryRestorePosition 之后是必须的 —— 先摆的话它们会按右下角算，主窗一跳走就错位。
             _petSet?.StartAll();
+
+            // 天体模式在第一帧之后才起：窗口还在右下角时没有可信位置。
+            if (_celestial && _celestialTimer is null)
+            {
+                StartCelestial();
+            }
         }
 
         // RFC-21 §3.4：全屏档把泵停了，没有泵 tick 就没有人重新判定 ——
