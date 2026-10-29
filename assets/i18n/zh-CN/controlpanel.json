@@ -166,5 +166,7 @@
   "cp.pets.detail.author": "作者：{0}",
   "cp.pets.detail.license": "许可：{0}",
   "cp.pets.detail.path": "目录：{0}",
-  "cp.pets.detail.unknown": "未声明"
+  "cp.pets.detail.unknown": "未声明",
+  "cp.pets.importConfirm": "导入这个素材包？\n{0}",
+  "cp.pets.importConfirmTitle": "导入素材包"
 }

@@ -2,6 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -204,6 +206,16 @@ public partial class PetsPage : UserControl, IUiPage
             return;
         }
 
+        // 导入前先让用户看到包名/作者/许可；读不出元数据就保持一键导入，不拿空信息拦人。
+        string? summary = PackSummary(dialog.SelectedPath);
+        if (summary is not null
+            && !_context.Confirm(
+                _context.T("cp.pets.importConfirm", summary),
+                _context.T("cp.pets.importConfirmTitle")))
+        {
+            return;
+        }
+
         // 导入在后台跑（UiHost.Work.cs）：按钮先灰掉，防止同一份对话框结果被点两次。
         ImportButton.IsEnabled = false;
         try
@@ -236,6 +248,77 @@ public partial class PetsPage : UserControl, IUiPage
         {
             ImportButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// 导入前摘要：标准包读 petdock-sample.json，图集包读 pet.json。
+    /// 读不出来返回 null（仍然导入），不拿「未声明」的空表拦用户。
+    /// </summary>
+    private string? PackSummary(string packDir)
+    {
+        string standard = Path.Combine(packDir, "petdock-sample.json");
+        string manifest = File.Exists(standard) ? standard : Path.Combine(packDir, "pet.json");
+        if (!File.Exists(manifest))
+        {
+            return null;
+        }
+
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(manifest));
+            JsonElement root = doc.RootElement;
+            string? name = Text(root, "displayName") ?? Text(root, "name");
+            string? author = Text(root, "author");
+            string? license = LicenseText(root);
+            var text = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                text.Append(name);
+            }
+
+            if (!string.IsNullOrWhiteSpace(author))
+            {
+                text.Append('\n').Append(_context.T("cp.pets.detail.author", author));
+            }
+
+            if (!string.IsNullOrWhiteSpace(license))
+            {
+                text.Append('\n').Append(_context.T("cp.pets.detail.license", license));
+            }
+
+            return text.Length == 0 ? null : text.ToString();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private static string? Text(JsonElement root, string key) =>
+        root.TryGetProperty(key, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static string? LicenseText(JsonElement root)
+    {
+        if (!root.TryGetProperty("license", out JsonElement value))
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            return value.GetString();
+        }
+
+        if (value.ValueKind == JsonValueKind.Object
+            && value.TryGetProperty("spdx", out JsonElement spdx)
+            && spdx.ValueKind == JsonValueKind.String)
+        {
+            return spdx.GetString();
+        }
+
+        return null;
     }
 
     private void ShowError(string message)

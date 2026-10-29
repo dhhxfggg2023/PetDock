@@ -166,5 +166,7 @@
   "cp.pets.detail.author": "Author: {0}",
   "cp.pets.detail.license": "License: {0}",
   "cp.pets.detail.path": "Folder: {0}",
-  "cp.pets.detail.unknown": "Not declared"
+  "cp.pets.detail.unknown": "Not declared",
+  "cp.pets.importConfirm": "Import this pet pack?\n{0}",
+  "cp.pets.importConfirmTitle": "Import pet pack"
 }
