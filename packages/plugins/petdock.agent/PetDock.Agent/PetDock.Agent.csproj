@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    内置陪伴层：AI / agent 状态（P4 第三块，2026-10-29）。
+
+    为什么第一版只读本机文件：外部 HTTP 与凭据属于新授权面（要新能力名、要授权弹窗），
+    而「桌宠显示 agent 正在干什么」这件事不需要网络也能成立 —— 写状态的那一方
+    （IDE 插件、脚本、CI）把一行 JSON 落到本机，这里只负责读与展示。
+    读文件是插件本来就有的能力（进程内、tier 0），不新增任何 capabilities。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>PetDock.Agent</RootNamespace>
+    <AssemblyName>PetDock.Agent</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

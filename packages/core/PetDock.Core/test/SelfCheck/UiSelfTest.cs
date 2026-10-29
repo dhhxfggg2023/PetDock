@@ -87,6 +87,8 @@ internal static class UiSelfTest
             SoundChecks.Run(Check);
             // 2026-10-29 图集导入：几何契约（v1/v2）、错误尺寸、WebP 缺 codec 时的 png 回退。
             AtlasImportChecks.Run(Check);
+            // 2026-10-29 P4 第三块：agent 状态（本机文件驱动，ui-agent-*）。
+            AgentChecks.Run(Check);
             OnboardingChecks.Run(Check);
             OnboardingConsentChecks.Run(Check);
             DiagnosticChecks.Run(Check);

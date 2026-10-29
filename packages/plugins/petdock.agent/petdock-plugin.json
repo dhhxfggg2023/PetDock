@@ -1,0 +1,19 @@
+{
+  "id": "com.petdock.agent",
+  "name": "陪伴层：AI / agent 状态（内置）",
+  "version": "0.1.0",
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
+  "kind": "service",
+  "tier": 0,
+  "entry": "PetDock.Agent/bin/Release/net8.0-windows/PetDock.Agent.dll",
+  "capabilities": [],
+  "license": {
+    "spdx": "CC0-1.0"
+  },
+  "contributes": {
+    "companions": ["PetDock.Agent.AgentCompanion"]
+  }
+}

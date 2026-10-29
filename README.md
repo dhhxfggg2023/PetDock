@@ -71,12 +71,36 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `petdock.sample.petimage` | 开 | 示例宠物呈现器 |
 | `com.petdock.bongocat.interaction` | **关** | 其他桌宠生态的适配插件，需要键盘钩子，默认不装载 |
 | `com.petdock.dyberpet.importer` | 开 | 桌面宠物素材包导入器（含 DyberPet 包）：只在导入时转换，不申请能力，不装载桌宠 |
-| `com.petdock.care` | 开 | 陪伴层：喂养 / 心情 / 成长（面板宠物页的「陪伴层」区），自带两条音效，数值走状态层 |
+| `com.petdock.care` | 开 | 陪伴层：喂养 / 心情 / 成长（面板宠物页的「陪伴层」区），自带三条音效，数值走状态层 |
+| `com.petdock.agent` | 开 | 陪伴层：AI / agent 状态（读本机 JSON，不发网络请求、不需要凭据），见下方「喂 agent 状态」 |
 | `com.petdock.atlas.importer` | 开 | Codex Pets / OpenPets 固定图集导入器：1536×1872（v1，8×9）与 1536×2288（v2，8×11，多出的两行无公开语义、不导入），57 帧转成标准包，不引用原图集；同名 `.png` 存在时优先 PNG（本机缺 WebP codec 也能导） |
 | `com.petdock.myfirstbrain` | **关** | tier-1 JS 示例脑，用到时才开 |
 
 规则是「显式停用 > 显式启用 > 默认」：默认开的插件不会弹授权窗（内置信任集静默授予），
 默认关的插件只有用户主动启用时才走授权流程。这样**双击 exe 不会先弹一个授权提醒**。
+
+## 喂 agent 状态
+
+`com.petdock.agent` 不连网、不要凭据：写状态的一方把一行 JSON 落到本机，桌宠读它并在面板的「陪伴层」区显示。
+路径由环境变量 `PETDOCK_AGENT_STATE` 决定，没设时是 `%LOCALAPPDATA%\PetDock\agent-state.json`。
+
+```json
+{
+  "state": "running",
+  "task": "跑测试",
+  "detail": "3/12",
+  "progress": 0.25,
+  "updatedAt": "2026-10-29T10:00:00Z"
+}
+```
+
+- `state` 认 `idle` / `running` / `done` / `failed`（也接受 finished、success、error 这几个别名）；
+  不认识的词原样显示，不会被翻译成「空闲」。
+- 其余字段都可选；`progress` 是 0..1（写 25 也当百分比），`updatedAt` 接受 ISO 8601 或毫秒时间戳，
+  不写就用文件修改时间。
+- 文件不在 → 「未发现状态文件」；JSON 读不懂 → 「状态文件读不出来」；`running` 超过两分钟没更新 →
+  状态后面加「（可能已停）」。这三种都不假装它空闲。
+- 面板那一行有一个「刷新」按钮：写状态的一方推完文件可以立刻看到结果。
 
 ## 目录
 

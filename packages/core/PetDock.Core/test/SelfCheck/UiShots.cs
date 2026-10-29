@@ -60,6 +60,15 @@ internal static class UiShots
                         new CompanionCommandLine("play", "玩耍"),
                         new CompanionCommandLine("rest", "休息"),
                     }));
+                // 第二层陪伴：agent 状态（P4 第三块）。两层同时在时行距与按钮不能挤。
+                context.CompanionRows.Add(new CompanionLine(
+                    "sample-pet-2",
+                    "示例宠物 2",
+                    "petdock.agent",
+                    "AI 助手",
+                    "运行中 · 跑测试",
+                    "25% · 12 秒前",
+                    new[] { new CompanionCommandLine("refresh", "刷新") }));
                 IReadOnlyList<IUiPlugin> plugins = UiPluginCatalog.Load(root, context);
                 IUiPage[] pages = plugins
                     .SelectMany(plugin => plugin.CreatePages(context))

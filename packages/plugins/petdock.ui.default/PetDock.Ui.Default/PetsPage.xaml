@@ -143,9 +143,10 @@
                                                    Margin="0,2,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Status}" Style="{DynamicResource Pd.Body}" />
+                                        <TextBlock Text="{Binding Status}" Style="{DynamicResource Pd.Body}"
+                                                   TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Detail}" Style="{DynamicResource Pd.Muted}"
-                                                   Margin="0,2,0,0" />
+                                                   Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <ItemsControl Grid.Column="2" ItemsSource="{Binding Commands}"
                                                   VerticalAlignment="Center">
