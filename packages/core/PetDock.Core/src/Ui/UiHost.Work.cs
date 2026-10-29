@@ -62,7 +62,8 @@ internal sealed partial class UiHost
             "cp.pets.import.cancelled",
             token =>
             {
-                ImportResult imported = import.Import(sourceDir, token, ReportWorkStage, RunOnUi, ReportCopyProgress);
+                ImportResult imported = import.Import(
+                    sourceDir, token, ReportWorkStage, RunOnUi, ReportCopyProgress, ReportConvertProgress);
                 if (imported.WasCancelled)
                 {
                     return UiCommandResult.Cancel(imported.Message);
@@ -294,43 +295,6 @@ internal sealed partial class UiHost
         }
 
         panel.Workspace.SetWorkStage(text);
-    }
-
-    /// <summary>复制进度（后台线程调用）：节流到约 10 Hz，切成确定态进度条；最后一字节必报。</summary>
-    private void ReportCopyProgress(long copied, long total)
-    {
-        long now = _workClock.ElapsedMilliseconds;
-        if (copied < total && now - _lastProgressMs < 100)
-        {
-            return;
-        }
-
-        _lastProgressMs = now;
-        double ratio = total <= 0 ? 1.0 : Math.Clamp(copied / (double)total, 0.0, 1.0);
-        string text = I18n.Get(
-            "ui.work.copyProgress",
-            (copied / 1048576.0).ToString("0.0", CultureInfo.InvariantCulture),
-            (total / 1048576.0).ToString("0.0", CultureInfo.InvariantCulture));
-
-        ControlPanel? panel = _panel;
-        if (panel is null || panel.IsDisposed)
-        {
-            return;
-        }
-
-        if (panel.InvokeRequired)
-        {
-            panel.BeginInvoke((System.Windows.Forms.MethodInvoker)(() =>
-            {
-                if (!panel.IsDisposed)
-                {
-                    panel.Workspace.SetWorkProgress(ratio, text);
-                }
-            }));
-            return;
-        }
-
-        panel.Workspace.SetWorkProgress(ratio, text);
     }
 
     private void ShowWork(string text)

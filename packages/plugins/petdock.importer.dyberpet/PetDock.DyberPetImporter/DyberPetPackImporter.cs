@@ -1,3 +1,4 @@
+using System.Threading;
 using PetDock.Hosting;
 
 namespace PetDock.DyberPet;
@@ -7,7 +8,7 @@ namespace PetDock.DyberPet;
 /// 落盘、登记、换源仍由 PetImportService 走同一条生产路径。
 /// 转换时把帧复制进输出包并写相对路径，导入后的宠物不再依赖用户原始目录。
 /// </summary>
-public sealed class DyberPetPackImporter : IPackImporter
+public sealed class DyberPetPackImporter : IPackImporter, IPackImporterProgress
 {
     public string Id => "com.petdock.dyberpet.importer";
 
@@ -26,4 +27,7 @@ public sealed class DyberPetPackImporter : IPackImporter
 
     public void Import(string sourceDir, string outDir) =>
         DyberPetImporter.Import(sourceDir, outDir, bundleFrames: true);
+
+    public void Import(string sourceDir, string outDir, PackImportProgressNotify report, CancellationToken token) =>
+        DyberPetImporter.Import(sourceDir, outDir, bundleFrames: true, report, token);
 }

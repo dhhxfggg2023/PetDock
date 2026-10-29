@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 29900,
+  "budget": 30000,
   "history": [
     {
       "date": "2026-10-18",
@@ -2154,6 +2154,36 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": 15
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "measured": 29919,
+      "budget": 30000,
+      "note": "第八轮续：第三方 importer 转换阶段进度。新增可选接口 IPackImporterProgress（旧 IPackImporter 不动，旧导入器不实现也能用），DyberPet 导入器按帧报告并在帧边界响应取消；宿主把帧进度写到确定态进度条。为守住 D-03c 400 行，进度上报拆出 UiHost.Work.Progress.cs。实测 29843 → 29919（+76）。判据面在 test/SelfCheck，按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "可选转换进度契约（接口/委托/进度记录）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PackImporter.cs"
+          ],
+          "lines": 21
+        },
+        {
+          "slice": "导入编排按 IPackImporterProgress 分派并转发进度/取消",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PetImportService.cs"
+          ],
+          "lines": 16
+        },
+        {
+          "slice": "长任务进度上报拆出（UiHost.Work 净减 36 行，新文件 75 行）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Work.Progress.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Work.cs"
+          ],
+          "lines": 39
         }
       ]
     }

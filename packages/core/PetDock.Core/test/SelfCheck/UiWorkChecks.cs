@@ -12,7 +12,7 @@ using PetDock.Core.Ui;
 
 namespace PetDock.Hosting;
 
-internal static class UiWorkChecks
+internal static partial class UiWorkChecks
 {
     public static void Run(Report check)
     {
@@ -22,6 +22,8 @@ internal static class UiWorkChecks
         CopyProgress(check);
         CopyCancel(check);
         InstallProgress(check);
+        ConvertProgress(check);
+        ConvertCancel(check);
     }
 
     /// <summary>进度条与取消按钮：BeginWork 出现、SetWorkStage 换文案、取消只发一次、EndWork 收起。</summary>

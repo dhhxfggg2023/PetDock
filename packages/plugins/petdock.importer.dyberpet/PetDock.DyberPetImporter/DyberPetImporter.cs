@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Threading;
+using PetDock.Hosting;
 
 namespace PetDock.DyberPet;
 
@@ -45,8 +47,14 @@ internal static class DyberPetImporter
     public sealed class LayoutRejectException(string message) : Exception(message);
 
     /// <summary>转换入口：探布局 → 读动作表 → 枚举帧 → 产 pack。返回动作名 → 帧数/fps（审计行与自检用）。</summary>
-    public static ImportResult Import(string sourceDir, string outDir, bool bundleFrames = false)
+    public static ImportResult Import(
+        string sourceDir,
+        string outDir,
+        bool bundleFrames = false,
+        PackImportProgressNotify? progress = null,
+        CancellationToken token = default)
     {
+        token.ThrowIfCancellationRequested();
         LayoutProbe probe = DyberPetLayout.Probe(sourceDir);
         Console.Error.WriteLine($"dyberpet-layout {probe.Layout} confidence={Fmt(probe.Confidence)}"
             + $" flat-actions={probe.FlatActions} nested-actions={probe.NestedActions}"
@@ -97,6 +105,7 @@ internal static class DyberPetImporter
 
         foreach (DyberPetAction action in actions)
         {
+            token.ThrowIfCancellationRequested();
             List<string> frames = EnumerateFrames(action, actionDir, sourceDir);
             if (frames.Count == 0)
             {
@@ -169,11 +178,20 @@ internal static class DyberPetImporter
         }
 
         ClipOutput defaultClip = clips.First(c => string.Equals(c.Name, defaultAnimation, StringComparison.Ordinal));
-        WritePack(outDir, clips, defaultClip, maxW, maxH, sourceDir, bundleFrames);
+        int totalFrames = clips.Sum(c => c.Frames.Count);
+        if (bundleFrames && progress is not null)
+        {
+            progress(new PackImportProgress(0, totalFrames));
+        }
+
+        WritePack(outDir, clips, defaultClip, maxW, maxH, sourceDir, bundleFrames, progress, totalFrames, token);
         ImportProvenance.Write(outDir, sourceDir, probe, actions, clips, skipped, focus, loopSet, petRoot);
         PackSelfCheck.Run(outDir, clips, maxW, maxH, focus);
+        if (bundleFrames && progress is not null)
+        {
+            progress(new PackImportProgress(totalFrames, totalFrames));
+        }
 
-        int totalFrames = clips.Sum(c => c.Frames.Count);
         Console.Error.WriteLine($"dyberpet-import source={sourceDir} layout={probe.Layout}"
             + $" actions={actions.Count} clips={clips.Count} skipped={skipped.Count}"
             + $" frames={totalFrames} natural={maxW}x{maxH} preferredFps={Fmt(defaultClip.Fps)}"
@@ -356,7 +374,10 @@ internal static class DyberPetImporter
         int w,
         int h,
         string sourceDir,
-        bool bundleFrames)
+        bool bundleFrames,
+        PackImportProgressNotify? progress,
+        int totalFrames,
+        CancellationToken token)
     {
         Directory.CreateDirectory(outDir);
         Directory.CreateDirectory(Path.Combine(outDir, AnimDirName));
@@ -380,10 +401,12 @@ internal static class DyberPetImporter
         };
         WriteJson(Path.Combine(outDir, PackManifestName), manifest);
 
+        int done = 0;
         foreach (ClipOutput clip in clips)
         {
+            token.ThrowIfCancellationRequested();
             IReadOnlyList<string> frames = bundleFrames
-                ? BundleFrames(outDir, clip)
+                ? BundleFrames(outDir, clip, progress, totalFrames, ref done, token)
                 : clip.Frames.ToList();
             var clipJson = new Dictionary<string, object?>
             {
@@ -396,7 +419,13 @@ internal static class DyberPetImporter
     }
 
     /// <summary>把一帧帧复制到包内 img/&lt;clip&gt;/，返回相对路径（正斜杠，PackLoader 按包根解析）。</summary>
-    private static IReadOnlyList<string> BundleFrames(string outDir, ClipOutput clip)
+    private static IReadOnlyList<string> BundleFrames(
+        string outDir,
+        ClipOutput clip,
+        PackImportProgressNotify? progress,
+        int totalFrames,
+        ref int done,
+        CancellationToken token)
     {
         string relativeDir = Path.Combine("img", SafeName(clip.Name));
         string fullDir = Path.Combine(outDir, relativeDir);
@@ -405,8 +434,11 @@ internal static class DyberPetImporter
         var frames = new List<string>();
         foreach (string frame in clip.Frames)
         {
+            token.ThrowIfCancellationRequested();
             string name = Path.GetFileName(frame);
             File.Copy(frame, Path.Combine(fullDir, name), overwrite: true);
+            done++;
+            progress?.Invoke(new PackImportProgress(done, totalFrames));
             frames.Add((relativeDir + "/" + name).Replace('\\', '/'));
         }
 

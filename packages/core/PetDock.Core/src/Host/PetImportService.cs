@@ -33,6 +33,9 @@ internal delegate bool PetAdoptNotify(PetInstance instance, string packPath);
 /// <summary>导入的一个阶段（值是一个 i18n 键，由宿主翻成给用户看的一句话）。</summary>
 internal delegate void ImportStageNotify(string key);
 
+/// <summary>第三方转换的帧进度（Done/Total；Total 为 0 表示导入器没给总量）。</summary>
+internal delegate void ImportConvertProgressNotify(int done, int total);
+
 /// <summary>把一段必须落在 UI 线程上的工作交回去（后台线程阻塞等待它做完）。</summary>
 internal delegate void ImportUiDispatch(UiCommand step);
 
@@ -100,7 +103,8 @@ internal sealed class PetImportService
         CancellationToken token = default,
         ImportStageNotify? stage = null,
         ImportUiDispatch? onUi = null,
-        CopyProgressNotify? progress = null)
+        CopyProgressNotify? progress = null,
+        ImportConvertProgressNotify? convertProgress = null)
     {
         // 没给调度器 = 调用方本来就在 UI 线程上（自检、旧装配）：直接执行。
         onUi ??= step => step();
@@ -125,7 +129,19 @@ internal sealed class PetImportService
                 }
 
                 conversionPath = _store.CreateStagingDirectory("convert");
-                importer.Import(sourceDir, conversionPath);
+                if (importer is IPackImporterProgress withProgress)
+                {
+                    withProgress.Import(
+                        sourceDir,
+                        conversionPath,
+                        p => convertProgress?.Invoke(p.Done, p.Total),
+                        token);
+                }
+                else
+                {
+                    importer.Import(sourceDir, conversionPath);
+                }
+
                 stagedSource = conversionPath;
                 KernelLog.Write($"import-converted importer={importer.Id} source={sourceDir}");
                 break;
