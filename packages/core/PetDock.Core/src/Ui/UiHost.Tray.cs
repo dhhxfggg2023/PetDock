@@ -15,12 +15,14 @@ namespace PetDock.Core.Ui;
 internal sealed partial class UiHost
 {
     /// <summary>
-    /// 右键宠物 → 在光标处弹出托盘那份菜单（2026-10-26 用户要求「右键宠物可以弹菜单」）。
-    /// 复用托盘那一份而不是另建：原规格 18 §0 「未写进清单的界面元素不许出现」——
-    /// 另建一套就得先在文档里新增一张清单，而用户要的是「能点到那些功能」，不是第二份菜单。
-    /// 手势归属：右键从此归宿主，插件层原有的右键手势因此让位（用户 2026-10-26 明确同意）。
+    /// 右键宠物 → 在光标处弹出**这一只**的菜单（2026-10-26 要求能弹菜单，2026-10-30 按宠物归属）。
+    ///
+    /// 载荷里的 source 窗口是这里的唯一输入：用户右键的是哪一只，菜单就只谈那一只。
+    /// 旧实现弹的是托盘那份「所有宠物各一条子菜单 + 全局退出」，于是三件事看起来都像空谈 ——
+    /// 更糟的是最下面那条「退出」没有限定语，用户把它读成「关掉这一只」。
+    /// 手势归属：右键归宿主，插件层原有的右键手势因此让位（用户 2026-10-26 明确同意）。
     /// </summary>
-    private void ShowPetMenu(System.Drawing.Point screen)
+    private void ShowPetMenu(System.Drawing.Point screen, LayeredFrameWindow source)
     {
         TrayHost? tray = _tray;
         if (tray is null)
@@ -29,9 +31,67 @@ internal sealed partial class UiHost
             return;
         }
 
-        tray.ShowMenuAt(screen);
-        KernelLog.Write($"pet-menu-shown x={screen.X} y={screen.Y}");
+        string? id = PetIdForWindow(source);
+        if (id is null)
+        {
+            // 认不出是哪一只（窗口刚被移除 / 自检造出来的野窗口）：退回那份「全部宠物」的菜单。
+            // 不猜一只出来顶替 —— 猜错会让用户在别人的菜单上点「移除」。
+            KernelLog.Write($"pet-menu-unscoped hwnd={source.WindowHandle.ToInt64():X}");
+            tray.ShowMenuAt(screen);
+            return;
+        }
+
+        bool paused = IsPetPaused(id);
+        tray.ShowPetMenuAt(screen, new PetScope(
+            PetDisplayName(id),
+            paused,
+            () => MovePetById(id),
+            () => PausePetById(id),
+            () => RemovePetByIdWithConfirm(id),
+            OpenPanel,
+            ExitApp));
+        KernelLog.Write($"pet-menu-shown id={id} paused={(paused ? 1 : 0)} x={screen.X} y={screen.Y}");
     }
+
+    /// <summary>
+    /// 这个窗口是哪一只。认不出返回 null（调用方退回无归属菜单，不猜）。
+    /// 主窗那只不在 PetWindowSet 里（它的生命周期归 UiHost），所以先按引用比一次。
+    /// </summary>
+    private string? PetIdForWindow(LayeredFrameWindow window)
+    {
+        if (ReferenceEquals(window, _window))
+        {
+            return PrimaryPetIdOf();
+        }
+
+        if (_petSet is not null)
+        {
+            foreach (PetWindowSet.Entry entry in _petSet.Entries())
+            {
+                if (ReferenceEquals(entry.Slot.Window, window))
+                {
+                    return entry.Id;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>这一只在不在暂停档（右键菜单据此把「暂停」显示成「恢复」）。</summary>
+    private bool IsPetPaused(string id)
+    {
+        if (IsPrimary(id))
+        {
+            return _pet?.State == InstanceState.Suspended;
+        }
+
+        return _petSet?.Find(id)?.Instance?.State == InstanceState.Suspended;
+    }
+
+    /// <summary>主窗那只的 id（可能没有实例，所以有 PrimaryPetId 这个不会撞车的兜底名）。</summary>
+    private string PrimaryPetIdOf() =>
+        _store?.ReadActive()?.InstanceId ?? _pet?.Id ?? PrimaryPetId;
 
     /// <summary>主窗那只的菜单 id。它可能没有实例（内核纯色兜底），所以要一个不会撞车的名字。</summary>
     private const string PrimaryPetId = "primary";
@@ -46,7 +106,7 @@ internal sealed partial class UiHost
 
         if (!_primaryRemoved)
         {
-            string primaryId = _store?.ReadActive()?.InstanceId ?? _pet?.Id ?? PrimaryPetId;
+            string primaryId = PrimaryPetIdOf();
             items.Add(new PetMenuItem(
                 _pet is null ? I18n.Get("ui.tray.kernelFallback") : _pet.DisplayName,
                 () => MovePetById(primaryId),

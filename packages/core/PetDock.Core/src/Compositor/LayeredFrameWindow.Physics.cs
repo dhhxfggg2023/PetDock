@@ -88,10 +88,12 @@ internal sealed partial class LayeredFrameWindow
         _dragLastMs = Environment.TickCount64;
     }
 
-    /// <summary>松手：速度够快就以当前窗口位置为起点抛出去。返回 true = 进入物理。</summary>
-    internal bool TryStartThrow()
+    /// <summary>松手时按最近两帧采样算瞬时速度。false = 采样不可用（没动过 / 停手太久）。</summary>
+    private bool TryMeasureReleaseVelocity(out double vx, out double vy)
     {
-        if (!_hasDragSample || !_dragMoved)
+        vx = 0;
+        vy = 0;
+        if (!_hasDragSample)
         {
             return false;
         }
@@ -102,14 +104,71 @@ internal sealed partial class LayeredFrameWindow
             return false;
         }
 
-        double vx = (_dragLastX - _dragPrevX) * 1000.0 / dt;
-        double vy = (_dragLastY - _dragPrevY) * 1000.0 / dt;
+        vx = (_dragLastX - _dragPrevX) * 1000.0 / dt;
+        vy = (_dragLastY - _dragPrevY) * 1000.0 / dt;
+        return true;
+    }
+
+    /// <summary>松手：速度够快就以当前窗口位置为起点抛出去。返回 true = 进入物理。</summary>
+    internal bool TryStartThrow()
+    {
+        if (!_hasDragSample || !_dragMoved || !TryMeasureReleaseVelocity(out double vx, out double vy))
+        {
+            return false;
+        }
+
         if (Math.Sqrt((vx * vx) + (vy * vy)) < ThrowMinSpeed)
         {
             return false;
         }
 
         (int x, int y) = CurrentPosition;
+        StartThrow(x, y, vx, vy, announce: true);
+        return true;
+    }
+
+    /// <summary>
+    /// 松手的总入口（2026-10-30）：先看脚下，再决定「抛出去」还是「落下去」。
+    ///
+    /// 旧实现的判据只有速度：甩得够快才进物理，慢放就地把窗口留在半空 ——
+    /// 用户把宠物拖到屏幕中间松手，它**永远悬在那里**。用户说的「重力效果没考虑是否能下落」
+    /// 就是这一条。现在的三分支：
+    ///   · 站住了 + 不快  → 什么都不做（站在地板或某个窗口顶上，并把支撑监视接回去）
+    ///   · 站住了 + 够快  → 抛出去（旧行为，甩一下会弹）
+    ///   · 没站住（不管快慢）→ 进入物理：地心引力说了算，松手就是开始下落
+    /// 返回 true = 进入物理。
+    /// </summary>
+    internal bool TryRelease()
+    {
+        if (!_hasDragSample || !_dragMoved)
+        {
+            return false;
+        }
+
+        (int x, int y) = CurrentPosition;
+        Rectangle area = Screen.FromPoint(new Point(x, y)).WorkingArea;
+        var pet = new Rectangle(x, y, Bounds.Width, Bounds.Height);
+        bool supported = PhysicsSupport.TryFindSupport(pet, area, Platforms?.Invoke(), out int supportTop);
+        bool fast = TryMeasureReleaseVelocity(out double vx, out double vy);
+
+        if (supported && !fast)
+        {
+            // 站在别的窗口顶上：把「盯着这块面」接回去（BeginDragSample 已经把它摘掉了），
+            // 否则那块面一会儿被关掉/挪走时，它会停在半空不再落下。
+            if (supportTop != area.Bottom)
+            {
+                BeginResting(supportTop);
+            }
+
+            return false;
+        }
+
+        if (!fast)
+        {
+            vx = 0;
+            vy = 0;
+        }
+
         StartThrow(x, y, vx, vy, announce: true);
         return true;
     }
@@ -292,8 +351,12 @@ internal sealed partial class LayeredFrameWindow
 
         _throwing = false;
         _throwTimer?.Stop();
+
+        // 落地 = 一次宿主自主位移（位移可达半屏）：通知行为层重锚，否则它接下来会朝
+        // 起飞前那个绝对 X 走过去 —— 用户看到的是「甩出去之后它自己慢慢走回原处」。
         if (landed && !IsDisposed)
         {
+            NotifyRelocated();
             (int x, int y) = CurrentPosition;
             RaiseWindowEvent(EventCatalog.WindowMoved, new System.Text.Json.Nodes.JsonObject
             {

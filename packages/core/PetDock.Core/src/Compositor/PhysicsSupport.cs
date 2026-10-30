@@ -76,6 +76,59 @@ internal static class PhysicsSupport
         return true;
     }
 
+    /// <summary>
+    /// 松手（或任何「这一刻脚下有没有东西」的问法）时，这块矩形站住了吗？
+    /// 与 <see cref="TryFind"/> 的区别：那个回答「这次下落该停在哪条边」，本方法回答
+    /// 「现在就已经站在什么上面」—— 屏幕地板算站住，别的窗口顶边要**贴着**且水平重叠 ≥ 1/3。
+    /// 为什么需要它：松手时宠物可能停在半空（拖到屏幕中间放下），旧实现只在「甩出去」时进物理，
+    /// 于是它悬在那儿永不落下 —— 用户说的「重力没考虑能不能下落」就是这一条。
+    /// </summary>
+    public static bool TryFindSupport(
+        Rectangle pet,
+        Rectangle area,
+        IReadOnlyList<Rectangle>? surfaces,
+        out int supportTop)
+    {
+        supportTop = int.MinValue;
+        if (Math.Abs(pet.Bottom - area.Bottom) <= TopTolerance)
+        {
+            supportTop = area.Bottom;
+            return true;
+        }
+
+        if (surfaces is null)
+        {
+            return false;
+        }
+
+        int best = int.MaxValue;
+        foreach (Rectangle surface in surfaces)
+        {
+            if (Math.Abs(surface.Top - pet.Bottom) > TopTolerance)
+            {
+                continue;
+            }
+
+            if (Overlap(pet, surface) < pet.Width / RequiredOverlapDivisor)
+            {
+                continue;
+            }
+
+            if (surface.Top < best)
+            {
+                best = surface.Top;
+            }
+        }
+
+        if (best == int.MaxValue)
+        {
+            return false;
+        }
+
+        supportTop = best;
+        return true;
+    }
+
     /// <summary>当前这个矩形在这条顶边上还有没有支撑（走出边缘 / 窗口被关掉都返回 false）。</summary>
     public static bool HasSupport(Rectangle pet, int supportTop, IReadOnlyList<Rectangle> surfaces)
     {

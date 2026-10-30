@@ -21,7 +21,7 @@ internal sealed record PetMenuItem(
 /// <summary>
 /// 托盘宿主。持有 NotifyIcon 与菜单；所有动作经回调交给上层（本类不直接操作宠物）。
 /// </summary>
-internal sealed class TrayHost : IDisposable
+internal sealed partial class TrayHost : IDisposable
 {
     /// <summary>
     /// 固定项的稳定 id（自检按 id 断言，不按显示文字——文字会跟着语言变）。
@@ -37,6 +37,13 @@ internal sealed class TrayHost : IDisposable
     private readonly ContextMenuStrip _menu;
     private readonly System.Windows.Forms.Timer _menuWatch;
     private bool _menuArmed;
+
+    /// <summary>当前弹着的那份菜单（托盘那份或某一只那份）。「点空白处关闭」只认它。</summary>
+    private ContextMenuStrip? _openMenu;
+
+    /// <summary>固定项的两个动作：右键菜单里要复用（不重造一份，见 ShowPetMenuAt）。</summary>
+    private readonly UiCommand _openPanel;
+    private readonly UiCommand _exit;
     private readonly ToolStripMenuItem _panelItem;
     private readonly ToolStripMenuItem _exitItem;
     private readonly List<ToolStripMenuItem> _petItems = new();
@@ -60,6 +67,8 @@ internal sealed class TrayHost : IDisposable
         UiCommand openPanel,
         UiCommand exit)
     {
+        _openPanel = openPanel ?? throw new ArgumentNullException(nameof(openPanel));
+        _exit = exit ?? throw new ArgumentNullException(nameof(exit));
         _menu = new ContextMenuStrip();
 
         // 宠物窗是 NOACTIVATE 分层窗，菜单拿不到激活，点空白处不会自动收起来。
@@ -68,12 +77,12 @@ internal sealed class TrayHost : IDisposable
         _menuWatch.Tick += (_, _) => CloseMenuIfClickedOutside();
         _menu.Closed += (_, _) => _menuWatch.Stop();
 
-        _panelItem = new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => openPanel())
+        _panelItem = new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => _openPanel())
         {
             Name = "panel",
         };
 
-        _exitItem = new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => exit())
+        _exitItem = new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => _exit())
         {
             Name = "exit",
         };
@@ -198,6 +207,7 @@ internal sealed class TrayHost : IDisposable
             return;
         }
 
+        _openMenu = _menu;
         _menu.Show(screen);
         _menuArmed = false;
         _menuWatch.Start();
@@ -206,7 +216,10 @@ internal sealed class TrayHost : IDisposable
     /// <summary>菜单外按下鼠标就关闭菜单（托盘图标那条由系统菜单自己处理）。</summary>
     private void CloseMenuIfClickedOutside()
     {
-        if (!_menu.Visible)
+        // 「当前弹着的那份」可能是托盘那份，也可能是某一只那份（2026-10-30）：
+        // 宠物窗拿不到激活，两份菜单都得靠这个计时器收，只认 _menu 会让右键菜单点外面不关。
+        ContextMenuStrip? open = _openMenu;
+        if (open is null || !open.Visible)
         {
             _menuWatch.Stop();
             return;
@@ -228,9 +241,9 @@ internal sealed class TrayHost : IDisposable
             return;
         }
 
-        if (!_menu.Bounds.Contains(Cursor.Position))
+        if (!open.Bounds.Contains(Cursor.Position))
         {
-            _menu.Close();
+            open.Close();
             _menuWatch.Stop();
         }
     }
@@ -311,53 +324,6 @@ internal sealed class TrayHost : IDisposable
     /// <summary>托盘提示文字随宠物数变化（原规格 18 §1）。</summary>
     public void SetPetCount(int count) => _icon.Text = I18n.Get("ui.tray.title.running", count);
 
-    /// <summary>
-    /// 托盘图标：原规格 18 §1 指定 assets/icons/icon-32.png。找不到就用系统默认图标——
-    /// 缺图标不该阻止程序启动，但也不能静默换成自造图标（那会让「发行前替换占位图」这条消失）。
-    /// </summary>
-    internal static Icon LoadIcon()
-    {
-        try
-        {
-            string? png = FindRepoFile(Path.Combine("assets", "icons", "icon-32.png"));
-            if (png is not null)
-            {
-                using Bitmap bitmap = new(png);
-                return Icon.FromHandle(bitmap.GetHicon());
-            }
-        }
-        catch (Exception ex)
-        {
-            Compositor.KernelLog.Write($"tray-icon-load-failed {ex.GetType().Name}: {ex.Message}");
-        }
-
-        return SystemIcons.Application;
-    }
-
-    /// <summary>从可执行目录向上找仓库根下的相对路径（bin 树深 5~6 层）。</summary>
-    internal static string? FindRepoFile(string relative)
-    {
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        for (int i = 0; i < 8 && dir is not null; i++)
-        {
-            string candidate = Path.Combine(dir.FullName, relative);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            if (File.Exists(Path.Combine(dir.FullName, "PetDock.sln")))
-            {
-                // 仓库根已到但文件不存在：不再往上，避免命中仓库外的同名文件。
-                return File.Exists(candidate) ? candidate : null;
-            }
-
-            dir = dir.Parent;
-        }
-
-        return null;
-    }
-
     public void Dispose()
     {
         if (_disposed)
@@ -370,6 +336,15 @@ internal sealed class TrayHost : IDisposable
         _icon.Dispose();
         _menuWatch.Dispose();
         _menu.Dispose();
+
+        // 临时弹着的那份（右键某一只）也要收：它的 Closed 处理器里 Dispose，
+        // 但托盘被 Dispose 时它可能还开着（进程正在退出的路径）。
+        if (_openMenu is { } open && !ReferenceEquals(open, _menu))
+        {
+            open.Dispose();
+        }
+
+        _openMenu = null;
     }
 }
 

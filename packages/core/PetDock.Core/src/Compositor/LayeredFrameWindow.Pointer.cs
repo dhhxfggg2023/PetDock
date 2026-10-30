@@ -304,7 +304,14 @@ internal sealed partial class LayeredFrameWindow
             ["position"] = new System.Text.Json.Nodes.JsonArray(pos.X, pos.Y),
         });
 
-        bool thrown = TryStartThrow();
+        // 真的挪动了才通知行为层重锚：只点一下（没越过拖拽阈值）不该打断它正在走的这一趟。
+        if (_dragMoved)
+        {
+            NotifyRelocated();
+        }
+
+        // 松手走总入口：够快就抛，慢放且悬空就落下去（旧路径只认速度，慢放会把宠物留在半空）。
+        bool thrown = TryRelease();
 
         // 双击判定只认「点」：窗口没被拖走才算（拖动落地不参与，见 NoteTap 的注释）。
         bool tapped = !_dragMoved

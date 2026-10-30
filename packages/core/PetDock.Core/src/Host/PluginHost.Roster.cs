@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
 using PetDock.Core.Sandbox;
@@ -33,50 +34,69 @@ public sealed record PluginRow(
 
 public sealed partial class PluginHost
 {
+    /// <summary>
+    /// 调度线程发布的花名册快照（2026-10-30）。null = 还没有发布过（构造到第一条命令之间）。
+    /// 只在调度线程写、任何线程读，所以是 Volatile 字段而不是锁保护的集合。
+    /// </summary>
+    private IReadOnlyList<PluginRow>? _rosterCache;
+
     /// <summary>会话内的授权记忆（RFC-13 §2.1）：装载期询问的落账处。
     /// 拒绝**总是**被记住（原规格 18 §3）；授予只在「允许（记住这个决定）」下被记住。</summary>
     internal ConsentMemory Consent { get; } = new();
 
     /// <summary>
-    /// 一致性快照：在调度线程上取值（复用 Snapshot&lt;T&gt;），避免对可变状态的撕裂读。
-    /// 停机后（调度线程已 Join）直接在当前线程读——此时没有并发写者。
+    /// 花名册：**由调度线程发布、调用方零等待**的一份不可变快照（2026-10-30 改为发布式）。
+    ///
+    /// 为什么不能再封送等：这个方法是**展示层的读**（宠物页 / 插件页 / UiRoster.Build），
+    /// 而封送等待意味着「调度线程一旦忙（在装插件、在跑 tick），读的人就被钉住」。
+    /// 实机取证（2026-10-30 的一次会话）：面板刚打开就出现两次 roster-timeout scheduler-stalled ——
+    /// 每次都是 UI 线程白等 SchedulerStallMs，用户看到的就是「打开插件页卡半天没反应」。
+    /// 现在的形状：调度线程在**每次回执之前**把改动后的行发到 _rosterCache，
+    /// 读的人只取一次 Volatile 读。代价是「最新一次改动后最多晚一个命令」的滞后，
+    /// 换来的是展示层永远不会被调度线程钉住 —— 展示要的是「最近的事实」，不是「正在写的那一瞬」。
+    ///
+    /// 需要**强一致**读的场景（复核授权、自检断言）走 Snapshot&lt;T&gt;，不经这里。
     /// </summary>
     public IReadOnlyList<PluginRow> Roster()
     {
-        IReadOnlyList<PluginRow> Read()
+        if (Volatile.Read(ref _rosterCache) is { } cached)
         {
-            var rows = new List<PluginRow>(_handles.Count);
-            foreach (PluginHandle handle in _handles)
-            {
-                rows.Add(new PluginRow(
-                    handle.Manifest.Id,
-                    handle.Manifest.Name,
-                    handle.Manifest.Version,
-                    handle.Manifest.Tier,
-                    handle.State,
-                    handle.ActiveLeaseCount,
-                    DeclaredCapabilities(handle.Manifest),
-                    ActiveLeaseIds(handle)));
-            }
+            return cached;
+        }
 
+        // 还没发布过：只有「调度线程没在跑」时才直接读 —— 那时没有并发写者。
+        // 线程在跑就交空表：第一轮循环马上会发布（毫秒级），为这几毫秒钉住调用方不值得。
+        if (!_threadStarted || !_thread.IsAlive || _stopping)
+        {
+            IReadOnlyList<PluginRow> rows = BuildRows();
+            Volatile.Write(ref _rosterCache, rows);
             return rows;
         }
 
-        if (!_thread.IsAlive || _stopping)
+        return Array.Empty<PluginRow>();
+    }
+
+    /// <summary>调度线程发布点。只在调度线程（或停机后）调用：它读的是 _handles。</summary>
+    private void PublishRoster() => Volatile.Write(ref _rosterCache, BuildRows());
+
+    /// <summary>把 _handles 折成纯值行。**只能在调度线程（或停机后）调用**。</summary>
+    private IReadOnlyList<PluginRow> BuildRows()
+    {
+        var rows = new List<PluginRow>(_handles.Count);
+        foreach (PluginHandle handle in _handles)
         {
-            return Read();
+            rows.Add(new PluginRow(
+                handle.Manifest.Id,
+                handle.Manifest.Name,
+                handle.Manifest.Version,
+                handle.Manifest.Tier,
+                handle.State,
+                handle.ActiveLeaseCount,
+                DeclaredCapabilities(handle.Manifest),
+                ActiveLeaseIds(handle)));
         }
 
-        try
-        {
-            return Snapshot(Read);
-        }
-        catch (TimeoutException)
-        {
-            // 调度线程卡住时 UI 不能跟着卡：返回空名册，面板显示「(宿主无响应)」由调用方决定。
-            KernelLog.Write("roster-timeout scheduler-stalled");
-            return Array.Empty<PluginRow>();
-        }
+        return rows;
     }
 
     /// <summary>宠物实例状态的中性表述（UI 显示用）。InstanceState 的枚举名对用户不友好。</summary>

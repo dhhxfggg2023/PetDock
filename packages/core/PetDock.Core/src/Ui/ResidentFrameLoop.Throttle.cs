@@ -31,6 +31,17 @@ internal sealed partial class ResidentFrameLoop
     private const long MaxIdleSkipMs = 2000;
 
     /// <summary>
+    /// 档位切换日志的最小间隔（2026-10-30）。为什么需要：档位在 Active ↔ Idle 之间**每帧都可能翻**，
+    /// 实机 4 分钟里 throttle-tier-changed 记了 3924 行（≈ 每秒 16 行同步落盘，日志 1.5MB）。
+    /// 挡住的是**日志**，不是判定：档位照常每帧重判、计数照常累加，只是把同一秒内的连翻折成
+    /// 一行加一个 suppressed=N。诊断读数（_tierChanges / Reading）一个数都不少。
+    /// </summary>
+    private const long TierLogMinIntervalMs = 1000;
+
+    private long _lastTierLogTickMs;
+    private int _suppressedTierLogs;
+
+    /// <summary>
     /// 帧泵每一 tick 调它（RFC-21 §3.4，t11 修正）：合成 → 判档 → 应用周期 → 提交或跳过 → 返回是否继续。
     /// 返回 false 只表示「这个泵该散了」（全屏档 / 已释放）—— 泵线程据此自己走完 Loop 退出。
     /// </summary>
@@ -258,13 +269,34 @@ internal sealed partial class ResidentFrameLoop
             FrameTier from = _tier;
             _tier = decision.Tier;
             _tierChanges++;
-            // 只在变化时记一行（30fps × 8h 的日志会把落盘层打爆）。
-            KernelLog.Write($"throttle-tier-changed {Token(from)}->{Token(decision.Tier)}"
-                + $" reason={decision.Reason}"
-                + $" target={decision.TargetFrameMs.ToString("0.0", CultureInfo.InvariantCulture)}ms");
+            LogTierChange(from, decision);
         }
 
         return decision;
+    }
+
+    /// <summary>
+    /// 档位切换的记账与限流日志。变化**总是**计入 <c>_tierChanges</c>（诊断与判据读的是计数，
+    /// 不是日志行）；日志每秒最多一行，被折叠的次数以 suppressed=N 附在下一行上。
+    /// </summary>
+    private void LogTierChange(FrameTier from, ThrottleDecision decision)
+    {
+        long now = Environment.TickCount64;
+        if (now - _lastTierLogTickMs < TierLogMinIntervalMs)
+        {
+            _suppressedTierLogs++;
+            return;
+        }
+
+        string suppressed = _suppressedTierLogs == 0
+            ? string.Empty
+            : $" suppressed={_suppressedTierLogs.ToString(CultureInfo.InvariantCulture)}";
+        _suppressedTierLogs = 0;
+        _lastTierLogTickMs = now;
+        KernelLog.Write($"throttle-tier-changed {Token(from)}->{Token(decision.Tier)}"
+            + $" reason={decision.Reason}"
+            + $" target={decision.TargetFrameMs.ToString("0.0", CultureInfo.InvariantCulture)}ms"
+            + suppressed);
     }
 
     /// <summary>按窗口局部坐标问当前帧缓冲的 alpha（0 = 透明）。null = 此刻没有帧缓冲。</summary>

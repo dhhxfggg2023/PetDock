@@ -49,6 +49,9 @@ public sealed partial class PluginHost
             }
             finally
             {
+                // 改动落在 _handles 上，回执之前先把花名册发出去：等的人一醒就能读到新值
+                // （PluginHost.Roster 的发布式读靠的就是这个顺序）。
+                PublishRoster();
                 done.Set();
             }
         });
@@ -74,7 +77,9 @@ public sealed partial class PluginHost
         {
             try
             {
-                tcs.SetResult(work());
+                T result = work();
+                PublishRoster();
+                tcs.SetResult(result);
             }
             catch (Exception ex)
             {
@@ -98,6 +103,7 @@ public sealed partial class PluginHost
             try
             {
                 work();
+                PublishRoster();
                 tcs.SetResult(null);
             }
             catch (Exception ex)
@@ -127,6 +133,7 @@ public sealed partial class PluginHost
             }
             finally
             {
+                PublishRoster();
                 done.Set();
             }
         });

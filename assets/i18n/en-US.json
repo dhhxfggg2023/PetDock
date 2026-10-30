@@ -1,9 +1,10 @@
 {
   "ui.tray.panel": "Control panel",
-  "ui.tray.exit": "Exit",
+  "ui.tray.exit": "Quit PetDock",
   "ui.tray.title.running": "PetDock — {0} pet(s) running",
   "ui.tray.pet.caption": "Pet: {0}",
-  "ui.tray.pet.move": "Move",
+  "ui.tray.pet.move": "Move to screen centre",
   "ui.tray.pet.pause": "Pause",
-  "ui.tray.pet.remove": "Remove"
+  "ui.tray.pet.resume": "Resume",
+  "ui.tray.pet.remove": "Remove from desktop"
 }

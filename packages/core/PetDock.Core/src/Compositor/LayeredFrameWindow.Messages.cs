@@ -13,6 +13,14 @@ namespace PetDock.Core.Compositor;
 
 internal sealed partial class LayeredFrameWindow
 {
+    /// <summary>
+    /// 右键去抖窗（2026-10-30）：同一次物理右键只认第一条消息。
+    /// 窗口级而不是全局：两只宠物各自被右键时互不影响。
+    /// </summary>
+    private const long ContextRequestDedupeMs = 250;
+
+    private long _lastContextRequestMs;
+
     protected override void WndProc(ref Message m)
     {
         // 命中图优先（RFC-31 §3.2）：只有内容源声明了命中图时才给答案，其余交回 OS 读 alpha。
@@ -73,9 +81,20 @@ internal sealed partial class LayeredFrameWindow
             return;
         }
 
+        // 一次物理右键会到两条消息：WM_RBUTTONUP，以及系统随后生成的 WM_CONTEXTMENU。
+        // 实测日志（2026-10-30 会话）里每次右键 pet-menu-shown 都出现**两行**，相隔约 20µs。
+        // 两条消息都留着是兜底（分层窗的命中裁决会把穿透区交回 OS，不能假设必走哪一条），
+        // 但绝不能各弹一次菜单：第二条在去抖窗内直接丢掉。
+        long now = Environment.TickCount64;
+        if (now - _lastContextRequestMs < ContextRequestDedupeMs)
+        {
+            return;
+        }
+
+        _lastContextRequestMs = now;
         try
         {
-            handler(Cursor.Position);
+            handler(Cursor.Position, this);
         }
         catch (Exception error)
         {
@@ -91,7 +110,7 @@ internal sealed partial class LayeredFrameWindow
     /// 除了「取光标位置 + 抛事件」没有别的接线，所以让判据从同一个方法进。
     /// </summary>
     internal void RaiseContextRequestedForCheck(System.Drawing.Point screen) =>
-        ContextRequested?.Invoke(screen);
+        ContextRequested?.Invoke(screen, this);
 
     private void HandleDpiChanged(ref Message m)
     {

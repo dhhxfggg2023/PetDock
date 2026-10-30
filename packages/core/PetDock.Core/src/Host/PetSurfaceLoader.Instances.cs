@@ -44,10 +44,18 @@ public sealed partial class PetSurfaceRoster
             view = FreshView(view);
         }
 
+        // 行为层也必须是**每实例一份**（2026-10-30）。名册里的对象是装载时造的那一个：
+        // 多只宠物共用一个 IBrain 时，行为层的私有状态（当前片段、散步目标、休息计时、
+        // 上次观察到的窗口位置）就是共享的 —— 每只 tick 一次就互相改写一次。
+        // 实测（把真 brain 喂进确定性模拟）：共用时两只宠物会挤到一起、一路走到墙边，
+        // 分开后一直保持各自的位置。用户看到的是「宠物会自己慢慢往一边走」。
+        // 与 FreshView 同一条纪律：造不出来就退回原对象（宁可行为错乱，也不让宠物起不来）。
+        IBrain? brain = FreshBrain(Brain, out bool ownsBrain);
+
         // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
         string? brainPluginId = Find<IBrain>()?.PluginId;
         PetInstance instance = new(
-            $"{instanceIdPrefix}.{pluginId}", view, Brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported, displayName);
+            $"{instanceIdPrefix}.{pluginId}", view, brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported, displayName, ownsBrain);
         AttachStateStore(instance, assetRoots);
         instance.InstallCompanions(CreateCompanions());
         return instance;
@@ -128,6 +136,43 @@ public sealed partial class PetSurfaceRoster
         }
 
         return created;
+    }
+
+    /// <summary>
+    /// 造一份新的行为层对象（同一类型、无参构造）。owned = true 表示**这份是本实例的**，
+    /// 释放时要由实例自己 DisposeAsync（共用对象不能由某一只顺带销毁）。
+    /// 造不出来（无参构造缺失 / 构造抛）就退回原对象，并把 owned 留在 false ——
+    /// 与 FreshView 同一条取舍：宁可退回共享对象，也不让宠物起不来。
+    /// </summary>
+    private static IBrain? FreshBrain(IBrain? original, out bool owned)
+    {
+        owned = false;
+        if (original is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            Type type = original.GetType();
+            if (type.GetConstructor(Type.EmptyTypes) is null)
+            {
+                return original;
+            }
+
+            if (Activator.CreateInstance(type) is IBrain created)
+            {
+                owned = true;
+                return created;
+            }
+
+            return original;
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"brain-fresh-failed {error.GetType().Name}: {error.Message}");
+            return original;
+        }
     }
 
     /// <summary>

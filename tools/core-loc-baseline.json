@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 33000,
+  "budget": 33700,
   "history": [
     {
       "date": "2026-10-18",
@@ -2668,5 +2668,108 @@
         }
       ]
     }
+,
+    {
+   "date": "2026-10-30",
+   "measured": 33375,
+   "budget": 33700,
+   "note": "用户报的一批桌面手感问题，一次做完（RFC-11 记账）：（1）卡顿——实测一次 4 分钟会话里 frame-pump-target 写了 10426 行（≈43 次/秒同步落盘）、throttle-tier-changed 3924 行，且面板刚打开就出现两次 roster-timeout scheduler-stalled：前者把目标周期改成同值早退、把档位日志限成 1 行/秒，后者把花名册改成调度线程发布、调用方零等待；（2）宠物自己朝一边走——行为层对象被所有实例共用（确定性模拟里两只挤成一堆并走到墙边），改成每实例一份并补上释放责任；（3）同一症状的第二个起因——行为层只看得见矩形、目标是绝对坐标，宿主搬动它之后它会把旧目标当成「还没走到」而走回去（实测：挪到屏幕正中后以 58px/s 走 13 秒回原处），新增可选契约 IRelocationAware 与宿主位移通知；（4）重力——旧实现只认「甩得够快」，慢速拖到半空松手会永远悬在那里，改成松手先看脚下、没站稳就下落；（5）右键菜单——载荷带上被点的那个窗口，菜单按宠物归属；一次物理右键会到两条消息（各弹一次菜单），加去抖；（6）材质——整窗透明度（WS_EX_LAYERED + LWA_ALPHA）会把文字一起淡掉，正是「磨砂只是透明度变化」；现在两条系统背景路径都试、要到了模糊就不再整窗淡，圆角与材质解耦，报告补上 layered 与回读。实测 32724 → 33375（+651）。判据面在 test/SelfCheck，按 D-03a 不计。",
+   "attribution": [
+    {
+     "slice": "帧泵目标周期同值早退（每帧一次同步落盘 → 0）",
+     "files": [
+      "packages/core/PetDock.Core/src/Compositor/FramePump.cs"
+     ],
+     "lines": 11
+    },
+    {
+     "slice": "档位切换日志限流（≤1 行/秒 + suppressed=N）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/ResidentFrameLoop.Throttle.cs"
+     ],
+     "lines": 32
+    },
+    {
+     "slice": "花名册改成调度线程发布（展示层零等待，不再被 stalled 调度线程钉住）",
+     "files": [
+      "packages/core/PetDock.Core/src/Host/PluginHost.Roster.cs",
+      "packages/core/PetDock.Core/src/Host/PluginHost.Scheduler.cs",
+      "packages/core/PetDock.Core/src/Host/PluginHost.Loop.cs"
+     ],
+     "lines": 38
+    },
+    {
+     "slice": "每实例一份行为层对象 + 释放责任（ownsBrain）",
+     "files": [
+      "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.Instances.cs",
+      "packages/core/PetDock.Core/src/Host/PetInstance.Brain.cs",
+      "packages/core/PetDock.Core/src/Host/PetInstance.cs"
+     ],
+     "lines": 86
+    },
+    {
+     "slice": "自检输出面拆出（D-03c 上限：PetInstance.cs 让位给状态机）",
+     "files": [
+      "packages/core/PetDock.Core/src/Host/PetInstance.Describe.cs"
+     ],
+     "lines": 31
+    },
+    {
+     "slice": "可选契约 IRelocationAware + 宿主位移通知接线（含抛掷落地重锚）",
+     "files": [
+      "packages/core/PetDock.Core/src/PetRuntime/Brain.cs",
+      "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.cs",
+      "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Physics.cs",
+      "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Pointer.cs",
+      "packages/core/PetDock.Core/src/Host/FrameComposition.cs"
+     ],
+     "lines": 132
+    },
+    {
+     "slice": "松手先看脚下：没站住就下落（支撑探测纯函数）",
+     "files": [
+      "packages/core/PetDock.Core/src/Compositor/PhysicsSupport.cs"
+     ],
+     "lines": 53
+    },
+    {
+     "slice": "右键菜单按宠物归属 + 单次触发去抖",
+     "files": [
+      "packages/core/PetDock.Core/src/Compositor/LayeredFrameWindow.Messages.cs",
+      "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+     ],
+     "lines": 79
+    },
+    {
+     "slice": "托盘菜单：某一只的菜单拆成独立半边（D-03c）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/TrayHost.PetMenu.cs"
+     ],
+     "lines": 77
+    },
+    {
+     "slice": "托盘图标加载拆成独立半边（D-03c）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/TrayHost.Icon.cs"
+     ],
+     "lines": 59
+    },
+    {
+     "slice": "托盘宿主瘦身（菜单/图标两半搬出）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
+     ],
+     "lines": -25
+    },
+    {
+     "slice": "材质：两条系统路径都试、要到模糊就整窗不淡、圆角与材质解耦、layered 读数",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/Design/MaterialHost.cs",
+      "packages/core/PetDock.Core/src/Ui/Design/Theme.Material.cs"
+     ],
+     "lines": 78
+    }
+   ]
+  }
   ]
 }

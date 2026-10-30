@@ -21,7 +21,7 @@ namespace PetDock.Plugins.ReactionBrain
     /// **不越界**：目标可能落在屏幕外（窗口本来就在边上），窗口宿主的 MoveTo 会把落点夹进工作区；
     /// 本类通过「窗口位置几帧没动」识别撞墙，掉头走回去。
     /// </summary>
-    public sealed class ReactionBrain : IBrain
+    public sealed class ReactionBrain : IBrain, IRelocationAware
     {
         private const string ClipIdle = "idle";
         private const string ClipWalk = "walk";
@@ -38,6 +38,9 @@ namespace PetDock.Plugins.ReactionBrain
 
         /// <summary>连续多久没有位移就认定撞到工作区边缘，掉头（毫秒）。</summary>
         private const int StuckMs = 500;
+
+        /// <summary>被宿主搬走之后最多歇多久再起步（毫秒）。见 OnRelocated。</summary>
+        private const int RelocateRestMs = 600;
 
         /// <summary>休息时长按趟数轮换，免得节奏像节拍器。</summary>
         private static readonly int[] RestPattern = { 2400, 3800, 1800, 4600 };
@@ -106,6 +109,22 @@ namespace PetDock.Plugins.ReactionBrain
             {
                 _mouseCooldownMs = 900;
             }
+        }
+
+        /// <summary>
+        /// 宿主把它搬到了别处（拖拽落地 / 抛掷落地 / 「移动」命令 / 归位）。
+        /// 丢掉那个绝对目标点 —— 它是按**搬家前**的位置算出来的，留着就等于给自己派了一趟
+        /// 「走回原处」的活。实测：不丢的话，被挪到屏幕正中之后它会以 58px/s 走 13 秒回到原处，
+        /// 用户把这件事看成「宠物会自己慢慢朝右边移动」和「点移动没用」。
+        /// 恢复时长压到 600ms 以内：既不会站着不动让人以为卡住，也不会刚落地就抬脚。
+        /// </summary>
+        public void OnRelocated(PetPoint at)
+        {
+            _targetX = null;
+            _stuckMs = 0;
+            _lastObservedX = double.NaN;
+            _restRemainingMs = Math.Min(_restRemainingMs, RelocateRestMs);
+            Console.Error.WriteLine($"[PetDock] ReactionBrain relocated -> ({at.X:0},{at.Y:0})");
         }
 
         public Task DisposeAsync() => Task.CompletedTask;

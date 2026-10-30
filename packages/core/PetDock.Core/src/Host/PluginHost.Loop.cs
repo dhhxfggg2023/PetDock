@@ -13,6 +13,10 @@ public sealed partial class PluginHost
 {
     private void Loop()
     {
+        // 首轮之前先发一次：构造与线程启动之间可能已经有装载过的句柄，
+        // 展示层在这一次发布之前读到的是空表（不是错，但没必要让它多等一个命令）。
+        PublishRoster();
+
         while (!_stopping)
         {
             try
@@ -21,6 +25,10 @@ public sealed partial class PluginHost
                 {
                     RunGuarded(command);
                     DrainCommands();
+
+                    // 一批命令跑完：把花名册发出去，展示层的下一次读就是新的（零等待的发布式读，
+                    // 见 PluginHost.Roster）。放在这里而不是每条命令里，是因为批内的中间态没人要看。
+                    PublishRoster();
                 }
             }
             catch (ObjectDisposedException)
@@ -35,6 +43,9 @@ public sealed partial class PluginHost
             {
                 TickAll();
                 ApplyPendingReloads();
+
+                // tick 也会改状态（自动挂起 / 待重载落地）：切片之后同样要重发一次。
+                PublishRoster();
             }
         }
         DrainCommands(); // 停机前把已入队命令跑完（尽力而为）

@@ -40,6 +40,17 @@ internal sealed class FramePump : IDisposable
     public void SetTargetFrameMs(double milliseconds)
     {
         double clamped = Math.Clamp(milliseconds, 1000.0 / 60.0, 1000.0 / 5.0);
+
+        // 同值 = 什么都不做（不写、不记日志）。这个方法是**每帧**被叫的：
+        // 节流判定在 ResidentFrameLoop.Throttle 的每 tick 决策点，它无条件把判定结果送进来。
+        // 实机日志（2026-10-30 的一次 4 分钟会话）里 frame-pump-target 出现 10426 次
+        // （≈ 每秒 43 次同步落盘，日志 1.5MB），而目标值全程只有 33.3ms —— 帧泵被自己的
+        // 日志拖慢，用户看到的是「界面卡」。同值早退把这条 I/O 归零，调用方不需要各自判重。
+        if (Math.Abs(Volatile.Read(ref _targetFrameMs) - clamped) < 0.0005)
+        {
+            return;
+        }
+
         Volatile.Write(ref _targetFrameMs, clamped);
         KernelLog.Write($"frame-pump-target {clamped:0.0}ms");
     }

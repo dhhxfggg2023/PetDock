@@ -42,6 +42,59 @@ public sealed partial class PetInstance
     }
 
     /// <summary>
+    /// 告诉行为层「宿主刚把你挪到别处了」（2026-10-30）。只发给实现了可选能力的行为层。
+    /// 不抛、不记 degraded：这是一次通知，不是一次 tick —— 通知失败不该让宠物进入降级档，
+    /// 但必须在日志里留下，否则「通知没送到」会表现成下一次的「它又自己走回去了」。
+    /// </summary>
+    internal void NotifyRelocated(PetPoint at)
+    {
+        if (Brain is not IRelocationAware aware)
+        {
+            return;
+        }
+
+        try
+        {
+            using (PluginLog.Scope(BrainPluginId))
+            {
+                aware.OnRelocated(at);
+            }
+        }
+        catch (Exception error)
+        {
+            LastFailure = $"relocated-notify-failed {error.GetType().Name}: {error.Message}";
+            KernelLog.Write($"relocated-notify-failed instance={Id} {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 下线行为层（原规格 11 §9 / §4 的 dispose）。
+    /// 以前这里没有这一步：brain 是名册里那个**共用**对象，实例释放时销毁它等于替别人关灯，
+    /// 所以谁也不动它 —— 插件的 DisposeAsync 于是从未被调用过。
+    /// 现在每实例一份（ownsBrain），释放责任才落得下来。
+    /// 与 View 同一条纪律：有界等待 1000ms，超时不抛、如实记日志。
+    /// </summary>
+    private void DisposeBrain()
+    {
+        if (!_ownsBrain || Brain is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!Brain.DisposeAsync().Wait(1000))
+            {
+                KernelLog.Write($"brain-dispose-over-budget instance={Id} budget=1000ms");
+            }
+        }
+        catch (AggregateException error)
+        {
+            KernelLog.Write($"brain-dispose-failed instance={Id} {error.InnerException?.GetType().Name}");
+        }
+    }
+
+    /// <summary>
     /// 原规格 11 §4 / §9：一次 brain tick。抛异常 → 本 tick 的指令全部作废 + 标记 degraded。
     /// dt 由调用方给出（可累加、可被零化），零化规则见 <see cref="NextDeltaMs"/>。
     /// RFC-23 §3.3 第 3 点：`Brain.Tick` 是插件代码，归属作用域包住它。

@@ -41,15 +41,21 @@ internal static partial class Theme
     /// </summary>
     public static Color Paint(Color opaque)
     {
-        int alpha = Material switch
-        {
-            MaterialKind.Frosted => 224,
-            MaterialKind.Glass => 178,
-            _ => 255,
-        };
-
+        int alpha = PaintAlpha(Material);
         return alpha >= 255 ? opaque : Color.FromArgb(alpha, opaque);
     }
+
+    /// <summary>
+    /// 当前材质下「画上去的颜色」的 alpha（255 = 全不透明）。
+    /// **这是「材质有多透」的唯一一张表**：绘制（<see cref="Paint"/>）、窗口透明度
+    /// （MaterialHost）与诊断读数都从这里取，避免三处各写一份数值后漂移。
+    /// </summary>
+    public static int PaintAlpha(MaterialKind kind) => kind switch
+    {
+        MaterialKind.Frosted => 224,
+        MaterialKind.Glass => 178,
+        _ => 255,
+    };
 
     /// <summary>当前材质下该用的背景色（画到窗口客户区时用）。</summary>
     public static Color PaintBg => Paint(Bg);

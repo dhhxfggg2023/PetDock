@@ -32,6 +32,13 @@ public sealed partial class PetInstance : IDisposable
     private int? _lastNowMs;
     private bool _disposed;
 
+    /// <summary>
+    /// 行为层对象是不是**本实例的**（2026-10-30：名册现在每实例造一份 IBrain）。
+    /// false = 造不出新对象，退回的是共用对象 —— 那时释放不能顺手销毁它，
+    /// 否则「移除一只宠物」会把别的宠物的行为层一起下线。
+    /// </summary>
+    private readonly bool _ownsBrain;
+
     internal PetInstance(
         string instanceId,
         IPetView view,
@@ -43,8 +50,10 @@ public sealed partial class PetInstance : IDisposable
         IReadOnlyList<string>? assetRoots = null,
         string? brainPluginId = null,
         bool imported = false,
-        string? displayName = null)
+        string? displayName = null,
+        bool ownsBrain = false)
     {
+        _ownsBrain = ownsBrain;
         Id = instanceId;
         DisplayName = string.IsNullOrWhiteSpace(displayName) ? instanceId : displayName;
         View = view;
@@ -325,6 +334,7 @@ public sealed partial class PetInstance : IDisposable
         // 陪伴层先下线：它们可能在 Dispose 里写最后一笔状态，写完再由宿主统一落盘。
         DisposeCompanions();
         Sounds.Dispose();
+        DisposeBrain();
 
         // RFC-24 §6.3 的提交点：释放前把缓冲落盘（位置这类宿主键最后一次更新的地方就在这附近）。
         // 放在 detach 之前：detach 失败也要落盘，否则「客户端崩了」与「正常退出」的状态不一样。
@@ -360,28 +370,6 @@ public sealed partial class PetInstance : IDisposable
         {
             Move(InstanceState.Disposed, "instance disposed", 0);
         }
-    }
-
-    /// <summary>一行自检输出（--drivetest 的判据面）。</summary>
-    public string Describe()
-    {
-        return $"instance={Id} state={State} tier={Display.Tier} frames={Frames} drops={FrameDrops}"
-            + $" ticks={Ticks} brain-faults={BrainFaults}"
-            + $" surfaces={Surfaces.Count} state-layer={(StateLayer is null ? "none" : "bound")}"
-            + $" live-bitmaps={Bitmaps.LiveCount} leases={Arbiter.GrantedCapabilities}"
-            + $" last={LastFailure}";
-    }
-
-    /// <summary>原规格 11 §10 的转移痕迹（自检打印用）。</summary>
-    public string DescribeTransitions()
-    {
-        var parts = new List<string>();
-        foreach (StateTransition step in _transitions)
-        {
-            parts.Add($"{step.From}->{step.To}");
-        }
-
-        return string.Join(" ", parts);
     }
 
     private void Move(InstanceState to, string reason, long atMs)

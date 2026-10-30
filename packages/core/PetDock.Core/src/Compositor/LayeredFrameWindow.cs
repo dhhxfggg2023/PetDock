@@ -32,11 +32,39 @@ internal sealed partial class LayeredFrameWindow : Form
     /// 手势归属：右键从此归宿主（插件层原有的右键手势因此让位，用户 2026-10-26 明确同意）。</summary>
     public event ContextRequestDelegate? ContextRequested;
 
-    /// <summary>右键菜单回调。用具名委托而不是泛型委托：D-03b 词表把那个泛型名列为概念黑名单。</summary>
-    public delegate void ContextRequestDelegate(Point screen);
+    /// <summary>
+    /// 右键菜单回调。用具名委托而不是泛型委托：D-03b 词表把那个泛型名列为概念黑名单。
+    /// **载荷带 source 窗口**（2026-10-30）：宿主必须知道用户右键的是桌上**哪一只** ——
+    /// 只给一个屏幕坐标的话，桌上摆了三只时宿主只能弹同一份「全部宠物」的菜单，
+    /// 用户点「移动/暂停/移除」时根本不知道动的是谁（这正是 2026-10-30 用户报的「右键菜单没用」）。
+    /// </summary>
+    public delegate void ContextRequestDelegate(Point screen, LayeredFrameWindow source);
 
     /// <summary>有没有人接右键（判据用：null 说明菜单没接上，右键会变成没反应的死键）。</summary>
     public bool ContextMenuWired => ContextRequested is not null;
+
+    /// <summary>
+    /// 宿主自主位移（2026-10-30）：**不是**行为层 moveTo 落地的那种移动 —— 拖拽落地、
+    /// 抛掷落地、居中、归位、天体模式收手都算。区分这两者的理由见 IRelocationAware 的注释：
+    /// 行为层只看得见矩形，分不清「我在走向目标」与「我被搬走了」，而它的目标是绝对坐标。
+    /// </summary>
+    internal event PetTapHookSignature? Relocated;
+
+    /// <summary>有没有人接位移通知（判据用：false = 搬家之后行为层不会被通知，会自己走回去）。</summary>
+    internal bool RelocationWired => Relocated is not null;
+
+    /// <summary>报告一次「我把它挪了」。处理函数抛异常不许打穿调用方（与右键同一条纪律）。</summary>
+    internal void NotifyRelocated()
+    {
+        try
+        {
+            Relocated?.Invoke();
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"relocated-failed {error.GetType().Name}: {error.Message}");
+        }
+    }
 
     /// <summary>有没有人接双击（判据用：null 说明双击是死键；事件在 Pointer.cs 里声明）。</summary>
     public bool DoubleClickWired => DoubleClicked is not null;
@@ -225,6 +253,7 @@ internal sealed partial class LayeredFrameWindow : Form
         Size actual = WindowSize;
         SetWindowPosition(area.Right - actual.Width - ScreenMargin,
             area.Bottom - actual.Height - ScreenMargin);
+        NotifyRelocated();
     }
 
     /// <summary>把窗口移到主屏中心（自检稳定取点用）。</summary>
@@ -234,6 +263,10 @@ internal sealed partial class LayeredFrameWindow : Form
         Size actual = WindowSize;
         SetWindowPosition(area.X + (area.Width - actual.Width) / 2,
             area.Y + (area.Height - actual.Height) / 2);
+
+        // 「移动」这个命令本身要能留住：不通知的话行为层会拿搬家前的绝对目标把它走回去，
+        // 用户看到的是「点了移动，十几秒后它又自己走回去了」。
+        NotifyRelocated();
     }
 
     /// <summary>把窗口移动到屏幕坐标（物理像素）。</summary>

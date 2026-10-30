@@ -216,6 +216,14 @@ internal static class FrameComposition
         window.PhysicsStarted += () => instance.ExternalMotion = true;
         window.PhysicsEnded += () => instance.ExternalMotion = false;
 
+        // 宿主自主位移 → 行为层重锚（IRelocationAware）：行为层只看得见矩形，
+        // 不告诉它「你被搬走了」，它就会把绝对目标当成「还没走到」而自己走回去。
+        window.Relocated += () =>
+        {
+            (int x, int y) = window.CurrentPosition;
+            instance.NotifyRelocated(new PetPoint(x, y));
+        };
+
         // 桌面动作 → 陪伴层（2026-10-29）：气泡与陪伴层收的是同一批时刻，不另造一套判定。
         window.Tapped += () => instance.NotifyCompanions(CompanionGesture.Poke);
         window.Dragged += () => instance.NotifyCompanions(CompanionGesture.Drag);

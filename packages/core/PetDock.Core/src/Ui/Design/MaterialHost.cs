@@ -22,11 +22,18 @@ internal readonly record struct MaterialReport(
     MaterialKind Applied,
     bool Blurred,
     bool RoundedCorners,
+    bool Layered,
     string Note)
 {
-    /// <summary>一行诊断：谁要求的、实际给了什么、有没有模糊。</summary>
+    /// <summary>
+    /// 一行诊断：谁要求的、实际给了什么、有没有模糊、窗口是不是分层态。
+    /// layered 必须出现在这里：成品的磨砂/玻璃**不是**「一层透明度」，而整窗透明度
+    /// （WS_EX_LAYERED + LWA_ALPHA）正是「内容一起被淡掉」的那个做法。
+    /// 把这一个事实写进每一行，才有一条能一眼看出「它又退回成简单透明了」的读数。
+    /// </summary>
     public string Describe() =>
-        $"requested={Requested} applied={Applied} blurred={Blurred} corners={RoundedCorners} note={Note}";
+        $"requested={Requested} applied={Applied} blurred={Blurred} corners={RoundedCorners}"
+        + $" layered={Layered} note={Note}";
 }
 
 /// <summary>把材质落到一个窗口上。所有 P/Invoke 都只碰窗口属性，不碰布局。</summary>
@@ -49,7 +56,7 @@ internal static class MaterialHost
     private const int AccentAcrylicBlurBehind = 4;
 
     /// <summary>空报告（不透明材质、或没有窗口时）。</summary>
-    public static MaterialReport None { get; } = new(MaterialKind.Opaque, MaterialKind.Opaque, false, false, "opaque");
+    public static MaterialReport None { get; } = new(MaterialKind.Opaque, MaterialKind.Opaque, false, false, false, "opaque");
 
     /// <summary>
     /// 把材质套到窗口上。窗口还没建句柄时先记下请求，等 <see cref="Control.HandleCreated"/> 再落。
@@ -59,41 +66,102 @@ internal static class MaterialHost
     {
         if (!form.IsHandleCreated)
         {
-            MaterialReport pending = new(kind, kind, false, false, "pending-handle");
-            form.HandleCreated += (_, _) => Apply(form, kind);
-            return pending;
+            // 同一个窗口重复请求（面板每次开都会走一遍 Appearance）只留一个钩子：
+            // 旧写法每次都 +=，句柄一到就有 N 个相同的 Apply 连着跑（实机日志里
+            // pending-handle 出现过 10 次，也就是句柄创建那一刻会连做 10 遍）。
+            Pending entry = PendingHooks.GetOrCreateValue(form);
+            if (entry.Handler is not null)
+            {
+                form.HandleCreated -= entry.Handler;
+            }
+
+            EventHandler handler = (_, _) => Apply(form, kind);
+            entry.Handler = handler;
+            form.HandleCreated += handler;
+            return new MaterialReport(kind, MaterialKind.Opaque, false, false, false, "pending-handle");
         }
 
         IntPtr hwnd = form.Handle;
         TryDarkMode(hwnd);
         TryCaptionColors(hwnd);
 
+        // 圆角是**窗口**的属性，不是材质的属性：
+        // 旧实现在不透明档直接 return，于是「切回不透明」会把圆角一起去掉 ——
+        // 用户看到的是「选了不透明，窗口突然变成直角」。这一条与材质无关，永远做。
+        bool rounded = TryRoundedCorners(hwnd);
+
         if (kind == MaterialKind.Opaque)
         {
             form.Opacity = 1.0;
             TryClearBackdrop(hwnd);
             TryClearBlur(hwnd);
-            return new MaterialReport(kind, kind, false, false, "opaque");
+            return new MaterialReport(kind, kind, false, rounded, false, "opaque");
         }
 
-        // 先要到模糊，再调透明度：反过来会让第一帧闪成纯透明。
-        bool blurred = TrySystemBackdrop(hwnd, kind) || TryAccentBlur(hwnd, kind);
-        form.Opacity = kind == MaterialKind.Glass ? 0.80 : 0.92;
+        // 两条系统路径**互补，不是二选一**（2026-10-30）。旧写法是 `A || B` 短路：
+        // Win11 上 DWMWA_SYSTEMBACKDROP_TYPE 会返回成功，于是永远不会去试亚克力那条；
+        // 而系统背景类型只作用于**非客户区**（窗口客户区是自己画的，DWM 那层透不穿），
+        // 结果就是「要到了背景却没有一处看得见」—— 用户看到的效果只剩下面的整窗透明度。
+        bool backdrop = TrySystemBackdrop(hwnd, kind);
+        bool accent = TryAccentBlur(hwnd, kind);
+        bool readBack = ReadBackdrop(hwnd, kind);
 
-        bool rounded = TryRoundedCorners(hwnd);
-        string note = blurred
-            ? (kind == MaterialKind.Glass ? "acrylic" : "mica-or-blur")
-            : "translucent-only";
-        return new MaterialReport(kind, blurred ? kind : MaterialKind.Glass, blurred, rounded, note);
+        // 整窗透明度只在**要不到系统合成**时用。
+        // 它是「整窗按比例淡下去」，文字跟着一起糊 —— 那正是用户说的「只是简单的透明度变化」。
+        // 要到了模糊就不再淡：让系统那层去做模糊，内容保持清晰。
+        // 两者不能叠加：叠加等于把透明度算两遍（绘制 alpha × 窗口 alpha），越选越糊。
+        form.Opacity = backdrop || accent ? 1.0 : Theme.PaintAlpha(kind) / 255.0;
+        bool layered = IsLayered(form);
+
+        string note = accent
+            ? (kind == MaterialKind.Glass ? "acrylic-accent" : "blur-accent")
+            : backdrop ? "backdrop-nonclient" : "translucent-only";
+        if (readBack)
+        {
+            note += "+backdrop-readback";
+        }
+
+        // Applied 说实话：两条系统路径都没成时，用户实际拿到的**不是**他要的那一档，
+        // 而是「一层透明度」。旧实现这里报 Glass（连请求的是 Frosted 都报 Glass），
+        // 设置页据此告诉用户「已经是玻璃了」——那是撒谎。
+        MaterialKind applied = accent || backdrop ? kind : MaterialKind.Opaque;
+        return new MaterialReport(kind, applied, accent || backdrop, rounded, layered, note);
     }
 
-    /// <summary>玻璃比磨砂更透：给设置页/诊断看的一处口径。</summary>
-    public static double OpacityOf(MaterialKind kind) => kind switch
+    /// <summary>等句柄的钩子（每窗口一个；见 Apply 里的去重说明）。</summary>
+    private sealed class Pending
     {
-        MaterialKind.Glass => 0.80,
-        MaterialKind.Frosted => 0.92,
-        _ => 1.0,
-    };
+        public EventHandler? Handler { get; set; }
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Form, Pending> PendingHooks = new();
+
+    /// <summary>窗口现在是不是分层态（<c>WS_EX_LAYERED</c>）。判据读它证「没有把内容一起淡掉」。</summary>
+    public static bool IsLayered(Form form) =>
+        (Compositor.Win32.GetWindowLongPtr(form.Handle, Compositor.Win32.GWL_EXSTYLE).ToInt64()
+            & Compositor.Win32.WS_EX_LAYERED) != 0;
+
+    /// <summary>把系统背景类型读回来（证「参数真的落下了」，不是只看调用返回 0）。</summary>
+    private static bool ReadBackdrop(IntPtr hwnd, MaterialKind kind)
+    {
+        try
+        {
+            int want = kind == MaterialKind.Glass ? BackdropAcrylic : BackdropMica;
+            return DwmGetWindowAttribute(hwnd, DwmSystemBackdropType, out int got, sizeof(int)) == 0
+                && got == want;
+        }
+        catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 玻璃比磨砂更透：给设置页/诊断看的一处口径。
+    /// 数值来自 <see cref="Theme.PaintAlpha"/>（同一张表），不再各自写一份 ——
+    /// 两份定义迟早会漂移成「绘制说不透明、诊断说半透明」。
+    /// </summary>
+    public static double OpacityOf(MaterialKind kind) => Theme.PaintAlpha(kind) / 255.0;
 
     /// <summary>
     /// 把系统标题栏刷成面板底色（2026-10-28 用户截图：标题栏是 Windows 强调色亮黄，与界面完全脱节）。
@@ -242,6 +310,10 @@ internal static class MaterialHost
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+    /// <summary>读回窗口属性（证参数真的落下了；只看 Set 的返回值会漏掉「返回 0 但没生效」）。</summary>
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
 
     [DllImport("user32.dll")]
     private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);

@@ -53,7 +53,10 @@ internal static partial class AppearanceChecks
         }
 
         // 落地：真拿一个窗去套材质，不抛；结果里的 requested 必须是请求的那一档。
-        // 这里能证的只有「接口通了、没抛、不透明档能回得来」——模糊在不在是系统与壁纸的事。
+        // 这里能证的只有「接口通了、没抛、参数落下了、不透明档能回得来」——模糊好不好看是壁纸与人眼的事。
+        // 2026-10-30 加严两条（都是「只是简单的透明度变化」那个投诉留下的读数）：
+        //   ① 要到了模糊就**不许**再把整窗按比例淡一遍（那是把透明度算两遍，文字先糊）；
+        //   ② 报告里的 layered 必须与窗口真实样式一致，且要不到模糊时 applied 必须说实话。
         using var form = new Form { Text = "material-probe" };
         Theme.Apply(form);
         bool ok;
@@ -62,14 +65,22 @@ internal static partial class AppearanceChecks
         {
             Theme.Material = MaterialKind.Frosted;
             MaterialReport frosted = Theme.ApplyMaterial(form);
+            bool frostedLayered = MaterialHost.IsLayered(form);
             Theme.Material = MaterialKind.Glass;
             MaterialReport glass = Theme.ApplyMaterial(form);
+            bool glassLayered = MaterialHost.IsLayered(form);
             Theme.Material = MaterialKind.Opaque;
             MaterialReport opaque = Theme.ApplyMaterial(form);
             ok = frosted.Requested == MaterialKind.Frosted
                 && glass.Requested == MaterialKind.Glass
                 && opaque.Applied == MaterialKind.Opaque
-                && Math.Abs(form.Opacity - 1.0) < 0.001;
+                && Math.Abs(form.Opacity - 1.0) < 0.001
+                && !MaterialHost.IsLayered(form)
+                && frosted.Layered == frostedLayered
+                && glass.Layered == glassLayered
+                && (!frosted.Blurred || !frostedLayered)
+                && (!glass.Blurred || !glassLayered)
+                && (frosted.Blurred || frosted.Applied == MaterialKind.Opaque);
             probe = $"frosted=[{frosted.Describe()}] glass=[{glass.Describe()}] opaque=[{opaque.Describe()}]";
         }
         catch (Exception error)
