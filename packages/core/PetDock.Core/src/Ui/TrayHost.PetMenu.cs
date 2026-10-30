@@ -29,13 +29,13 @@ internal sealed record PetScope(
 internal sealed partial class TrayHost
 {
     /// <summary>
-    /// 在屏幕坐标处弹出**只针对这一只**的菜单（2026-10-30）。
-    /// 为什么另建一份而不是复用托盘那份：托盘那份是「桌上所有宠物各一条子菜单 + 全局退出」，
-    /// 用户在某一只身上按右键，想要的是「这一只的移动/暂停/移除」——
-    /// 菜单项的归属必须由**被点的那只**决定，而不是让用户在两秒钟后在子菜单里再找一遍自己点的是谁。
-    /// 文案键与托盘共用同一批（ui.tray.pet.*），所以两份菜单不会漂移成两套语义；
-    /// 「只动这一只」的三件事与「面板/退出」之间有一条分隔线，退出永远是全局的那一个。
-    /// 只在 UI 线程上调用（ContextMenuStrip.Show 要求）。菜单是临时的：关掉就释放。
+    /// 这份菜单**只建一次**，之后每次右键只换里面的条目（2026-10-30 事故后改）。
+    ///
+    /// 旧写法是每次右键 new 一个、在 Closed 里 Dispose：用户在菜单项上点一下，
+    /// WinForms 先关菜单（Closed 触发 → 我们把菜单释放掉），再走完这次点击，
+    /// 而 50ms 的「点空白处就关」计时器也可能已经排队了 —— 于是任何一次点击都可能
+    /// 撞在已释放的 ContextMenuStrip 上，弹「Cannot access a disposed object」。
+    /// 现在：菜单活到托盘释放为止，条目每次重建（重建时释放上一批条目，那时已经隔了一整次交互，安全）。
     /// </summary>
     public void ShowPetMenuAt(Point screen, PetScope scope)
     {
@@ -44,34 +44,63 @@ internal sealed partial class TrayHost
             return;
         }
 
-        var menu = new ContextMenuStrip();
+        ContextMenuStrip menu = _scopeMenu ??= new ContextMenuStrip();
+
+        // 上一批条目在这里释放：此刻距离「上一次点击」已经隔了完整的打开→点击→关闭，
+        // 没有任何调用栈还引用它们（与旧写法在 Closed 里释放菜单的区别就在这里）。
+        foreach (ToolStripItem old in menu.Items)
+        {
+            old.Dispose();
+        }
+
+        menu.Items.Clear();
         menu.Items.AddRange(new ToolStripItem[]
         {
             new ToolStripMenuItem(I18n.Get("ui.tray.pet.caption", scope.Title)) { Enabled = false },
-            new ToolStripMenuItem(I18n.Get("ui.tray.pet.move"), null, (_, _) => scope.Move()),
-            new ToolStripMenuItem(I18n.Get(scope.Paused ? "ui.tray.pet.resume" : "ui.tray.pet.pause"), null,
-                (_, _) => scope.Pause()),
-            new ToolStripMenuItem(I18n.Get("ui.tray.pet.remove"), null, (_, _) => scope.Remove()),
+            PetCommand(I18n.Get("ui.tray.pet.move"), menu, scope.Move),
+            PetCommand(I18n.Get(scope.Paused ? "ui.tray.pet.resume" : "ui.tray.pet.pause"), menu, scope.Pause),
+            PetCommand(I18n.Get("ui.tray.pet.remove"), menu, scope.Remove),
             new ToolStripSeparator(),
-            new ToolStripMenuItem(I18n.Get("ui.tray.panel"), null, (_, _) => scope.Panel()),
-            new ToolStripMenuItem(I18n.Get("ui.tray.exit"), null, (_, _) => scope.Exit()),
+            PetCommand(I18n.Get("ui.tray.panel"), menu, scope.Panel),
+            PetCommand(I18n.Get("ui.tray.exit"), menu, scope.Exit),
         });
         Design.ThemedMenuRenderer.Apply(menu);
 
         _openMenu = menu;
-        menu.Closed += (_, _) =>
-        {
-            _menuWatch.Stop();
-            if (ReferenceEquals(_openMenu, menu))
-            {
-                _openMenu = null;
-            }
-
-            menu.Dispose();
-        };
         menu.Show(screen);
         _menuArmed = false;
         _menuWatch.Start();
+    }
+
+    /// <summary>
+    /// 一条「点了以后做某件事」的菜单项。动作**投递回消息循环**再执行（2026-10-30）。
+    /// 为什么不在 Click 里直接跑：菜单项的动作里可能有模态确认框（「从桌面移除」就会问一句），
+    /// 在菜单自己的点击链里开模态窗，等于让菜单的关闭流程与新窗的消息泵互相嵌套 ——
+    /// 用户看到的是「点了没反应」或者异常框。投递之后点击链先走完，再执行动作。
+    /// </summary>
+    private static ToolStripMenuItem PetCommand(string text, ContextMenuStrip owner, UiCommand command) =>
+        new(text, null, (_, _) => PostCommand(owner, command));
+
+    private static void PostCommand(ContextMenuStrip owner, UiCommand command)
+    {
+        try
+        {
+            if (owner.IsHandleCreated && !owner.IsDisposed)
+            {
+                owner.BeginInvoke((MethodInvoker)(() => command()));
+                return;
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // 菜单正好没了：退到直接执行（动作本身仍然要做）。
+        }
+        catch (InvalidOperationException)
+        {
+            // 句柄还没建出来 / 已在销毁：同上。
+        }
+
+        command();
     }
 
 }

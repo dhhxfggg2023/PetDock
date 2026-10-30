@@ -490,8 +490,22 @@ function main() {
 
   if (!DRY_RUN) {
     if (fs.existsSync(outDir)) {
-      fs.rmSync(outDir, { recursive: true, force: true });
+      try {
+        fs.rmSync(outDir, { recursive: true, force: true });
+      } catch (error) {
+        // 最常见的一种失败：用户正开着上一个发行版（从 outDir 里启动的），它的 exe/dll 被锁住。
+        // 报「EPERM, Permission denied: <路径>」等于让人去猜；这里把该做的事直接说出来。
+        if (error && (error.code === 'EPERM' || error.code === 'EBUSY')) {
+          console.error(`RELEASE-FAIL 产物目录被占用，删不掉：${path.relative(REPO_ROOT, outDir)}`);
+          console.error('  多半是 PetDock 正从上一版发行目录里运行着（release.mjs 会先清空整棵目录）。');
+          console.error('  先退出 PetDock，再重跑 npm run dist。');
+          process.exit(1);
+        }
+
+        throw error;
+      }
     }
+
     fs.mkdirSync(outDir, { recursive: true });
   }
 

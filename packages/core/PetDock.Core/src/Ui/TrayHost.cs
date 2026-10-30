@@ -41,6 +41,12 @@ internal sealed partial class TrayHost : IDisposable
     /// <summary>当前弹着的那份菜单（托盘那份或某一只那份）。「点空白处关闭」只认它。</summary>
     private ContextMenuStrip? _openMenu;
 
+    /// <summary>
+    /// 右键某一只时那份菜单。**只建一次**：见 ShowPetMenuAt 的说明 ——
+    /// 每次右键 new 一个、关掉就释放，会让「这一次点击」与「已释放」撞在同一次交互里。
+    /// </summary>
+    private ContextMenuStrip? _scopeMenu;
+
     /// <summary>固定项的两个动作：右键菜单里要复用（不重造一份，见 ShowPetMenuAt）。</summary>
     private readonly UiCommand _openPanel;
     private readonly UiCommand _exit;
@@ -219,8 +225,12 @@ internal sealed partial class TrayHost : IDisposable
         // 「当前弹着的那份」可能是托盘那份，也可能是某一只那份（2026-10-30）：
         // 宠物窗拿不到激活，两份菜单都得靠这个计时器收，只认 _menu 会让右键菜单点外面不关。
         ContextMenuStrip? open = _openMenu;
-        if (open is null || !open.Visible)
+
+        // 已释放就别碰它：读 Visible/Bounds 会抛 ObjectDisposedException，
+        // 而这里跑在计时器线程上 —— 抛出去就是一个「未处理的异常」对话框（2026-10-30 的事故）。
+        if (open is null || open.IsDisposed || !open.IsHandleCreated)
         {
+            _openMenu = null;
             _menuWatch.Stop();
             return;
         }
@@ -241,9 +251,18 @@ internal sealed partial class TrayHost : IDisposable
             return;
         }
 
-        if (!open.Bounds.Contains(Cursor.Position))
+        try
         {
-            open.Close();
+            if (!open.Bounds.Contains(Cursor.Position))
+            {
+                open.Close();
+                _menuWatch.Stop();
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // 菜单在这一瞬间被关掉了：什么都不用做（它已经不在了）。
+            _openMenu = null;
             _menuWatch.Stop();
         }
     }
@@ -337,13 +356,10 @@ internal sealed partial class TrayHost : IDisposable
         _menuWatch.Dispose();
         _menu.Dispose();
 
-        // 临时弹着的那份（右键某一只）也要收：它的 Closed 处理器里 Dispose，
-        // 但托盘被 Dispose 时它可能还开着（进程正在退出的路径）。
-        if (_openMenu is { } open && !ReferenceEquals(open, _menu))
-        {
-            open.Dispose();
-        }
-
+        // 右键某一只那份菜单也要收：它是长生命周期对象，不在 Closed 里释放（见 ShowPetMenuAt），
+        // 所以只有这里释放它。
+        _scopeMenu?.Dispose();
+        _scopeMenu = null;
         _openMenu = null;
     }
 }
