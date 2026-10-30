@@ -66,7 +66,7 @@ tools/probes/*
 
 # ---- 本机自用素材（永不入库、永不发行）----
 # assets/sample/local/ 只供所有者本机使用：
-#   * gj-meme-857.webp —— 所有者提供的桌宠原图（975x975 鲸鱼娘，社区共创 CC BY-NC-SA 4.0）
+#   * 所有者提供的桌宠原图（本机自留，不入库、不入发行物）
 #   * pet-sample.png   —— 由它经 tools/make-pet-from-image.py 抠出的 128x128 贴图
 # 两者都不得作为可发布资产（见账本 decision 2026-10-15、docs/52 §5）。
 # 仓库与发布物内的示例贴图一律是 tools/gen-sample-pet.mjs 程序化生成的自有资产。

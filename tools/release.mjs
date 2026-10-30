@@ -88,10 +88,10 @@ function plan(version) {
       why: '托盘与窗口图标（原规格 18 §1 指定 icon-32.png）',
     },
     {
-      from: path.join('assets', 'sample-pet'),
-      to: path.join('assets', 'sample-pet'),
+      from: path.join('pets', 'sample-pet'),
+      to: path.join('pets', 'sample-pet'),
       kind: 'tree',
-      why: '引导第 2 步要放置的示例宠物（RFC-16 §3.3）；缺它，发行版启动时 PackLoader 找不到素材会抛 FileNotFoundException',
+      why: '引导第 2 步要放置的示例宠物（RFC-16 §3.3）；缺它，发行版启动时 PackLoader 找不到素材会抛 FileNotFoundException。放在 pets/ 而不是 assets/：它和用户导入的桌宠是同一类东西，运行期复制进 data/packs/ 后一一对应'
     },
     {
       from: path.join('assets', 'i18n'),
@@ -337,10 +337,10 @@ function auditOutput(outDir, version) {
 
   // ⑦ 示例素材包必须在（RFC-16 §3.3 第 2 步要放置它）。
   // 这条曾经缺失：发布装配只搬 assets/icons，于是发行版启动时视图实现
-  // 从程序目录向上找不到 assets/sample-pet/petdock-sample.json，直接抛 FileNotFoundException。
-  const samplePack = path.join(outDir, 'assets', 'sample-pet', 'petdock-sample.json');
+  // 从程序目录向上找不到 pets/sample-pet/petdock-sample.json，直接抛 FileNotFoundException。
+  const samplePack = path.join(outDir, 'pets', 'sample-pet', 'petdock-sample.json');
   if (!fs.existsSync(samplePack)) {
-    fail('发布物缺 assets/sample-pet/petdock-sample.json（引导要放置的示例宠物）');
+    fail('发布物缺 pets/sample-pet/petdock-sample.json（引导要放置的示例宠物）');
   }
 
   // ⑧ 文案表必须在（RFC-42 §3.2）。这条曾经缺失：发布物只搬 icons/sample-pet，

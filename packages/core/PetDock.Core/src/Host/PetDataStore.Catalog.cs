@@ -233,7 +233,7 @@ internal sealed partial class PetDataStore
     /// <summary>
     /// 删除一只宠物的素材目录，但只在**没有任何清单条目再引用它**时动手。
     /// 多开让「同一个目录」被多条条目引用；删第一只时删目录，其余几只就一起没了。
-    /// 只删数据区 packs/ 下的目录：assets/sample-pet 这类发行物素材永远不碰。
+    /// 只删数据区 packs/ 下的目录：pets/sample-pet 这类随包素材永远不碰。
     /// </summary>
     public bool DeletePackIfUnreferenced(string path)
     {

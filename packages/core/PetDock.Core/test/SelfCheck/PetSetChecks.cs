@@ -24,7 +24,7 @@ internal static class PetSetChecks
 
             // 两次导入 = 清单里两条（RFC-15 的替换语义只换「当前选中」，不删历史）。
             (string firstName, string firstFolder, string firstPath) = Stage(store, root, "alpha-pack");
-            store.RegisterActive(firstName, firstFolder, "守岸人");
+            store.RegisterActive(firstName, firstFolder, "示例桌宠");
             (string secondName, string secondFolder, string secondPath) = Stage(store, root, "beta-pack");
             store.RegisterActive(secondName, secondFolder);
 
@@ -37,7 +37,7 @@ internal static class PetSetChecks
 
             // 显示名不是内部 id：新清单写原目录名（中文保留），旧清单缺 name 时回落目录名。
             bool named = all.Count == 2
-                && string.Equals(all[0].Name, "守岸人", StringComparison.Ordinal)
+                && string.Equals(all[0].Name, "示例桌宠", StringComparison.Ordinal)
                 && string.Equals(all[1].Name, secondFolder, StringComparison.Ordinal);
             check("ui-catalog-display-name", named,
                 $"first={all.FirstOrDefault()?.Name ?? "(none)"} second={all.Skip(1).FirstOrDefault()?.Name ?? "(none)"}");
@@ -91,14 +91,14 @@ internal static class PetSetChecks
         {
             var store = new PetDataStore(root);
             (string id, string folder, string path) = Stage(store, root, "alpha-pack");
-            store.RegisterActive(id, folder, "守岸人");
+            store.RegisterActive(id, folder, "示例桌宠");
 
-            PetDataStore.ActivePack added = store.AddInstance(id, "守岸人（2）");
+            PetDataStore.ActivePack added = store.AddInstance(id, "示例桌宠（2）");
             IReadOnlyList<PetDataStore.ActivePack> packs = store.ReadPets();
             bool two = packs.Count == 2
                 && !string.Equals(packs[0].InstanceId, packs[1].InstanceId, StringComparison.Ordinal)
                 && string.Equals(packs[0].Path, packs[1].Path, StringComparison.OrdinalIgnoreCase)
-                && string.Equals(added.Name, "守岸人（2）", StringComparison.Ordinal);
+                && string.Equals(added.Name, "示例桌宠（2）", StringComparison.Ordinal);
 
             store.RemoveFromCatalog(id);
             bool kept = !store.DeletePackIfUnreferenced(path) && Directory.Exists(path);
@@ -129,7 +129,7 @@ internal static class PetSetChecks
             string unnamed = Path.Combine(root, "packs", "no-manifest");
             Directory.CreateDirectory(named);
             Directory.CreateDirectory(unnamed);
-            File.WriteAllText(Path.Combine(named, "petdock-sample.json"), """{"name":"守岸人"}""");
+            File.WriteAllText(Path.Combine(named, "petdock-sample.json"), """{"name":"示例桌宠"}""");
             File.WriteAllText(
                 Path.Combine(root, "pets.json"),
                 """{"schemaVersion":1,"active":"user.old-pack","pets":[{"id":"user.old-pack","folder":"old-pack"},{"id":"user.no-manifest","folder":"no-manifest"}]}""");
@@ -140,7 +140,7 @@ internal static class PetSetChecks
             int again = new PetDataStore(root).MigrateMissingNames();
             bool ok = filled == 1
                 && packs.Count == 2
-                && string.Equals(packs[0].Name, "守岸人", StringComparison.Ordinal)
+                && string.Equals(packs[0].Name, "示例桌宠", StringComparison.Ordinal)
                 && string.Equals(packs[1].Name, "no-manifest", StringComparison.Ordinal)
                 && again == 0;
             check("ui-catalog-name-migration", ok,

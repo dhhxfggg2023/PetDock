@@ -10,7 +10,7 @@
 | 插件 id | `com.petdock.bongocat.interaction` |
 | kind / tier | `brain` / `0`（Tier 0 + 托管 dll，走既有的越界记账，见下） |
 | 实现接口 | `IBrain`（`PetDock.Core.PetRuntime.IBrain`） |
-| 素材 | `assets/bongocat-pack/`，由 `tools/gen-bongocat-pack.mjs` 程序化生成，**CC0** |
+| 素材 | `pets/bongocat-pack/`，由 `tools/gen-bongocat-pack.mjs` 程序化生成，**CC0** |
 | 许可 | CC0-1.0（素材与代码都是本项目自有） |
 
 ## 三类交互怎么实现
@@ -50,7 +50,7 @@
 
 ## 素材与片段名
 
-`assets/bongocat-pack/` 是 原规格 31 Sample Pack 形态（`petdock-sample.json` + `anim/*.json` + `img/*/*.png`），
+`pets/bongocat-pack/` 是 原规格 31 Sample Pack 形态（`petdock-sample.json` + `anim/*.json` + `img/*/*.png`），
 所以现成的 `petdock.presenter.sprite-seq` 直接能渲染，内核不需要认识第二种素材格式
 （原规格 01 P-02 第 2 条：core 不认识任何素材格式）。
 
@@ -60,7 +60,7 @@
 | `look_up` / `look_down` / `look_left` / `look_right` | 2 each | 4 | loop |
 | `paw_l` / `paw_r` | 3 each | 8 | once |
 
-重新生成：`node tools/gen-bongocat-pack.mjs --out assets/bongocat-pack`
+重新生成：`node tools/gen-bongocat-pack.mjs --out pets/bongocat-pack`
 
 ## 已知越界（显式记账，不埋在注释里）
 

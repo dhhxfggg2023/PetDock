@@ -26,7 +26,7 @@ internal static partial class PetDriveTest
 
         // alpha===0 永远放行穿透：即使 hitmap 在该点写 1 也不许命中。
         // 这里用**自造**的 8x8 位图，而不是 StubView 的帧：StubView 有真素材时会读
-        // assets/sample-pet，四角也可能被抗锯齿糊上 alpha，测试就会随素材变红。
+        // pets/sample-pet，四角也可能被抗锯齿糊上 alpha，测试就会随素材变红。
         using var probeBitmap = new Bitmap(8, 8, PixelFormat.Format32bppPArgb);
         using (Graphics graphics = Graphics.FromImage(probeBitmap))
         {

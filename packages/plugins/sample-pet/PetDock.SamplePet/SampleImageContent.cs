@@ -51,7 +51,7 @@ internal sealed class SampleImageContent : IFrameContentSource
 
     /// <summary>
     /// 示例图路径：只认所有者本机自用覆盖件 assets/sample/local/pet-sample.png（.gitignore，
-    /// 见账本 decision「鲸鱼娘二创仅限本机」）。仓库内那张 898 字节的程序化蓝团已删除
+    /// 见账本 decision「所有者自留素材仅限本机」）。仓库内那张 898 字节的程序化蓝团已删除
     /// （t8 验收 3：它会被误当作宠物图），所以这里不再有任何回落——本地图不存在就是
     /// 真的没有图，TryLoad 走 unavailable，由内核画代码占位图并在日志标注 placeholder。
     /// 显式指名请用 sprite-seq 的 PETDOCK_PET_IMAGE（单图也能作可见宠物）。

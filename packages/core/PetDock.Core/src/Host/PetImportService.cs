@@ -115,7 +115,7 @@ internal sealed class PetImportService
         {
             token.ThrowIfCancellationRequested();
             // 显示名取用户选的那个目录名（原始中文保留）：磁盘上的目录名会被 Sanitize 成 ASCII，
-            // 不能拿它当名字，否则「守岸人」会变成「-----」，用户认不出自己刚导入的是哪只。
+            // 不能拿它当名字，否则「我的桌宠」会变成「-----」，用户认不出自己刚导入的是哪只。
             string displayName = DisplayNameOf(sourceDir);
             stage?.Invoke("host.import.stage.convert");
 

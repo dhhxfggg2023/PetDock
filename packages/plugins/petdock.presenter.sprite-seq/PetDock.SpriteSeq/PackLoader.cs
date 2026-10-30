@@ -27,11 +27,11 @@ internal sealed record PackData(
 /// core 不认识任何素材格式（原规格 01 P-02 第 2 条），也不特判插件 id（P-02 第 4 条），
 /// 所以「素材在哪」由实现方以环境变量 + 向上探测解决，失败时把试过的路径说清楚。
 ///
-/// 三条优先级（2026-10-16 所有者最终口径：鲸鱼娘是静态图，暂用可动的示例宠物作默认可见宠物
-/// 是可以的 —— 原话「鲸鱼娘不是动图，你暂时用可动的桌宠例子也是可以的，刚才我说的不好」）：
+/// 三条优先级（2026-10-16 所有者最终口径：原图是静态图，暂用可动的示例宠物作默认可见宠物
+/// 是可以的 —— 原话「原图不是动图，你暂时用可动的桌宠例子也是可以的」）：
 ///   1. `PETDOCK_SAMPLE_PACK` —— 显式请求某个 pack 目录，必须含 petdock-sample.json；
-///   2. `PETDOCK_PET_IMAGE` —— 显式请求单张贴图（所有者鲸鱼娘），合成一片段 pack；
-///   3. 默认 —— 向上探测 assets/sample-pet（原规格 31 Sample Pack，仓库内 CC0 素材）。
+///   2. `PETDOCK_PET_IMAGE` —— 显式请求单张贴图（所有者自留原图），合成一片段 pack；
+///   3. 默认 —— 向上探测 pets/sample-pet（原规格 31 Sample Pack，仓库内 CC0 素材）。
 /// 自检相位（PetViewContext.PetInstanceId 以 "animtest" 开头）与默认同解，不特判：
 /// 「桌面上是哪一只」必须是可指名的事实，而不是相位副作用。
 /// 旧实现里那条「默认回落到仓库内程序化蓝团」的路径已删除（t8 验收 3）：
@@ -43,7 +43,7 @@ internal static class PackLoader
     private const string PackEnvVar = "PETDOCK_SAMPLE_PACK";
     private const string ImageEnvVar = "PETDOCK_PET_IMAGE";
     private const string SelfTestPhase = "animtest";
-    private const string PackRel = "assets/sample-pet";
+    private const string PackRel = "pets/sample-pet";
     private const string OwnerImageRel = "assets/sample/local/pet-sample.png";
 
     /// <summary>一个来源是不是「默认」解：默认解就是 原规格 31 Sample Pack，没有任何环境变量参与。</summary>

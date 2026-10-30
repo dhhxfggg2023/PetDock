@@ -1,6 +1,6 @@
 // 首次运行时把自带的示例宠物装进清单（2026-10-28 第七轮）。
 //
-// 为什么不是「每次启动都从 assets/sample-pet 直接装配」：那样默认宠物没有清单 id，
+// 为什么不是「每次启动都从 pets/sample-pet 直接装配」：那样默认宠物没有清单 id，
 // 既不能多开也不能真正删除——托盘「移除」只是把窗口藏起来，重启它又回来了。
 // 装进数据区之后，它和用户导入的宠物走同一条清单/恢复/删除路径，动画素材仍是原来那份。
 //
@@ -17,7 +17,7 @@ namespace PetDock.Core;
 internal static partial class Program
 {
     /// <summary>自带示例包相对仓库/发行根的路径（原规格 31 的 Sample Pack）。</summary>
-    private const string SamplePackRel = "assets/sample-pet/petdock-sample.json";
+    private const string SamplePackRel = "pets/sample-pet/petdock-sample.json";
 
     /// <summary>
     /// 确保宠物清单已经初始化过：空清单 + 第一次运行 → 把示例宠物复制进数据区并选为当前。

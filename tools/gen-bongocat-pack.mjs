@@ -10,7 +10,7 @@
 // 这样现成的 sprite-seq 呈现层直接能渲染，不需要内核认识第二种素材格式
 // （原规格 01 P-02 第 2 条：core 不认识任何素材格式）。
 //
-//   node tools/gen-bongocat-pack.mjs --out assets/bongocat-pack
+//   node tools/gen-bongocat-pack.mjs --out pets/bongocat-pack
 import fs from 'node:fs'
 import path from 'node:path'
 import { canvas, circle, ellipse, encodePng, triangle } from './lib/png.mjs'

@@ -39,7 +39,7 @@ namespace PetDock.Plugins.BongoCat
     ///    Brain 只要在没有任何输入时保持 `idle` 即可 —— 不需要额外代码。
     ///
     /// **素材**：本插件不自带素材，读的是 原规格 31 Sample Pack 形态的
-    /// `assets/bongocat-pack/`（由 `tools/gen-bongocat-pack.mjs` 程序化生成，CC0）。
+    /// `pets/bongocat-pack/`（由 `tools/gen-bongocat-pack.mjs` 程序化生成，CC0）。
     /// 片名表由 `ClipNames` 给出，因为 Brain 只能切到呈现层真的有的片段：
     /// `SetAnimation` 对不存在的片段返回 false，仲裁器记 refused，屏幕上什么都不变。
     /// </summary>

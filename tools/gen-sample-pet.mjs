@@ -10,7 +10,7 @@
 // 编码器与画布原语已抽到 `tools/lib/png.mjs`（BongoCat 素材生成器共用同一份）。
 // 抽出的**没有改字节**：本脚本的产物仍与抽出前逐字节相同（assets/ASSETS.md §1 记「已验证幂等」）。
 //
-//   node tools/gen-sample-pet.mjs --out assets/sample-pet
+//   node tools/gen-sample-pet.mjs --out pets/sample-pet
 import fs from 'node:fs'
 import path from 'node:path'
 import { canvas, circle, ellipse, encodePng } from './lib/png.mjs'

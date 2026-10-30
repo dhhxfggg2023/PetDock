@@ -55,7 +55,7 @@ internal static class FirstUseChecks
             var petContext = new PreviewUiContext(new UiSnapshot(
                 Array.Empty<PetLine>(),
                 Array.Empty<PluginLine>(),
-                new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque", 160, "守岸人", "9.9.9")));
+                new SettingsView(1000.0 / 30.0, "zh-CN", false, "system", "opaque", 160, "示例桌宠", "9.9.9")));
             IUiPage? petSettings = UiPluginCatalog.Load(root, petContext)
                 .SelectMany(plugin => plugin.CreatePages(petContext))
                 .FirstOrDefault(page => string.Equals(page.Id, "settings", StringComparison.Ordinal));
@@ -64,7 +64,7 @@ internal static class FirstUseChecks
             var aboutVersion = petView?.FindName("AboutVersionText") as TextBlock;
             var petSize = petView?.FindName("PetSizeSlider") as Slider;
             var petSizeValue = petView?.FindName("PetSizeValue") as TextBlock;
-            bool petCard = petNameText?.Text == "守岸人" && aboutVersion?.Text == "9.9.9"
+            bool petCard = petNameText?.Text == "示例桌宠" && aboutVersion?.Text == "9.9.9"
                 && petSize?.Value == 160
                 && petSizeValue?.Text.Contains("160", StringComparison.Ordinal) == true;
             check("ui-settings-pet-card", petCard,

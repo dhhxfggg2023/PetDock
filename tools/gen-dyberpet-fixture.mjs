@@ -4,7 +4,7 @@
 //
 // Spec (binding): 交接档案
 //   §1.2 layout detection  §2.2-§2.7 frame/fps/loop/clip/naturalSize  §9 t4-note (act_num boundary + 0-frame action)
-// Modeled on the real package assets/user/dyberpet/守岸人 (gitignored, read-only, NEVER copied in here —
+// Modeled on a real third-party character pack (gitignored, read-only, NEVER copied in here —
 // every pixel below is procedurally generated geometry, no third-party bytes).
 //
 // Usage:

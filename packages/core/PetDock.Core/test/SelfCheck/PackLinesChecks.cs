@@ -154,7 +154,7 @@ internal static class PackLinesChecks
         string? pack = FindSamplePack();
         if (pack is null)
         {
-            check("ui-pack-lines-sample", false, "找不到 assets/sample-pet");
+            check("ui-pack-lines-sample", false, "找不到 pets/sample-pet");
             return;
         }
 
@@ -187,7 +187,7 @@ internal static class PackLinesChecks
         DirectoryInfo? cursor = new(AppContext.BaseDirectory);
         for (int depth = 0; depth < 8 && cursor is not null; depth++)
         {
-            string candidate = Path.Combine(cursor.FullName, "assets", "sample-pet");
+            string candidate = Path.Combine(cursor.FullName, "pets", "sample-pet");
             if (Directory.Exists(candidate))
             {
                 return candidate;

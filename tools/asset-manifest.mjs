@@ -5,13 +5,13 @@
 // 命中不到即报 UNREGISTERED。
 //
 // 为什么需要它（已发生的真实事故）：2026-10-15 清理脏树时，所有者放在仓库根的桌宠原图
-// gj-meme-857.webp 被标成「一次性网络下载的表情图」直接删掉 —— 它未跟踪、无 git 历史、
+// 一张所有者自留的原图被标成「一次性网络下载的表情图」直接删掉 —— 它未跟踪、无 git 历史、
 // 不进回收站，三条恢复路径全不存在。根因是没有任何地方写清那个文件是什么。
 // assets/ASSETS.md 是「写清」的地方，本脚本保证它不会随着时间失效：
 // 新增资产而不登记，门禁就红；于是「删之前先查登记册」这件事有了机器兜底。
 //
 // 覆盖范围（资产 = 二进制/媒体类文件，文档不计）：
-//   assets/**、fixtures/**、仓库根的媒体文件
+//   assets/**、pets/**、fixtures/**、仓库根的媒体文件
 // 跳过：*.md（文档不是资产）、.gitkeep（占位符）、bin/、obj/、node_modules/
 //
 // 三种状态都要报出来，因为它们对「能不能删」的含义完全不同：
@@ -160,6 +160,9 @@ function main() {
   const scanned = [];
   walk(path.join(REPO_ROOT, 'assets'), scanned);
   walk(path.join(REPO_ROOT, 'fixtures'), scanned);
+  // pets/ 也要扫：2026-10-30 起宠物包从 assets/ 挪到这里（和用户导入的桌宠同类），
+  // 不扫它等于把这些 PNG 移出了登记册的覆盖范围 —— 门禁会假绿。
+  walk(path.join(REPO_ROOT, 'pets'), scanned);
   // 仓库根：只取媒体文件（不递归，根目录的目录另有归属）。
   for (const entry of fs.readdirSync(REPO_ROOT, { withFileTypes: true })) {
     if (entry.isFile() && ASSET_EXT.has(path.extname(entry.name).toLowerCase())) {
