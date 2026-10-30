@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    内置陪伴层（P4 插件线第一块，2026-10-29）：贡献点 id "petdock.care"。
+
+    为什么是 kind=service：它不接管四个既有角色里的任何一个（视图/行为/交互/状态各有自己的
+    实现），只在每只宠物上加一层「喂养 · 心情 · 成长」。名册按 contributes.companions 里的
+    类型全名，为**每只宠物**新造一个实例 —— 数值不能共享，两只宠物不能共用一个对象。
+
+    ABI 类型经 PetDock.Sdk 类型转发解析到 core 唯一 CLR 类型；本工程不重声明接口。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>PetDock.Care</RootNamespace>
+    <AssemblyName>PetDock.Care</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
+  </ItemGroup>
+
+  <!--
+    音效随插件走（不塞进 assets/）：它们只属于这一层玩法，发布物里与 dll 同目录，
+    插件按 Assembly.Location 旁边的 sounds/ 找自己。CopyToOutputDirectory 让
+    dotnet publish 一起带上（release.mjs 的插件发布走的就是 publish）。
+  -->
+  <ItemGroup>
+    <Content Include="sounds\*.wav" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

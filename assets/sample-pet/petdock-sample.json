@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "name": "Sample Pet",
+  "author": "petdock (procedural)",
+  "license": "CC0-1.0",
+  "naturalSize": {
+    "w": 128,
+    "h": 128
+  },
+  "preferredFps": 12,
+  "animations": [
+    {
+      "id": "idle",
+      "clip": "anim/idle.json"
+    },
+    {
+      "id": "walk",
+      "clip": "anim/walk.json"
+    },
+    {
+      "id": "hover",
+      "clip": "anim/hover.json"
+    }
+  ],
+  "defaultAnimation": "idle",
+  "state": {
+    "schemaVersion": 1,
+    "position": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "lines": {
+    "poke": [
+      "我是示例宠物。",
+      "今天也在桌面上。",
+      "戳我做什么？"
+    ],
+    "drag": [
+      "放我下来～"
+    ],
+    "throw": [
+      "要被扔出去啦！"
+    ],
+    "drop": [
+      "安全着陆。"
+    ],
+    "languages": {
+      "en-US": {
+        "poke": [
+          "I'm the sample pet.",
+          "Still on your desktop.",
+          "Why poke me?"
+        ],
+        "drag": [
+          "Put me down!"
+        ],
+        "throw": [
+          "Wheee!"
+        ],
+        "drop": [
+          "Safe landing."
+        ]
+      }
+    }
+  },
+  "hitRegions": [
+    {
+      "id": "body",
+      "x": 0.12,
+      "y": 0.15,
+      "w": 0.76,
+      "h": 0.8
+    }
+  ]
+}

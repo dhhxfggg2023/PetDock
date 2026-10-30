@@ -1,0 +1,79 @@
+# ---- .NET / Visual Studio ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+*.binlog
+
+# ---- Node ----
+node_modules/
+dist/
+*.tsbuildinfo
+
+# ---- 构建产物 / 缓存 ----
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.nupkg
+
+# ---- 宠物素材（用户资产永不入库，见 docs/52） ----
+*.live2d.zip
+*.moc3
+*.motion3.json
+assets/user/
+
+# ---- 运行期状态 ----
+.state/
+*.pid
+
+# ---- 本地账本 / harness 状态（是记忆，不是源码） ----
+.dsh-code/
+.agent-teams/
+.claude/
+# ledger/ 是 tools/ledger-export.mjs 导出的账本快照。**刻意不入库**：私有库以后要转公开，
+# 账本里有本机绝对路径、账号名、出口 IP、路由与凭据位置等只该留在本地的东西
+# （2026-10-16 决定，见账本 decisions.md「账本出库」；历史里的 ledger/ 已用 filter-branch purge）。
+# 持久化靠：.dsh-code/ 本体 + pre-commit 钩子刷新的跨卷副本 %USERPROFILE%\petdock-ledger-backup\。
+ledger/
+
+# docs/handoff/ 是里程碑交接/契约/验证档案（2026-10-19 自 .dsh-code/ 聚合而来）。与 ledger/
+# 同款理由不入库：账本类工作档案、含本机路径；留在磁盘 + 跨卷备份
+# （%USERPROFILE%\petdock-ledger-backup\handoff\）。入口索引：docs/98-ai-handoff.md
+docs/handoff/
+
+# ---- 临时 / 探针输出 ----
+tools/**/*.scan.json
+*.tmp
+# 金图夹具跑挂时落在仓库根的诊断日志（测试产物，不是源码）
+golden-diag.*
+
+# 未展开的 %SystemDrive% 字面目录（环境产物，不是我们的代码）：跑门禁/自检时会在仓库根出现，
+# 里面只有 Windows 组件缓存（ProgramData\Microsoft\Windows\Caches\*.db）。某个进程把没展开的
+# 环境变量当成了相对路径，落点由它的工作目录决定 —— 那是环境侧的行为，仓库只管它别进版本库。
+# 目录可以随时整个删掉，删了下次跑还会再出现；不要为它改 ACL 或改工作目录。
+%SystemDrive%/
+
+# ---- 探针临时件（scratch、一次性取证输出、对照实验方案）----
+# tools/probes/ 是排障与开发工作区：一次性验证脚本、截图、DIB 转储、对照实验方案，以及
+# 模型路由探针（route-report.py / scan-free-lane.mjs / probe-egress.mjs / probe-plugin-net.mjs）。
+# 按 docs/40 D-01a「可复用代码必须进包」，它们不是可复用产品代码；而且它们是「本项目怎么被
+# 做出来的」开发工具、与桌宠交付物无关，泄露本机安装路径与免费额度探测手法，故一律出库
+# （文件仍留在磁盘上供复盘，只是不再跟踪）。
+tools/probes/*
+
+# ---- 本机自用素材（永不入库、永不发行）----
+# assets/sample/local/ 只供所有者本机使用：
+#   * gj-meme-857.webp —— 所有者提供的桌宠原图（975x975 鲸鱼娘，社区共创 CC BY-NC-SA 4.0）
+#   * pet-sample.png   —— 由它经 tools/make-pet-from-image.py 抠出的 128x128 贴图
+# 两者都不得作为可发布资产（见账本 decision 2026-10-15、docs/52 §5）。
+# 仓库与发布物内的示例贴图一律是 tools/gen-sample-pet.mjs 程序化生成的自有资产。
+# 注意：不要因为「未跟踪 + 名字像 meme」就删它们——所有者把它们放进这个被忽略的目录，
+# 正是因为它们不入库。
+# 摆放规则（2026-10-16 收拢，见 assets/ASSETS.md §0）：资产一律在 assets/ 树下，仓库根
+# 不再放任何素材；根目录若又出现未登记的媒体文件，`node tools/asset-manifest.mjs` 会把它
+# 报成 UNREGISTERED 并以 exit 1 结束——所以这里不需要逐文件写忽略规则。
+assets/sample/local/
+rel-x/

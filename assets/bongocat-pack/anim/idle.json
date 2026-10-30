@@ -1,0 +1,10 @@
+{
+  "frames": [
+    "img/idle/idle_001.png",
+    "img/idle/idle_002.png",
+    "img/idle/idle_003.png",
+    "img/idle/idle_004.png"
+  ],
+  "fps": 6,
+  "loop": "loop"
+}

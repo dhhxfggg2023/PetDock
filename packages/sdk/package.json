@@ -1,0 +1,50 @@
+{
+  "name": "@petdock/sdk",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PetDock Tier 1 plugin SDK — the only surface a plugin may import (原规格 20).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./js/index.js"
+    },
+    "./presenter": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/presenter.js"
+    },
+    "./brain": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/brain.js"
+    },
+    "./interaction": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/interaction.js"
+    },
+    "./state": {
+      "types": "./types/abi.d.ts",
+      "default": "./js/state.js"
+    },
+    "./capabilities": {
+      "types": "./types/capabilities.d.ts",
+      "default": "./js/capabilities.js"
+    },
+    "./log": {
+      "types": "./types/log.d.ts",
+      "default": "./js/log.js"
+    },
+    "./errors": {
+      "types": "./types/errors.d.ts",
+      "default": "./js/errors.js"
+    }
+  },
+  "files": [
+    "js",
+    "types",
+    "README.md"
+  ]
+}

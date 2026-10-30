@@ -1,0 +1,220 @@
+<UserControl x:Class="PetDock.Ui.Default.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="34,16,34,14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="StartupSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="StartupLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="StartupHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="2" x:Name="StartupSwitch"
+                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center"
+                                          Click="OnSettingChanged" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="LanguageSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="LanguageLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="LanguageHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <RadioButton x:Name="LanguageZh" GroupName="language" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnLanguageChanged" />
+                                <RadioButton x:Name="LanguageEn" GroupName="language" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnLanguageChanged" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="PetSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="PetNameLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="PetNameHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" x:Name="PetNameText" Style="{DynamicResource Pd.Body}"
+                                       FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="PetSizeLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="PetSizeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Grid Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="54" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Slider Grid.Row="0" Grid.Column="0" x:Name="PetSizeSlider"
+                                        Style="{DynamicResource Pd.Slider}"
+                                        Minimum="64" Maximum="256" Value="128"
+                                        SmallChange="8" LargeChange="16" TickFrequency="1"
+                                        IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                        ValueChanged="OnPetSizeValueChanged" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="PetSizeValue"
+                                           Style="{DynamicResource Pd.Body}" FontWeight="SemiBold"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           TextAlignment="Right" />
+                                <Grid Grid.Row="1" Grid.Column="0" Margin="0,2,0,0">
+                                    <TextBlock x:Name="PetSizeSmall" Style="{DynamicResource Pd.Muted}" HorizontalAlignment="Left" />
+                                    <TextBlock x:Name="PetSizeMedium" Style="{DynamicResource Pd.Muted}" HorizontalAlignment="Center" />
+                                    <TextBlock x:Name="PetSizeLarge" Style="{DynamicResource Pd.Muted}" HorizontalAlignment="Right" />
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="CelestialLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="CelestialHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="2" x:Name="CelestialSwitch"
+                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center"
+                                          Click="OnSettingChanged" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="SoundSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="SoundLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="SoundHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Grid.Column="2" x:Name="SoundSwitch"
+                                          Style="{DynamicResource Pd.Switch}" VerticalAlignment="Center"
+                                          Click="OnSettingChanged" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="AppearanceSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="ThemeLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="ThemeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <RadioButton x:Name="ThemeSystem" GroupName="theme" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="ThemeLight" GroupName="theme" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="ThemeDark" GroupName="theme" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="MaterialLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="MaterialHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <RadioButton x:Name="MaterialOpaque" GroupName="material" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="MaterialFrosted" GroupName="material" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                                <RadioButton x:Name="MaterialGlass" GroupName="material" Style="{DynamicResource Pd.Segment}"
+                                             Checked="OnSettingChanged" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock x:Name="DiagnosticsSection" Style="{DynamicResource Pd.Section}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="OpenLogsButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                    Click="OnOpenLogs" Margin="0,0,8,0" />
+                            <Button x:Name="ExportButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                    Click="OnExport" Margin="0,0,8,0" />
+                            <Button x:Name="AuditButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                    Click="OnOpenAudit" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{DynamicResource Pd.Card}">
+                    <StackPanel>
+                        <TextBlock x:Name="AboutSection" Style="{DynamicResource Pd.Section}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" x:Name="AboutVersionLabel" Style="{DynamicResource Pd.Body}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock x:Name="AboutVersionText" Style="{DynamicResource Pd.Body}" FontWeight="SemiBold" />
+                                <TextBlock x:Name="AboutHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="1" x:Name="StatusText" Style="{DynamicResource Pd.Dim}"
+                   Margin="2,8,0,0" TextTrimming="CharacterEllipsis" />
+    </Grid>
+</UserControl>

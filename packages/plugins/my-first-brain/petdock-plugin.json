@@ -1,0 +1,12 @@
+{
+  "id": "com.petdock.myfirstbrain",
+  "name": "我的第一个行为层",
+  "version": "0.1.0",
+  "api": { "major": 1, "minor": 0 },
+  "kind": "brain",
+  "tier": 1,
+  "entry": "main.js",
+  "capabilities": ["input.mousePosition", "persist.write:self"],
+  "defaultEnabled": false,
+  "license": { "spdx": "MIT" }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "com.petdock.brainnull",
+  "name": "空白行为层（内置）",
+  "version": "0.1.0",
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
+  "kind": "brain",
+  "tier": 0,
+  "entry": "PetDock.NullBrain/bin/Release/net8.0-windows/PetDock.NullBrain.dll",
+  "capabilities": [],
+  "license": {
+    "spdx": "CC0-1.0"
+  },
+  "contributes": {
+    "brains": ["petdock.brain.null"]
+  }
+}

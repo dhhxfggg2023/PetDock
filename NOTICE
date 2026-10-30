@@ -1,0 +1,22 @@
+PetDock
+Copyright 2026 PetDock project owner
+
+This product includes software developed by third parties.
+本项目只发布「能力」，永不发布「别人的内容」——内核代码 Apache-2.0（见 LICENSE），
+所有宠物素材由用户自行导入，不随本仓库或安装包分发。
+
+Bundled third-party components (runtime, redistributed as built binaries):
+
+  Wasmtime 34.0.2 — .NET binding (Wasmtime.Dotnet.dll)
+      Copyright (c) Bytecode Alliance and contributors
+      Apache License, Version 2.0 with LLVM Exceptions
+      https://github.com/bytecodealliance/wasmtime
+      Referenced by: packages/core/PetDock.Core/PetDock.Core.csproj
+      Used by: packages/core/PetDock.Core/src/Sandbox/ (Tier 1 WASI sandbox)
+
+Build-only dependencies (not redistributed): none beyond the .NET 8 SDK and Node.js 20+.
+
+Pet assets: none are distributed. Users import their own material
+(for example DyberPet character packs) from their local disk; the
+importer reads it read-only and the repository contains no such files.
+See assets/ASSETS.md for the asset policy.

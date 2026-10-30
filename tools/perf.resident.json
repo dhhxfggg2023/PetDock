@@ -1,0 +1,36 @@
+{
+  "note": "2026-10-28: tests/ retired; baseline moved to tools/",
+  "captured_at": "2026-10-28 10:53:11",
+  "env": {
+    "os": "Microsoft Windows NT 10.0.26100.0",
+    "cpu": "13th Gen Intel(R) Core(TM) i9-13900HX",
+    "cores": 32
+  },
+  "premise": {
+    "schema": 1,
+    "machine": "13th Gen Intel(R) Core(TM) i9-13900HX|32|Microsoft Windows NT 10.0.26100.0",
+    "idle_total_pct": 3.532,
+    "ambient_band_pp": 3,
+    "fps_tier": "33.3ms",
+    "roster": "packages/plugins:9",
+    "seconds": 20,
+    "warmup_ms": 5000
+  },
+  "m-02": {
+    "cpu_idle_pct": 0.061,
+    "limit": 0.5
+  },
+  "m-04": {
+    "private_ws_mb": 35.516,
+    "limit": 150
+  },
+  "d-14d": {
+    "seconds": 20.014985,
+    "ticks": 568,
+    "composed": 568,
+    "handles": 408,
+    "gdi": 36,
+    "user": 35
+  },
+  "unit": "RFC-40\uFF1A\u7EDD\u5BF9\u95E8\u9650\u786C\u3001\u76F8\u5BF9\u8BCA\u65AD\u8F6F\u3001\u524D\u63D0\u5168\u7B49\u65F6\u76F8\u5BF9\u624D\u786C\uFF1B--write-baseline \u6BCF\u6B21\u5FC5\u987B\u5E26 note"
+}

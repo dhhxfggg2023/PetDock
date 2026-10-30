@@ -1,0 +1,191 @@
+<UserControl x:Class="PetDock.Ui.Default.PluginsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="34,24,34,22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,14">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="InstallButton" Style="{DynamicResource Pd.SecondaryButton}"
+                        Click="OnInstallClick" Margin="0,0,8,0" />
+                <Button x:Name="AuthorizeButton" Style="{DynamicResource Pd.SecondaryButton}"
+                        Click="OnAuthorizeClick" />
+                <Button x:Name="RemoveButton" Style="{DynamicResource Pd.DangerButton}"
+                        Click="OnRemoveClick" Margin="8,0,0,0" ToolTipService.ShowOnDisabled="True" />
+            </StackPanel>
+            <TextBlock x:Name="CountText" Style="{DynamicResource Pd.Dim}" VerticalAlignment="Center" />
+        </DockPanel>
+
+        <Border Grid.Row="1" Style="{DynamicResource Pd.Card}" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="18,14,18,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="0.8*" />
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="0.8*" />
+                        <ColumnDefinition Width="70" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" x:Name="ColName" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="1" x:Name="ColSource" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="2" x:Name="ColVersion" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="3" x:Name="ColState" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="4" x:Name="ColGranted" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="5" x:Name="ColEnabled" Style="{DynamicResource Pd.Muted}"
+                               HorizontalAlignment="Center" />
+                </Grid>
+
+                <ListBox Grid.Row="1" x:Name="Rows" Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         SelectionChanged="OnSelectionChanged">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="8,1" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" CornerRadius="10" Padding="10,9" Background="Transparent">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Pd.SurfaceHover}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Pd.AccentSoft}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="1.1*" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="70" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" Style="{DynamicResource Pd.Body}"
+                                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding Source}" Style="{DynamicResource Pd.Dim}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{Binding Version}" Style="{DynamicResource Pd.Dim}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding State}" Style="{DynamicResource Pd.Dim}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="4" Text="{Binding Granted}" Style="{DynamicResource Pd.Dim}"
+                                           VerticalAlignment="Center" />
+                                <ToggleButton Grid.Column="5" Style="{DynamicResource Pd.Switch}"
+                                              AutomationProperties.Name="{Binding Name}"
+                                              IsChecked="{Binding Enabled, Mode=OneWay}"
+                                              IsEnabled="{Binding CanToggle}"
+                                              Click="OnToggleClick" Tag="{Binding Id}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="1" x:Name="EmptyText" Style="{DynamicResource Pd.Dim}"
+                           Margin="24" TextWrapping="Wrap" Visibility="Collapsed"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
+
+                <!-- 回收站（2026-10-28 第三轮）：删掉的插件在这里，可恢复或彻底删除。 -->
+                <Border Grid.Row="2" BorderBrush="{DynamicResource Pd.Line}" BorderThickness="0,1,0,0"
+                        Margin="18,0,18,0" Padding="0,10,0,12">
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock x:Name="TrashSummary" DockPanel.Dock="Right" Style="{DynamicResource Pd.Muted}"
+                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                            <Button x:Name="TrashToggle" Style="{DynamicResource Pd.GhostButton}"
+                                    HorizontalAlignment="Left" Click="OnTrashToggle" />
+                        </DockPanel>
+                        <StackPanel x:Name="TrashPanel" Visibility="Collapsed" Margin="0,6,0,0">
+                            <TextBlock x:Name="TrashEmpty" Style="{DynamicResource Pd.Muted}"
+                                       TextWrapping="Wrap" Visibility="Collapsed" />
+                            <ListBox x:Name="TrashRows" Background="Transparent" BorderThickness="0"
+                                     MaxHeight="170" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0,1" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="Bd" CornerRadius="9" Padding="8,7" Background="Transparent">
+                                                        <ContentPresenter />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Pd.SurfaceHover}" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" Style="{DynamicResource Pd.Body}"
+                                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Version}" Style="{DynamicResource Pd.Dim}"
+                                                           Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding RemovedAt}" Style="{DynamicResource Pd.Muted}"
+                                                           Margin="12,0,0,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding SizeText}" Style="{DynamicResource Pd.Muted}"
+                                                           Margin="12,0,0,0" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="{Binding RestoreLabel}"
+                                                    Style="{DynamicResource Pd.SecondaryButton}"
+                                                    Padding="12,5" Margin="8,0,0,0"
+                                                    IsEnabled="{Binding Restorable}"
+                                                    Tag="{Binding DirName}" Click="OnRestoreClick" />
+                                            <Button Grid.Column="2" Content="{Binding PurgeLabel}"
+                                                    Style="{DynamicResource Pd.DangerButton}"
+                                                    Padding="12,5" Margin="8,0,0,0"
+                                                    Tag="{Binding DirName}" Click="OnPurgeClick" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" x:Name="HintText" Style="{DynamicResource Pd.Muted}"
+                   Margin="2,12,2,0" TextWrapping="Wrap" />
+    </Grid>
+</UserControl>

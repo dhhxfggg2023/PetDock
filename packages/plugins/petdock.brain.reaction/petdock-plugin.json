@@ -1,0 +1,24 @@
+{
+  "id": "petdock.brain.reaction",
+  "name": "默认行为层",
+  "version": "0.1.0",
+  "api": { "major": 1, "minor": 0 },
+  "kind": "brain",
+  "defaultBrain": true,
+  "tier": 0,
+  "entry": "PetDock.ReactionBrain/bin/Release/net8.0-windows/PetDock.ReactionBrain.dll",
+  "capabilities": [
+    "input.mousePosition"
+  ],
+  "license": { "spdx": "MIT" },
+  "events": [
+    "core.clock.tick",
+    "input.pointer.move",
+    "core.window.focus"
+  ],
+  "contributes": {
+    "brains": [
+      "petdock.brain.reaction"
+    ]
+  }
+}

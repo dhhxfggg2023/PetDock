@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  显式声明「按当前用户权限运行」。
+
+  为什么需要这个文件：不发 manifest 时，Windows 的安装程序探测启发式可能在双击时
+  弹出 UAC「是否允许此应用对你的设备进行更改」——这个应用只写 HKCU 与自己的
+  %LOCALAPPDATA% 数据目录，没有任何需要管理员权限的动作，那个弹窗是误报。
+  写死 asInvoker 之后，外壳不再按启发式猜，也不再弹。
+
+  刻意不写 dpiAware：DPI 感知由进程内代码设置（Per-Monitor V2），manifest 再声明一次
+  会与代码设置争抢，出现「系统先按 96dpi 建窗、代码再改」的双重缩放。
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity version="1.0.0.0" name="PetDock.Host" />
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 / 11：让 DetectVersion 报真版本而不是 6.2 兼容模式。 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+</assembly>

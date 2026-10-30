@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    内置演示视图（贡献点 id "petdock.presenter.sprite-seq"，原规格 11 §13）。
+    ABI 类型一律经 PetDock.Sdk（core 声明 + TypeForwardedTo，见 sdk src/TypeForwards.cs），
+    本工程不重声明任何接口（M1 t6 教训：重声明 = 两个 CLR 类型 = IsAssignableFrom 恒假）。
+    依赖方向遵守 原规格 40 §2：plugins -> sdk -> core，无 plugins -> core 直达边。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

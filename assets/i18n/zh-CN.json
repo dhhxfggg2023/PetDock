@@ -1,0 +1,10 @@
+{
+  "ui.tray.panel": "主控面板",
+  "ui.tray.exit": "退出 PetDock",
+  "ui.tray.title.running": "PetDock — {0} 只宠物运行中",
+  "ui.tray.pet.caption": "宠物：{0}",
+  "ui.tray.pet.move": "移到屏幕中央",
+  "ui.tray.pet.pause": "暂停",
+  "ui.tray.pet.resume": "恢复",
+  "ui.tray.pet.remove": "从桌面移除"
+}

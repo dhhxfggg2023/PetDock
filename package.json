@@ -1,0 +1,34 @@
+{
+  "name": "petdock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "depscan": "node tools/depscan.mjs",
+    "lint:core": "node tools/lint-core.mjs",
+    "lint:manifest": "node tools/validate-manifest.mjs",
+    "lint:assets": "node tools/asset-manifest.mjs",
+    "lint:fingerprint": "node tools/asset-fingerprint.mjs",
+    "lint:i18n": "node tools/i18n-lint.mjs",
+    "lint:i18n:parity": "node tools/i18n-parity.mjs",
+    "release": "node tools/release.mjs",
+    "release:dry": "node tools/release.mjs --dry-run",
+    "pack": "node tools/pack.mjs",
+    "dist": "node tools/release.mjs && node tools/pack.mjs",
+    "dist:selftest": "node tools/portable-selftest.mjs",
+    "lint": "node tools/depscan.mjs && node tools/version-parity.mjs && node tools/lint-core.mjs && node tools/validate-manifest.mjs && node tools/asset-manifest.mjs && node tools/asset-fingerprint.mjs && node tools/i18n-lint.mjs && node tools/i18n-parity.mjs",
+    "verify": "node tools/verify.mjs",
+    "verify:all": "node tools/verify.mjs --all",
+    "verify:list": "node tools/verify.mjs --list",
+    "verify:static": "node tools/verify.mjs --only static",
+    "verify:build": "node tools/verify.mjs --only build",
+    "verify:contract": "node tools/verify.mjs --only contract",
+    "verify:window": "node tools/verify.mjs --only window",
+    "verify:perf": "node tools/verify.mjs --only perf",
+    "verify:dist": "node tools/verify.mjs --only dist",
+    "verify:release": "node tools/verify.mjs --config release --only build && node tools/verify.mjs --config release --only window"
+  }
+}

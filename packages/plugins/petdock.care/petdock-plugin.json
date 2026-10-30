@@ -1,0 +1,19 @@
+{
+  "id": "com.petdock.care",
+  "name": "陪伴层：喂养 · 心情 · 成长（内置）",
+  "version": "0.1.0",
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
+  "kind": "service",
+  "tier": 0,
+  "entry": "PetDock.Care/bin/Release/net8.0-windows/PetDock.Care.dll",
+  "capabilities": [],
+  "license": {
+    "spdx": "CC0-1.0"
+  },
+  "contributes": {
+    "companions": ["PetDock.Care.CareCompanion"]
+  }
+}

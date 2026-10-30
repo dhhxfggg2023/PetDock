@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <RootNamespace>PetDock.SamplePet</RootNamespace>
+    <AssemblyName>PetDock.SamplePet</AssemblyName>
+    <Product>PetDock</Product>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- 依赖方向（原规格 40 §2）：plugins → sdk → core，绝不反向、绝不越层（D-02c/D-02d）。
+       packages/sdk 一出现，tools/depscan.mjs:14 的 SDK_EXISTS 即翻真，plugins→core 的直连边
+       从「豁免」变为 D-02d 违规，故本行必须经 sdk 中转。t2 改动。 -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\sdk\csharp\PetDock.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>
