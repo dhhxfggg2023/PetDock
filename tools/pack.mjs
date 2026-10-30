@@ -120,6 +120,13 @@ function main() {
 
   if (!KEEP_STAGING) {
     fs.rmSync(stagingDir, { recursive: true, force: true });
+    // 目录壳也算残留：artifacts/ 里只该有有名字的产物（release/dist/verify/uitest-shots/acl-recovery）。
+    // 只删空目录 —— 里面还有别的版本目录（--keep-staging 留下的）就保持不动。
+    try {
+      fs.rmdirSync(stagingRoot);
+    } catch {
+      // 不是空的，留着。
+    }
   }
   if (failures > 0) {
     fs.rmSync(zipPath, { force: true });
