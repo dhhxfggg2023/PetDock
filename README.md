@@ -2,13 +2,9 @@
 
 > **本项目完全由 AI 生成。** 代码、门禁脚本与本文档由 AI 代理在人类所有者的指令与裁决下产出；
 > 人类负责方向决策、验收与法律边界，不逐行手写实现。
->
-> 本仓库不再包含 `docs/` 与 `tests/`：旧规格与旧测试已整体退役。**活的行为契约只有两处**——
-> `packages/core/PetDock.Core/test/SelfCheck/` 里的可执行判据，以及插件 manifest 的校验器
-> （`ManifestValidator`）。注释里出现的「原规格 NN」是历史设计依据，不是可执行契约。
 
 PetDock 是一个「万物皆可插件」的桌宠宿主：**内核只负责把宠物画到桌面上并让插件说话**，
-任何具体桌宠生态（自家格式、DyberPet、BongoCat 重写包、Live2D 元数据层 …）都作为独立插件存在。
+任何具体桌宠生态都作为独立插件存在，内核本身不绑定任何一种。
 
 ## 现在的状态
 
@@ -51,9 +47,6 @@ dotnet run --project packages/core/PetDock.Core -c Release -- --uitest --shots <
 # 校验插件清单（门禁与插件作者共用同一套规则）
 dotnet run --project packages/core/PetDock.Core -c Release -- --validate-plugins <插件目录或根>
 
-# CLI 转换用户自备的 DyberPet 角色包（只读引用，不复制素材；面板里的「导入素材包」会把帧复制进包内）
-dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPetImporter -c Release -- --in <角色包目录> --out <输出目录>
-```
 
 其余诊断入口：`--hosttest`、`--eventtest`、`--animtest`、`--drivetest`、`--perftest`、
 `--residenttest`、`--composetest`。它们都编在同一个 `PetDock.Core.exe` 里，不额外发行。
@@ -72,11 +65,8 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 | `petdock.brain.reaction` | 开 | 内置行为脑（清单声明 defaultBrain）：沿水平方向散步，鼠标经过时抬头（不申请输入钩子） |
 | `com.petdock.brainnull` / `com.petdock.statenull` / `com.petdock.spriteseq` | 开 | 内核自带的空实现与示例呈现器 |
 | `petdock.sample.petimage` | 开 | 示例宠物呈现器 |
-| `com.petdock.bongocat.interaction` | **关** | 其他桌宠生态的适配插件，需要键盘钩子，默认不装载 |
-| `com.petdock.dyberpet.importer` | 开 | 桌面宠物素材包导入器（含 DyberPet 包）：只在导入时转换，不申请能力，不装载桌宠 |
 | `com.petdock.care` | 开 | 陪伴层：喂养 / 心情 / 成长（面板宠物页的「陪伴层」区），自带三条音效，数值走状态层 |
 | `com.petdock.agent` | 开 | 陪伴层：AI / agent 状态（读本机 JSON，不发网络请求、不需要凭据），见下方「喂 agent 状态」 |
-| `com.petdock.atlas.importer` | 开 | Codex Pets / OpenPets 固定图集导入器：1536×1872（v1，8×9）与 1536×2288（v2，8×11，多出的两行无公开语义、不导入），57 帧转成标准包，不引用原图集；同名 `.png` 存在时优先 PNG（本机缺 WebP codec 也能导） |
 | `com.petdock.myfirstbrain` | **关** | tier-1 JS 示例脑，用到时才开 |
 
 规则是「显式停用 > 显式启用 > 默认」：默认开的插件不会弹授权窗（内置信任集静默授予），
@@ -158,7 +148,7 @@ dotnet run --project packages/plugins/petdock.importer.dyberpet/PetDock.DyberPet
 内核 **Apache-2.0**，完整条款见 [LICENSE](LICENSE)，第三方组件声明见 [NOTICE](NOTICE)。
 插件是独立作品、各自许可（须在 manifest 的 `license` 字段声明）。
 
-**素材零分发**：本仓库不含任何第三方桌宠素材。用户自备的角色包（例如 DyberPet 角色包）只在
+**素材零分发**：本仓库不含任何第三方桌宠素材。用户自备的角色包只在
 运行时被**只读引用**，既不进仓库也不进安装包；示例素材全部由 `tools/` 下的脚本程序化生成。
 应用图标也是自绘的（`tools/make-icons.py`，随内核以 Apache-2.0 授权）；所有者自己的图标源图
 放在本机 `assets/user/`（已 gitignore，永不发行）。

@@ -1,7 +1,7 @@
 // tools/lib/png.mjs —— 程序化素材共用的 PNG 编码与画布原语。
 //
 // 为什么单独成模块：`tools/gen-sample-pet.mjs`（原规格 31 示例宠物）与
-// `tools/gen-bongocat-pack.mjs`（原规格 33 BongoCat）都要「自己编码真正的 PNG」。
+// 各素材生成脚本都要「自己编码真正的 PNG」。
 // 两份拷贝会各自漂移，而这类代码漂移的表现是「文件存在、退出码 0、解码器拒绝」——
 // 正是 gen-sample-pet 文件头警告的那种沉默失败。所以编码器只有这一份。
 //

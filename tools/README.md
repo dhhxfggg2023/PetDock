@@ -56,6 +56,6 @@ node tools/portable-selftest.mjs    # 解压后直接跑内核，验证发布物
 ## 其它
 
 - `petdock-cli/`：`petdock` 命令行（初始化/校验/打包等子命令）。
-- `gen-sample-pet.mjs`、`make-icons.py`、`gen-bongocat-pack.mjs`、`gen-dyberpet-fixture.mjs`：程序化素材生成。
+- `gen-sample-pet.mjs`、`make-icons.py`：程序化素材生成。
 - `ledger-export.mjs`：把本机工作账本导出到 `ledger/`（只读账本，幂等）。
 - `bench/`、`probes/`：性能浸泡与一次性探针，不属于门禁。

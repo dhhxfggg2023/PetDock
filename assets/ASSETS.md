@@ -33,7 +33,6 @@
 | `assets/sample/local/`（整个目录，本机自用） | 所有者自留的桌宠原图与由其抠出的贴图（具体文件名与尺寸不入册，避免把私人素材清单写进公开文档） | 所有者自行提供；**不随仓库分发** | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 贴图可从原图重新抠；原图删了不可恢复。**2026-10-15 有过一次误删事故**，§0 的三条规矩因此而来 |
 | `assets/user/`（整个目录，本机自用） | 所有者自留的第三方宠物素材（具体包名、文件数、体积不入册）。用途 = 导入器的字段核对素材 | 所有者自行提供的第三方素材；**版权归原作者，不是 CC 授权素材** | ❌ **否** — `.gitignore` 排除整个目录，永不入库、永不发行 | 可由所有者副本重新放入；删掉会阻断导入器的字段核对 |
 | `pets/sample-pet/`（15 个文件） | M2 自建示例宠物的金图夹具（10 帧 + icon + 3 个 anim json + 主描述）。2026-10-18 由 `fixtures/sample-pet/` 迁入；2026-10-30 随「宠物包不入 `assets/`」的规则移到 `pets/`（见 §0） | `tools/gen-sample-pet.mjs` 程序化生成，CC0 | ✅ **是** | 可用 `node tools/gen-sample-pet.mjs --out pets/sample-pet` 重新生成（已验证幂等） |
-| `pets/bongocat-pack/`（19 个文件） | M7 的 BongoCat 交互包素材（18 帧 + icon + 7 个 anim json + `petdock-sample.json` 主描述）。7 个片段：`idle`(4) / `look_up|down|left|right`(各 2) / `paw_l|paw_r`(各 3)。**自绘几何猫**，与原 BongoCat 应用的素材无任何关系 | `tools/gen-bongocat-pack.mjs` 程序化生成（编码器复用 `tools/lib/png.mjs`），CC0 | ✅ **是** — 自有输出；原规格 33 §6 的三条法律约束（不引用/不打包/不逆向原应用、素材自有、包名不冒充官方）在本目录上是代码事实 | 可用 `node tools/gen-bongocat-pack.mjs --out pets/bongocat-pack` 重新生成（确定性输出） |
 
 ## 2. 桌宠形象：从原图到贴图的完整链路
 
