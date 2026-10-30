@@ -1,5 +1,16 @@
 {
   "schema": 1,
-  "generated": "2026-10-30T10:53:38.976Z",
-  "plugins": []
+  "generated": "2026-10-30T10:54:01.808Z",
+  "plugins": [
+    {
+      "id": "com.petdock.demo.market",
+      "name": "市场测试插件",
+      "version": "0.1.0",
+      "summary": "端到端测试：从市场下载并安装",
+      "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/com.petdock.demo.market.zip",
+      "sha256": "062f6ad3959b954f6b3d615eccf192fed295276821cd1414eee50e52b09051f2",
+      "bytes": 767,
+      "capabilities": []
+    }
+  ]
 }
