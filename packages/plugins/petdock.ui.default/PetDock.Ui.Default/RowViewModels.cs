@@ -18,6 +18,7 @@ public sealed class PetRow
         License = line.License;
         Path = line.Path;
         IconPath = line.IconPath;
+        OnDesktop = line.OnDesktop;
     }
 
     public string Id { get; }
@@ -29,6 +30,9 @@ public sealed class PetRow
     public string? License { get; }
     public string? Path { get; }
     public string? IconPath { get; }
+
+    /// <summary>这一只现在在不在桌面上（决定按钮是「显示到桌面」还是「从桌面收起」）。</summary>
+    public bool OnDesktop { get; }
 }
 
 /// <summary>插件页一行。Enabled 是唯一可写的字段（行内开关）。</summary>

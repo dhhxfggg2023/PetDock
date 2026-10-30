@@ -269,6 +269,16 @@ internal sealed partial class UiHost : ApplicationContext
         if (!_petShown)
         {
             _petShown = true;
+
+            // 用户上次把主窗那只收起了吗（2026-10-30）？**在这里认**，不在构造期：
+            // 收起状态是按清单 id 记的，而清单要等宿主起来才读得到（构造期 _store 还是空的，
+            // 用 _pet.Id 去比对会得到另一个 id，于是「收起」在重启后静默失效）。
+            if (!_primaryRemoved && IsPrimaryHiddenInSettings())
+            {
+                _primaryRemoved = true;
+                KernelLog.Write($"pet-hide-primary-restored id={PrimaryPetIdOf()} hidden=true");
+            }
+
             if (!_primaryRemoved)
             {
                 _loop.Start();

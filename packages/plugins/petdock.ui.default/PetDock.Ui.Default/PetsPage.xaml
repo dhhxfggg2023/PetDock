@@ -18,6 +18,11 @@
             <Button x:Name="DuplicateButton" DockPanel.Dock="Right" Margin="0,0,8,0"
                     Style="{DynamicResource Pd.SecondaryButton}"
                     Click="OnDuplicateClick" IsEnabled="False" />
+            <!-- 在桌面上显示 / 从桌面收起（2026-10-30）：收起与删除分开之后，
+                 「已导入但不在桌面上」需要这一个入口才能回到桌面。 -->
+            <Button x:Name="DesktopButton" DockPanel.Dock="Right" Margin="0,0,8,0"
+                    Style="{DynamicResource Pd.SecondaryButton}"
+                    Click="OnDesktopClick" IsEnabled="False" />
             <TextBlock x:Name="CountText" Style="{DynamicResource Pd.Dim}"
                        VerticalAlignment="Center" />
         </DockPanel>

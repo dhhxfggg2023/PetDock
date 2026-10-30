@@ -142,9 +142,24 @@ internal sealed partial class UserSettingsStore
             doc["petPositions"] = positionDoc;
         }
 
+        // 声音与天体模式（2026-10-30 补）：这两个字段以前在记录里、却没有写出这一行，
+        // 于是「关掉声音 / 打开天体模式」重启后一律回到默认。只在用户显式设过时写键。
+        if (value.SoundEnabled is bool sound)
+        {
+            doc["soundEnabled"] = sound;
+        }
+
+        if (value.CelestialMode is bool celestial)
+        {
+            doc["celestialMode"] = celestial;
+        }
+
         // 用户关掉 / 打开的插件（空表 / null 就不写这个键）。排序后写，字节序稳定。
         WriteStringArray(doc, "pluginsDisabled", value.DisabledPlugins);
         WriteStringArray(doc, "pluginsEnabled", value.EnabledPlugins);
+
+        // 从桌面收起、但仍在清单里的宠物 id（2026-10-30）：与上面两个同一条纪律（空表不写键）。
+        WriteStringArray(doc, "hiddenPets", value.HiddenPets);
 
         string? dir = System.IO.Path.GetDirectoryName(_path);
         if (!string.IsNullOrEmpty(dir))

@@ -168,6 +168,11 @@ internal sealed partial class UserSettingsStore
             // 用户显式打开的插件 id（与 pluginsDisabled 同一形态、同一纪律）。
             List<string>? enabledPlugins = ReadStringArray(obj, "pluginsEnabled");
 
+            // 用户从桌面上收起、但**没有**从清单里删掉的宠物 id（2026-10-30）。
+            // 这是「从桌面移除」与「删除」分开之后的另一半：前者只收起，所以要记住收起状态，
+            // 否则重启之后它们又自己回到桌面上，「移除」就成了只在本次会话里有效的假动作。
+            List<string>? hiddenPets = ReadStringArray(obj, "hiddenPets");
+
             // 界面材质（原规格 18 §2.7）：只认三个名字，其余一律当没设过（回落到不透明）。
             // 与上面几个字段同一条纪律：坏值不迁移、不猜测，直接按默认走。
             string? material = null;
@@ -226,9 +231,27 @@ internal sealed partial class UserSettingsStore
                 }
             }
 
+            // 声音与天体模式（2026-10-30 补）：这两个字段**以前只写不读**——记录里有、
+            // 落盘时却没有任何一行把它们写进 JSON，读回时也没有任何一行把它们取出来。
+            // 后果是「设置里关掉声音 / 打开天体模式，重启后又变回默认」，而且没有任何读数看得出来。
+            // 与上面几个字段同一纪律：坏值当没设过（null），不猜。
+            bool? soundEnabled = null;
+            if (obj["soundEnabled"] is JsonValue soundValue && soundValue.TryGetValue(out bool soundBool))
+            {
+                soundEnabled = soundBool;
+            }
+
+            bool? celestialMode = null;
+            if (obj["celestialMode"] is JsonValue celestialValue
+                && celestialValue.TryGetValue(out bool celestialBool))
+            {
+                celestialMode = celestialBool;
+            }
+
             return new UserSettings(
                 period, language, onboarding, petPosition, petPositions,
-                disabledPlugins, material, themeMode, enabledPlugins, petSize, petCatalogInitialized).Clamped();
+                disabledPlugins, material, themeMode, enabledPlugins, petSize, petCatalogInitialized,
+                soundEnabled, celestialMode, hiddenPets).Clamped();
         }
         catch (Exception error)
         {

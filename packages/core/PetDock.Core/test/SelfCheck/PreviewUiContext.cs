@@ -80,6 +80,12 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    public string? SetPetOnDesktop(string petId, bool onDesktop)
+    {
+        Commands.Add((onDesktop ? "pet-to-desktop:" : "pet-off-desktop:") + petId);
+        return null;
+    }
+
     public string? DuplicatePet(string petId)
     {
         Commands.Add("duplicate-pet:" + petId);

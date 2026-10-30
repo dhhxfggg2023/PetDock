@@ -43,7 +43,8 @@ internal static class UiRoster
         SettingsView? settings = null,
         PluginInventory? inventory = null,
         IReadOnlyList<PetLine>? extraPets = null,
-        string? primaryPetId = null)
+        string? primaryPetId = null,
+        bool primaryOnDesktop = true)
     {
         var pets = new List<PetLine>(1);
         if (pet is not null)
@@ -54,8 +55,12 @@ internal static class UiRoster
                 Name: pet.Imported ? pet.DisplayName : I18n.Get("cp.pets.name.builtin"),
                 Source: DescribeSource(pet),
                 State: PluginHost.DescribeInstanceState(pet.State)
-                    + (pet.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty),
-                Memory: ProcessMemoryMb()));
+                    + (pet.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty)
+                    + (primaryOnDesktop ? string.Empty : " · " + I18n.Get("cp.pets.state.hidden")),
+                Memory: ProcessMemoryMb())
+            {
+                OnDesktop = primaryOnDesktop,
+            });
         }
 
         // 主窗之外的那几只（多宠物）：行由宿主侧按槽位装配，这里只追加，不重新判定。

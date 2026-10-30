@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 33700,
+  "budget": 33900,
   "history": [
     {
       "date": "2026-10-18",
@@ -2768,6 +2768,53 @@
       "packages/core/PetDock.Core/src/Ui/Design/Theme.Material.cs"
      ],
      "lines": 78
+    }
+   ]
+  }
+,
+    {
+   "date": "2026-10-30",
+   "measured": 33668,
+   "budget": 33900,
+   "note": "用户报的第 7 条（「已经导入的宠物没地方看，不知道怎么打开」）与它牵出的两处：（一）收起与删除分离——旧实现两个动作都调 RemoveFromCatalog，于是用户「从桌面移除」一只之后，它同时从宠物页消失了：没有地方看到它，也没有入口放回来，明明素材一直都在。现在收起只停泵+藏窗+落盘 hiddenPets，删除才是真删；宠物页多一个「在桌面上显示/从桌面收起」按钮，列表改成**按清单出**而不是按桌面上摆着的出（OnDesktop 说明状态）。（二）settings 里 soundEnabled / celestialMode 两个字段**只写不读**（记录里有、落盘没有那一行、读回也没有），于是「关掉声音 / 打开天体模式」重启后一律回默认；这次一起补上读写。（三）判据面：ui-physics-release-supported（松手时脚下有没有东西的四种情形，含「差 4 像素没贴住不算站住」）、ui-set-plan-hidden-skipped / ui-set-plan-all-hidden（收起的不能摆出来）。实测 33375 → 33668（+293）。判据面在 test/SelfCheck，按 D-03a 不计。",
+   "attribution": [
+    {
+     "slice": "收起与删除分离 + 放回桌面（宿主半边，含落盘与首滴答认状态）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/UiHost.Pets.Desktop.cs",
+      "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs",
+      "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+      "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+     ],
+     "lines": 174
+    },
+    {
+     "slice": "宠物页命令面与行状态（OnDesktop / 按钮）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+      "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs",
+      "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+      "packages/core/PetDock.Core/src/Ui/UiRoster.cs",
+      "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs"
+     ],
+     "lines": 24
+    },
+    {
+     "slice": "摆位认收起状态（Plan 收hidden + 运行期摆回一只）",
+     "files": [
+      "packages/core/PetDock.Core/src/Ui/PetWindowSet.Catalog.cs",
+      "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs"
+     ],
+     "lines": 55
+    },
+    {
+     "slice": "设置项：hiddenPets 读写 + 声音/天体模式补上读写（以前只写不读）",
+     "files": [
+      "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+      "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+      "packages/core/PetDock.Core/src/Host/UserSettingsStore.Write.cs"
+     ],
+     "lines": 40
     }
    ]
   }

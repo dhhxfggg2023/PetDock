@@ -4,7 +4,9 @@
 //
 // RFC-37 §3.6（片 3）：每条子菜单带着一只宠物的 id 下来，命令按 id 路由 ——
 // 不能再用「当前宠物」这种隐式指代，否则桌上有三只时命令永远只动主窗那只。
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Forms;
 using PetDock.Core.Compositor;
 using PetDock.Core.PetRuntime;
@@ -136,28 +138,45 @@ internal sealed partial class UiHost
     /// <summary>
     /// 主窗之外那几只的只读行（面板的宠物页用）。来源写「已导入」而不是插件 id：
     /// 用户认的是「我从哪装进来的」，不是内部实例标识。
+    ///
+    /// **按清单出，不按槽位出**（2026-10-30 修「已导入的宠物没地方看」）：
+    /// 旧实现只列桌面上还摆着的那几只，于是用户点过「从桌面移除」之后它就**从列表里消失**了 ——
+    /// 既没有地方看到它，也没有入口把它放回来，只能重新导入一次（而素材其实一直都在）。
+    /// 现在的口径：清单里的每一只都在列表里，`OnDesktop` 说明它现在摆没摆着。
     /// </summary>
     private IReadOnlyList<PetLine> BuildExtraPetLines()
     {
         var lines = new List<PetLine>();
-        if (_petSet is null)
+        PetDataStore? store = _store;
+        if (store is null)
         {
             return lines;
         }
 
-        foreach (PetWindowSet.Entry entry in _petSet.Entries())
+        string primaryId = PrimaryPetIdOf();
+        foreach (PetDataStore.ActivePack pack in store.ReadPets())
         {
-            PetInstance? instance = entry.Slot.Instance;
+            if (string.Equals(pack.InstanceId, primaryId, StringComparison.Ordinal))
+            {
+                continue; // 主窗那只由 UiRoster 出，不在这一份里重复
+            }
+
+            PetWindowSet.Slot? slot = _petSet?.Find(pack.InstanceId);
+            PetInstance? instance = slot?.Instance;
             string state = instance is null
-                ? I18n.Get("cp.plugins.state.off")
+                ? I18n.Get("cp.pets.state.hidden")
                 : PluginHost.DescribeInstanceState(instance.State)
                     + (instance.BrainDegraded ? I18n.Get("ui.roster.state.degraded") : string.Empty);
             lines.Add(new PetLine(
-                Id: entry.Id,
-                Name: entry.Title,
+                Id: pack.InstanceId,
+                Name: string.IsNullOrWhiteSpace(pack.Name) ? Path.GetFileName(pack.Path) : pack.Name,
                 Source: I18n.Get("cp.pets.source.imported"),
                 State: state,
-                Memory: UiRoster.ProcessMemoryMb()));
+                Memory: UiRoster.ProcessMemoryMb())
+            {
+                OnDesktop = slot is not null,
+                Path = pack.Path,
+            });
         }
 
         return lines;
@@ -256,33 +275,6 @@ internal sealed partial class UiHost
         }
 
         return id;
-    }
-
-    /// <summary>
-    /// 把这一只从桌上和清单里移除。
-    /// 主窗那只的**实例**归 Program / CAS（RFC-15 §3.2），本片不在这里释放它 ——
-    /// 只把它从清单与托盘里拿掉并藏起窗口，真正的卸载在重启时发生
-    /// （`pet-remove-primary deferred=restart` 这行日志是它的取证）。
-    /// </summary>
-    private void RemovePetById(string id)
-    {
-        if (IsPrimary(id))
-        {
-            _primaryRemoved = true;
-            _loop.Hide();
-            _store?.RemoveFromCatalog(_store.ReadActive()?.InstanceId ?? _pet?.Id ?? string.Empty);
-            KernelLog.Write($"pet-remove-primary id={id} deferred=restart");
-            RefreshTrayPets();
-            return;
-        }
-
-        if (_petSet?.Remove(id, out string packPath) == true)
-        {
-            _store?.RemoveFromCatalog(id);
-            KernelLog.Write($"pet-remove-extra id={id} pack={packPath}");
-        }
-
-        RefreshTrayPets();
     }
 
     /// <summary>托盘与提示文字同步到「现在桌上有几只」。</summary>

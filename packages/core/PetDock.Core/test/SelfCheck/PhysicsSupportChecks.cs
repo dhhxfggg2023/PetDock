@@ -24,12 +24,44 @@ internal static class PhysicsSupportChecks
             SkipInside(check);
             SkipTopEdge(check);
             HasSupport(check);
+            ReleaseSupport(check);
             Topology(check);
         }
         catch (Exception error)
         {
             check("ui-physics-support-crash", false, error.GetType().Name + ": " + error.Message);
         }
+    }
+
+    /// <summary>
+    /// 松手时「脚下有没有东西」（2026-10-30 新增）：这是「慢放会不会悬在半空」的唯一判据。
+    /// 旧实现只认甩出去的速度，慢速拖到屏幕中间松手会停在那儿永不落下。
+    /// 纯函数，所以四种情形都能在这里钉住：地板 / 窗口顶边 / 半空 / 差一点点没贴住。
+    /// </summary>
+    private static void ReleaseSupport(Report check)
+    {
+        IReadOnlyList<Rectangle> surfaces = Surfaces();
+
+        // 站在屏幕地板上（底边 = 工作区底边）。
+        var onFloor = new Rectangle(600, 980, 128, 100);
+        bool floor = PhysicsSupport.TryFindSupport(onFloor, Area, surfaces, out int floorTop);
+
+        // 站在别的窗口顶边（第一块面的顶边 = 300）。
+        var onSurface = new Rectangle(300, 200, 128, 100);
+        bool surface = PhysicsSupport.TryFindSupport(onSurface, Area, surfaces, out int surfaceTop);
+
+        // 悬在半空：没有任何东西在脚下 —— 这一条必须失败，否则「松手就落」无从谈起。
+        var inAir = new Rectangle(600, 400, 128, 100);
+        bool air = PhysicsSupport.TryFindSupport(inAir, Area, surfaces, out int airTop);
+
+        // 差 4 像素没贴住那条顶边：不算站住（否则会把「路过」当成「站在上面」）。
+        var slightlyOff = new Rectangle(300, 204, 128, 100);
+        bool off = PhysicsSupport.TryFindSupport(slightlyOff, Area, surfaces, out int offTop);
+
+        check(
+            "ui-physics-release-supported",
+            floor && floorTop == Area.Bottom && surface && surfaceTop == 300 && !air && !off,
+            $"floor={floor}@{floorTop} surface={surface}@{surfaceTop} air={air}@{airTop} off={off}@{offTop}");
     }
 
     /// <summary>拓扑本身：枚举不抛、缓存生效、筛完的矩形都够大（小窗不当落脚点）。</summary>

@@ -49,6 +49,21 @@ internal static class PetWindowChecks
             "ui-set-plan-empty",
             PetWindowSet.Plan("user.alpha", Array.Empty<PetDataStore.ActivePack>()).Count == 0,
             "catalog=0");
+
+        // 用户收起的（还在清单里、只是不在桌面上）不能摆出来 —— 2026-10-30：
+        // 「从桌面移除」与「删除」分开之后，收起状态由 settings.hiddenPets 记着；
+        // 摆位不认它的话，重启之后被收起的那几只又自己回到桌面上。
+        IReadOnlyList<PetDataStore.ActivePack> visible = PetWindowSet.Plan(
+            "user.beta", catalog, new[] { "user.alpha" });
+        check(
+            "ui-set-plan-hidden-skipped",
+            visible.Count == 1 && visible[0].InstanceId == "user.gamma",
+            $"shown=user.beta hidden=user.alpha rest={Ids(visible)}");
+
+        // 全收起：一只都不摆（不是「一只都不认」）。
+        IReadOnlyList<PetDataStore.ActivePack> allHidden = PetWindowSet.Plan(
+            "user.beta", catalog, new[] { "user.alpha", "user.gamma" });
+        check("ui-set-plan-all-hidden", allHidden.Count == 0, $"rest={Ids(allHidden)}");
     }
 
     /// <summary>

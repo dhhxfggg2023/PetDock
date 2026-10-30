@@ -26,6 +26,7 @@ public partial class PetsPage : UserControl, IUiPage
         ImportButton.Content = context.T("cp.pets.import");
         DuplicateButton.Content = context.T("cp.pets.duplicate");
         DeleteButton.Content = context.T("cp.pets.delete");
+        DesktopButton.Content = context.T("cp.pets.desktop.show");
         ColName.Text = context.T("cp.pets.col.name");
         ColSource.Text = context.T("cp.pets.col.source");
         ColState.Text = context.T("cp.pets.col.state");
@@ -98,6 +99,37 @@ public partial class PetsPage : UserControl, IUiPage
         bool has = SelectedPetId is not null;
         DuplicateButton.IsEnabled = has;
         DeleteButton.IsEnabled = has;
+        DesktopButton.IsEnabled = has;
+
+        // 按钮说的是「点下去会发生什么」，不是「现在是哪一档」：
+        // 摆着的显示「从桌面收起」，收起的显示「在桌面上显示」。
+        bool onDesktop = (Rows.SelectedItem as PetRow)?.OnDesktop == true;
+        DesktopButton.Content = _context.T(onDesktop ? "cp.pets.desktop.hide" : "cp.pets.desktop.show");
+    }
+
+    /// <summary>
+    /// 在桌面上显示 / 从桌面收起（2026-10-30）。收起不删素材、也不删清单条目 ——
+    /// 用户报的「已导入的宠物没地方看，不知道怎么打开」就是因为旧实现把这两件事做成了同一件。
+    /// </summary>
+    private void OnDesktopClick(object sender, RoutedEventArgs e)
+    {
+        string? id = SelectedPetId;
+        if (id is null)
+        {
+            return;
+        }
+
+        bool onDesktop = (Rows.SelectedItem as PetRow)?.OnDesktop == true;
+        string? problem = _context.SetPetOnDesktop(id, !onDesktop);
+        if (problem is not null)
+        {
+            ShowError(problem);
+            return;
+        }
+
+        HideError();
+        _context.SetStatus(_context.T(onDesktop ? "cp.pets.desktop.hidden" : "cp.pets.desktop.shown"));
+        _context.Refresh();
     }
 
     /// <summary>选中一行时显示作者/许可/目录；没有声明就写「未声明」，不从目录名猜。</summary>

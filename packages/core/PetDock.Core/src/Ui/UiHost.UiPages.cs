@@ -54,6 +54,9 @@ internal sealed partial class UiHost : IUiPageContext
 
     string? IUiPageContext.RemovePet(string petId) => RemovePetFromPanel(petId);
 
+    string? IUiPageContext.SetPetOnDesktop(string petId, bool onDesktop) =>
+        SetPetOnDesktopFromPanel(petId, onDesktop);
+
     string? IUiPageContext.DuplicatePet(string petId) => DuplicatePetFromPanel(petId);
 
     string? IUiPageContext.DeletePet(string petId) => DeletePetFromPanel(petId);

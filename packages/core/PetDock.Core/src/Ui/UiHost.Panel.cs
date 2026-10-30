@@ -64,7 +64,9 @@ internal sealed partial class UiHost
             SettingsView(),
             _inventory,
             BuildExtraPetLines(),
-            _primaryRemoved ? null : _store?.ReadActive()?.InstanceId);
+            _primaryRemoved ? null : _store?.ReadActive()?.InstanceId,
+            // 主窗那只也可能被收起（用户点了「从桌面移除」）：页面据此显示它现在的状态。
+            primaryOnDesktop: !_primaryRemoved);
         return DecoratePetMetadata(snapshot);
     }
 

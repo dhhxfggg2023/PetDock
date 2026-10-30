@@ -146,8 +146,15 @@ public interface IUiPageContext
     /// </summary>
     Task<UiCommandResult> ImportPetAsync(string sourceDir);
 
-    /// <summary>移除一只宠物（确认框由页面自己弹，宿主只执行）。</summary>
+    /// <summary>把一只从桌面上收起来（不删素材、不删清单条目；确认框由页面自己弹）。</summary>
     string? RemovePet(string petId);
+
+    /// <summary>
+    /// 在桌面上显示 / 从桌面收起这一只（2026-10-30）。
+    /// 与 RemovePet 的区别就是它有「放回来」的另一半 —— 收起与删除分开之后，
+    /// 「已导入但不在桌面上」必须有一个入口能回到桌面。返回 null = 成功。
+    /// </summary>
+    string? SetPetOnDesktop(string petId, bool onDesktop);
 
     /// <summary>给同一只再开一个实例；返回 null = 成功。</summary>
     string? DuplicatePet(string petId);

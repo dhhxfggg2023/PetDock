@@ -73,6 +73,26 @@ internal sealed partial class UiHost
     }
 
     /// <summary>
+    /// 宠物页的「在桌面上显示 / 从桌面收起」。返回 null = 成功。
+    /// 收起走 RemovePetById（保留清单条目），放回走 ShowPetById；两者都不碰素材文件。
+    /// </summary>
+    internal string? SetPetOnDesktopFromPanel(string petId, bool onDesktop)
+    {
+        if (_store?.Find(petId) is null)
+        {
+            return I18n.Get("cp.pets.desktop.missing");
+        }
+
+        if (onDesktop)
+        {
+            return ShowPetById(petId);
+        }
+
+        RemovePetById(petId);
+        return null;
+    }
+
+    /// <summary>
     /// 彻底删除一只：从桌面拿掉、从清单删掉，最后一个引用消失时删素材目录。
     /// 主窗那只的实例归 Program（不能在事件栈里 Dispose），所以只隐藏窗口；重启后不再出现。
     /// </summary>

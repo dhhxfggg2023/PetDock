@@ -75,28 +75,6 @@ internal sealed partial class PetWindowSet : IDisposable
     public bool Started => _started;
 
     /// <summary>
-    /// 纯函数：清单里除了「已经显示的那只」以外，还要摆哪几只。
-    /// 单独拿出来是因为它是本片唯一有分支的判断，判决不必造窗口就能验。
-    /// </summary>
-    public static IReadOnlyList<PetDataStore.ActivePack> Plan(
-        string? shownPackId,
-        IReadOnlyList<PetDataStore.ActivePack> catalog)
-    {
-        var rest = new List<PetDataStore.ActivePack>();
-        foreach (PetDataStore.ActivePack pack in catalog)
-        {
-            if (string.Equals(pack.InstanceId, shownPackId, StringComparison.Ordinal))
-            {
-                continue; // 这一只就在主窗里
-            }
-
-            rest.Add(pack);
-        }
-
-        return rest;
-    }
-
-    /// <summary>
     /// 把一个素材包装成一条槽位：建实例 → 初始化 → 窗口 → 帧源句柄回填 → 鼠标接线 → 帧循环。
     /// 任何一步失败都只**跳过这一只**（日志留痕），不许连累已经在桌上的那几只。
     /// </summary>
@@ -156,7 +134,8 @@ internal sealed partial class PetWindowSet : IDisposable
         set.Settings = settings;
         set._store = store;
         IReadOnlyList<PetDataStore.ActivePack> catalog = store.ReadPets();
-        IReadOnlyList<PetDataStore.ActivePack> rest = Plan(shown is null ? null : shownPackId, catalog);
+        IReadOnlyList<string> hidden = settings?.Load().HiddenPets ?? Array.Empty<string>();
+        IReadOnlyList<PetDataStore.ActivePack> rest = Plan(shown is null ? null : shownPackId, catalog, hidden);
         foreach (PetDataStore.ActivePack pack in rest)
         {
             Slot? slot = Create(roster, pack);
@@ -259,6 +238,40 @@ internal sealed partial class PetWindowSet : IDisposable
         }
 
         _primaryLoop?.Start();
+    }
+
+    /// <summary>
+    /// 把清单里的一只重新摆上桌（2026-10-30：宠物页的「在桌面上显示」）。
+    /// 与装配期的区别只是时机：同一套 Create + Add，位置取它存过的那一处。
+    /// 已经摆着的那一只返回 true（幂等）—— 页面按钮点两下不该出现两只。
+    /// </summary>
+    public bool ShowPack(PetSurfaceRoster? roster, PetDataStore.ActivePack pack)
+    {
+        if (_disposed || pack is null)
+        {
+            return false;
+        }
+
+        if (Find(pack.InstanceId) is not null)
+        {
+            return true;
+        }
+
+        Slot? slot = Create(roster, pack);
+        if (slot is null)
+        {
+            return false;
+        }
+
+        Add(slot);
+        if (_started)
+        {
+            PlaceAtStart(slot, _slots.Count);
+            slot.Loop.Start();
+        }
+
+        KernelLog.Write($"pet-set-show pack={pack.InstanceId} {Describe()}");
+        return true;
     }
 
     /// <summary>把其余几只的窗口一起改成同一逻辑边长（设置页「宠物大小」）。</summary>

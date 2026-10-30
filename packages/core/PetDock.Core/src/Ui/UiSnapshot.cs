@@ -27,6 +27,13 @@ public sealed record PetLine(
 
     /// <summary>包内 icon.png/thumbnail.png 的绝对路径；没有就 null。</summary>
     public string? IconPath { get; init; }
+
+    /// <summary>
+    /// 这一只现在在不在桌面上（2026-10-30）。
+    /// 「从桌面移除」与「删除」分开之后，清单里的每一只都可能有两种状态：
+    /// 摆着，或者被用户收起。宠物页的按钮必须知道现在是哪一种，否则它只能猜、只能二选一做一个。
+    /// </summary>
+    public bool OnDesktop { get; init; } = true;
 }
 
 /// <summary>插件页一行。Granted 是当前有效的能力句柄数（原规格 14 §2「能力是句柄」）。
