@@ -182,5 +182,20 @@
   "cp.settings.sound": "Sound effects",
   "cp.settings.sound.hint": "Turn off to mute every pet at once",
   "cp.settings.celestial": "Celestial mode",
-  "cp.settings.celestial.hint": "Pets orbit the desktop centre together; dragging or throwing takes over"
+  "cp.settings.celestial.hint": "Pets orbit the desktop centre together; dragging or throwing takes over",
+  "cp.market.title": "Plugin market",
+  "cp.market.browse": "Browse plugin market…",
+  "cp.market.loading": "Loading plugin market…",
+  "cp.market.empty": "No plugins available yet",
+  "cp.market.offline": "Cannot reach the plugin market (check your network)",
+  "cp.market.unavailable": "Plugin market unavailable",
+  "cp.market.notInIndex": "{0} is not in the index (it may have changed)",
+  "cp.market.downloadFailed": "Download failed: {0}",
+  "cp.market.installed": "installed {0}",
+  "cp.market.update": "Update",
+  "cp.market.install": "Install",
+  "cp.market.col.name": "Plugin",
+  "cp.market.col.version": "Version",
+  "cp.market.col.size": "Size",
+  "cp.market.col.action": "Action"
 }

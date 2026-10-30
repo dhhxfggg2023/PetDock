@@ -98,6 +98,8 @@ internal static class UiSelfTest
             SoundChecks.Run(Check);
             // 2026-10-29 P4 第三块：agent 状态（本机文件驱动，ui-agent-*）。
             AgentChecks.Run(Check);
+            // 2026-10-30 插件市场：地址写死、索引结构、sha256 校验（不联网）。
+            MarketChecks.Run(Check);
             // 2026-10-29：素材包自带台词（点按/抛掷/落地优先说包里的句子）。
             PackLinesChecks.Run(Check);
             // 2026-10-29 窗口拓扑：抛掷的落点选择（纯几何）。

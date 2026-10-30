@@ -70,6 +70,11 @@ internal sealed partial class UiHost : IUiPageContext
 
     string? IUiPageContext.RemovePlugin(string pluginId) => RemovePluginFromPanel(pluginId);
 
+    Task<MarketResult> IUiPageContext.LoadMarketAsync() => LoadMarketAsync();
+
+    Task<UiCommandResult> IUiPageContext.InstallFromMarketAsync(string pluginId) =>
+        InstallFromMarketAsync(pluginId);
+
     IReadOnlyList<TrashLine> IUiPageContext.TrashPlugins() => TrashPlugins();
 
     Task<UiCommandResult> IUiPageContext.RestorePluginAsync(string dirName) =>

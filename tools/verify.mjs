@@ -159,6 +159,8 @@ function layersFor(config) {
       // 顺序有语义：摘要必须描述**已经通过自检的那一个 zip**。先算摘要后跑自检的话，
       // 一个自检失败的 zip 也会拿到 .sha256 旁车文件，下游会把它当作「已验证的产物」发布。
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
+      // 市场索引必须与发行包同一次构建产出：装的是 zip 里的插件，索引里写的是它们各自的 sha256。
+      { id: 'market-index', ...node('tools/gen-market-index.mjs'), marker: 'MARKET-OK' },
       { id: 'zip-sha256', kind: 'digest', marker: null },
     ],
   },

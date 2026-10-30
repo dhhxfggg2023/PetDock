@@ -177,6 +177,18 @@ public interface IUiPageContext
     /// <summary>删除用户安装的插件。返回 null = 成功。</summary>
     string? RemovePlugin(string pluginId);
 
+    /// <summary>
+    /// 打开插件市场：拉索引并返回可装的条目。**只有调用这一下才联网**（程序里唯一出网处）。
+    /// 失败时 <see cref="MarketResult.Error"/> 是机器可读短码，页面翻成人话。
+    /// </summary>
+    Task<MarketResult> LoadMarketAsync();
+
+    /// <summary>
+    /// 从市场装一只：下载 → 校验 sha256 → 交给安装器（同一条 InstallPlugin 管线）。
+    /// 用户没点确认就不会走到这里；解压与清单校验仍在后台线程。
+    /// </summary>
+    Task<UiCommandResult> InstallFromMarketAsync(string pluginId);
+
     /// <summary>回收站里的插件（按删除时间从新到旧；只读扫描，可能在 UI 线程调用）。</summary>
     IReadOnlyList<TrashLine> TrashPlugins();
 
@@ -226,3 +238,23 @@ public interface IUiPageContext
     /// </summary>
     string? InvokeCompanionCommand(string petId, string companionId, string commandId);
 }
+
+
+/// <summary>
+/// 市场加载结果：Entries 为空且 Error 为 null = 市场里确实没有插件；
+/// Error 非 null = 没拉到（离线、被墙、索引坏了），两者必须分开，不能都显示成「没有插件」。
+/// </summary>
+public sealed record MarketResult(IReadOnlyList<MarketEntryLine> Entries, string? Error)
+{
+    public static MarketResult Failed(string error) => new(Array.Empty<MarketEntryLine>(), error);
+}
+
+/// <summary>市场里的一行（界面用）。<see cref="InstalledVersion"/> 非 null 表示本地已有同 id 插件。</summary>
+public sealed record MarketEntryLine(
+    string Id,
+    string Name,
+    string Version,
+    string Summary,
+    long Bytes,
+    IReadOnlyList<string> Capabilities,
+    string? InstalledVersion);

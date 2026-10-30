@@ -114,6 +114,12 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    public Task<MarketResult> LoadMarketAsync() =>
+        Task.FromResult(MarketResult.Failed("cp.market.offline"));
+
+    public Task<UiCommandResult> InstallFromMarketAsync(string pluginId) =>
+        Task.FromResult(UiCommandResult.Failure("cp.market.offline"));
+
     /// <summary>判据可注入的回收站内容（默认空）。</summary>
     public List<TrashLine> Trash { get; } = new();
 

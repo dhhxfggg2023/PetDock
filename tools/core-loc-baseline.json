@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 34200,
+  "budget": 34500,
   "history": [
     {
       "date": "2026-10-18",
@@ -2849,6 +2849,43 @@
             "packages/core/PetDock.Core/src/Ui/TrayHost.cs"
           ],
           "lines": 16
+        }
+      ]
+    },
+    {
+      "date": "2026-10-30",
+      "measured": 34418,
+      "budget": 34500,
+      "note": "插件市场（用户要求：其他人下载后能在面板里装到所有者上传的插件）。这是程序里**唯一主动联网**的功能，所以边界都用代码与判据钉住：地址写死在一个常量（改地址必须改代码并过门禁 ui-market-fixed-endpoint），只走 https；下载地址前缀白名单（只允许本仓库 Releases）；每个插件包由 gen-market-index 用**确定性 zip** 打包（不写时间戳/权限位、条目排序固定、stored 不压缩），因此同内容永远同 sha256 —— 这一条是实测踩出来的：最初用 tar 打包，同内容两次哈希不同，会导致重新生成索引后已上传的包全部对不上。客户端下载后先校验 sha256 再交给既有安装器（清单校验/体积上限/取消/进度全复用同一条），对不上就删文件。市场**只列不随包发行的独立插件**（所有者口径）：内置插件列进去只会让列表全是「已装 0.1.0」，点更新只是把同一个文件再解一遍；因此内置插件只用来拒绝重名，不进索引。新增源码三片：下载层与类型（PluginMarket）、索引形状与校验（PluginMarketIndex）、宿主接线（UiHost.Market）。实测 33899 → 34418（+519）。判据面（MarketChecks.cs、gen-market-index.mjs）按 D-03a 不计。",
+      "attribution": [
+        {
+          "slice": "市场下载层：写死端点、禁跟随重定向、前缀白名单、下载并校验 sha256",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginMarket.cs"
+          ],
+          "lines": 171
+        },
+        {
+          "slice": "索引形状与结构判定：字段/长度/前缀/体积上限，坏索引整份拒绝",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginMarketIndex.cs"
+          ],
+          "lines": 173
+        },
+        {
+          "slice": "宿主接线：拉索引翻成界面行、市场安装复用既有安装管线、暂存区清理",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Market.cs"
+          ],
+          "lines": 141
+        },
+        {
+          "slice": "接口扩展：MarketResult/MarketEntryLine 记录 + 两个方法签名 + 接线",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
+          ],
+          "lines": 34
         }
       ]
     }

@@ -182,5 +182,20 @@
   "cp.settings.sound": "音效",
   "cp.settings.sound.hint": "关掉后桌面上所有宠物都不出声",
   "cp.settings.celestial": "天体模式",
-  "cp.settings.celestial.hint": "多只宠物一起时绕桌面中心转圈；拖动或抛掷时让位"
+  "cp.settings.celestial.hint": "多只宠物一起时绕桌面中心转圈；拖动或抛掷时让位",
+  "cp.market.title": "插件市场",
+  "cp.market.browse": "浏览插件市场…",
+  "cp.market.loading": "正在读取插件市场…",
+  "cp.market.empty": "市场里暂时没有插件",
+  "cp.market.offline": "连不上插件市场（检查网络或稍后再试）",
+  "cp.market.unavailable": "插件市场不可用",
+  "cp.market.notInIndex": "市场里没有 {0}（索引可能已更新）",
+  "cp.market.downloadFailed": "下载失败：{0}",
+  "cp.market.installed": "已装 {0}",
+  "cp.market.update": "更新",
+  "cp.market.install": "安装",
+  "cp.market.col.name": "插件",
+  "cp.market.col.version": "版本",
+  "cp.market.col.size": "大小",
+  "cp.market.col.action": "操作"
 }
