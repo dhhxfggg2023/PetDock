@@ -58,29 +58,39 @@ const OUT_OVERRIDE = argValue('--out');
 
 /** 版本号唯一事实源 = package.json 的 version（与 manifest/ABI 的语义化版本同形）。 */
 /**
- * 可复现的构建时间。同一个提交重复构建必须得到同一个值 —— 否则 zip 的 sha256 每次都变，
- * 「Release 与本地一致」这条判据就永远说不清是产物变了还是时间戳变了。
+ * 构建来源标识。同一个提交、同一棵干净的工作树重复构建必须得到同一份清单 ——
+ * 否则 zip 的 sha256 每次都变，「Release 与本地一致」这条判据就说不清是产物变了还是时间戳变了。
+ * 2026-10-30 上线第一天就撞到了：同一提交、同一棵树，两次 release+pack 出来的 zip 差 3 个字节。
  *
- * 2026-10-30：verify-release 上线第一天就撞到了这个 —— 同一个提交、同一个工作树，
- * 两次 release+pack 出来的 zip 差 3 个字节，全部来自 built_at 这一个字段。
+ * 但它是 **来源提交时间**，不是构建时刻 —— 这一点必须落在字段名里。
+ * 它以前叫 built_at，写的是 HEAD 的提交时间；发布一小时后看产物，就变成「一小时前构建的」，
+ * 而那个包其实是刚打的。名字骗人比数字错更难查。所以叫 source_commit_time。
  *
- * 取值顺序：git 的 HEAD 提交时间 → 环境变量 SOURCE_DATE_EPOCH → 最后才退回当前时间
- * （解压出来的源码包没有 .git，那时退化成不可复现是可接受的，但会打印一行说明）。
+ * 另外记 source_dirty：发布物必须来自干净的工作树，否则「这份 zip 对应哪棵树」无从回答。
+ * 取值顺序：git HEAD 的提交时间 → SOURCE_DATE_EPOCH → 退回当前时间（无 .git 时，会打印说明）。
  */
-function sourceDateEpoch() {
-  const fromEnv = process.env.SOURCE_DATE_EPOCH;
-  if (fromEnv && /^\d+$/.test(fromEnv)) {
-    return new Date(Number(fromEnv) * 1000).toISOString();
-  }
+function sourceIdentity() {
+  let commit = null;
+  let commitTime = null;
+  let dirty = true;
   try {
+    commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim() || null;
     const raw = execFileSync('git', ['log', '-1', '--format=%cI'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
     if (raw) {
-      return new Date(raw).toISOString();
+      commitTime = new Date(raw).toISOString();
     }
+    dirty = execFileSync('git', ['status', '--porcelain'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim().length > 0;
   } catch {
-    console.log('STAT release-clock source=wall-clock reason=no-git（产物因此不可复现）');
+    console.log('STAT release-source source=no-git（产物因此不可复现，也追溯不到提交）');
   }
-  return new Date().toISOString();
+  const fromEnv = process.env.SOURCE_DATE_EPOCH;
+  if (fromEnv && /^\d+$/.test(fromEnv)) {
+    commitTime = new Date(Number(fromEnv) * 1000).toISOString();
+  }
+  if (!commitTime) {
+    commitTime = new Date().toISOString();
+  }
+  return { commit, commitTime, dirty: commit === null ? true : dirty };
 }
 
 function readVersion() {
@@ -609,9 +619,12 @@ function main() {
   // ④ 产物清单（将来更新器只认版本号与签名，这份清单就是「这个版本装了哪些文件」的事实）
   if (!DRY_RUN && failures === 0) {
     const files = walkFiles(outDir).sort();
+    const source = sourceIdentity();
     const manifest = {
       version,
-      built_at: sourceDateEpoch(),
+      source_commit: source.commit,
+      source_commit_time: source.commitTime,
+      source_dirty: source.dirty,
       files: files.map((file) => ({
         path: path.relative(outDir, file).replaceAll('\\', '/'),
         sha256: sha256(file),
@@ -620,6 +633,12 @@ function main() {
     };
     fs.writeFileSync(path.join(outDir, 'release-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
     console.log(`STAT release-manifest files=${manifest.files.length}`);
+    console.log(
+      `STAT release-source commit=${source.commit ? source.commit.slice(0, 12) : '(none)'} time=${source.commitTime} dirty=${source.dirty}`,
+    );
+    if (source.dirty) {
+      console.log('RELEASE-WARN 工作树有未提交改动：这份产物对应哪棵树说不清，不能作为发布物（verify-release 的 ix-release-5 会红）');
+    }
   }
 
   if (failures > 0) {

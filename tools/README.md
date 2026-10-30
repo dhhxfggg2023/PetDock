@@ -36,7 +36,7 @@ node tools/verify.mjs --list # 打印层表与每层「证明什么 / 不证明�
 | `contract` | `--hosttest` / `--drivetest` / `--eventtest` / `--animtest` | HOST-OK / DRIVE-OK / EVENT-OK / ANIM-OK |
 | `window` | `--uitest`（截图与面板判据） | UI-OK |
 | `perf` | `--perftest` / `--residenttest` | PERF-OK / RESIDENT-PERF-OK |
-| `dist` | release → pack → portable-selftest → zip 摘要 | RELEASE-OK / PACK-OK / PORTABLE-OK |
+| `dist` | release → pack → portable-selftest → market-index → zip 摘要 → release-align | RELEASE-OK / PACK-OK / PORTABLE-OK / MARKET-OK / RELEASE-VERIFY-OK |
 
 `--only <层>[:<步>]` 单跑，`--config release` 换被验的产物，`--keep-going` 跨层继续。
 每步的 `.out`/`.err`、`verify.json` 与自动生成的 `README.md` 落在 `artifacts/verify/<stamp>/`。
