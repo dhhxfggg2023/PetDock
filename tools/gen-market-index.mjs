@@ -24,6 +24,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { collectFiles, writeDeterministicZip } from './lib/zip.mjs';
+import { sourceIdentity } from './lib/source.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -207,7 +208,10 @@ function main() {
   const badShape = plugins.filter((p) => typeof p.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(p.sha256));
   check('3', badShape.length === 0, 'bad-shape=' + badShape.length);
 
-  const index = { schema: 1, generated: new Date().toISOString(), plugins };
+  // generated 取**来源提交时间**，不是执行时刻：这个文件是 git 跟踪的，
+  // 用 wall clock 会让每次跑 dist 都把工作树弄脏，而下一次构建就变成「工作树不干净」，
+  // 发布门（ix-release-5）随即拒绝发布。可复现的构建不允许有这种自发漂移。
+  const index = { schema: 1, generated: sourceIdentity(REPO_ROOT).commitTime, plugins };
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(index, null, 2) + '\n', 'utf8');
   console.log('STAT market entries=' + plugins.length + ' builtin=' + builtinIds.size + ' out=' + path.relative(REPO_ROOT, outPath));

@@ -35,7 +35,8 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
-function crc32(buf) {
+/** 供校验方复用：算 CRC32（zip 里每个条目都带这个字段，两边不一致就是坏包）。 */
+export function crc32(buf) {
   let c = 0xffffffff;
   for (let i = 0; i < buf.length; i += 1) {
     c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
@@ -96,8 +97,14 @@ export function writeDeterministicZip(files) {
     cen.writeUInt32LE(CENTRAL, 0);
     cen.writeUInt16LE(20, 4);
     cen.writeUInt16LE(20, 6);
-    cen.writeUInt16LE(0x0800, 8);
-    cen.writeUInt16LE(0, 10);
+    cen.writeUInt16LE(0x0800, 8); // UTF-8 名称
+    // 压缩方法**必须**同时写进中央目录与本地头，且都是 deflate（8）。
+    // 2026-10-30 这里写的是 0（stored），而数据其实是 deflate：
+    //   · tar/libarchive 按本地头解压 → 正常，所以 portable-selftest 全绿；
+    //   · 资源管理器与 .NET ZipFile 按中央目录解压 → 把 deflate 流当原样字节写出去，
+    //     解出来的每个文件都是坏的（PetDock.Core.dll 1091584 字节变成 422717 字节的乱码）。
+    // 也就是说，**只有用户用的那个解压器会坏**，而我的自检用了另一个。
+    cen.writeUInt16LE(8, 10); // deflate（与本地头一致，这条由 ix-pack-4 卡住）
     cen.writeUInt16LE(0, 12);
     cen.writeUInt16LE(0x0021, 14);
     cen.writeUInt32LE(crc, 16);

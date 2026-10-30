@@ -64,7 +64,19 @@ async function main() {
   const workRoot = path.join(ARTIFACTS, '_portable');
   fs.rmSync(workRoot, { recursive: true, force: true });
   fs.mkdirSync(workRoot, { recursive: true });
-  execFileSync('tar', ['-xf', zipPath, '-C', workRoot], { cwd: REPO_ROOT, stdio: 'inherit' });
+  // 用 .NET 的 ZipFile 解压，而**不是** tar：这是与资源管理器同一条路径。
+  // tar（libarchive）按本地头解压，.NET / 资源管理器按中央目录解压 —— 两个头不一致的坏包
+  // 在 tar 下全绿、在用户那里全坏。2026-10-30 就这么发过一版：zip.mjs 中央目录把方法写成
+  // stored 而数据是 deflate，自检用 tar 所以没发现，用资源管理器解压得到的每个文件都是乱码。
+  // 自检必须走用户走的那条路，否则它测的是「我的解压器能读」，不是「用户的能读」。
+  const unzipScript = [
+    'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+    `[IO.Compression.ZipFile]::ExtractToDirectory('${zipPath.replace(/'/g, "''")}', '${workRoot.replace(/'/g, "''")}')`,
+  ].join('; ');
+  execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', unzipScript], {
+    cwd: REPO_ROOT,
+    stdio: 'inherit',
+  });
 
   const unpacked = path.join(workRoot, top);
   const exe = path.join(unpacked, 'PetDock.Core.exe');

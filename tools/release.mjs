@@ -19,6 +19,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { sourceIdentity } from './lib/source.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,42 +58,6 @@ const SKIP_PUBLISH = process.argv.includes('--skip-publish');
 const OUT_OVERRIDE = argValue('--out');
 
 /** 版本号唯一事实源 = package.json 的 version（与 manifest/ABI 的语义化版本同形）。 */
-/**
- * 构建来源标识。同一个提交、同一棵干净的工作树重复构建必须得到同一份清单 ——
- * 否则 zip 的 sha256 每次都变，「Release 与本地一致」这条判据就说不清是产物变了还是时间戳变了。
- * 2026-10-30 上线第一天就撞到了：同一提交、同一棵树，两次 release+pack 出来的 zip 差 3 个字节。
- *
- * 但它是 **来源提交时间**，不是构建时刻 —— 这一点必须落在字段名里。
- * 它以前叫 built_at，写的是 HEAD 的提交时间；发布一小时后看产物，就变成「一小时前构建的」，
- * 而那个包其实是刚打的。名字骗人比数字错更难查。所以叫 source_commit_time。
- *
- * 另外记 source_dirty：发布物必须来自干净的工作树，否则「这份 zip 对应哪棵树」无从回答。
- * 取值顺序：git HEAD 的提交时间 → SOURCE_DATE_EPOCH → 退回当前时间（无 .git 时，会打印说明）。
- */
-function sourceIdentity() {
-  let commit = null;
-  let commitTime = null;
-  let dirty = true;
-  try {
-    commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim() || null;
-    const raw = execFileSync('git', ['log', '-1', '--format=%cI'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
-    if (raw) {
-      commitTime = new Date(raw).toISOString();
-    }
-    dirty = execFileSync('git', ['status', '--porcelain'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim().length > 0;
-  } catch {
-    console.log('STAT release-source source=no-git（产物因此不可复现，也追溯不到提交）');
-  }
-  const fromEnv = process.env.SOURCE_DATE_EPOCH;
-  if (fromEnv && /^\d+$/.test(fromEnv)) {
-    commitTime = new Date(Number(fromEnv) * 1000).toISOString();
-  }
-  if (!commitTime) {
-    commitTime = new Date().toISOString();
-  }
-  return { commit, commitTime, dirty: commit === null ? true : dirty };
-}
-
 function readVersion() {
   const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
   if (!pkg.version || !/^\d+\.\d+\.\d+$/.test(pkg.version)) {
@@ -619,7 +584,7 @@ function main() {
   // ④ 产物清单（将来更新器只认版本号与签名，这份清单就是「这个版本装了哪些文件」的事实）
   if (!DRY_RUN && failures === 0) {
     const files = walkFiles(outDir).sort();
-    const source = sourceIdentity();
+    const source = sourceIdentity(REPO_ROOT);
     const manifest = {
       version,
       source_commit: source.commit,

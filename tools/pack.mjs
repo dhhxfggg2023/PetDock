@@ -8,7 +8,7 @@
 // 于是同一个提交、内容逐字节相同的两次构建产出两个不同 sha256 的 zip ——
 // 「Release 上的包 == 本地最新构建」这条判据因此永远说不清是产物变了还是时间戳变了。
 // 现在用 tools/lib/zip.mjs 自己写：不写时间戳（固定 1980-01-01）、不写权限位、
-// 条目按路径排序、stored 不压缩。同样的输入 → 同样的字节。
+// 条目按路径排序、deflate 固定级别 9。同样的输入 → 同样的字节。
 //
 // 早年用 tar 的理由（避免 ZipFile/Compress-Archive 的反斜杠与漏隐藏文件）依然成立，
 // 那些问题在自写实现里根本不存在。
@@ -18,14 +18,15 @@
 //   node tools/pack.mjs --out FILE     # 指定 zip 路径
 //   node tools/pack.mjs --keep-staging # 保留 artifacts/_pack/ 便于人工核对
 //
-// 退出码：0 = zip 已生成且三条判据全过；1 = 任一判据失败（此时删除半成品 zip）。
+// 退出码：0 = zip 已生成且四条判据全过；1 = 任一判据失败（此时删除半成品 zip）。
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { zipDirectory } from './lib/zip.mjs';
+import { inflateRawSync } from 'node:zlib';
+import { crc32, zipDirectory } from './lib/zip.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACTS = path.join(REPO_ROOT, 'artifacts');
@@ -117,6 +118,17 @@ function main() {
   const absent = selfContained.filter((file) => !entrySet.has(`${top}/${file}`));
   check('3', absent.length === 0, `absent=${absent.join(',') || 'none'}`);
 
+  // ix-pack-4：中央目录与本地头必须一致，且 CRC 与解压结果对得上。
+  // 2026-10-30 抓到真缺陷：中央目录把压缩方法写成 0（stored）而数据实际是 deflate。
+  // 两个头说法不同的 zip 就是坏包 —— tar 按本地头解压（自检全绿），
+  // 资源管理器与 .NET 按中央目录解压（用户拿到的每个文件都是乱码）。
+  const structure = inspectZipStructure(zipPath);
+  check('4', structure.problems.length === 0,
+    `entries=${structure.entries} crc-ok=${structure.crcOk} problems=${structure.problems.length}`);
+  for (const problem of structure.problems.slice(0, 5)) {
+    console.log(`  BAD ${problem}`);
+  }
+
   const bytes = fs.statSync(zipPath).size;
   console.log(`STAT pack version=${version} staged=${stagedFiles} entries=${entries.length} bytes=${bytes} zip=${path.relative(REPO_ROOT, zipPath)}`);
 
@@ -164,6 +176,81 @@ function main() {
   }
   console.log(`STAT pack-zone zone=${zoneState} zip=${path.basename(zipPath)}`);
   console.log('PACK-OK');
+}
+
+/**
+ * 逐条核对中央目录与本地头，并把数据解出来验 CRC。
+ * 两个头说法不一致的 zip 是坏包：不同解压器会给出不同结果，用户拿到的那份可能是乱码。
+ * 判据不看「哪种解压器能读」，只看「两种说法是否一致」。
+ */
+function inspectZipStructure(zipPath) {
+  const buf = fs.readFileSync(zipPath);
+  let end = -1;
+  for (let i = buf.length - 22; i >= 0; i -= 1) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      end = i;
+      break;
+    }
+  }
+  if (end < 0) {
+    fail('zip 里找不到中央目录结束记录');
+  }
+  const count = buf.readUInt16LE(end + 10);
+  let offset = buf.readUInt32LE(end + 16);
+  const problems = [];
+  let crcOk = 0;
+  for (let n = 0; n < count; n += 1) {
+    const methodC = buf.readUInt16LE(offset + 10);
+    const crcC = buf.readUInt32LE(offset + 16);
+    const compC = buf.readUInt32LE(offset + 20);
+    const uncompC = buf.readUInt32LE(offset + 24);
+    const nameLen = buf.readUInt16LE(offset + 28);
+    const extraLen = buf.readUInt16LE(offset + 30);
+    const commentLen = buf.readUInt16LE(offset + 32);
+    const localOff = buf.readUInt32LE(offset + 42);
+    const name = buf.toString('utf8', offset + 46, offset + 46 + nameLen);
+    offset += 46 + nameLen + extraLen + commentLen;
+
+    const methodL = buf.readUInt16LE(localOff + 8);
+    const crcL = buf.readUInt32LE(localOff + 14);
+    const compL = buf.readUInt32LE(localOff + 18);
+    const uncompL = buf.readUInt32LE(localOff + 22);
+    const nameLenL = buf.readUInt16LE(localOff + 26);
+    const extraLenL = buf.readUInt16LE(localOff + 28);
+    const nameL = buf.toString('utf8', localOff + 30, localOff + 30 + nameLenL);
+
+    if (nameL !== name) {
+      problems.push(name + ' 本地头里的名字是 ' + nameL);
+      continue;
+    }
+    if (methodC !== methodL) {
+      problems.push(name + ' 压缩方法 中央=' + methodC + ' 本地=' + methodL + '（解压器会给出不同结果）');
+      continue;
+    }
+    if (crcC !== crcL || compC !== compL || uncompC !== uncompL) {
+      problems.push(name + ' 大小/CRC 不一致 中央=(' + uncompC + ',' + compC + ',' + crcC.toString(16) + ') 本地=(' + uncompL + ',' + compL + ',' + crcL.toString(16) + ')');
+      continue;
+    }
+    const start = localOff + 30 + nameLenL + extraLenL;
+    const packed = buf.subarray(start, start + compL);
+    let plain;
+    try {
+      plain = methodC === 8 ? inflateRawSync(packed) : packed;
+    } catch (error) {
+      problems.push(name + ' 解压失败：' + error.message);
+      continue;
+    }
+    if (plain.length !== uncompC) {
+      problems.push(name + ' 解压后 ' + plain.length + ' 字节，头里写 ' + uncompC);
+      continue;
+    }
+    if (crc32(plain) !== crcC) {
+      problems.push(name + ' CRC 与解压结果对不上');
+      continue;
+    }
+    crcOk += 1;
+  }
+  return { entries: count, problems, crcOk };
 }
 
 /** 从 zip 的中央目录读出条目名（自写实现配套的只读解析，不引第三方库）。 */

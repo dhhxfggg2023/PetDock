@@ -151,7 +151,7 @@ function layersFor(config) {
   {
     name: 'dist',
     title: 'L5 真实发布物：release → pack → 解压后运行 → 摘要',
-    proves: '发布目录能装配、能封成一个单顶层目录的 zip、清单与条目集对账、解压后 --hosttest 仍全过；zip 的 sha256 随产物落盘。',
+    proves: '发布目录能装配、能封成一个单顶层目录的 zip、中央目录与本地头说法一致、清单与条目集对账、用 .NET ZipFile（资源管理器同一条路径）解压后 --hosttest 仍全过、同一棵树重跑得到同一份字节。',
     notProven: '不证明签名（本机无 signtool）、不证明自动更新（无规格）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。',
     steps: [
       { id: 'release', ...node('tools/release.mjs'), marker: 'RELEASE-OK', timeoutMs: 20 * 60 * 1000 },
@@ -162,6 +162,10 @@ function layersFor(config) {
       // 市场索引必须与发行包同一次构建产出：装的是 zip 里的插件，索引里写的是它们各自的 sha256。
       { id: 'market-index', ...node('tools/gen-market-index.mjs'), marker: 'MARKET-OK' },
       { id: 'zip-sha256', kind: 'digest', marker: null },
+      // 可复现不是口号，是判据：把同一棵树再装配一遍、再封一遍，产物必须逐字节相同。
+      // 2026-10-30 实测过远程包与本地包差 35 个条目（PE 时间戳/PDB GUID 不同），
+      // 而当时没有任何判据能说出「哪一次构建是错的」—— 靠人回忆。现在自己跑第二遍。
+      { id: 'repro', kind: 'repro', marker: 'REPRO-OK', timeoutMs: 20 * 60 * 1000 },
       // 本地产物绿了不代表**发布出去了**：把 zip 传到 Release 是手工的一步。
       // 2026-10-30 真漏过一次（加了市场却忘了重发本体），所以这一步必须机器盯着。
       // 它要联网，且只在 dist 层跑（--only dist / --all）；默认三层不碰它。
@@ -268,6 +272,14 @@ function runStep(step, dir) {
     return { id: step.id, code: result.ok ? 0 : 1, marker: null, markerOk: true, durationMs: Date.now() - started, out, err };
   }
 
+  if (step.kind === 'repro') {
+    const detail = runRepro(step, dir);
+    fs.writeFileSync(err, '', 'utf8');
+    const ok = detail.includes(step.marker);
+    fs.writeFileSync(out, detail, 'utf8');
+    return { id: step.id, code: ok ? 0 : 1, marker: step.marker, markerOk: ok, durationMs: Date.now() - started, out, err };
+  }
+
   // guard 是「跑之前就得成立的前提」：不成立时**不要**退回某个默认值继续跑。
   // H3 那次假红（基线 19.64MB vs 裸跑 23.7→30.6MB）就是静默退回默认花名册的形状。
   if (step.guard) {
@@ -330,6 +342,54 @@ function zipDigest() {
     ok: true,
     detail: `CHECK verify-dist-zip-sha256 PASS sha256=${digest} bytes=${bytes} sidecar=${where}`,
   };
+}
+
+/**
+ * 可复现自证：同一棵树，再装配一遍、再封一遍，zip 的 sha256 必须不变。
+ *
+ * 为什么这一条非有不可：adjust 过 sha256 的构建如果只在「第二次」才不同，
+ * 单次构建永远看不出来；而它一旦发生，「Release 上的包 == 本地最新构建」这条判据
+ * 就会把人的注意力引到「是不是忘了上传」，而不是「构建本身不确定」。
+ * 判据只认第二次跑出来的字节。
+ */
+function runRepro(step, dir) {
+  const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+  const rel = `artifacts/dist/PetDock-${pkg.version}-win-x64.zip`;
+  const abs = path.join(REPO_ROOT, rel);
+  const lines = [];
+  if (!fs.existsSync(abs)) {
+    return `CHECK verify-${step.id} FAIL 缺 ${rel}（先跑 pack）\n`;
+  }
+  const before = createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
+  const logPath = path.join(dir, `${step.id}.log`);
+  const logFd = fs.openSync(logPath, 'w');
+  try {
+    for (const script of ['tools/release.mjs', 'tools/pack.mjs']) {
+      const result = spawnSync(NODE, [script], {
+        cwd: REPO_ROOT,
+        stdio: ['ignore', logFd, logFd],
+        env: process.env,
+        timeout: step.timeoutMs ?? STEP_TIMEOUT_MS,
+      });
+      lines.push(`RUN ${script} exit=${result.status}`);
+      if (result.status !== 0) {
+        lines.push(`  → 第二次构建失败，详见 ${path.relative(REPO_ROOT, logPath)}`);
+        return lines.join('\n') + `\nCHECK verify-${step.id} FAIL 第二次构建没跑通\n`;
+      }
+    }
+  } finally {
+    fs.closeSync(logFd);
+  }
+  const after = createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
+  lines.push(`BEFORE sha256=${before}`, `AFTER  sha256=${after}`);
+  if (before !== after) {
+    lines.push('  → 同一棵树重跑得到不同产物：构建不可复现，发布门无法判断「Release 上的包是不是最新构建」');
+    lines.push('  → 先看 artifacts/release/<version>/release-manifest.json 的 source_dirty 与 source_commit');
+    return lines.join('\n') + `\nCHECK verify-${step.id} FAIL 两次构建不一致\n`;
+  }
+  lines.push(`CHECK verify-${step.id} PASS 重新装配+封装得到同一份字节 sha256=${after}`);
+  lines.push('REPRO-OK');
+  return lines.join('\n') + '\n';
 }
 
 function printList(config) {
