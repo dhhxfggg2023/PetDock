@@ -87,15 +87,20 @@ internal static partial class ThrottleChecks
         {
             // 「没被盖住」的构造：前台是我们自己的小窗，宠物窗上没有别的顶层窗。
             SmallForeground();
-            DefaultActive(Done, fixture);
-            ProbeFailureInert(Done, fixture);
+
+            // 这些判据问的是「决策层在某种世界里怎么判」，而世界由前台决定：前台若是一个盖满
+            // 显示器的窗，Decide 一律回全屏档，这几条会读出 tier=fullscreen 并判红 —— 红的是桌面，
+            // 不是产品。先把世界量出来，再交给每条判据自己决定「下结论还是登记环境跳过」。
+            string? world = EnsureNotFullscreenWorld(fixture.Handle);
+            DefaultActive(Done, fixture, world);
+            ProbeFailureInert(Done, fixture, world);
 
             // 「真的被盖住」的构造：一个真的顶层窗压在宠物窗上面。
             using (Form coverer = fixture.CoverWhole())
             {
                 OccludedByWindow(Done, fixture, coverer);
-                OccludedPeriod(Done, fixture);
-                CloakedNotOcclusion(Done, fixture);
+                OccludedPeriod(Done, fixture, world);
+                CloakedNotOcclusion(Done, fixture, world);
             }
         }
         finally
@@ -126,7 +131,7 @@ internal static partial class ThrottleChecks
     }
 
     /// <summary>① 默认档位：没有全屏、没有被盖、内容不静止 ⇒ Active / active / 33.3ms。</summary>
-    private static void DefaultActive(Check done, LayerFixture fixture)
+    private static void DefaultActive(Check done, LayerFixture fixture, string? world)
     {
         var policy = new FrameThrottlePolicy();
         ThrottleDecision decision = policy.Decide(fixture.Inputs(reused: false), null, null);
@@ -134,16 +139,16 @@ internal static partial class ThrottleChecks
             && string.Equals(decision.Reason, "active", StringComparison.Ordinal)
             && decision.Submit
             && Near(decision.TargetFrameMs, 1000.0 / 30.0);
-        done("ui-throttle-tier-default-active", ok,
+        WorldVerdict(done, "ui-throttle-tier-default-active", ok,
             "tier=" + Token(decision.Tier)
             + " reason=" + decision.Reason
             + " target=" + Fmt(decision.TargetFrameMs) + "ms"
             + " fg=" + ForegroundDescription()
-            + " probeFails=" + policy.ProbeFailures.ToString(CultureInfo.InvariantCulture));
+            + " probeFails=" + policy.ProbeFailures.ToString(CultureInfo.InvariantCulture), world);
     }
 
     /// <summary>⑩ 探测失败不冻结：坏句柄 / 抛异常的 alpha 采样一律退回 Active，且计数。</summary>
-    private static void ProbeFailureInert(Check done, LayerFixture fixture)
+    private static void ProbeFailureInert(Check done, LayerFixture fixture, string? world)
     {
         var policy = new FrameThrottlePolicy();
         int before = policy.ProbeFailures;
@@ -173,7 +178,7 @@ internal static partial class ThrottleChecks
             detail = "threw " + error.GetType().Name + ": " + error.Message;
         }
 
-        done("ui-throttle-probe-failure-inert", ok, detail);
+        WorldVerdict(done, "ui-throttle-probe-failure-inert", ok, detail, world);
     }
 
     /// <summary>⑤ 遮挡：真的被一个顶层窗盖住 ⇒ 点探针判遮挡，且读数给得出点与盖住者。</summary>
@@ -193,7 +198,7 @@ internal static partial class ThrottleChecks
     }
 
     /// <summary>④ 遮挡档周期 = 100ms（绝对值，不受用户设置影响）。</summary>
-    private static void OccludedPeriod(Check done, LayerFixture fixture)
+    private static void OccludedPeriod(Check done, LayerFixture fixture, string? world)
     {
         // 用户设置故意给 60fps：遮挡档必须压回 100ms，而不是跟着用户设置烧电。
         var policy = new FrameThrottlePolicy();
@@ -202,15 +207,15 @@ internal static partial class ThrottleChecks
         bool ok = decision.Tier == FrameTier.Occluded
             && Near(decision.TargetFrameMs, FrameThrottlePolicy.OccludedFrameMs)
             && string.Equals(decision.Reason, "occluded-point", StringComparison.Ordinal);
-        done("ui-throttle-occluded-period", ok,
+        WorldVerdict(done, "ui-throttle-occluded-period", ok,
             "tier=" + Token(decision.Tier)
             + " target=" + Fmt(decision.TargetFrameMs) + "ms"
             + " setting=" + Fmt(1000.0 / 60.0) + "ms"
-            + " reason=" + decision.Reason);
+            + " reason=" + decision.Reason, world);
     }
 
     /// <summary>⑦ 遮挡不因 cloaked 变化：同一读数里两个口径并存，cloaked=0 而档位仍是遮挡。</summary>
-    private static void CloakedNotOcclusion(Check done, LayerFixture fixture)
+    private static void CloakedNotOcclusion(Check done, LayerFixture fixture, string? world)
     {
         var probe = new ThrottleProbe();
         bool cloakedOk = probe.TrySampleCloaked(fixture.Handle, out int cloaked);
@@ -221,11 +226,11 @@ internal static partial class ThrottleChecks
         bool ok = cloakedOk && cloaked == 0
             && decision.Tier == FrameTier.Occluded
             && string.Equals(decision.Reason, "occluded-point", StringComparison.Ordinal);
-        done("ui-throttle-cloaked-not-occlusion", ok,
+        WorldVerdict(done, "ui-throttle-cloaked-not-occlusion", ok,
             "cloaked=" + cloaked.ToString(CultureInfo.InvariantCulture)
             + " cloakedQueryOk=" + Flag(cloakedOk)
             + " tier=" + Token(decision.Tier)
-            + " reason=" + decision.Reason);
+            + " reason=" + decision.Reason, world);
     }
 
     /// <summary>⑥ 遮挡：透明点不算 —— 盖住宠物窗的透明角不得判遮挡。</summary>

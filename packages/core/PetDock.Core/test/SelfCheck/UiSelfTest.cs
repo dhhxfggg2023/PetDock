@@ -33,6 +33,13 @@ internal static class UiSelfTest
         int shotIdx = Array.FindIndex(args, a => string.Equals(a, "--shots", StringComparison.Ordinal));
         _shotsDir = shotIdx >= 0 && args.Length > shotIdx + 1 ? args[shotIdx + 1] : null;
 
+        // 负例探针（仅诊断用）：把「前台不是全屏」这一世界人为标成不可用，证明依赖它的判据
+        // 真的会走环境跳过那条分支，而不是只在代码里写着。默认不设置 = 一次 no-op。
+        ThrottleChecks.ForcedUnavailable = Array.Exists(
+            args, a => string.Equals(a, "--world-probe=unavailable", StringComparison.Ordinal))
+            ? "probe=forced-by-caller"
+            : null;
+
         try
         {
             // 夹具落点先量一次并如实打出来（2026-10-30）：受限令牌下 %TEMP% 不可写时会退到构建输出

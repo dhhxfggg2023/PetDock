@@ -29,6 +29,22 @@ internal static class ResidentLoopChecks
         WindowAndLoop(check);
     }
 
+/// <summary>
+    /// 世界状态（「前台不是全屏」）建不出来时按环境跳过登记，否则照常下结论。
+    /// 口径与 ThrottleChecks.WorldVerdict 同源（读数的拼法只有一个拥有者：SkipLedger.EnvironmentSkip）；
+    /// 这里各自一份是因为两个文件用的是各自的判据回调委托类型。
+    /// </summary>
+    private static void WorldVerdict(Check check, string name, bool ok, string detail, string? world)
+    {
+        if (world is null)
+        {
+            check(name, ok, detail);
+            return;
+        }
+
+        check(name, true, SkipLedger.EnvironmentSkip(detail, world));
+    }
+
     private static void WindowAndLoop(Check check)
     {
         // 帧循环只在「前台不是全屏」时出帧：前台若是一个盖满显示器的程序，第一个 tick 就会把
@@ -85,10 +101,12 @@ internal static class ResidentLoopChecks
         }
 
         check("ui-resident-window-visible", visible, $"visible={visible}");
-        check("ui-resident-frame-loop", world is null && pumping && framesAfterStart > 0,
+        // 帧循环只在「前台不是全屏」时出帧。世界建不出来（前台被别的程序的全屏窗占着）时，
+        // 泵按设计就停着、帧数恒为 0 —— 这条判据没验到，按环境跳过登记（见 WorldVerdict 的说明）。
+        WorldVerdict(check, "ui-resident-frame-loop", pumping && framesAfterStart > 0,
             $"pumping={pumping} frames={framesAfterStart} waitMs={WaitMs}"
-            + $" tier={loop.Tier} skipped={loop.Skipped} reused={window.LastFrameReused} ticks+{ticksInWindow}"
-            + (world is null ? string.Empty : " world=" + world));
+            + $" tier={loop.Tier} skipped={loop.Skipped} reused={window.LastFrameReused} ticks+{ticksInWindow}",
+            world);
         check("ui-resident-hidden-stops-pump", stopped,
             $"framesAfterHide={framesAfterHide} pumping={loop.Pumping}");
     }

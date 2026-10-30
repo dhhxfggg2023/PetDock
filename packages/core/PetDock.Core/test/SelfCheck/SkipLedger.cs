@@ -56,6 +56,19 @@ internal sealed class SkipLedger
     /// <summary>detail 里的「没人接」标记：同一条 SKIP 通道，但判红。</summary>
     internal const string UnownedMark = "(unowned)";
 
+    /// <summary>
+    /// 环境缺失导致的跳过读数（2026-10-30）：调用点只给**读数**与**缺的是什么条件**，
+    /// 标记由账本拼 —— 标记只有这一处定义，调用点拼错就骗不过账本。
+    ///
+    /// 为什么需要它：有些判据断言的是「某一种世界状态里的产品行为」（例如「前台不是全屏」时
+    /// 帧泵该怎样）。世界状态由判据自己摆，但摆不出来的原因是**桌面被别的程序占着**
+    /// （浏览器/播放器/游戏全屏在前台）—— 那不是产品缺陷，也不是可以假装通过的事。
+    /// 这类判据既不能判绿（没验到），也不该判红（红的不是产品）：按 Environment 登记，
+    /// 末行 marker 变 `UI-OK skipped=N`，跳过看得见、读数原样打出去。
+    /// </summary>
+    internal static string EnvironmentSkip(string detail, string missing) =>
+        detail + " world-unavailable(" + missing + ") " + SkippedMark;
+
     private readonly SkipEmit _emit;
     private readonly List<string> _skipKeys = new();
 

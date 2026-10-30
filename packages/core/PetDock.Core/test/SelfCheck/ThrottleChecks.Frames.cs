@@ -87,51 +87,45 @@ internal static partial class ThrottleChecks
             //   ticks >= 10 —— 窗口里泵真的跑了足够多 tick（相对下界，不是帧数快照）；
             //   composed >= ticks —— 合成本身**不被档位跳过**（t11 的语义，动画能不能回来的判据面）；
             //   submitted <= 4 —— 真的上屏次数被压到极低（同窗 30fps 本该 ~12 次）。
-            bool skipsOk = world is null
-                && tier == FrameTier.Idle
+            bool skipsOk = tier == FrameTier.Idle
                 && ticks >= 10
                 && submitted <= 4
                 && composed >= ticks;
-            done("ui-throttle-idle-skips-submit", skipsOk,
+            WorldVerdict(done, "ui-throttle-idle-skips-submit", skipsOk,
                 "tier=" + Token(tier)
                 + " ticks=" + ticks.ToString(CultureInfo.InvariantCulture)
                 + " composed=" + composed.ToString(CultureInfo.InvariantCulture)
                 + " submitted=" + submitted.ToString(CultureInfo.InvariantCulture)
                 + " skipped=" + skipped.ToString(CultureInfo.InvariantCulture)
-                + " idleTicks=" + idleDecisions.ToString(CultureInfo.InvariantCulture)
-                + WorldSuffix(world));
+                + " idleTicks=" + idleDecisions.ToString(CultureInfo.InvariantCulture), world);
 
             // 静止档的周期上限：设置 16.7ms ⇒ 档位给 33.3ms（max(设置, 1000/30)）。
             // 周期与档位取自**同一次**读数（after），不再隔一次判据行落盘去读第二遍。
             double idleTarget = after.TargetFrameMs;
-            bool capOk = world is null
-                && tier == FrameTier.Idle
+            bool capOk = tier == FrameTier.Idle
                 && Near(idleTarget, FrameThrottlePolicy.IdleCapMs)
                 && idleTarget > userFrameMs;
-            done("ui-throttle-idle-period-cap", capOk,
+            WorldVerdict(done, "ui-throttle-idle-period-cap", capOk,
                 "setting=" + Fmt(userFrameMs) + "ms"
                 + " tier=" + Token(tier)
-                + " target=" + Fmt(idleTarget) + "ms"
-                + WorldSuffix(world));
+                + " target=" + Fmt(idleTarget) + "ms", world);
 
             // ⑥ **确定性判据**（2026-10-25 新增）：只问「这一窗里的 tick 判成了什么」，
             //    不含墙上时钟、也不读任何瞬间档位。两句都是产品的记账：IdleDecisions 的增量
             //    == 窗口 tick 数 ⇒ 每 tick 都判成静止；Composed 的增量 == 同一数 ⇒ 每 tick 都真的合成了。
-            bool decidedOk = world is null
-                && settled
+            bool decidedOk = settled
                 && ticks >= WindowTicks
                 && idleDecisions == ticks
                 && composed == ticks;
-            done("ui-throttle-idle-decided-idle", decidedOk,
+            WorldVerdict(done, "ui-throttle-idle-decided-idle", decidedOk,
                 "settled=" + Flag(settled)
                 + " ticks=" + ticks.ToString(CultureInfo.InvariantCulture)
                 + " idleTicks=" + idleDecisions.ToString(CultureInfo.InvariantCulture)
                 + " composed=" + composed.ToString(CultureInfo.InvariantCulture)
                 + " tier=" + Token(tier)
-                + " target=" + Fmt(after.TargetFrameMs) + "ms"
-                + WorldSuffix(world));
+                + " target=" + Fmt(after.TargetFrameMs) + "ms", world);
 
-            DiagnosticLine(done, loop);
+            DiagnosticLine(done, loop, world);
 
             // 全屏档：真的前台窗盖满显示器。
             FullscreenChecks(done, loop, fixture);
@@ -219,8 +213,8 @@ internal static partial class ThrottleChecks
             Spin(300);
             bool hiddenNoHeal = !loop.Pumping && loop.Ticks == ticksBeforeHidden;
 
-            bool allOk = world is null && exitOk && healOk && exitedAgain && hiddenNoHeal;
-            done("ui-throttle-pump-self-heals", allOk,
+            bool allOk = exitOk && healOk && exitedAgain && hiddenNoHeal;
+            WorldVerdict(done, "ui-throttle-pump-self-heals", allOk,
                 "pumpingBeforeExit=" + Flag(startedPumping)
                 + " pumpingAfterExit=" + Flag(pumpingLied)
                 + " exitReason=" + (exitReason.Length == 0 ? "(none)" : exitReason)
@@ -233,8 +227,7 @@ internal static partial class ThrottleChecks
                 + " hiddenPumpingAfter=" + Flag(loop.Pumping)
                 + " hiddenTicks+" + (loop.Ticks - ticksBeforeHidden).ToString(CultureInfo.InvariantCulture)
                 + " ticksBeforeExit=" + ticksBeforeExit.ToString(CultureInfo.InvariantCulture)
-                + " paths=只验了 tick-failed（内容源抛异常）；tick-returned-false / no-tick 未造"
-                + WorldSuffix(world));
+                + " paths=只验了 tick-failed（内容源抛异常）；tick-returned-false / no-tick 未造", world);
         }
         catch (Exception error)
         {

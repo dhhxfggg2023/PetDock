@@ -289,6 +289,11 @@ function runStep(step, dir) {
 }
 
 // D-18 的一半：zip 的摘要随产物落盘，产物能自证「我是被验证过的这一个」。
+//
+// 2026-10-30 改口径：旁车由 tools/pack.mjs 在封装成功时写，这里改为**核对**，不再覆盖。
+// 原先只有这里写旁车，`npm run dist` 重建 zip 却不刷新旁车，于是 dist/ 里同时躺着一个新 zip
+// 和一个描述旧 zip 的 .sha256 —— 谁拿它对账都会验错东西，而且没有任何判据报这件事。
+// 核对而不是重写，才是「产物自证」：重写等于让被测者自己出题自己判卷。
 function zipDigest() {
   const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
   const rel = `artifacts/dist/PetDock-${pkg.version}-win-x64.zip`;
@@ -296,11 +301,21 @@ function zipDigest() {
   if (!fs.existsSync(abs)) return { ok: false, detail: `CHECK verify-dist-zip-sha256 FAIL 缺 ${rel}` };
   const digest = createHash('sha256').update(fs.readFileSync(abs)).digest('hex');
   const sidecar = `${abs}.sha256`;
-  fs.writeFileSync(sidecar, `${digest}  ${path.basename(abs)}\n`, 'utf8');
   const bytes = fs.statSync(abs).size;
+  const where = path.relative(REPO_ROOT, sidecar);
+  if (!fs.existsSync(sidecar)) {
+    return { ok: false, detail: `CHECK verify-dist-zip-sha256 FAIL 缺旁车 ${where}（由 tools/pack.mjs 在封装成功时写）` };
+  }
+  const declared = fs.readFileSync(sidecar, 'utf8').trim().split(/\s+/)[0];
+  if (declared !== digest) {
+    return {
+      ok: false,
+      detail: `CHECK verify-dist-zip-sha256 FAIL 旁车与产物不符 declared=${declared} actual=${digest} 产物=${rel}（zip 被重建而旁车没跟上，跑 npm run dist 会一起刷新）`,
+    };
+  }
   return {
     ok: true,
-    detail: `CHECK verify-dist-zip-sha256 PASS sha256=${digest} bytes=${bytes} sidecar=${path.relative(REPO_ROOT, sidecar)}`,
+    detail: `CHECK verify-dist-zip-sha256 PASS sha256=${digest} bytes=${bytes} sidecar=${where}`,
   };
 }
 

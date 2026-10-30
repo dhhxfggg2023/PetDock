@@ -17,6 +17,7 @@
 // 退出码：0 = zip 已生成且三条判据全过；1 = 任一判据失败（此时删除半成品 zip）。
 
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -122,9 +123,20 @@ function main() {
   }
   if (failures > 0) {
     fs.rmSync(zipPath, { force: true });
+    // 判据没过就把旁车一起删掉：留着它等于给一个坏产物发「已校验」的标签。
+    fs.rmSync(zipPath + '.sha256', { force: true });
     console.log(`PACK-FAIL checks=${failures}`);
     process.exit(1);
   }
+
+  // 旁车必须**和 zip 同一次生成**（2026-10-30 抓到的真缺陷）：原先只有 `verify --all` 的
+  // digest 步骤写 .sha256，于是 `npm run dist` 重建 zip 之后，旁车还停在旧内容上，
+   // 两个文件对不上而没人发现 —— 下游拿它当「这个产物被验证过」的证据就会验错东西。
+   // 现在封装成功即写旁车；verify 的 digest 步骤改为**核对**一致性，不再覆盖。
+  const digest = createHash('sha256').update(fs.readFileSync(zipPath)).digest('hex');
+  const sidecar = `${zipPath}.sha256`;
+  fs.writeFileSync(sidecar, `${digest}  ${path.basename(zipPath)}\n`, 'utf8');
+  console.log(`STAT pack-sha256 sha256=${digest} sidecar=${path.relative(REPO_ROOT, sidecar)}`);
   console.log('PACK-OK');
 }
 

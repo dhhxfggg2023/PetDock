@@ -51,6 +51,21 @@ internal static class PetWindowChecks
             "catalog=0");
     }
 
+    /// <summary>
+    /// 世界状态（「前台不是全屏」）建不出来时按环境跳过登记，否则照常下结论。
+    /// 口径与 ThrottleChecks.WorldVerdict 同源（读数拼法只有一个拥有者：SkipLedger.EnvironmentSkip）。
+    /// </summary>
+    private static void WorldVerdict(Check check, string name, bool ok, string detail, string? world)
+    {
+        if (world is null)
+        {
+            check(name, ok, detail);
+            return;
+        }
+
+        check(name, true, SkipLedger.EnvironmentSkip(detail, world));
+    }
+
     /// <summary>窗口 + 泵：两只真的各自可见、各自出帧，切换全部一次管到两只。</summary>
     private static void SetChecks(Check check)
     {
@@ -73,20 +88,26 @@ internal static class PetWindowChecks
             long ticks0 = secondLoop.Ticks;
             bool ticking = WaitFor(2000, () => secondLoop.Ticks > ticks0);
 
+            // 「泵在不在跑」取决于前台是不是全屏：前台被别的程序的全屏窗占着时产品按设计停泵，
+            // 这两条判据就无从验证。世界建不出来时按环境跳过登记（见本文件 WorldVerdict）。
+            string? world = ThrottleChecks.EnsureNotFullscreenWorld(primary.WindowHandle);
+
             // 两只窗口的横坐标必须拉开：叠在一起时用户只看见一只，而判据会「两只都可见」全绿。
             int gap = Math.Abs(second.CurrentPosition.X - primary.CurrentPosition.X);
-            check(
+            WorldVerdict(
+                check,
                 "ui-set-two-windows",
                 bothVisible && bothPumping && ticking && gap >= 120,
                 $"visible={Flag(primary.Visible)}/{Flag(second.Visible)}"
                 + $" pumping={Flag(primaryLoop.Pumping)}/{Flag(secondLoop.Pumping)}"
-                + $" ticks={secondLoop.Ticks} gap={gap}");
+                + $" ticks={secondLoop.Ticks} gap={gap}",
+                world);
 
             set.ToggleAll();
             bool hidden = WaitFor(4000, () => !primary.Visible && !second.Visible && !primaryLoop.Pumping && !secondLoop.Pumping);
             set.ToggleAll();
             bool shown = WaitFor(4000, () => primary.Visible && second.Visible && secondLoop.Pumping);
-            check("ui-set-toggle-all", hidden && shown, $"hidden={Flag(hidden)} shownAgain={Flag(shown)}");
+            WorldVerdict(check, "ui-set-toggle-all", hidden && shown, $"hidden={Flag(hidden)} shownAgain={Flag(shown)}", world);
 
             // 托盘的「隐藏宠物」= 主窗 Hide + 集合 HideAll（UiHost.HidePet 的两步）：
             // 只做前一半时第二只还在屏幕上出帧 —— 这条判据就是那半步的守门人。

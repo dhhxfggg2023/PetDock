@@ -11,7 +11,9 @@ namespace PetDock.Hosting;
 internal static partial class ThrottleChecks
 {
     /// <summary>⑫ 诊断包读到档位：一行文本里 tier/ticks/submitted 都是真读数，不是编的。</summary>
-    private static void DiagnosticLine(Check done, ResidentFrameLoop loop)
+    /// <param name="world">「前台不是全屏」这一世界的失败原因（null = 世界成立）。建不出来时这条
+    /// 判据没验到（泵被全屏档停掉，ticks 恒为 0），按环境跳过登记，见 WorldVerdict。</param>
+    private static void DiagnosticLine(Check done, ResidentFrameLoop loop, string? world)
     {
         string root = System.IO.Path.Combine(
             AppContext.BaseDirectory, "petdock-throttle-diag-" + Guid.NewGuid().ToString("N"));
@@ -42,14 +44,14 @@ internal static partial class ThrottleChecks
                 && readings.ThrottleTicks > 0
                 && readings.ThrottleTicks >= ticksBefore
                 && readings.ThrottleTicks <= ticksAfter;
-            done("ui-throttle-diagnostic-line", ok,
+            WorldVerdict(done, "ui-throttle-diagnostic-line", ok,
                 "tier=" + tier
                 + " ticks=" + readings.ThrottleTicks.ToString(CultureInfo.InvariantCulture)
                 + " window=" + ticksBefore.ToString(CultureInfo.InvariantCulture)
                 + ".." + ticksAfter.ToString(CultureInfo.InvariantCulture)
                 + " submitted=" + readings.ThrottleSubmitted.ToString(CultureInfo.InvariantCulture)
                 + " hasTierToken=" + Flag(hasTierToken)
-                + " line=" + ExtractThrottleLine(summary));
+                + " line=" + ExtractThrottleLine(summary), world);
         }
         finally
         {

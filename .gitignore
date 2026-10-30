@@ -50,6 +50,12 @@ tools/**/*.scan.json
 # 金图夹具跑挂时落在仓库根的诊断日志（测试产物，不是源码）
 golden-diag.*
 
+# 未展开的 %SystemDrive% 字面目录（环境产物，不是我们的代码）：跑门禁/自检时会在仓库根出现，
+# 里面只有 Windows 组件缓存（ProgramData\Microsoft\Windows\Caches\*.db）。某个进程把没展开的
+# 环境变量当成了相对路径，落点由它的工作目录决定 —— 那是环境侧的行为，仓库只管它别进版本库。
+# 目录可以随时整个删掉，删了下次跑还会再出现；不要为它改 ACL 或改工作目录。
+%SystemDrive%/
+
 # ---- 探针临时件（scratch、一次性取证输出、对照实验方案）----
 # tools/probes/ 是排障与开发工作区：一次性验证脚本、截图、DIB 转储、对照实验方案，以及
 # 模型路由探针（route-report.py / scan-free-lane.mjs / probe-egress.mjs / probe-plugin-net.mjs）。

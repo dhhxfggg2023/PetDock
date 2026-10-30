@@ -76,8 +76,21 @@ internal static partial class ThrottleChecks
     /// 抢前台照做（让世界尽量可控），但它**不再**参与结论。
     /// </summary>
     /// <param name="petWindow">宠物窗句柄：全屏那一问要拿它定位显示器（多屏下别的屏上的全屏应用不该算）。</param>
+    /// <summary>
+    /// 负例探针（`--world-probe=unavailable`，仅诊断用）：把「世界不可用」人为立起来，
+    /// 用来证明**跳过路径真的会生效** —— 只看代码说「建不出来就跳过」，没有任何判据能证明
+    /// 那条分支跑得到，等于又一条靠嘴说的结论。默认 null，是一次 no-op，不影响正常运行。
+    /// 与 SkipLedger.ProbeFromArgs 同源（那里证的是「跳过改变结论」，这里证的是「世界失败会走跳过」）。
+    /// </summary>
+    internal static string? ForcedUnavailable;
+
     internal static string? EnsureNotFullscreenWorld(IntPtr petWindow)
     {
+        if (ForcedUnavailable is not null)
+        {
+            return ForcedUnavailable;
+        }
+
         _ = SmallForeground();
         var probe = new ThrottleProbe();
 
@@ -106,6 +119,29 @@ internal static partial class ThrottleChecks
 
     /// <summary>把世界状态失败原因拼进判据读数（null ⇒ 空串）。</summary>
     private static string WorldSuffix(string? world) => world is null ? string.Empty : " world=" + world;
+
+    /// <summary>
+    /// 世界状态（「前台不是全屏」）建不出来时，依赖它的判据按**环境跳过**登记（2026-10-30）。
+    ///
+    /// 为什么不再判红：判据要断言的是「前台不是全屏」这一世界里的产品行为。当前台真被一个盖满
+    /// 显示器的窗（浏览器 / 播放器 / 全屏游戏）占着时，这个世界**造不出来**，产品按设计进全屏档
+    /// 并停泵 —— 读数会是 ticks=0 / tier=fullscreen，读起来像产品坏了，其实桌面状态如此。
+    /// 「绝不假装成立」那条纪律继续成立：这里既不判绿（没验到），也不判红（红的不是产品），
+    /// 而是按 SkipLedger 的 Environment 口径登记，末行 marker 变 UI-OK skipped=N。
+    ///
+    /// 读数原样带出去：world 就是世界的实测失败原因（含 foreground=谁占着前台）。
+    /// 只对**依赖该世界**的判据用它；与前台无关的判据照旧自己下结论。
+    /// </summary>
+    internal static void WorldVerdict(Check done, string name, bool ok, string detail, string? world)
+    {
+        if (world is null)
+        {
+            done(name, ok, detail);
+            return;
+        }
+
+        done(name, true, SkipLedger.EnvironmentSkip(detail, world));
+    }
 
     private static void CloseForeground()
     {
