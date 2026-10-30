@@ -137,6 +137,23 @@ function main() {
   const sidecar = `${zipPath}.sha256`;
   fs.writeFileSync(sidecar, `${digest}  ${path.basename(zipPath)}\n`, 'utf8');
   console.log(`STAT pack-sha256 sha256=${digest} sidecar=${path.relative(REPO_ROOT, sidecar)}`);
+
+  // 发布物不带「来自 Internet」的标记（2026-10-30：用户报「打开 exe 有安全警告」）。
+  // 那个对话框是 Windows 附件管理器的：它靠 NTFS 备用数据流 Zone.Identifier 判定「这个文件
+  // 是从网上来的」。解压时资源管理器会把这个标记**复制给解出来的每一个文件**，于是用户双击
+  // 包里的 exe 就会看到一次安全警告 —— 触发源在 zip 上，不在 exe 上。
+  // 实测：本仓的产物本来就没有这个流（这里会打 zone=absent），所以这一步是**保证**而不是修复：
+  // 谁把下载来的 zip 放进这个目录再重新打包，标记都会被清掉，并且有一行读数可查。
+  const zone = `${zipPath}:Zone.Identifier`;
+  let zoneState = 'absent';
+  try {
+    fs.readFileSync(zone);
+    fs.rmSync(zone);
+    zoneState = 'cleared';
+  } catch {
+    zoneState = 'absent';
+  }
+  console.log(`STAT pack-zone zone=${zoneState} zip=${path.basename(zipPath)}`);
   console.log('PACK-OK');
 }
 
