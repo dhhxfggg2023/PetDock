@@ -37,8 +37,7 @@ internal static class OnboardingChecks
 
     public static void Run(Check check)
     {
-        string root = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
+        string root = System.IO.Path.Combine(SelfTestScratch.Base,
             "petdock-onboarding-check-" + Guid.NewGuid().ToString("N"));
         try
         {

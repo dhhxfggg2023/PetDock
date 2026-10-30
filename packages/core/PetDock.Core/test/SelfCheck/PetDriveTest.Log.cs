@@ -20,7 +20,7 @@ internal static partial class PetDriveTest
     private static int PluginLogChecks()
     {
         int failures = 0;
-        string dir = Path.Combine(Path.GetTempPath(), "petdock-log-check-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Combine(SelfTestScratch.Base, "petdock-log-check-" + Guid.NewGuid().ToString("N"));
         IPluginLogSink? previousSink = PluginLog.Sink;
         try
         {

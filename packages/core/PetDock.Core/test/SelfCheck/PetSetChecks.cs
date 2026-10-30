@@ -17,7 +17,7 @@ internal static class PetSetChecks
 
     public static void Run(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-set-check-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-set-check-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             var store = new PetDataStore(root);
@@ -86,7 +86,7 @@ internal static class PetSetChecks
     /// <summary>多开 = 清单里两条指向同一目录；删一条不删素材，删最后一条才删目录。</summary>
     private static void MultiOpen(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-multi-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-multi-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             var store = new PetDataStore(root);
@@ -122,7 +122,7 @@ internal static class PetSetChecks
     /// <summary>旧清单没有 name 时从素材包清单补；只补空值，读不到就保持回落到目录名。</summary>
     private static void MigrateNames(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-names-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-names-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             string named = Path.Combine(root, "packs", "old-pack");
@@ -159,7 +159,7 @@ internal static class PetSetChecks
     /// <summary>标准包元数据：作者、对象形式的许可、画布尺寸、包内图标。</summary>
     private static void PackMetadata(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-meta-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-meta-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             string pack = Path.Combine(root, "pack");

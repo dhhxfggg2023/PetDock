@@ -16,7 +16,7 @@ internal static class PackLinesChecks
 
     public static void Run(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-linescheck-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-linescheck-" + Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(root);

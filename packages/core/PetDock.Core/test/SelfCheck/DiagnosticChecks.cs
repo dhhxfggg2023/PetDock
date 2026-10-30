@@ -51,7 +51,7 @@ internal static class DiagnosticChecks
 
     public static void Run(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-diag-check-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-diag-check-" + Guid.NewGuid().ToString("N"));
         var done = new HashSet<string>(StringComparer.Ordinal);
         try
         {

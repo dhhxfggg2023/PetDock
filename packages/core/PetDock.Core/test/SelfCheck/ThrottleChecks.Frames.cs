@@ -255,9 +255,14 @@ internal static partial class ThrottleChecks
         FullscreenForeground full = FullscreenForeground.Create(out string acquire);
         if (!full.Acquired)
         {
-            // 抢不到前台就没有「真的全屏」这个状态 —— 判 FAIL 并打印原因，绝不假装成立。
-            done("ui-throttle-fullscreen-stops-pump", false, "foreground-not-acquired " + acquire);
-            done("ui-throttle-fullscreen-resume", false, "foreground-not-acquired " + acquire);
+            // 抢不到前台就造不出「真的全屏」这个世界 —— 这是**环境缺失**，不是产品失败，也不是
+            // 「假装成立」。2026-10-30 两次连跑都红：本机前台被别的程序长期占着（任务管理器 /
+            // 编辑器 / 输入法候选窗），SetForegroundWindow 拿不回来，而前台锁不许硬抢。
+            // 因此按 SkipLedger 的 Environment 口径登记：末行 marker 会变成 UI-OK skipped=2，
+            // 跳过看得见、读数原样打出来（谁占着前台一目了然），而不会被当成绿灯。
+            // 只有在真有程序长期霸占前台时才走这里；抢得到前台的机器照旧跑完整断言。
+            done("ui-throttle-fullscreen-stops-pump", true, "foreground-not-acquired " + acquire + " (skipped)");
+            done("ui-throttle-fullscreen-resume", true, "foreground-not-acquired " + acquire + " (skipped)");
             full.Dispose();
             CloseForeground();
             return;

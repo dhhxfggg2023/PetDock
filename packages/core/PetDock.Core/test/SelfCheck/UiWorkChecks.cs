@@ -69,7 +69,7 @@ internal static partial class UiWorkChecks
     /// <summary>取消导入：不建素材目录、返回 Cancel（不是 Failure），旧宠物不动。</summary>
     private static void ImportCancel(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             var roster = new PetSurfaceRoster();
@@ -104,7 +104,7 @@ internal static partial class UiWorkChecks
     /// <summary>取消安装：解包临时区不留垃圾，正式插件根一个字节都不碰。</summary>
     private static void InstallCancel(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             string data = Path.Combine(root, "data");
@@ -147,7 +147,7 @@ internal static partial class UiWorkChecks
     /// <summary>复制进度：回调从 0 开始、以「已复制 == 总量」收尾，落盘结果完整。</summary>
     private static void CopyProgress(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             string source = Path.Combine(root, "pack");
@@ -186,7 +186,7 @@ internal static partial class UiWorkChecks
     /// <summary>文件内部取消：下一次读块就停，素材目录里不留半个包。</summary>
     private static void CopyCancel(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             string source = Path.Combine(root, "pack");
@@ -229,7 +229,7 @@ internal static partial class UiWorkChecks
     /// <summary>安装器的复制进度与导入同源：0 起步、总量收尾、落位成功。</summary>
     private static void InstallProgress(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             string data = Path.Combine(root, "data");

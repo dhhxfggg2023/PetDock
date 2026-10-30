@@ -47,8 +47,7 @@ internal static class PetPositionChecks
     /// </summary>
     private static void WithRoot(Check check, string name, RootBody body)
     {
-        string root = Path.Combine(
-            Path.GetTempPath(), "petdock-position-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-position-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             body(root);
@@ -305,7 +304,7 @@ internal static class PetPositionChecks
 
     /// <summary>store 指向的数据区根（`Path` 是设置文件本身，根是它的父目录）。</summary>
     private static string RootOf(UserSettingsStore store) =>
-        Path.GetDirectoryName(store.Path) ?? Path.GetTempPath();
+        Path.GetDirectoryName(store.Path) ?? SelfTestScratch.Base;
 
     private static Rectangle[] WorkAreas()
     {

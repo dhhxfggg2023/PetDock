@@ -29,7 +29,7 @@ internal static class AgentChecks
             return;
         }
 
-        string root = Path.Combine(Path.GetTempPath(), "petdock-agentcheck-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-agentcheck-" + Guid.NewGuid().ToString("N"));
         string? saved = Environment.GetEnvironmentVariable("PETDOCK_AGENT_STATE");
         try
         {

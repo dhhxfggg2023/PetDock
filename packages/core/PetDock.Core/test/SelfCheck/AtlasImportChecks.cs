@@ -49,7 +49,7 @@ internal static class AtlasImportChecks
             return;
         }
 
-        string root = Path.Combine(Path.GetTempPath(), "petdock-atlascheck-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-atlascheck-" + Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(root);

@@ -22,8 +22,7 @@ internal static class ConsentPersistChecks
     /// <summary>自检用的临时数据根（每次调用一个独立目录，结束即删）。</summary>
     private static string NewRoot(string tag)
     {
-        string dir = Path.Combine(
-            Path.GetTempPath(),
+        string dir = Path.Combine(SelfTestScratch.Base,
             "petdock-consent-check-" + tag + "-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return dir;

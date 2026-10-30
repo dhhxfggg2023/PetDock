@@ -143,8 +143,7 @@ internal static class SettingsStoreChecks
     /// <summary>起一个一次性数据区、跑一条判据、无论成败都收走它（理由同 PetPositionChecks.WithRoot）。</summary>
     private static void WithRoot(Check check, string name, RootBody body)
     {
-        string root = Path.Combine(
-            Path.GetTempPath(), "petdock-settings-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-settings-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             body(check, root);

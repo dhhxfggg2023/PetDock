@@ -17,7 +17,7 @@ internal static partial class UiWorkChecks
     /// </summary>
     private static void ConvertProgress(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             var roster = new PetSurfaceRoster();
@@ -64,7 +64,7 @@ internal static partial class UiWorkChecks
     /// <summary>转换中的取消：token 真的进了第三方导入器，取消后不留下转换区/素材区。</summary>
     private static void ConvertCancel(Report check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-work-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             var roster = new PetSurfaceRoster();

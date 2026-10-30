@@ -35,6 +35,10 @@ internal static class UiSelfTest
 
         try
         {
+            // 夹具落点先量一次并如实打出来（2026-10-30）：受限令牌下 %TEMP% 不可写时会退到构建输出
+            // 目录。没有这一行，读日志的人无法判断「这次跑在哪、为什么和上次不一样」。
+            Emit($"STAT selftest-scratch source={SelfTestScratch.Source} {SelfTestScratch.Reading}");
+
             // 文案表在**任何界面对象构造之前**加载（RFC-42 §3.2）：--uitest 直接 new 界面对象，
             // 不走 UiHost 的构造路径（那里只在有设置存储时才 Load），不先加载就会让每条界面文案
             // 都显示键名本身 —— 断键的判据于是两侧都是键名，绿得毫无内容。

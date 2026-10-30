@@ -18,7 +18,7 @@ internal static class SoundChecks
     public static void Run(Report check)
     {
         bool saved = SoundBoard.Enabled;
-        string dir = Path.Combine(Path.GetTempPath(), "petdock-soundcheck-" + Guid.NewGuid().ToString("N"));
+        string dir = Path.Combine(SelfTestScratch.Base, "petdock-soundcheck-" + Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(dir);

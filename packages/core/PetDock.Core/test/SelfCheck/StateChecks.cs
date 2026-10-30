@@ -16,7 +16,7 @@ internal static class StateChecks
     public static int Run()
     {
         int failures = 0;
-        string root = Path.Combine(Path.GetTempPath(), "petdock-state-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-state-" + Guid.NewGuid().ToString("N"));
         try
         {
             Directory.CreateDirectory(root);

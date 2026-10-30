@@ -60,7 +60,7 @@ internal static class AuditTrailChecks
 
     public static void Run(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-audit-check-" + Guid.NewGuid().ToString("N"));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-audit-check-" + Guid.NewGuid().ToString("N"));
         var done = new HashSet<string>(StringComparer.Ordinal);
         try
         {
@@ -241,14 +241,19 @@ internal static class AuditTrailChecks
 
         Done("ui-audit-trail-write-failure-inert", inert, inertDetail);
 
-        // ⑨ 流水不落在仓库里：临时根不在仓库内，且流水目录名不是仓库里的任何目录。
+        // ⑨ 流水不落在**源码树**里：临时根要么在仓库外，要么在声明过的构建产物目录里
+        // （bin/ 被 .gitignore 覆盖、随构建重建），且仓库根不许出现 audit 目录。
+        // 2026-10-30：受限令牌下 %TEMP% 不可写，夹具退到构建输出目录（见 SelfTestScratch）；
+        // 于是这条断言按「不在源码树里」说 —— 否则它红的是落点选择，不是流水外泄。
         string? repoRoot = FindRepoRoot();
-        bool notInRepo = repoRoot is null
-            ? !trailDir.StartsWith(AppContext.BaseDirectory, StringComparison.OrdinalIgnoreCase)
-            : !trailDir.StartsWith(repoRoot, StringComparison.OrdinalIgnoreCase)
-                && !Directory.Exists(Path.Combine(repoRoot, "audit"));
+        bool inBuildOutput = trailDir.StartsWith(AppContext.BaseDirectory, StringComparison.OrdinalIgnoreCase);
+        bool outsideRepo = repoRoot is null || !trailDir.StartsWith(repoRoot, StringComparison.OrdinalIgnoreCase);
+        bool noRepoAuditDir = repoRoot is null || !Directory.Exists(Path.Combine(repoRoot, "audit"));
+        bool notInRepo = (outsideRepo || inBuildOutput) && noRepoAuditDir;
         Done("ui-audit-trail-not-in-repo", notInRepo,
-            "trail-dir=" + trailDir + " repo=" + (repoRoot ?? "(not found)"));
+            "trail-dir=" + trailDir + " repo=" + (repoRoot ?? "(not found)")
+            + " outside-repo=" + outsideRepo + " in-build-output=" + inBuildOutput
+            + " repo-audit-dir=" + !noRepoAuditDir);
     }
 
     /// <summary>探针用的脱敏规则（本机事实全部用假值）。</summary>

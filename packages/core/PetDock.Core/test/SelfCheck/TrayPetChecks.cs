@@ -128,7 +128,7 @@ internal static class TrayPetChecks
     /// </summary>
     private static void CatalogRemoval(Check check)
     {
-        string root = Path.Combine(Path.GetTempPath(), "petdock-tray-check-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        string root = Path.Combine(SelfTestScratch.Base, "petdock-tray-check-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         try
         {
             var store = new PetDataStore(root);

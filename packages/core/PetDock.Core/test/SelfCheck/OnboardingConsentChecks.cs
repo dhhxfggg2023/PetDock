@@ -55,8 +55,7 @@ internal static class OnboardingConsentChecks
         window.Hide();
 
         var port = new UiConsentPort();
-        var store = new UserSettingsStore(System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
+        var store = new UserSettingsStore(System.IO.Path.Combine(SelfTestScratch.Base,
             "petdock-onboarding-consent-" + Guid.NewGuid().ToString("N")));
 
         using var host = new UiHost(window, null, null, null, port, store);
