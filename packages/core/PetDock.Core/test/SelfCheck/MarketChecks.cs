@@ -55,8 +55,10 @@ internal static class MarketChecks
     /// <summary>合法索引能解析，条目按 id 排序，字段原样带过去。</summary>
     private static void IndexParses(Report check)
     {
+        // 故意**不写** generated：线上发布的索引就是这个形状（见 tools/gen-market-index.mjs）。
+        // 让自检吃和用户同一份形状，别测一个自己也造不出来的样例。
         string json = """
-        {"schema":1,"generated":"2026-10-30T00:00:00Z","plugins":[
+        {"schema":1,"plugins":[
           {"id":"b.plugin","name":"B","version":"1.1.0","summary":"second",
            "url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/b.zip",
            "sha256":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
@@ -71,8 +73,9 @@ internal static class MarketChecks
         bool parsed = PluginMarketIndex.TryParse(doc.RootElement, out PluginMarketIndex? index, out string? why);
         bool ordered = parsed && index!.Entries.Count == 2 && index.Entries[0].Id == "a.plugin" && index.Entries[1].Id == "b.plugin";
         bool lowered = parsed && index!.Entries[1].Sha256 == new string('b', 64);
-        check("ui-market-index-parses", parsed && ordered && lowered,
-            $"parsed={parsed} entries={(parsed ? index!.Entries.Count.ToString() : "-")} why={why ?? "none"}");
+        bool noTime = parsed && index!.Generated.Length == 0;
+        check("ui-market-index-parses", parsed && ordered && lowered && noTime,
+            $"parsed={parsed} entries={(parsed ? index!.Entries.Count.ToString() : "-")} no-time={noTime} why={why ?? "none"}");
     }
 
     /// <summary>四种坏索引各自被拒，且原因码可区分。</summary>
