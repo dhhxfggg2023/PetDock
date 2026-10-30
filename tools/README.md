@@ -5,7 +5,7 @@
 ## 总入口
 
 ```powershell
-npm run lint                 # 七道静态门，任一红即停
+npm run lint                 # 八道静态门，任一红即停
 node tools/verify.mjs        # 验证门：默认 static + build + contract 三层
 node tools/verify.mjs --all  # 六层全跑（会建窗口、跑性能、打包）
 node tools/verify.mjs --list # 打印层表与每层「证明什么 / 不证明什么」
@@ -19,6 +19,7 @@ node tools/verify.mjs --list # 打印层表与每层「证明什么 / 不证明�
 | 脚本 | 管什么 |
 |---|---|
 | `depscan.mjs` | 包依赖方向：`packages/` 只允许 core / sdk / plugins，禁止反向边与跨层直达 |
+| `version-parity.mjs` | 版本号三处一致：`package.json` / `PetDock.Core.csproj` / 发布清单，任一处漂移即红 |
 | `lint-core.mjs` | D-03a 内核行数预算（`core-loc-baseline.json` 是唯一事实源）、D-03b 概念黑名单、D-03c 单文件 400 行、D-04a 临时标记 |
 | `validate-manifest.mjs` | 插件清单校验。**唯一权威是内核的 ManifestValidator**：脚本只负责把 `--validate-plugins` 跑起来，不再维护第二份 JSON Schema |
 | `asset-manifest.mjs` | 素材清单与「零第三方素材入库」 |
@@ -30,7 +31,7 @@ node tools/verify.mjs --list # 打印层表与每层「证明什么 / 不证明�
 
 | 层 | 内容 | marker |
 |---|---|---|
-| `static` | 上面七道静态门逐条跑 | 各门 PASS |
+| `static` | 上面八道静态门逐条跑 | 各门 PASS |
 | `build` | `dotnet build PetDock.sln -c <Config>` | 退出码 |
 | `contract` | `--hosttest` / `--drivetest` / `--eventtest` / `--animtest` | HOST-OK / DRIVE-OK / EVENT-OK / ANIM-OK |
 | `window` | `--uitest`（截图与面板判据） | UI-OK |

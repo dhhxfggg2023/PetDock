@@ -51,11 +51,14 @@ function layersFor(config) {
   return [
   {
     name: 'static',
-    title: 'L0 离线纯逻辑：七道静态门禁，逐条单独跑',
-    proves: '源码依赖方向、内核黑名单与体积、插件清单（内核校验器）、素材摆放与指纹，以及「界面文案不许留字面量」「两门语言的键与占位符形状一致」——七份互不相同的静态事实互相一致。',
+    title: 'L0 离线纯逻辑：八道静态门禁，逐条单独跑',
+    proves: '源码依赖方向、版本号三处一致、内核黑名单与体积、插件清单（内核校验器）、素材摆放与指纹，以及「界面文案不许留字面量」「两门语言的键与占位符形状一致」——八份互不相同的静态事实互相一致。',
     notProven: '没有任何一行代码被执行：编译失败、插件装载失败、窗口画不出来，这一层照样全绿。文案表本身能被读进内存、能在 en-US 下画出来，也不是这一层证明的。',
     steps: [
       { id: 'depscan', ...node('tools/depscan.mjs'), marker: 'DEPSCAN-PASS' },
+      // version-parity 一度只挂在 npm run lint 上，于是「跑过 verify」并不覆盖版本号漂移 ——
+      // 而 verify 存在的理由正是「手抄命令就会漏层」。lint 里有的门，这一层一个都不能少。
+      { id: 'version-parity', ...node('tools/version-parity.mjs'), marker: 'VERSION-PARITY-PASS' },
       { id: 'lint-core', ...node('tools/lint-core.mjs'), marker: 'LINT-CORE-PASS' },
       { id: 'manifest', ...node('tools/validate-manifest.mjs'), marker: 'MANIFEST-PASS' },
       { id: 'assets', ...node('tools/asset-manifest.mjs'), marker: 'ASSET-MANIFEST-PASS' },
