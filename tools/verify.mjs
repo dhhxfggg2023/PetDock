@@ -162,6 +162,14 @@ function layersFor(config) {
       // 市场索引必须与发行包同一次构建产出：装的是 zip 里的插件，索引里写的是它们各自的 sha256。
       { id: 'market-index', ...node('tools/gen-market-index.mjs'), marker: 'MARKET-OK' },
       { id: 'zip-sha256', kind: 'digest', marker: null },
+      // 本地产物绿了不代表**发布出去了**：把 zip 传到 Release 是手工的一步。
+      // 2026-10-30 真漏过一次（加了市场却忘了重发本体），所以这一步必须机器盯着。
+      // 它要联网，且只在 dist 层跑（--only dist / --all）；默认三层不碰它。
+      {
+        id: 'release-align',
+        ...node('tools/verify-release.mjs'),
+        marker: 'RELEASE-VERIFY-OK',
+      },
     ],
   },
   ];

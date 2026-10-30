@@ -23,6 +23,7 @@
 //   ix-market-3  sha256 形状合法（64 位十六进制）
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { collectFiles, writeDeterministicZip } from './lib/zip.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,96 +82,8 @@ function readBuiltinIds(zip) {
  */
 function packLocalPlugin(dirName) {
   const src = path.join(MARKET_ROOT, dirName);
-  const files = [];
-  const walk = (dir, prefix) => {
-    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, item.name);
-      const rel = prefix ? prefix + '/' + item.name : item.name;
-      if (item.isDirectory()) {
-        walk(full, rel);
-      } else {
-        files.push({ rel, full });
-      }
-    }
-  };
-  walk(src, '');
-  files.sort((a, b) => a.rel.localeCompare(b.rel));
-
-  // 确定性 zip：不写时间戳、不写权限位、条目顺序固定、固定压缩级别。
-  //
-  // 为什么必须这样：这个 sha256 会被写进索引、由客户端校验。如果每次打包都不一样，
-  // 那么「重新生成索引」就会让已经上传的包对不上 —— 用户点了安装会报 sha256 不匹配，
-  // 而错误的东西其实一个字节都没改。第一次跑就撞到了这个坑（同内容两次 sha 不同）。
-  const chunks = [];
-  const central = [];
-  let offset = 0;
-  const crcTable = (() => {
-    const table = new Int32Array(256);
-    for (let n = 0; n < 256; n += 1) {
-      let c = n;
-      for (let k = 0; k < 8; k += 1) {
-        c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-      }
-      table[n] = c;
-    }
-    return table;
-  })();
-  const crc32 = (buf) => {
-    let c = 0xFFFFFFFF;
-    for (let i = 0; i < buf.length; i += 1) {
-      c = crcTable[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
-    }
-    return (c ^ 0xFFFFFFFF) >>> 0;
-  };
-
-  for (const file of files) {
-    const data = fs.readFileSync(file.full);
-    const nameBuf = Buffer.from(file.rel, 'utf8');
-    const crc = crc32(data);
-
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);          // version needed
-    local.writeUInt16LE(0x0800, 6);      // UTF-8 flag
-    local.writeUInt16LE(0, 8);           // stored (no compression) — 插件包很小，省掉压缩的不确定性
-    local.writeUInt16LE(0, 10);          // time = 0
-    local.writeUInt16LE(0x0021, 12);     // date = 1980-01-01（固定，不取当前时间）
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(data.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBuf.length, 26);
-    local.writeUInt16LE(0, 28);
-
-    chunks.push(local, nameBuf, data);
-
-    const cen = Buffer.alloc(46);
-    cen.writeUInt32LE(0x02014b50, 0);
-    cen.writeUInt16LE(20, 4);
-    cen.writeUInt16LE(20, 6);
-    cen.writeUInt16LE(0x0800, 8);
-    cen.writeUInt16LE(0, 10);
-    cen.writeUInt16LE(0, 12);
-    cen.writeUInt16LE(0x0021, 14);
-    cen.writeUInt32LE(crc, 16);
-    cen.writeUInt32LE(data.length, 20);
-    cen.writeUInt32LE(data.length, 24);
-    cen.writeUInt16LE(nameBuf.length, 28);
-    cen.writeUInt32LE(offset, 42);
-    central.push(Buffer.concat([cen, nameBuf]));
-
-    offset += local.length + nameBuf.length + data.length;
-  }
-
-  const centralBuf = Buffer.concat(central);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(files.length, 8);
-  end.writeUInt16LE(files.length, 10);
-  end.writeUInt32LE(centralBuf.length, 12);
-  end.writeUInt32LE(offset, 16);
-
-  const buffer = Buffer.concat([...chunks, centralBuf, end]);
-  return { buffer, sha256: createHash('sha256').update(buffer).digest('hex'), bytes: buffer.length };
+  const files = collectFiles(src);
+  return writeDeterministicZip(files);
 }
 
 /** 收集 market-plugins/ 下的独立插件。[{dir, manifest}] */

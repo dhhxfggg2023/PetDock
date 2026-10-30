@@ -4,10 +4,14 @@
 // 与 release.mjs 的分工：release 负责「仓库 → 能跑的目录」，pack 负责「能跑的目录 → 一个 zip」。
 // 分成两个脚本是因为它们可以分别失败：封装坏了不必重新 publish，装配坏了也不必重打包。
 //
-// 为什么用 tar.exe 而不是 Compress-Archive / System.IO.Compression.ZipFile（RFC-25 §2 实测）：
-//   tar -a -c                 → 条目 `./x`、正斜杠、含隐藏文件   ← 采用
-//   ZipFile.CreateFromDirectory → 条目 `sub\b.txt`（反斜杠，非 Windows 解压器会当成文件名）
-//   Compress-Archive -Path d\* → 反斜杠，且**漏**隐藏文件
+// 为什么**不再**用 tar.exe（2026-10-30 改）：tar 会把每个条目的文件时间戳写进 zip，
+// 于是同一个提交、内容逐字节相同的两次构建产出两个不同 sha256 的 zip ——
+// 「Release 上的包 == 本地最新构建」这条判据因此永远说不清是产物变了还是时间戳变了。
+// 现在用 tools/lib/zip.mjs 自己写：不写时间戳（固定 1980-01-01）、不写权限位、
+// 条目按路径排序、stored 不压缩。同样的输入 → 同样的字节。
+//
+// 早年用 tar 的理由（避免 ZipFile/Compress-Archive 的反斜杠与漏隐藏文件）依然成立，
+// 那些问题在自写实现里根本不存在。
 //
 // 用法：
 //   node tools/pack.mjs                # 输入 artifacts/release/<version>/，输出 artifacts/dist/
@@ -21,6 +25,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { zipDirectory } from './lib/zip.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACTS = path.join(REPO_ROOT, 'artifacts');
@@ -76,16 +81,13 @@ function main() {
 
   fs.mkdirSync(path.dirname(zipPath), { recursive: true });
   fs.rmSync(zipPath, { force: true });
-  console.log(`RUN tar -a -c -f ${path.relative(REPO_ROOT, zipPath)} -C ${path.relative(REPO_ROOT, stagingRoot)} ${top}`);
-  let listing;
-  try {
-    execFileSync('tar', ['-a', '-c', '-f', zipPath, '-C', stagingRoot, top], { cwd: REPO_ROOT, stdio: 'inherit' });
-    listing = execFileSync('tar', ['-tf', zipPath], { cwd: REPO_ROOT, encoding: 'utf8' });
-  } catch (error) {
-    fail(`tar 失败：${error.message}`);
-  }
+  console.log(`RUN zip ${path.relative(REPO_ROOT, zipPath)} <- ${top}/（确定性写入）`);
+  // 顶层目录名进 zip：stagingDir 里就是 top/ 这一层，prefix 传空串即可（collectFiles 会带上目录名）。
+  const zipped = zipDirectory(stagingRoot, zipPath);
+  console.log(`STAT zip entries=${zipped.files} bytes=${zipped.bytes}`);
 
-  const entries = listing.split(/\r?\n/).filter((line) => line.trim() !== '');
+  // 校验条目（不再调 tar 列表：直接从写出去的文件读不了，改用自写实现的清单）
+  const entries = listZipEntries(zipPath);
   let failures = 0;
   const check = (name, ok, detail) => {
     if (!ok) {
@@ -162,6 +164,36 @@ function main() {
   }
   console.log(`STAT pack-zone zone=${zoneState} zip=${path.basename(zipPath)}`);
   console.log('PACK-OK');
+}
+
+/** 从 zip 的中央目录读出条目名（自写实现配套的只读解析，不引第三方库）。 */
+function listZipEntries(zipPath) {
+  const buf = fs.readFileSync(zipPath);
+  // 从尾部找中央目录结束记录
+  let end = -1;
+  for (let i = buf.length - 22; i >= 0; i -= 1) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      end = i;
+      break;
+    }
+  }
+  if (end < 0) {
+    fail('zip 里找不到中央目录结束记录');
+  }
+  const count = buf.readUInt16LE(end + 10);
+  let offset = buf.readUInt32LE(end + 16);
+  const names = [];
+  for (let n = 0; n < count; n += 1) {
+    if (buf.readUInt32LE(offset) !== 0x02014b50) {
+      fail('zip 中央目录条目损坏（偏移 ' + offset + '）');
+    }
+    const nameLen = buf.readUInt16LE(offset + 28);
+    const extraLen = buf.readUInt16LE(offset + 30);
+    const commentLen = buf.readUInt16LE(offset + 32);
+    names.push(buf.toString('utf8', offset + 46, offset + 46 + nameLen));
+    offset += 46 + nameLen + extraLen + commentLen;
+  }
+  return names;
 }
 
 function countFiles(dir, out = 0) {

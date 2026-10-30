@@ -57,6 +57,32 @@ const SKIP_PUBLISH = process.argv.includes('--skip-publish');
 const OUT_OVERRIDE = argValue('--out');
 
 /** 版本号唯一事实源 = package.json 的 version（与 manifest/ABI 的语义化版本同形）。 */
+/**
+ * 可复现的构建时间。同一个提交重复构建必须得到同一个值 —— 否则 zip 的 sha256 每次都变，
+ * 「Release 与本地一致」这条判据就永远说不清是产物变了还是时间戳变了。
+ *
+ * 2026-10-30：verify-release 上线第一天就撞到了这个 —— 同一个提交、同一个工作树，
+ * 两次 release+pack 出来的 zip 差 3 个字节，全部来自 built_at 这一个字段。
+ *
+ * 取值顺序：git 的 HEAD 提交时间 → 环境变量 SOURCE_DATE_EPOCH → 最后才退回当前时间
+ * （解压出来的源码包没有 .git，那时退化成不可复现是可接受的，但会打印一行说明）。
+ */
+function sourceDateEpoch() {
+  const fromEnv = process.env.SOURCE_DATE_EPOCH;
+  if (fromEnv && /^\d+$/.test(fromEnv)) {
+    return new Date(Number(fromEnv) * 1000).toISOString();
+  }
+  try {
+    const raw = execFileSync('git', ['log', '-1', '--format=%cI'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+    if (raw) {
+      return new Date(raw).toISOString();
+    }
+  } catch {
+    console.log('STAT release-clock source=wall-clock reason=no-git（产物因此不可复现）');
+  }
+  return new Date().toISOString();
+}
+
 function readVersion() {
   const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
   if (!pkg.version || !/^\d+\.\d+\.\d+$/.test(pkg.version)) {
@@ -585,7 +611,7 @@ function main() {
     const files = walkFiles(outDir).sort();
     const manifest = {
       version,
-      built_at: new Date().toISOString(),
+      built_at: sourceDateEpoch(),
       files: files.map((file) => ({
         path: path.relative(outDir, file).replaceAll('\\', '/'),
         sha256: sha256(file),
