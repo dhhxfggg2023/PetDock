@@ -3189,6 +3189,21 @@
           "lines": 3
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38006,
+      "budget": 38100,
+      "note": "更新路径上两处「读数失败」不许静音（§6-8 的第一小队）。ReadRequest 读 _update/restart.txt 抛 IO/权限异常时返回 null，调用方拿到的是和「本来就没登记更新」一模一样的结果 —— 用户以为没有待装的更新，而其实是一次读盘失败把这次更新跳过了。ReadResult 读搬运工结局同理。两处都保留原来的返回语义（调用方不需要改），但各留一条 KernelLog：update-request-unreadable / update-result-unreadable。先把「静音」变成「有痕迹」，再谈要不要给它一个界面出口 —— 顺序不能倒。实测 38004 → 38006（+2）。",
+      "attribution": [
+        {
+          "slice": "读「装完再开」的意图 / 读搬运工结局：失败各留一条日志（两处 catch）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStage.cs"
+          ],
+          "lines": 2
+        }
+      ]
     }
   ]
 }

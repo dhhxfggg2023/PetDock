@@ -262,6 +262,7 @@ internal static partial class UpdateStage
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            KernelLog.Write($"update-request-unreadable {error.GetType().Name}: {error.Message}");
             return null;
         }
     }
@@ -285,6 +286,7 @@ internal static partial class UpdateStage
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            KernelLog.Write($"update-result-unreadable {error.GetType().Name}: {error.Message}");
             return null;
         }
     }

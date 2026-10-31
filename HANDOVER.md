@@ -26,7 +26,7 @@
   - `--uitest`：末行 `UI-OK skipped=0`，条数已到 291（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **38004/38100 —— 余量 96**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **38006/38100 —— 余量 94**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -363,7 +363,10 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
    那要单独一片，而且前提是「tier-2 允许做什么」有个决定 —— 没有那个决定，加限制只会把功能关掉。
 7. §3.5 的五项开放决策各定一次（第 5 项是本机能不能更新/装插件的前提）。
 8. **审计剩下的「失败说得不够清楚」**（都不致命，但都违反本仓的纪律 —— 失败要么说清、要么根本不算完成）：
-   - `UpdateStartup` 读 `restart.txt` 抛异常时被当成「没有更新意图」→ 用户以为没有待装的更新；
+   - ~~`UpdateStartup` 读 `restart.txt` 抛异常时被当成「没有更新意图」~~ —— **已有痕迹**（2026-10-31）：
+     `UpdateStage.ReadRequest` / `ReadResult` 的 catch 各留一条 `update-request-unreadable` /
+     `update-result-unreadable`。返回语义没动（调用方不需要改），先让静音变成有痕迹；
+     **还差**给它一个界面出口 —— 那要改 `UpdateStep` 的判定与文案，属于下一小队；
    - `Applier` 清理阶段的 `TryDelete` 失败只进 log，暂存区/备份区删不掉时无人知道；
    - 搬运工「装好了但没把程序开回来」只写 helper.log，界面照旧说「已更新到 x.y.z」（`Applier.cs` 里那段注释解释了为什么
      `result.txt` 只回答「装没装上」—— 但「没开回来」需要一个自己的出口，而不是没有出口）；
