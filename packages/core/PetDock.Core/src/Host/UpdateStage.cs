@@ -106,7 +106,12 @@ internal static partial class UpdateStage
             int copied = 0;
             foreach (string file in Directory.EnumerateFiles(installRoot, "PetDock.Update.*", SearchOption.TopDirectoryOnly))
             {
-                File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
+                string dest = Path.Combine(target, Path.GetFileName(file));
+                File.Copy(file, dest, overwrite: true);
+
+                // 复制会连「来自互联网」标记一起带走（见 InternetMark）：搬运工正是从这一个副本启动的，
+                // 而那一刻宿主已经退出、没有窗口能提示用户去点「仍要运行」。就地清掉。
+                InternetMark.Clear(dest);
                 copied++;
             }
 

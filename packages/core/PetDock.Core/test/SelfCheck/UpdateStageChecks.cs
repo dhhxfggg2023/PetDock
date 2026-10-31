@@ -9,6 +9,8 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using PetDock.Hosting;
 
 namespace PetDock.Hosting;
@@ -24,6 +26,8 @@ internal static class UpdateStageChecks
             PendingRejectsOutsideZip(check, root);
             RequestIsTheReceipt(check, root);
             ExtractTrimsTopAndRejectsMissingEntry(check, root);
+            // 2026-10-31 用户双击撞上的那个框：搬运工副本不许带着「来自互联网」标记。
+            HelperCopyIsUnblocked(check, root);
             ResultIsReadOnce(check, root);
         }
         finally
@@ -142,6 +146,75 @@ internal static class UpdateStageChecks
         check("ui-update-result-once", once,
             $"first={(first is null ? "none" : first.Value.Ok + "/" + first.Value.Text)} second={(second is null ? "none" : "still-there")}");
     }
+
+    /// <summary>
+    /// 搬运工副本上不许留「来自互联网」标记 —— 2026-10-31 用户双击时撞上的那个框。
+    ///
+    /// 判的是**拷贝之后**的状态，不是「有没有调过 Clear」：标记是 NTFS 的备用数据流，
+    /// 而 File.Copy 会把它一起带走（实测 Copy-Item 与 File.Copy 都保留）。搬运工启动时
+    /// 宿主已经退出、面板早已关闭，那一刻没有任何窗口能提示用户去点「仍要运行」，
+    /// 用户看到的是「点了更新，程序不见了」。
+    ///
+    /// 同时判反面：源文件**仍然**带标记 —— 证明清掉的是这一个副本，
+    /// 而不是碰巧因为跑在 FAT32 上、或者因为扫描了整个目录。
+    /// </summary>
+    private static void HelperCopyIsUnblocked(UpdateChecks.Report check, string root)
+    {
+        string install = Path.Combine(root, "install");
+        string data = Path.Combine(root, "helper-data");
+        Directory.CreateDirectory(install);
+        Directory.CreateDirectory(UpdateStage.Dir(data));
+
+        // 与真实安装目录同形：发布物把 PetDock.Update.* 摆在宿主旁边；内容要是 PE 头，
+        // 免得把「文件是不是可执行」和「标记清没清」两件事混在一起。
+        string source = Path.Combine(install, UpdateStage.HelperName);
+        File.WriteAllBytes(source, new byte[] { 0x4D, 0x5A });
+        Mark(source);
+
+        bool staged = UpdateStage.StageHelper(install, data, out string? why);
+        string copy = UpdateStage.HelperCopyPath(data);
+        bool sourceMarked = HasMark(source);
+        bool copyMarked = HasMark(copy);
+
+        check("ui-update-helper-copy-unblocked",
+            staged && File.Exists(copy) && sourceMarked && !copyMarked,
+            $"staged={staged} why={why ?? "none"} source-marked={sourceMarked} copy-marked={copyMarked}");
+    }
+
+    // 下面两个只服务这一条判据。.NET 的路径规范化不接受带冒号的备用数据流路径
+    // （File.WriteAllText("x:Zone.Identifier") 抛 NotSupportedException），只能走 Win32。
+    private const string Zone = ":Zone.Identifier";
+
+    private const uint GenericWrite = 0x40000000;
+    private const uint ShareAll = 3;
+    private const uint CreateAlways = 2;
+    private const uint InvalidAttributes = 0xFFFFFFFF;
+
+    [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(string name, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
+
+    [DllImport("kernel32.dll", EntryPoint = "WriteFile", SetLastError = true)]
+    private static extern bool WriteFile(SafeFileHandle handle, byte[] buffer, int count, out int written, IntPtr overlapped);
+
+    [DllImport("kernel32.dll", EntryPoint = "GetFileAttributesW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFileAttributesW(string name);
+
+    /// <summary>给文件挂上「来自互联网」标记，形状与浏览器下载时写的一致。</summary>
+    private static void Mark(string path)
+    {
+        using SafeFileHandle handle = CreateFileW(path + Zone, GenericWrite, ShareAll, IntPtr.Zero, CreateAlways, 0, IntPtr.Zero);
+        if (handle.IsInvalid)
+        {
+            // 非 NTFS 卷没有备用数据流。判据会如实报 source-marked=False 并判红 —— 那是对的：
+            // 这一条在这台机器上就不该被算成通过。
+            return;
+        }
+
+        byte[] text = System.Text.Encoding.ASCII.GetBytes("[ZoneTransfer]\r\nZoneId=3");
+        WriteFile(handle, text, text.Length, out _, IntPtr.Zero);
+    }
+
+    private static bool HasMark(string path) => GetFileAttributesW(path + Zone) != InvalidAttributes;
 
     private static void Write(ZipArchive archive, string name, string text)
     {
