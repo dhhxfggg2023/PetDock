@@ -437,6 +437,9 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
     写 git 跟踪的文件时，执行体必须是**幂等**的（先查再写），别写「追加」。
 14. `--uitest` 走 pwsh **管道**（`… | Select-Object -Last 5`）会得到 exit=1，即使末行是 `UI-OK`；
     stdio 重定向到文件时 exit=0（`verify.mjs` 用的是后者）。读末行 marker，别拿管道的 `$LASTEXITCODE` 当结论。
+15. **本地重跑 dist 层会改写 `update.json`**：`gen-update-feed` 把**刚才那一次**构建的 zip 摘要写进去，
+    而那个 zip 不是在发 Release 的那个（commit/时间不同 ⇒ 摘要必然不同）。只跑门禁时请 `git checkout -- update.json`，
+    否则推上去等于让所有客户端去下载一个「声明指纹与资产不符」的包。发布顺序见 §5 第 12 条与 §6 第 9 条。
 
 ## 6. 下一步（按顺序）
 
