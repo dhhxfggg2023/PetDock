@@ -32,6 +32,7 @@
 // 把网络抖动染成发布门红，会训练人忽略这条门 —— 那比偶尔漏检更糟。
 // 代价是跳过必须**大声打出来**：SKIP 行里带原因，且不带 RELEASE-VERIFY-OK 标记，
 // 所以在证据 README 里看得见「这一步没验」。
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import https from 'node:https';
 import tls from 'node:tls';
@@ -39,7 +40,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildNotes } from './release-notes.mjs';
+import { buildChanges, buildNotes } from './release-notes.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACTS = path.join(REPO_ROOT, 'artifacts');
@@ -53,6 +54,18 @@ function arg(name) {
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).version;
 const TAG = arg('--tag') ?? 'v' + VERSION;
+
+/**
+ * 「怎么升级」那一段。写在这里而不是让发布时手打：它是**用户要做的动作**，
+ * 说错了（比如还教人「解压到新文件夹」）比不说更糟。跟着版本走的具体口径见 packaging/INSTALL.md。
+ */
+const UPGRADE_NOTES = [
+  '已经有旧版本的话，**不要解压到新文件夹**：设置 → 关于 → 检查更新 → 立即重启更新（或稍后更新），',
+  '程序会原地覆盖同一个安装目录，你的 `data\\`（宠物、设置）不受影响。',
+  '',
+  '也可以手动：把新的 zip **解压到现有文件夹上面覆盖**，`data\\` 会原样保留。',
+  '首次使用就随便解压到哪都行，整个文件夹可以整体搬走。',
+];
 const LIST_ONLY = args.includes('--list');
 const NOTES_ONLY = args.includes('--notes');
 const NAME = 'PetDock-' + VERSION + '-win-x64.zip';
@@ -167,6 +180,50 @@ function fetchJson(url, headers = {}) {
   });
 }
 
+/**
+ * 上一个 tag（用来界定「这次发布了什么」）。没有就返回 null。
+ *
+ * 为什么要它：正文里的「这次改了什么」必须是**这次发布带的改动**，
+ * 不是整个项目史。取 `git describe --tags --abbrev=0 <上一个>` 的那种做法会把当前 tag 自己算进去，
+ * 所以这里显式按版本排序取前一个。
+ */
+function previousTag(tags, current) {
+  const list = tags
+    .map((tag) => String(tag).trim())
+    .filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag) && tag !== current)
+    .map((tag) => ({ tag, key: tag.slice(1).split('.').map(Number) }))
+    .filter((item) => {
+      const cur = current.replace(/^v/, '').split('.').map(Number);
+      for (let i = 0; i < 3; i += 1) {
+        if (item.key[i] !== cur[i]) {
+          return item.key[i] < cur[i];
+        }
+      }
+      return false;
+    })
+    .sort((a, b) => (a.key[0] - b.key[0]) || (a.key[1] - b.key[1]) || (a.key[2] - b.key[2]));
+  return list.length > 0 ? list[list.length - 1].tag : null;
+}
+
+/** 取「这次发布」的提交主旨。仓库不可用（比如解压出来的源码包）时返回空数组。 */
+function localChanges() {
+  try {
+    const tags = execFileSync('git', ['tag', '-l'], { cwd: REPO_ROOT, encoding: 'utf8' })
+      .split(/\r?\n/)
+      .filter(Boolean);
+    const base = previousTag(tags, TAG);
+    const args = ['log', '--no-merges', '--pretty=%s'];
+    args.push(base ? `${base}..${TAG}` : TAG);
+    return {
+      base,
+      compare: base ? `${base}...${TAG}` : null,
+      subjects: execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' }).split(/\r?\n/).filter(Boolean),
+    };
+  } catch {
+    return { base: null, compare: null, subjects: [] };
+  }
+}
+
 /** 本地这份产物的正文：与发布时用的是同一份模板（tools/release-notes.mjs）。 */
 function localNotes() {
   let manifest = null;
@@ -182,10 +239,12 @@ function localNotes() {
   // 这里读旁车的话，旁车写错就会同时骗过两条判据。
   const digest = sha256File(LOCAL_ZIP);
   const bytes = fs.statSync(LOCAL_ZIP).size;
+  const changes = localChanges();
   return {
     digest,
     bytes,
     manifest,
+    changes,
     text: buildNotes({
       version: VERSION,
       fileName: NAME,
@@ -194,6 +253,9 @@ function localNotes() {
       dirty: manifest.source_dirty === true,
       sha256: digest,
       bytes,
+      changes: buildChanges(changes.subjects, { compare: changes.compare }),
+      upgrade: UPGRADE_NOTES,
+      compare: changes.compare,
     }),
   };
 }
@@ -314,6 +376,24 @@ async function main() {
       fail(1, 'ix-release-4 正文缺少来源提交（用户没法确认这是哪次构建）');
     }
     console.log('ix-release-4 PASS 正文声明了 sha256=' + notes.digest.slice(0, 12) + ' 提交=' + (shortCommit ?? '(none)'));
+
+    // ix-release-4b：**正文要说这次改了什么**（2026-10-31 用户指出）。
+    //
+    // 上一版正文只有一份「构建溯源」表：指纹、提交、大小都对，而「改了什么」一个字没有。
+    // 那是把**给验证者看的自证**放在了 Release 页面的主位 —— 用户点进来想知道的是这次带来了什么。
+    // 指纹能证明「这份包没被换过」，证明不了「为什么值得装」。
+    //
+    // 判两件事：有那一节；那一节底下不是空话（至少一条列表项）。
+    const changeHeading = '## 这次改了什么';
+    const changeAt = body.indexOf(changeHeading);
+    const hasChangeSection = changeAt >= 0 && /(^|\n)-\s+\S/.test(body.slice(changeAt));
+    if (!hasChangeSection) {
+      console.log('ix-release-4b FAIL Release 正文没有说这次改了什么：');
+      console.log('  正文里有「' + changeHeading + '」吗：' + (changeAt >= 0 ? '有' : '没有'));
+      console.log('  → 正文用 ' + BT + 'node tools/verify-release.mjs --notes' + BT + ' 生成（它会从 git log 取改动），不要手写');
+      fail(1, 'ix-release-4b 正文缺少「这次改了什么」（Release 页面的第一职责）');
+    }
+    console.log('ix-release-4b PASS 正文有改动清单（' + (body.slice(changeAt).match(/^-\s+\S/gm) ?? []).length + ' 条列表项）');
 
     // ix-release-5：tag 与产物必须同一棵树。先打包后提交（2026-10-30 就是），tag 就会指向别的提交。
     if (notes.manifest.source_dirty === true) {
