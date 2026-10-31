@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using PetDock.App;
 using PetDock.Core.Compositor;
 using PetDock.Core.Ui.Design;
 using PetDock.Hosting;
@@ -54,12 +55,16 @@ internal sealed partial class UiHost : IUiPageContext
 
     string? IUiPageContext.RemovePet(string petId) => RemovePetFromPanel(petId);
 
+    // 宠物这几条从 R1 起改走新契约（PetDock.App.IPetsService）：旧页面拿到的仍是
+    // 「null = 成功」的旧形状，但执行路径已经只有契约这一条 —— 新界面层将来直接用它。
     string? IUiPageContext.SetPetOnDesktop(string petId, bool onDesktop) =>
-        SetPetOnDesktopFromPanel(petId, onDesktop);
+        FailureOf(((IPetsService)this).SetOnDesktop(petId, onDesktop));
 
-    string? IUiPageContext.DuplicatePet(string petId) => DuplicatePetFromPanel(petId);
+    string? IUiPageContext.DuplicatePet(string petId) =>
+        FailureOf(((IPetsService)this).Duplicate(petId));
 
-    string? IUiPageContext.DeletePet(string petId) => DeletePetFromPanel(petId);
+    string? IUiPageContext.DeletePet(string petId) =>
+        FailureOf(((IPetsService)this).Delete(petId));
 
     void IUiPageContext.AuthorizePlugin(string pluginId) => AuthorizePlugin(pluginId);
 
@@ -98,7 +103,8 @@ internal sealed partial class UiHost : IUiPageContext
             soundEnabled,
             celestialMode);
 
-    string? IUiPageContext.SetPetSize(string? petId, int size) => SetPetSizeFromPanel(petId, size);
+    string? IUiPageContext.SetPetSize(string? petId, int size) =>
+        FailureOf(((IPetsService)this).SetSize(petId, size));
 
     string? IUiPageContext.SetLanguage(string language) => SetLanguageFromPanel(language);
 
@@ -107,6 +113,9 @@ internal sealed partial class UiHost : IUiPageContext
     void IUiPageContext.ExportDiagnostics(IntPtr owner) => RunDiagnostic(ControlPanel.DiagnosticOpExportBundle);
 
     void IUiPageContext.OpenAudit() => RunDiagnostic(ControlPanel.DiagnosticOpViewAudit);
+
+    /// <summary>新契约的结局 → 旧页面的「null = 成功」形状。</summary>
+    private static string? FailureOf(AppResult result) => result.Ok ? null : result.Message;
 
     /// <summary>重新取快照并通知页面重绑。页面在 Changed 里读 Snapshot，不缓存旧值。</summary>
     private void RefreshUi()

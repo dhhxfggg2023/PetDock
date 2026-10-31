@@ -3385,6 +3385,35 @@
           "lines": 2
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38364,
+      "budget": 38400,
+      "note": "R1b 起步：宠物四条意图（上/下桌面、复制、删除、改尺寸）进入新契约 IPetsService，旧页面上下文的这四条改走契约执行（形状仍是 null=成功，语义不变）。LOC 38306 → 38364（+58），预算不变（38400，余量 36）。",
+      "attribution": [
+        {
+          "slice": "宠物意图的契约 IPetsService（不含导入：长任务形状留给 IWorkService）",
+          "files": [
+            "packages/core/PetDock.App.Contracts/Services/IPetsService.cs"
+          ],
+          "lines": 24
+        },
+        {
+          "slice": "旧宿主实现契约（翻译 null/AppResult）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs"
+          ],
+          "lines": 25
+        },
+        {
+          "slice": "页面上下文的宠物四条改走契约",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
+          ],
+          "lines": 9
+        }
+      ]
     }
   ]
 }
