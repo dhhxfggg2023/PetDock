@@ -310,10 +310,18 @@ internal sealed partial class UiHost
     /// 这个 id 是不是主窗那只。比较两套 id：实例 id（旧托盘/内部路由）与清单 id（面板行）。
     /// 两者在多开之后不再相等，只认其中一个会让「删除主窗那只」落到「找不到」。
     /// </summary>
+    /// <summary>
+    /// 这个 id 是不是主窗那只 —— **只答身份，不答可见性**（2026-10-31）。
+    ///
+    /// 原来这里带一个 `!_primaryRemoved &&`：收起的行因此失去了身份，凡是「先认身份再动作」的入口
+    /// 都会把它当成**另一只**：删除会去找 PetWindowSet 里的槽位（主窗那只从来不在里面），
+    /// 用户点删除得到的是「找不到这只宠物」。交出身份让调用方各自判可见性 ——
+    /// 需要可见性的那几处（放回的第一步、面板的删除入口）本来就自己带着 _primaryRemoved。
+    /// 判据 ui-pets-desktop-delete-while-hidden 守这一条。
+    /// </summary>
     private bool IsPrimary(string id) =>
-        !_primaryRemoved
-        && (string.Equals(id, _pet?.Id ?? PrimaryPetId, System.StringComparison.Ordinal)
-            || string.Equals(id, _store?.ReadActive()?.InstanceId, System.StringComparison.Ordinal));
+        string.Equals(id, _pet?.Id ?? PrimaryPetId, System.StringComparison.Ordinal)
+        || string.Equals(id, _store?.ReadActive()?.InstanceId, System.StringComparison.Ordinal);
 
     /// <summary>
     /// 退出确认（原规格 18 §1：退出是固定项，但要有一次确认）。

@@ -108,6 +108,7 @@ internal sealed partial class UiHost
         if (IsPrimary(petId))
         {
             _primaryRemoved = true;
+            _primaryDeleted = true;
             _loop.Hide();
             store.RemoveFromCatalog(petId);
             KernelLog.Write($"pet-delete-primary id={petId} pack={pack.Path}");

@@ -92,6 +92,8 @@ internal static class UiSelfTest
             // 2026-10-28 审计 P0：设置落盘只有一个写者（ui-settings-update-*）。
             SettingsStoreChecks.Run(Check);
             TrayPetChecks.Run(Check);
+            // 2026-10-31：宠物页的收起/放回 —— 「清单里每一只都必须有一行」。
+            PetsDesktopChecks.Run(Check);
             // 2026-10-29 P4：陪伴层（ui-companion-*）—— 插件挂载、命令/动作转发、状态往返。
             CompanionChecks.Run(Check);
             // 2026-10-29 P4 音频：宿主侧播放的决定（静音 / 缺文件 / 格式）与设置默认值。

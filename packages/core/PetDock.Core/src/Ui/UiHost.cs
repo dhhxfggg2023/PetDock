@@ -65,6 +65,17 @@ internal sealed partial class UiHost : ApplicationContext
     /// <summary>主窗那只已经从清单里移除（RFC-37 §3.6）：它的实例归 Program，卸载要重启。</summary>
     private bool _openPanelAfterFirstTick;
     private bool _primaryRemoved;
+
+    /// <summary>
+    /// 主窗那只被**删除**了（不是收起）。
+    ///
+    /// 两个状态都要 _primaryRemoved（都不在桌面上），但对「宠物页要不要给它出行」来说差别是决定性的：
+    /// 收起 = 它还在清单里，必须出行（否则没有入口把它放回来 —— 2026-10-31 用户报的那个 bug）；
+    /// 删除 = 它已经不在清单里了，那一行必须跟着消失。
+    /// 把这两件事压进同一个 bool 正是这一族 bug 的来源：一个标志两个含义，
+    /// 于是总有一个调用方按错的那个含义去用。
+    /// </summary>
+    private bool _primaryDeleted;
     private bool _petShown;
     private bool _disposed;
 

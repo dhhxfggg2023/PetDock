@@ -59,12 +59,20 @@ internal sealed partial class UiHost
     public UiSnapshot Snapshot()
     {
         UiSnapshot snapshot = UiRoster.Build(
-            _primaryRemoved ? null : _pet,
+            // 主窗那只**不管收没收起都要给**（2026-10-31 用户报「收起之后取不出来」）。
+            // 收起的只是窗口，实例还在（见 UiHost.Pets.Desktop 那段：本片不释放它，卸载要等重启）。
+            // 传 null 的后果不是「少一行」而是**整行不出**：UiRoster 见 pet 为空就跳过，
+            // 而 BuildExtraPetLines 又明确 continue 掉主窗那只（注释写的是「由 UiRoster 出」）——
+            // 两个函数都以为对方会出这一行，合起来谁都没出。列表空了，也就没有「在桌面上显示」可点，
+            // 用户只剩重新导入一条路。判据 ui-pets-desktop-stays-listed 就是这一条的守门人。
+            _primaryDeleted ? null : _pet,
             _host,
             SettingsView(),
             _inventory,
             BuildExtraPetLines(),
-            _primaryRemoved ? null : _store?.ReadActive()?.InstanceId,
+            // id 同理：收起的行还要能被「放回 / 删除」认出来，不能因为不在桌面上就没有身份。
+            // 只有「删除」才让这一行消失（_primaryDeleted），「收起」不让。
+            _primaryDeleted ? null : _store?.ReadActive()?.InstanceId,
             // 主窗那只也可能被收起（用户点了「从桌面移除」）：页面据此显示它现在的状态。
             primaryOnDesktop: !_primaryRemoved,
             // 每只自己的尺寸（2026-10-31）：宠物页选中某只之后滑块显示的是**这一只**的数。
