@@ -248,6 +248,11 @@ function localNotes() {
     bytes,
     manifest,
     changes,
+    // 面向用户的改动说明是不是**人工写过**的那一份（release-notes/<版本>.md）。
+    // 判据 ix-release-4c 用它；正文模板用它决定是排人写的还是退到自动提取。
+    curated: readCuratedNotes(
+      (v) => fs.readFileSync(path.join(REPO_ROOT, 'release-notes', v + '.md'), 'utf8'),
+      VERSION) !== null,
     text: buildNotes({
       version: VERSION,
       fileName: NAME,
