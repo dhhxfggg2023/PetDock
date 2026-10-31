@@ -15,6 +15,7 @@
 //   node tools/verify-release.mjs --tag v0.1.0
 //   node tools/verify-release.mjs --list    # 只列 Release 上的资产，不比对
 //   node tools/verify-release.mjs --notes   # 打印该写进 Release 正文的文本（发布时用）
+//   node tools/verify-release.mjs --notes --version 0.3.0   # 给已发布的旧版本重新生成正文
 //
 // 判据：
 //   ix-release-1  Release 上要有 zip 与旁车两个资产
@@ -52,7 +53,9 @@ function arg(name) {
   return i >= 0 && i + 1 < args.length ? args[i + 1] : null;
 }
 
-const VERSION = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).version;
+// --version 可以指到**已经发布过的旧版本**：给旧 Release 修正文时，本地产物与 manifest
+// 都还在 artifacts/ 里，没必要重新构建一次。缺省仍是 package.json 的当前版本。
+const VERSION = arg('--version') ?? JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).version;
 const TAG = arg('--tag') ?? 'v' + VERSION;
 
 /**
