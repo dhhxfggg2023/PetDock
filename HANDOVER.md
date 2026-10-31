@@ -474,6 +474,11 @@ v0.4.4 的 109 个文件实测 `hits=0`；`.pdb` 里 0 条绝对路径。
     把上一次手写的那条改了什么覆盖掉（它刻意不写 sha256 / bytes —— 那会形成「构建 → 写指纹 → 再构建」的环，
     完整性交给 Release 旁的 `.sha256` 旁车）。只跑门禁时请 `git checkout -- update.json`；
     发版时请在 `gen-update-feed` 跑完后确认 `notes` 仍是给人看的那段。发布顺序见第 12 条与 §6 第 9 条。
+17. **`github.com` 在本机会间歇性不可达**（与它无关的 `api.github.com`、`release-assets` 通常仍是通的）：
+    `git push` 会报 `Failed to connect to github.com port 443: Timed out` 或 `OpenSSL SSL_read: Connection was reset`。
+    先 `Test-NetConnection <ip> -Port 443` 试几个 GitHub 地址（`20.205.243.166` / `140.82.113.4` / `140.82.114.4` /
+    `20.27.177.113`），确认有能通的就隔十几秒重试 —— 2026-10-31 发 0.4.4 时就是第一次连不上、第四次前又通了。
+    推不上去**不要重写历史**：commit 留在本地，等网络恢复再推（`git rev-list --count origin/main..HEAD` 看差几个）。
 16. **别用 PowerShell 的 `>` 抓要发给 API 的正文**：PS 5.1 的重定向默认写 UTF-16LE，`readFileSync(..., utf8)` 读回来
     是夹着 NUL 的字符串，`JSON.stringify` 之后 GitHub 收到的是乱码 —— 2026-10-31 发 v0.4.3 时就是这么把 Release 正文
     写坏了一次（判据 `ix-release-4` 说「正文没有声明 sha256」，而正文里明明有）。用 `execFileSync(...).toString()` 或
