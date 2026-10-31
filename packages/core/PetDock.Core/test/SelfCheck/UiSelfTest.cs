@@ -82,6 +82,8 @@ internal static class UiSelfTest
             AppContractsChecks.Run(Check);
             // R1e：新界面层的边界（WinForms 只在一个文件里、不引用旧内核）与「能建起来」。
             NewUiChecks.Run(Check);
+            // R2：设计系统（令牌唯一源、对比度、图标覆盖、主题切换）。
+            DesignSystemChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。

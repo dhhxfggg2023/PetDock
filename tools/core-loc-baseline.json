@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 39600,
+  "budget": 39700,
   "history": [
     {
       "date": "2026-10-18",
@@ -3575,6 +3575,34 @@
           "slice": "Main 里的二选一（都在单实例锁之内，挡住新层与旧层双开）",
           "files": ["packages/core/PetDock.Core/src/Program.cs"],
           "lines": 3
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 39465,
+      "budget": 39700,
+      "note": "R2a/R2b：设计令牌（明暗两套调色板 + 间距/圆角/字号/动效刻度）、主题单例、图标集，外加 4 条判据。三条选择：① 颜色只存在 Tokens.cs 一个文件里，ui-design-tokens-only 扫全工程（白名单就那一个文件），于是「三个月后各处冒出自定义灰」这条老路被堵死；② 两套调色板写死而不是主题色 + 变量，这样 WCAG 对比度能被判据真算出来（18 对，正文全部 ≥4.5）；③ 图标用 Segoe MDL2 字形而不是 Path 几何：缩放不失真、不发资源、不随 DPI 重建，代价是码位写死，于是 ui-design-icon-coverage 逐项点名并有兜底字形。LOC 39202 → 39465（+263），预算 39600 → 39700；归还条件：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "设计令牌：两套调色板 + 间距/圆角/字号/描边/动效刻度 + 画笔冻结缓存",
+          "files": ["packages/core/PetDock.Ui/src/Design/Tokens.cs"],
+          "lines": 133
+        },
+        {
+          "slice": "主题单例：Mode / Current / Changed，同模式不发事件",
+          "files": ["packages/core/PetDock.Ui/src/Design/Theme.cs"],
+          "lines": 36
+        },
+        {
+          "slice": "图标集：IconName → 字形，未知名字有兜底",
+          "files": ["packages/core/PetDock.Ui/src/Design/Icons.cs"],
+          "lines": 75
+        },
+        {
+          "slice": "空窗口改走令牌：不再写十六进制色值与魔法间距，顺手长出一枚图标",
+          "files": ["packages/core/PetDock.Ui/src/AppWindow.cs"],
+          "lines": 19
         }
       ]
     }
