@@ -21,6 +21,7 @@
   "ui.work.convertProgress": "正在转换素材 {0} / {1} 帧",
   "ui.work.cancel": "取消",
   "ui.work.cancelling": "正在取消…",
+  "ui.work.cancelled": "操作已取消。",
   "ui.bubble.poke1": "别戳啦～",
   "ui.bubble.poke2": "嗯？",
   "ui.bubble.poke3": "我在呢。",

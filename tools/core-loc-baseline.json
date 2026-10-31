@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38700,
+  "budget": 38900,
   "history": [
     {
       "date": "2026-10-18",
@@ -3508,6 +3508,39 @@
         {
           "slice": "页面上下文的换语言改走契约",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"],
+          "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38881,
+      "budget": 38900,
+      "note": "R1g/R1h：长任务 IWorkService（单飞 + 节流进度 + 取消 + 三态结局）与陪伴层 ICompanionService 进入新契约。两者共用一份实现：旧面板的 UiCommandResult 与新层的 WorkResult 都落到 RunWorkCoreAsync —— 「同一时刻只跑一件」「取消不是失败」因此只有一套口径，不会长成两份。UiHost.Work.cs 里那段单飞/进度/取消的脚手架整体搬进 UiHost.Work.Contract.cs，原处收敛成一行委托（-24）。新增文案键 ui.work.cancelled（两种语言各一条，i18n 可达性由字面量引用满足）。顺带定下一条语义：进度首帧必报（负时间基），否则每次长任务的头 100ms 都是空档；State 的 Changed 在报进度的线程上发，不在实现里 Post（等待中的调用方会把消息泵堵住）。LOC 38620 → 38881（+261），预算 38700 → 38900；归还条件：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "长任务契约（WorkOutcome / WorkResult / WorkState / WorkProgress / IWorkService）",
+          "files": ["packages/core/PetDock.App.Contracts/Services/IWorkService.cs"],
+          "lines": 75
+        },
+        {
+          "slice": "陪伴层契约（CompanionRow / CompanionButton / ICompanionService）",
+          "files": ["packages/core/PetDock.App.Contracts/Services/ICompanionService.cs"],
+          "lines": 35
+        },
+        {
+          "slice": "两个契约的单一实现：RunWorkCoreAsync（单飞/进度/取消/三态）+ 陪伴行映射 + 旧两态与新三态的互折",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Work.Contract.cs"],
+          "lines": 171
+        },
+        {
+          "slice": "UiHost.Work.cs 的脚手架搬走，原处只剩一行委托",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.Work.cs"],
+          "lines": -21
+        },
+        {
+          "slice": "宿主的接口列表加上 IWorkService / ICompanionService",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs"],
           "lines": 1
         }
       ]

@@ -11,7 +11,8 @@ using PetDock.App;
 
 namespace PetDock.Core.Ui;
 
-internal sealed partial class UiHost : IPetsService, IPluginsService, IMarketService, IUpdateService, ISettingsService
+internal sealed partial class UiHost
+    : IPetsService, IPluginsService, IMarketService, IUpdateService, ISettingsService, IWorkService, ICompanionService
 {
     AppResult IPetsService.SetOnDesktop(string petId, bool onDesktop) =>
         Translate(SetPetOnDesktopFromPanel(petId, onDesktop));

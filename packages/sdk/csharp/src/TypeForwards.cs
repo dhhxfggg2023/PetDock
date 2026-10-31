@@ -79,3 +79,30 @@ using System.Runtime.CompilerServices;
 // 面板的陪伴行（IUiPageContext.Companions / InvokeCompanionCommand 的载荷），页面插件要用。
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.CompanionLine))]
 [assembly: TypeForwardedTo(typeof(PetDock.Core.Ui.CompanionCommandLine))]
+
+// 应用契约（R1 起，PetDock.App）：界面层唯一认的那套服务面。同样走转发 ——
+// 新页面插件实现/消费的是 core 里那唯一一份，不是同签名的副本（t6 教训见文件头）。
+// PetDock.App.Contracts 由 core 引用、经本工程传递可见；此处不加新的 csproj 边。
+[assembly: TypeForwardedTo(typeof(PetDock.App.AppResult))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.PluginTrashItem))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.MarketItem))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.MarketResult))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.UpdateCheck))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.UpdateInstall))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.UpdateInstallStage))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.AppSettings))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.WorkOutcome))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.WorkResult))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.WorkState))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.WorkProgress))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.CompanionButton))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.CompanionRow))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.IDiagnosticsService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.IPetsService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.IPluginsService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.IUpdateService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.IMarketService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.ISettingsService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.IWorkService))]
+[assembly: TypeForwardedTo(typeof(PetDock.App.ICompanionService))]
+

@@ -57,6 +57,8 @@ internal static class UiSelfTest
             FirstUseChecks.Run(Check);
             // 2026-10-28 第三轮：导入/安装的长任务（进度条、取消、取消后的现场）。
             UiWorkChecks.Run(Check);
+            // R1g/R1h：新契约面自己的语义（单飞、三态进度、取消≠失败、陪伴行出口）。
+            WorkContractChecks.Run(Check);
             PanelSingleton();
             RosterReadOnly();
             AuthorizationDialogCheck();

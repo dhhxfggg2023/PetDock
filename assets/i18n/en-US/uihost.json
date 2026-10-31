@@ -21,6 +21,7 @@
   "ui.work.convertProgress": "Converting {0} / {1} frames",
   "ui.work.cancel": "Cancel",
   "ui.work.cancelling": "Cancelling…",
+  "ui.work.cancelled": "The operation was cancelled.",
   "ui.bubble.poke1": "Hey, no poking!",
   "ui.bubble.poke2": "Hm?",
   "ui.bubble.poke3": "I'm here.",

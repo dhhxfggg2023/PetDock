@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using PetDock.App;
 using PetDock.Core.Compositor;
 using PetDock.Hosting;
 
@@ -31,6 +32,9 @@ internal sealed partial class UiHost
     /// <summary>进度节流时钟（复制回调在后台线程上可能每 MB 一次）。</summary>
     private readonly System.Diagnostics.Stopwatch _workClock = System.Diagnostics.Stopwatch.StartNew();
     private long _lastProgressMs;
+
+    /// <summary>进度节流窗口：中间帧最多 10 Hz；首帧与末帧不削（否则用户先看到 100ms 的空档）。</summary>
+    private const long ProgressThrottleMs = 100;
 
     /// <summary>是否有长任务在跑（自检与进度条都看它）。</summary>
     public bool IsWorking => _workCancel is not null;
@@ -238,38 +242,13 @@ internal sealed partial class UiHost
         string cancelKey,
         Func<CancellationToken, UiCommandResult> body)
     {
-        if (_workCancel is not null)
-        {
-            // 面板已经在跑另一件长活：不排队、不并发写同一份数据区。
-            return UiCommandResult.Failure(I18n.Get("ui.work.busy"));
-        }
-
-        // 这里一定在 UI 线程上（页面点击 / 托盘命令）：补抓构造期还没装好的同步上下文。
-        _uiContext ??= SynchronizationContext.Current;
-
-        using var cts = new CancellationTokenSource();
-        _workCancel = cts;
-        _lastProgressMs = 0;
-        ShowWork(startText);
-        try
-        {
-            return await Task.Run(() => body(cts.Token), cts.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            return UiCommandResult.Cancel(I18n.Get(cancelKey));
-        }
-        catch (Exception error)
-        {
-            // body 自己应该已经把可预期的失败翻译成文案；走到这里的是没预料的异常。
-            KernelLog.Write($"ui-work-failed {error.GetType().Name}: {error.Message}");
-            return UiCommandResult.Failure(I18n.Get("ui.work.failed"));
-        }
-        finally
-        {
-            _workCancel = null;
-            HideWork();
-        }
+        // 单飞、进度、取消、异常兜底都在 UiHost.Work.Contract.cs 的 RunWorkCoreAsync 里：
+        // 新层与旧面板共用同一份实现，否则「同一时刻只跑一件」会有两套口径。
+        WorkResult result = await RunWorkCoreAsync(
+            startText,
+            cancelKey,
+            (token, _) => Task.FromResult(FoldingWork(body(token))));
+        return UnfoldingWork(result);
     }
 
     /// <summary>进度阶段（后台线程调用）：把一句「正在做什么」贴到底部状态条。</summary>

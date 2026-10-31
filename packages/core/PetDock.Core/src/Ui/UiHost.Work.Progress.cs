@@ -40,7 +40,7 @@ internal sealed partial class UiHost
     private bool ShouldReportProgress(bool final)
     {
         long now = _workClock.ElapsedMilliseconds;
-        if (!final && now - _lastProgressMs < 100)
+        if (!final && now - _lastProgressMs < ProgressThrottleMs)
         {
             return false;
         }
