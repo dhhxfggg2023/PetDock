@@ -65,6 +65,8 @@ public partial class SettingsPage : UserControl, IUiPage
         UpdateHint.Text = context.T("cp.settings.update.hint");
         UpdateCheckButton.Content = context.T("cp.settings.update.check");
         UpdateDownloadButton.Content = context.T("cp.settings.update.download");
+        UpdateRestartButton.Content = context.T("cp.settings.update.restartNow");
+        UpdateLaterButton.Content = context.T("cp.settings.update.later");
         UpdateOpenButton.Content = context.T("cp.settings.update.open");
         AboutVersionLabel.Text = context.T("cp.settings.about.version");
         AboutHint.Text = context.T("cp.settings.about.hint");
@@ -80,6 +82,8 @@ public partial class SettingsPage : UserControl, IUiPage
         AutomationProperties.SetName(AuditButton, AuditButton.Content?.ToString() ?? "audit");
         AutomationProperties.SetName(UpdateCheckButton, UpdateCheckButton.Content?.ToString() ?? "update");
         AutomationProperties.SetName(UpdateDownloadButton, UpdateDownloadButton.Content?.ToString() ?? "download");
+        AutomationProperties.SetName(UpdateRestartButton, UpdateRestartButton.Content?.ToString() ?? "restart");
+        AutomationProperties.SetName(UpdateLaterButton, UpdateLaterButton.Content?.ToString() ?? "later");
         AutomationProperties.SetName(UpdateOpenButton, UpdateOpenButton.Content?.ToString() ?? "open");
 
         // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
@@ -143,10 +147,43 @@ public partial class SettingsPage : UserControl, IUiPage
                     : _context.T("cp.settings.pet.size.defaultTarget");
                 AboutVersionText.Text = view.Version ?? "—";
             }
+
+            BindUpdate();
         }
         finally
         {
             _binding = false;
+        }
+    }
+
+    /// <summary>
+    /// 更新那一块的**事实来源是磁盘**，不是页面自己的记忆（2026-10-31）：
+    /// 用户可能上次就点了「稍后更新」然后关掉面板，这次重开必须还看得见「已登记」。
+    /// 三种状态各显示各的：已下载待装（给两个时机按钮）/ 刚装好（报一句）/ 没动静（什么都不说）。
+    /// </summary>
+    private void BindUpdate()
+    {
+        string? pending = _context.PendingUpdateVersion;
+        string? report = _context.LastUpdateReport;
+
+        if (pending is not null)
+        {
+            UpdateDownloadButton.Visibility = Visibility.Collapsed;
+            UpdateRestartButton.Visibility = Visibility.Visible;
+            UpdateLaterButton.Visibility = Visibility.Visible;
+            if (string.IsNullOrEmpty(UpdateStatus.Text))
+            {
+                UpdateStatus.Text = _context.T("cp.settings.update.pending", pending);
+            }
+
+            return;
+        }
+
+        UpdateRestartButton.Visibility = Visibility.Collapsed;
+        UpdateLaterButton.Visibility = Visibility.Collapsed;
+        if (!string.IsNullOrEmpty(report))
+        {
+            UpdateStatus.Text = report;
         }
     }
 
@@ -327,8 +364,8 @@ public partial class SettingsPage : UserControl, IUiPage
     }
 
     /// <summary>
-    /// 下载并校验新版本。**不替换正在运行的程序** —— 校验通过的包摆到数据区的 _update/ 下，
-    /// 由用户自己去用（下一个按钮）。原因见 UpdateService 文件头。
+    /// 下载 → 校验 → 解压 → 登记「待安装」。这一步**不动**正在运行的文件：
+    /// 解好之后才出现「立即重启更新 / 稍后更新」两个按钮。
     /// </summary>
     private async void OnDownloadUpdate(object sender, RoutedEventArgs e)
     {
@@ -336,16 +373,17 @@ public partial class SettingsPage : UserControl, IUiPage
         UpdateStatus.Text = _context.T("cp.settings.update.downloading");
         try
         {
-            string? problem = await _context.DownloadUpdateAsync();
-            if (problem is not null)
+            UpdateInstallLine result = await _context.DownloadUpdateAsync();
+            if (result.State == UpdateInstallState.Failed)
             {
-                UpdateStatus.Text = problem;
+                UpdateStatus.Text = result.Message ?? _context.T("cp.settings.update.failed");
                 return;
             }
 
-            UpdateStatus.Text = _context.T("cp.settings.update.downloaded");
+            UpdateStatus.Text = _context.T("cp.settings.update.pending", result.Line?.Latest ?? "?");
             UpdateDownloadButton.Visibility = Visibility.Collapsed;
-            UpdateOpenButton.Visibility = Visibility.Visible;
+            UpdateRestartButton.Visibility = Visibility.Visible;
+            UpdateLaterButton.Visibility = Visibility.Visible;
         }
         catch (Exception)
         {
@@ -354,6 +392,62 @@ public partial class SettingsPage : UserControl, IUiPage
         finally
         {
             UpdateDownloadButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// 「立即重启更新」：宿主把活交给 PetDock.Update.exe 之后会退出，进程自己重启回来。
+    /// 这一句文案要在进程消失之前留在用户眼前 —— 否则他会以为点崩了。
+    /// </summary>
+    private async void OnRestartUpdate(object sender, RoutedEventArgs e)
+    {
+        UpdateRestartButton.IsEnabled = false;
+        UpdateLaterButton.IsEnabled = false;
+        UpdateStatus.Text = _context.T("cp.settings.update.restarting", _context.PendingUpdateVersion ?? "?");
+        try
+        {
+            UpdateInstallLine result = await _context.InstallUpdateAsync(restartNow: true);
+            if (result.State == UpdateInstallState.Failed)
+            {
+                UpdateStatus.Text = result.Message ?? _context.T("cp.settings.update.failed");
+                UpdateRestartButton.IsEnabled = true;
+                UpdateLaterButton.IsEnabled = true;
+            }
+        }
+        catch (Exception)
+        {
+            UpdateStatus.Text = _context.T("cp.settings.update.failed");
+            UpdateRestartButton.IsEnabled = true;
+            UpdateLaterButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// 「稍后更新」：什么都不搬，只确认「下次启动会装」这件事真的落盘了。
+    /// 说「已登记」而不是「已更新」，是因为现在装的还是旧版本 —— 用户下次开机才会看到新版本。
+    /// </summary>
+    private async void OnLaterUpdate(object sender, RoutedEventArgs e)
+    {
+        UpdateLaterButton.IsEnabled = false;
+        try
+        {
+            UpdateInstallLine result = await _context.InstallUpdateAsync(restartNow: false);
+            UpdateStatus.Text = result.State == UpdateInstallState.Failed
+                ? result.Message ?? _context.T("cp.settings.update.failed")
+                : _context.T("cp.settings.update.laterQueued", _context.PendingUpdateVersion ?? "?");
+            if (result.State != UpdateInstallState.Failed)
+            {
+                UpdateRestartButton.Visibility = Visibility.Collapsed;
+                UpdateLaterButton.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch (Exception)
+        {
+            UpdateStatus.Text = _context.T("cp.settings.update.failed");
+        }
+        finally
+        {
+            UpdateLaterButton.IsEnabled = true;
         }
     }
 

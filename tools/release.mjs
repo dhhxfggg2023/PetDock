@@ -43,6 +43,15 @@ const HOST_ASSEMBLY_NAMES = new Set([
   'PetDock.Core.pdb',
   'PetDock.Core.deps.json',
   'PetDock.Core.runtimeconfig.json',
+  // 搬运工同样只在宿主根目录有一份：插件 publish 会把整个 ProjectReference 闭包拷过去。
+  // 2026-10-31 把 PetDock.Update 加进解决方案之后就发生了这件事 —— 只剪 Core 那几个的话，
+  // 七个插件里会各多出一套 PetDock.Update.*（每个约 100 KB，看上去不多，但那是**过期的副本**：
+  // 用户更新之后插件目录里还留着旧版本，谁也不知道该信哪一份）。
+  'PetDock.Update.exe',
+  'PetDock.Update.dll',
+  'PetDock.Update.pdb',
+  'PetDock.Update.deps.json',
+  'PetDock.Update.runtimeconfig.json',
   'Wasmtime.Dotnet.dll',
   'Wasmtime.Dotnet.pdb',
   'wasmtime.dll',
@@ -75,6 +84,15 @@ function plan(version) {
       to: '.',
       kind: 'publish',
       why: '内核本体（dotnet publish 产出）',
+    },
+    {
+      // 搬运工（2026-10-31）：更新时替换正在运行的文件需要它。它必须是**发布物的一部分**，
+      // 而不是「用户自己去下」—— 没有它，「稍后更新」登记的活儿永远没人干，
+      // 下一次启动会把它读成「上一趟没跑完」然后取消。
+      from: path.join('packages', 'core', 'PetDock.Update'),
+      to: '.',
+      kind: 'publish',
+      why: '更新搬运工（宿主退出后换文件并重启，单独工程、不引用内核）',
     },
     {
       from: path.join('packages', 'plugins'),
@@ -290,6 +308,14 @@ function auditOutput(outDir, version) {
   const coreExe = path.join(outDir, 'PetDock.Core.exe');
   if (!fs.existsSync(coreExe)) {
     fail('发布物缺 PetDock.Core.exe（publish 没跑或输出目录不对）');
+  }
+
+  // ③b 搬运工必须在（2026-10-31）：少了它，「稍后更新」登记的那份活儿永远没人干 ——
+  // 下一次启动会把它读成「上一趟没跑完」然后取消，用户看到的是「更新永远装不上」。
+  for (const name of ['PetDock.Update.exe', 'PetDock.Update.dll', 'PetDock.Update.runtimeconfig.json']) {
+    if (!fs.existsSync(path.join(outDir, name))) {
+      fail(`发布物缺 ${name}（更新搬运工发不出来，「稍后更新」会永远停在已登记）`);
+    }
   }
 
   // ④ 插件 manifest 必须声明 license（原规格 52 §6 第 6 条）
@@ -518,19 +544,22 @@ function main() {
     if (DRY_RUN && fs.existsSync(target)) {
       fs.rmSync(target, { recursive: true, force: true });
     }
-    const publishArgs = [
-      'publish',
-      path.join('packages', 'core', 'PetDock.Core', 'PetDock.Core.csproj'),
-      '-c', 'Release',
-      '-o', target,
-      '--nologo',
-    ];
-    console.log(`RUN dotnet ${publishArgs.join(' ')}`);
-    try {
-      execFileSync('dotnet', publishArgs, { cwd: REPO_ROOT, stdio: 'inherit' });
-    } catch {
-      console.log('RELEASE-FAIL dotnet publish 失败');
-      process.exit(1);
+    // 两个工程发到**同一个目录**：搬运工必须和宿主并排（它在同一个目录里被找到、被拷走）。
+    for (const project of ['PetDock.Core', 'PetDock.Update']) {
+      const publishArgs = [
+        'publish',
+        path.join('packages', 'core', project, `${project}.csproj`),
+        '-c', 'Release',
+        '-o', target,
+        '--nologo',
+      ];
+      console.log(`RUN dotnet ${publishArgs.join(' ')}`);
+      try {
+        execFileSync('dotnet', publishArgs, { cwd: REPO_ROOT, stdio: 'inherit' });
+      } catch {
+        console.log(`RELEASE-FAIL dotnet publish 失败（${project}）`);
+        process.exit(1);
+      }
     }
   }
 

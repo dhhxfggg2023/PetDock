@@ -22,6 +22,7 @@ internal static class TrayPetChecks
             TrayCommandTargetsOwn(check);
             TrayLanguageReload(check);
             PetMenuReopens(check);
+            RestartEntry(check);
         }
         catch (Exception error)
         {
@@ -29,6 +30,8 @@ internal static class TrayPetChecks
             check("ui-tray-pet-command-targets-own", false, "exception: " + error.GetType().Name);
             check("ui-tray-language-reload", false, "exception: " + error.GetType().Name);
             check("ui-tray-pet-menu-reopens", false, "exception: " + error.GetType().Name);
+            check("ui-tray-restart-entry", false, "exception: " + error.GetType().Name);
+            check("ui-tray-restart-optional", false, "exception: " + error.GetType().Name);
         }
 
         CatalogRemoval(check);
@@ -45,14 +48,16 @@ internal static class TrayPetChecks
             new("gamma", noop, noop, noop),
         };
 
-        using var tray = new TrayHost(pets, noop, noop);
+        // 顺序：主控面板 → 三只宠物 → 重启 → 退出（2026-10-31 加了「重启」）。
+        using var tray = new TrayHost(pets, noop, noop, noop);
         IReadOnlyList<string> order = tray.ItemOrder;
-        bool orderOk = order.Count == 5
+        bool orderOk = order.Count == 6
             && order[0] == "panel"
             && order[1] == "pet-1"
             && order[2] == "pet-2"
             && order[3] == "pet-3"
-            && order[4] == "exit";
+            && order[4] == "restart"
+            && order[5] == "exit";
 
         IReadOnlyList<string> children = tray.PetChildTitles(1);
         // 断言**键**而不是文案：文案搬进 assets/i18n 之后，断言中文的判据红的是判据（RFC-42 §3.4）。
@@ -188,11 +193,13 @@ internal static class TrayPetChecks
         using var tray = new TrayHost(
             new List<PetMenuItem> { new("alpha", noop, noop, noop) },
             noop,
+            noop,
             noop);
 
         // 不真的 Show（判据跑在无人值守的桌面上）：只走「重建条目」这一半，
         // 那半边正是缺陷所在。Show 之后的显示与关闭由 _menuWatch 负责，与本条无关。
-        PetScope scope = new("alpha", Paused: false, noop, noop, noop, noop, noop);
+        // 参数顺序即菜单顺序：移动/暂停/移除 →（分隔）→ 面板/重启/退出。
+        PetScope scope = new("alpha", Paused: false, noop, noop, noop, noop, noop, noop);
         string? first = null;
         string? second = null;
         try
@@ -215,6 +222,42 @@ internal static class TrayPetChecks
 
         check("ui-tray-pet-menu-reopens", first is null && second is null,
             $"first={(first ?? "ok")} second={(second ?? "ok")}");
+    }
+
+    /// <summary>
+    /// 「重启」真的在菜单里、真的能把命令发出去（2026-10-31 用户要求「加上常驻的重启功能」）。
+    ///
+    /// 判两件事，缺一不可：**菜单里有这一条**（否则用户找不到），
+    /// 以及**点下去真的走到那条命令**（否则它是个点了没反应的装饰）。
+    /// 走的是 PerformClick 那条真实点击链，不是直接调方法。
+    /// </summary>
+    private static void RestartEntry(Check check)
+    {
+        int restarts = 0;
+        UiCommand noop = () => { };
+        using var tray = new TrayHost(
+            new List<PetMenuItem> { new("alpha", noop, noop, noop) },
+            noop,
+            noop,
+            () => restarts++);
+
+        bool listed = tray.ItemOrder.Contains("restart")
+            && tray.FixedItemText("restart").Length > 0;
+        bool clicked = tray.ClickFixedItem("restart");
+
+        // 右键某一只的那份菜单也要有它（两份菜单同源，但不能只改一边）。
+        tray.RebuildPetMenuForCheck(new PetScope("alpha", false, noop, noop, noop, noop, noop, noop));
+
+        // 没有提供重启命令时**不许**摆一条点了没反应的「重启」。
+        using var bare = new TrayHost(
+            new List<PetMenuItem> { new("alpha", noop, noop, noop) },
+            noop,
+            noop);
+
+        check("ui-tray-restart-entry", listed && clicked && restarts == 1,
+            $"listed={listed} clicked={clicked} fired={restarts} text={tray.FixedItemText("restart")}");
+        check("ui-tray-restart-optional", !bare.ItemOrder.Contains("restart"),
+            $"items={string.Join(",", bare.ItemOrder)}");
     }
 
 }

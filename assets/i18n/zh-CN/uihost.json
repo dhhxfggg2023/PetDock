@@ -31,5 +31,13 @@
   "ui.work.failed": "操作失败，详情见日志。",
   "ui.workspace.version": "v{0}",
   "ui.companion.missing": "找不到这只宠物的陪伴层，列表可能已经变了。",
-  "ui.companion.failed": "陪伴层没有完成这次操作，详情见日志。"
+  "ui.companion.failed": "陪伴层没有完成这次操作，详情见日志。",
+  "ui.tray.restart": "重启 PetDock",
+  "ui.tray.restartConfirm": "重启 PetDock？桌宠会消失一下，随后自动回来。",
+  "ui.tray.restartConfirmTitle": "PetDock — 重启确认",
+  "ui.tray.restartFailed": "重启没有成功（{0}），程序仍在运行。",
+  "ui.update.applied": "已更新到 {0}。",
+  "ui.update.cancelled": "上次更新（{0}）没有装完，这次已取消；旧版本照常可用。",
+  "ui.update.failed": "上次更新没有装成功：{0}",
+  "ui.update.handoffFailed": "新版本没能交给安装进程，这次先不更新。详情见日志。"
 }

@@ -24,6 +24,7 @@ internal sealed record PetScope(
     UiCommand Pause,
     UiCommand Remove,
     UiCommand Panel,
+    UiCommand Restart,
     UiCommand Exit);
 
 internal sealed partial class TrayHost
@@ -87,6 +88,7 @@ internal sealed partial class TrayHost
             PetCommand(I18n.Get("ui.tray.pet.remove"), menu, scope.Remove),
             new ToolStripSeparator(),
             PetCommand(I18n.Get("ui.tray.panel"), menu, scope.Panel),
+            PetCommand(I18n.Get("ui.tray.restart"), menu, scope.Restart),
             PetCommand(I18n.Get("ui.tray.exit"), menu, scope.Exit),
         });
         Design.ThemedMenuRenderer.Apply(menu);

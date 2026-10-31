@@ -231,6 +231,11 @@
                                             Click="OnCheckUpdate" Margin="0,0,8,0" />
                                     <Button x:Name="UpdateDownloadButton" Style="{DynamicResource Pd.PrimaryButton}"
                                             Click="OnDownloadUpdate" Margin="0,0,8,0" Visibility="Collapsed" />
+                                    <!-- 下载并解压之后才出现：用户在这里选「现在重启装」还是「稍后（下次启动）装」。 -->
+                                    <Button x:Name="UpdateRestartButton" Style="{DynamicResource Pd.PrimaryButton}"
+                                            Click="OnRestartUpdate" Margin="0,0,8,0" Visibility="Collapsed" />
+                                    <Button x:Name="UpdateLaterButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                            Click="OnLaterUpdate" Margin="0,0,8,0" Visibility="Collapsed" />
                                     <Button x:Name="UpdateOpenButton" Style="{DynamicResource Pd.SecondaryButton}"
                                             Click="OnOpenUpdateFolder" Visibility="Collapsed" />
                                 </StackPanel>

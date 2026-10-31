@@ -29,6 +29,11 @@ internal static class UpdateChecks
         FeedParses(check);
         FeedRejects(check);
         ResultsStayDistinct(check);
+
+        // 2026-10-31 第二片：下载完之后的两条路（立即重启装 / 稍后下次启动装），
+        // 以及常驻的重启。都在临时目录里跑真文件，不联网、不碰真实安装目录。
+        UpdateStageChecks.Run(check);
+        UpdateStartupChecks.Run(check);
     }
 
     /// <summary>地址写死且是 https + 本仓库；下载前缀也是写死的，两处都不许「可配置」。</summary>

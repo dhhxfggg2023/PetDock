@@ -63,6 +63,7 @@ internal sealed partial class UiHost : ApplicationContext
     private bool _hostStarted;
 
     /// <summary>主窗那只已经从清单里移除（RFC-37 §3.6）：它的实例归 Program，卸载要重启。</summary>
+    private bool _openPanelAfterFirstTick;
     private bool _primaryRemoved;
     private bool _petShown;
     private bool _disposed;
@@ -155,7 +156,8 @@ internal sealed partial class UiHost : ApplicationContext
         _tray = new TrayHost(
             BuildPetMenu(),
             OpenPanel,
-            ExitApp);
+            ExitApp,
+            RestartApp);
 
         _tray.SetPetCount(pet is null ? 0 : 1);
 
@@ -234,6 +236,12 @@ internal sealed partial class UiHost : ApplicationContext
         RefreshTrayPets();
         KernelLog.Write($"pet-set-attached {set.Describe()}");
     }
+
+    /// <summary>
+    /// 启动完把主控面板打开一次（<c>--open-panel</c>：重启之后、新版本装完之后）。
+    /// 只排一次队：用户随后自己关掉面板不该被下一个滴答又弹回来。
+    /// </summary>
+    internal void OpenPanelOnFirstTick() => _openPanelAfterFirstTick = true;
 
     /// <summary>
     /// 探针用的无确认退出（--residenttest，RFC-26 §3 差异②）：托盘那条「退出」会弹一次确认框
@@ -322,6 +330,14 @@ internal sealed partial class UiHost : ApplicationContext
         }
 
         InstallKeyboardHookIfGranted();
+
+        // 首滴答之后的第一次打开（--open-panel）。放在最后：宠物、托盘、位置都已就位，
+        // 用户看到的是一扇已经摆好的面板，而不是一扇先弹出来再慢慢填内容的空窗。
+        if (_openPanelAfterFirstTick)
+        {
+            _openPanelAfterFirstTick = false;
+            OpenPanel();
+        }
     }
 
     protected override void Dispose(bool disposing)

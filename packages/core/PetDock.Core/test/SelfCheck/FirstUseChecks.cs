@@ -24,6 +24,8 @@ internal static class FirstUseChecks
             check("ui-settings-a11y", false, "root=missing");
             check("ui-settings-update-entry", false, "root=missing");
             check("ui-settings-update-offline-honest", false, "root=missing");
+            check("ui-settings-update-two-timings", false, "root=missing");
+            check("ui-settings-update-later-is-not-restart", false, "root=missing");
             check("ui-pets-duplicate-delete", false, "root=missing");
             check("ui-pets-per-pet-size", false, "root=missing");
             return;
@@ -81,6 +83,62 @@ internal static class FirstUseChecks
                     currentPrefix.Substring(0, Math.Min(8, currentPrefix.Length)), StringComparison.Ordinal);
             check("ui-settings-update-offline-honest", honestFailure,
                 $"status={updateStatus?.Text} uses-failed={updateStatus?.Text.StartsWith(failedPrefix.Substring(0, Math.Min(8, failedPrefix.Length)), StringComparison.Ordinal)}");
+
+            // 点「下载新版本」之后必须同时出现两个**时机**按钮（2026-10-31 用户要求
+            // 「下载完选择重启更新或者稍后更新」）：
+            // 只有「立即重启」= 用户没法等到下次启动；
+            // 只有「稍后」= 用户想马上换也做不到。
+            var updateDownload = settingsView?.FindName("UpdateDownloadButton") as System.Windows.Controls.Button;
+            var updateRestart = settingsView?.FindName("UpdateRestartButton") as System.Windows.Controls.Button;
+            var updateLater = settingsView?.FindName("UpdateLaterButton") as System.Windows.Controls.Button;
+
+            context.UpdateResult = new UpdateCheckLine("0.0.1", "9.9.9", 0, string.Empty, null);
+            updateCheck?.RaiseEvent(new RoutedEventArgs(
+                System.Windows.Controls.Primitives.ButtonBase.ClickEvent, updateCheck));
+            await System.Threading.Tasks.Task.Yield();
+            updateDownload?.RaiseEvent(new RoutedEventArgs(
+                System.Windows.Controls.Primitives.ButtonBase.ClickEvent, updateDownload));
+            await System.Threading.Tasks.Task.Yield();
+
+            bool bothTimings = updateRestart?.Visibility == Visibility.Visible
+                && updateLater?.Visibility == Visibility.Visible
+                && updateRestart.Content?.ToString()?.Length > 0
+                && updateLater.Content?.ToString()?.Length > 0;
+            check("ui-settings-update-two-timings", bothTimings,
+                $"restart={(updateRestart?.Visibility.ToString() ?? "null")}/{updateRestart?.Content}"
+                + $" later={(updateLater?.Visibility.ToString() ?? "null")}/{updateLater?.Content}");
+
+            // 「稍后更新」点下去要发命令，而且**不是**立即重启那一条 ——
+            // 两个按钮走错命令的话，用户点了「稍后」程序当场重启，那是最刺眼的一种错。
+            int beforeLater = context.Commands.Count;
+            updateLater?.RaiseEvent(new RoutedEventArgs(
+                System.Windows.Controls.Primitives.ButtonBase.ClickEvent, updateLater));
+            await System.Threading.Tasks.Task.Yield();
+            bool laterWired = context.Commands.Contains("later-update")
+                && !context.Commands.Skip(beforeLater).Contains("restart-update");
+            check("ui-settings-update-later-is-not-restart", laterWired,
+                $"late={string.Join(",", context.Commands.Skip(beforeLater))}");
+
+            // 「稍后更新」写下之后，用户关掉面板、过几天再打开：那一刻页面必须**还看得见**
+            // 「已登记，下次启动安装」。判的是事实来源 —— 页面的记忆会丢，磁盘上的那一份不会。
+            var restoredContext = new PreviewUiContext(context.Snapshot) { PendingVersion = "9.9.9" };
+            IUiPage? loaded = UiPluginCatalog.Load(root, restoredContext)
+                .SelectMany(plugin => plugin.CreatePages(restoredContext))
+                .FirstOrDefault(page => string.Equals(page.Id, "settings", StringComparison.Ordinal));
+            IUiPage? restoredSettings = loaded
+                ?? pages.FirstOrDefault(page => string.Equals(page.Id, "settings", StringComparison.Ordinal));
+            var restoredView = restoredSettings?.CreateView() as System.Windows.Controls.UserControl;
+            restoredView?.Measure(new System.Windows.Size(1000, 2000));
+            restoredView?.Arrange(new System.Windows.Rect(0, 0, 1000, 2000));
+            restoredView?.UpdateLayout();
+            var restoredRestart = restoredView?.FindName("UpdateRestartButton") as System.Windows.Controls.Button;
+            var restoredLater = restoredView?.FindName("UpdateLaterButton") as System.Windows.Controls.Button;
+            var restoredStatus = restoredView?.FindName("UpdateStatus") as TextBlock;
+            bool restored = restoredRestart?.Visibility == Visibility.Visible
+                && restoredLater?.Visibility == Visibility.Visible
+                && (restoredStatus?.Text?.Contains("9.9.9", StringComparison.Ordinal) ?? false);
+            check("ui-settings-update-pending-restored", restored,
+                $"restart={restoredRestart?.Visibility} later={restoredLater?.Visibility} status={restoredStatus?.Text}");
 
             var petContext = new PreviewUiContext(new UiSnapshot(
                 Array.Empty<PetLine>(),
@@ -190,6 +248,8 @@ internal static class FirstUseChecks
             check("ui-settings-a11y", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-update-entry", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-update-offline-honest", false, error.GetType().Name + ": " + error.Message);
+            check("ui-settings-update-two-timings", false, error.GetType().Name + ": " + error.Message);
+            check("ui-settings-update-later-is-not-restart", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-duplicate-delete", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-detail", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-per-pet-size", false, error.GetType().Name + ": " + error.Message);

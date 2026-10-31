@@ -152,13 +152,19 @@ function layersFor(config) {
     name: 'dist',
     title: 'L5 真实发布物：release → pack → 解压后运行 → 摘要',
     proves: '发布目录能装配、能封成一个单顶层目录的 zip、中央目录与本地头说法一致、清单与条目集对账、用 .NET ZipFile（资源管理器同一条路径）解压后 --hosttest 仍全过、同一棵树重跑得到同一份字节。',
-    notProven: '不证明签名（本机无 signtool）、不证明自动替换自身（这一版只下载+校验，不换正在运行的文件）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。',
+    notProven: '不证明签名（本机无 signtool）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。'
+      + '更新链条只证明到「搬运工自己按参数搬一次文件是对的」：真实的一次「用户点立即重启更新」'
+      + '（宿主退出 → 搬运工接手 → 重启）没有在判据里端到端跑过，那需要关掉一个真的常驻实例。',
     steps: [
       { id: 'release', ...node('tools/release.mjs'), marker: 'RELEASE-OK', timeoutMs: 20 * 60 * 1000 },
       { id: 'pack', ...node('tools/pack.mjs'), marker: 'PACK-OK' },
       // 顺序有语义：摘要必须描述**已经通过自检的那一个 zip**。先算摘要后跑自检的话，
       // 一个自检失败的 zip 也会拿到 .sha256 旁车文件，下游会把它当作「已验证的产物」发布。
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
+      // 搬运工的判据（2026-10-31）：它不跑在宿主进程里，所以 --uitest 碰不到它。
+      // 这一步在临时目录里造一个「安装目录 + 暂存区」，真的调一次 PetDock.Update.exe，
+      // 断言文件真的被换掉、备份真的在、result.txt 真的写了。
+      { id: 'helper-selftest', ...node('tools/update-helper-selftest.mjs'), marker: 'HELPER-OK', timeoutMs: 5 * 60 * 1000 },
       // 市场索引必须与发行包同一次构建产出：装的是 zip 里的插件，索引里写的是它们各自的 sha256。
       { id: 'market-index', ...node('tools/gen-market-index.mjs'), marker: 'MARKET-OK' },
       { id: 'zip-sha256', kind: 'digest', marker: null },

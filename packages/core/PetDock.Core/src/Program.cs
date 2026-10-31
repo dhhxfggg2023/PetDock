@@ -38,6 +38,19 @@ internal static partial class Program
             Console.Error.WriteLine($"kernel set-dpi-awareness-context-failed err={Marshal.GetLastWin32Error()}");
         }
 
+        // 重启时新进程带的两个旗标（2026-10-31）：--wait-pid 先等老进程退出再启动
+        // （否则单实例锁让新进程立刻自杀，用户看到的是「点了重启什么也没发生」）；
+        // --open-panel 启动完把面板打开（用户点的是托盘菜单，不该被丢回看不见的托盘）。
+        // 两个都只在**用户形态**下有意义，诊断旗标不走这条路径。
+        int waitPidAt = Array.IndexOf(args, "--wait-pid");
+        int waitPid = -1;
+        if (waitPidAt >= 0 && waitPidAt + 1 < args.Length)
+        {
+            _ = int.TryParse(args[waitPidAt + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out waitPid);
+        }
+
+        bool openPanelOnStart = args.Any(a => string.Equals(a, "--open-panel", StringComparison.Ordinal));
+
         bool selfTest = args.Any(a => string.Equals(a, "--selftest", StringComparison.Ordinal));
         bool hostTest = args.Any(a => string.Equals(a, "--hosttest", StringComparison.Ordinal));
         bool animTest = args.Any(a => string.Equals(a, "--animtest", StringComparison.Ordinal));
@@ -86,6 +99,14 @@ internal static partial class Program
         // 门禁就从此测不到东西了 —— 那不是约束，那是给门禁造假。
         bool userMode = !(selfTest || hostTest || animTest || driveTest || eventTest || perfTest
             || uiTest || composeTest || goldenTest || residentTest);
+        if (userMode && waitPid > 0)
+        {
+            // 重启路径（见 UiHost.Restart.cs）：等上一个实例真的退出再抢锁。
+            // 超时就照常往下走 —— 抢不到锁会由下面那一条如实告诉用户「已经在运行」，
+            // 比在这里无限等下去好（那时用户看到的是一个永远不出现的窗口）。
+            WaitForPredecessor(waitPid);
+        }
+
         if (userMode)
         {
             using var instance = new SingleInstance();
@@ -96,7 +117,7 @@ internal static partial class Program
                 return 0;
             }
 
-            return RunResident(null);
+            return RunResident(null, openPanelOnStart);
         }
 
         return selfTest ? RunSelfTest()
@@ -138,7 +159,7 @@ internal static partial class Program
     /// —— 宠物窗口只是众多窗口之一，用窗体当 Application.Run 的宿主会让「关主控面板=退程序」，
     /// 原规格 18 §2.5 明确禁止。托盘与面板的生命周期由此统一管理。</summary>
     /// <param name="probe">--residenttest 的探针参数（null = 正常常驻，见 ResidentPerfProbe）。</param>
-    private static int RunResident(ResidentPerfProbe.Options? probe = null)
+    private static int RunResident(ResidentPerfProbe.Options? probe = null, bool openPanelOnStart = false)
     {
         // 探针模式要往控制台打判据行（WinExe 默认没有控制台）：只接控制台，**不**打开
         // KernelLog.ConsoleAttached —— 那个开关会让每一条内核日志都同步写到控制台，
@@ -168,6 +189,13 @@ internal static partial class Program
         // 首次运行：把自带的会动示例宠物装进清单。装进去之后它和导入的宠物同一条路：
         // 有 id、能多开、能删除；不再是「每次启动都重建、删不掉」的内置窗口。
         I18n.Load(startupSettings.Language);
+
+        ResidentLog residentLog = StartResidentLog(dataStore, probe, out string? updateReport, out bool updateHandedOff);
+        if (updateHandedOff)
+        {
+            // 交接已经完成，搬运工在等本进程退出：这一次启动到此为止（不建任何窗口）。
+            return ExitOk;
+        }
 
         // 旧清单条目没有 name：从素材包清单补一次（只补空值）。必须在 EnsurePetCatalog
         // 之前跑 —— 已经初始化过的清单不会再进那条分支，迁移不能挂在那儿。
@@ -282,15 +310,6 @@ internal static partial class Program
         // 「恢复了清单里的宠物，但桌面上还是原来那只」。
         var settingsStore = new UserSettingsStore(PetDataStore.Resolve().Root);
 
-        // 常驻形态的运行期日志落盘 + 诊断服务（RFC-17 §3.1 / §3.4）。
-        // 装配顺序有讲究：落盘层挂到 KernelLog.Sink 之后，这一行往后每一个
-        // KernelLog.Write 都会留痕；日志目录不存在就建一个空的（空目录也是成功）。
-        var residentLog = new ResidentLog(
-            Path.Combine(dataStore.Root, DiagnosticService.LogsFolder),
-            RedactRules.ForCurrentMachine(dataStore.Root, PluginHost.ProbePluginsRoot()));
-        residentLog.Start();
-        KernelLog.Sink = residentLog;
-        KernelLog.Write("resident-log-started");
 
         // 插件日志面（RFC-23 / 原规格 20 §3）：装上收口，于是插件写 PluginLog.* 有地方去。
         // 必须在窗口装好内容之后、任何插件代码跑起来之前装（init 阶段就打日志的插件要留得下痕）。
@@ -305,6 +324,9 @@ internal static partial class Program
         diagnostics.Trail = auditTrail;
 
         var host = new UiHost(window, pet, pluginHost, frames, port, settingsStore, diagnostics, startHidden: noDefaultPet);
+
+        // 「上一次启动装没装上」交给面板显示一次（读一次就删，见 UpdateStartup.ConsumeResult）。
+        host.SetUpdateReport(updateReport);
 
         // 帧循环是 UiHost 建的，诊断服务比它先存在 —— 帧读数只能事后回填（RFC-17 §3.2）。
         diagnostics.FrameLoop = host.Loop;
@@ -321,6 +343,13 @@ internal static partial class Program
             host.Loop,
             settingsStore);
         host.AttachPetSet(petSet);
+
+        // --open-panel（重启与新版本安装之后）：首滴答摆好宠物之后再打开面板。
+        // 不在构造期 Show —— 那时还没有消息泵（RFC-14 §2.2）。
+        if (openPanelOnStart)
+        {
+            host.OpenPanelOnFirstTick();
+        }
 
         // 探针要在 Application.Run 之前挂上：它靠 UI 定时器判「采样完了没有」，
         // 泵一停它自己也会停（那时靠采样线程的墙钟，所以另有看门狗判红，见 ResidentPerfProbe）。
@@ -347,46 +376,5 @@ internal static partial class Program
         // 探针模式的退出码由判据决定（RESIDENT-PERF-OK / FAIL）；正常常驻仍是 0。
         return probe is null || !ResidentPerfProbe.Failed ? ExitOk : ExitFail;
     }
-
-
-    /// <summary>递归找带清单的目录（跳过构建产物与 node_modules —— 那不是发行内容）。</summary>
-    private static void CollectManifestDirs(string dir, List<string> found)
-    {
-        if (File.Exists(Path.Combine(dir, ManifestValidator.ManifestFileName)))
-        {
-            found.Add(dir);
-            return;
-        }
-
-        IEnumerable<string> subdirs;
-        try
-        {
-            subdirs = Directory.EnumerateDirectories(dir);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return;
-        }
-        catch (IOException)
-        {
-            return;
-        }
-
-        foreach (string sub in subdirs)
-        {
-            string name = Path.GetFileName(sub);
-            if (string.Equals(name, "bin", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "obj", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(name, "node_modules", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-            CollectManifestDirs(sub, found);
-        }
-    }
-
-
-    /// <summary>统一把自检里的布尔值写成 true / false，别处一律复用。</summary>
-    private static string Flag(bool value) => value ? "true" : "false";
 
 }

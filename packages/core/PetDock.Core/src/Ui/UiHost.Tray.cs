@@ -51,6 +51,7 @@ internal sealed partial class UiHost
             () => PausePetById(id),
             () => RemovePetByIdWithConfirm(id),
             OpenPanel,
+            RestartApp,
             ExitApp));
         KernelLog.Write($"pet-menu-shown id={id} paused={(paused ? 1 : 0)} x={screen.X} y={screen.Y}");
     }

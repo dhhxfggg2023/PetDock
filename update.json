@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.3.0",
-  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.3.0/PetDock-0.3.0-win-x64.zip",
-  "notes": "版本 0.3.0。解压后双击 PetDock.Core.exe；数据与宠物都在程序旁的 data\\ 里。"
+  "version": "0.4.0",
+  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.0/PetDock-0.4.0-win-x64.zip",
+  "notes": "版本 0.4.0。解压后双击 PetDock.Core.exe；数据与宠物都在程序旁的 data\\ 里。"
 }

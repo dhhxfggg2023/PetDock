@@ -108,6 +108,35 @@ public sealed record UpdateCheckLine(string Current, string? Latest, long Bytes,
     public bool UpToDate => Error is null && Latest is null;
 }
 
+/// <summary>
+/// 「下载 + 装」这两步各自可能停在哪里（2026-10-31）。三种状态必须分开：
+/// 页面据此决定下一步给哪个按钮 —— 把「已登记，下次启动装」显示成「装好了」，
+/// 用户会在一个其实还是旧版本的程序上等到下一次开机。
+/// </summary>
+public enum UpdateInstallState
+{
+    /// <summary>下载/校验/解压任意一步没成：Message 是给用户看的原因，磁盘上什么都没变。</summary>
+    Failed,
+
+    /// <summary>已经解好、标记也写下了，等一次重启（立即，或用户下次自己启动）。</summary>
+    Queued,
+
+    /// <summary>用户选了「立即重启更新」：交接完成，进程正在退出，搬运工在等它。</summary>
+    Restarting,
+}
+
+/// <summary>「下载 / 装」这一步的结局。Message 在 <see cref="UpdateInstallState.Failed"/> 之外为空或是一句人话。</summary>
+public sealed record UpdateInstallLine(UpdateInstallState State, string? Message, UpdateCheckLine? Line)
+{
+    public static UpdateInstallLine Fail(string message) => new(UpdateInstallState.Failed, message, null);
+
+    /// <summary>下载并解好了，「立即重启」与「稍后更新」两个按钮这时才该出现。</summary>
+    public static UpdateInstallLine Staged(UpdateCheckLine line) => new(UpdateInstallState.Queued, null, line);
+
+    /// <summary>用户选了「立即重启更新」：交接完成，进程正在退出。</summary>
+    public static UpdateInstallLine Restart(UpdateCheckLine line) => new(UpdateInstallState.Restarting, null, line);
+}
+
 /// <summary>状态条的口吻：info 是计数与提示，success 是「做成了」，problem 是「没做成，原因在这里」。</summary>
 public enum UiStatusKind
 {
@@ -249,14 +278,33 @@ public interface IUiPageContext
     Task<UpdateCheckLine> CheckUpdateAsync();
 
     /// <summary>
-    /// 下载新版本到暂存目录并校验 sha256（校验不过就删掉）。返回 null = 成功。
-    /// 非空 = 给用户看的原因。
+    /// 下载新版本 → 校验 sha256 → **解压到暂存树** → 记下「待安装的那一份」。
     ///
-    /// **不会替换正在运行的程序**：它只把校验通过的新版本摆到 <c>_update/</c> 下，
-    /// 然后由用户自己去用（页面给「打开所在文件夹」）。自动换掉正在运行的 exe 需要
-    /// 一个外部脚本先等进程退出再搬文件 —— 中途失败就是「旧版本没了、新版本也没装好」。
+    /// 这一步还**不**替换任何正在运行的文件：真正的搬运发生在本进程退出之后
+    /// （见 <see cref="InstallUpdateAsync"/>）。解压放在这里而不是搬的时候，
+    /// 是因为现在用户还看着面板，失败能立刻告诉他并重试。
     /// </summary>
-    Task<string?> DownloadUpdateAsync();
+    Task<UpdateInstallLine> DownloadUpdateAsync();
+
+    /// <summary>
+    /// 装。两种时机，走同一条交接（宿主先把意图写进 <c>_update/restart.txt</c>，
+    /// 再把工作交给 <c>PetDock.Update.exe</c>，然后自己退出）：
+    ///   <paramref name="restartNow"/> = true 立即重启并更新（用户不用再管）；
+    ///   false 稍后更新 —— 只留标记，用户下次自己点开程序时启动路径看到它就装。
+    ///
+    /// 返回 <see cref="UpdateInstallState.Failed"/> = 没装成，Message 是原因（本次不更新）；
+    /// 其余两种都已经成立（要么登记好了，要么交接完成、进程即将退出）。
+    /// </summary>
+    Task<UpdateInstallLine> InstallUpdateAsync(bool restartNow);
+
+    /// <summary>
+    /// 已经下载好、等着装的那一份的版本号（没有就 null）。面板重新打开时据此显示
+    /// 「已登记，下次启动安装」—— 那句话必须来自磁盘上的事实，不是页面自己的记忆。
+    /// </summary>
+    string? PendingUpdateVersion { get; }
+
+    /// <summary>上一次启动装没装上（null = 没有可说的）。成功时是版本号，失败时是原因短码。</summary>
+    string? LastUpdateReport { get; }
 
     /// <summary>在资源管理器里打开下载好的新版本所在目录。返回 null = 成功。</summary>
     string? OpenUpdateFolder();

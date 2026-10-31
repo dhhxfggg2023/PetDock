@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 35230,
+  "budget": 36950,
   "history": [
     {
       "date": "2026-10-18",
@@ -2965,6 +2965,56 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
           ],
           "lines": 70
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 36825,
+      "budget": 36950,
+      "note": "用户要求两条：「新增下载完选择重启更新或者稍后更新，稍后更新就是退出程序下次启动时更新」与「加上常驻的重启功能」。上一片只做到「下载 + 校验 + 摆在那里」，这一片把后两步补齐：下载时就解压到暂存树并写下待安装标记（pending.json）；「立即重启更新」写 restart.txt 后把活交给新进程 PetDock.Update.exe 再退出；「稍后更新」只留标记，下次启动在**任何窗口之前**看到它就装。搬运工是独立工程（packages/core/PetDock.Update），因为要被覆盖的正是宿主自己加载着的 exe/dll —— Windows 不允许自我替换；它先备份后覆盖，失败就把原文件换回去，结局写进 result.txt 由下一次启动读一次就删。重启功能不靠外部脚本：新进程带 --wait-pid 等老进程退出再抢单实例锁（否则它会立刻自杀，用户看到「点了重启什么也没发生」），托盘与右键菜单各一条。归属按文件整体算：新增 9 个文件（含搬运工三件）合计 1433 行；既有 8 个文件的净增 41 行（UiHost.Update 的下载/装两步、UiContracts 的安装契约、TrayHost 的重启项、Program 的旗标解析等）。文件级之和 1474 而整包 measured 差 1517，43 行差按整包裁定并进第一片（D-03c 拆分 Program.cs → Program.Boot.cs、TrayHost.cs → TrayHost.Checks.cs、UpdateStage → .Extract 的头部/using/类声明净增也在这里）。判据面（UpdateStageChecks / UpdateStartupChecks / TrayPetChecks 的新条目）在 test/ 下，按 D-03a 口径不计。",
+      "attribution": [
+        {
+          "slice": "待安装标记 + 解压 + 搬运工装箱（含整包 43 行差额与 D-03c 拆分净增）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStage.cs",
+            "packages/core/PetDock.Core/src/Host/UpdateStage.Extract.cs"
+          ],
+          "lines": 489
+        },
+        {
+          "slice": "启动时「装不装」的判定与交接（含 Program.Boot 的启动闸门与探针旁路）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStartup.cs",
+            "packages/core/PetDock.Core/src/Program.Boot.cs"
+          ],
+          "lines": 360
+        },
+        {
+          "slice": "搬运工本体（独立工程、不引用内核；覆盖前重验 sha256 并重新解包）",
+          "files": [
+            "packages/core/PetDock.Update/Applier.cs",
+            "packages/core/PetDock.Update/Applier.Package.cs",
+            "packages/core/PetDock.Update/Options.cs",
+            "packages/core/PetDock.Update/Program.cs"
+          ],
+          "lines": 532
+        },
+        {
+          "slice": "宿主接线：下载即解压、两个时机、重启命令；托盘判据面拆出",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Update.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Restart.cs",
+            "packages/core/PetDock.Core/src/Ui/TrayHost.Checks.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+            "packages/core/PetDock.Core/src/Ui/TrayHost.cs",
+            "packages/core/PetDock.Core/src/Ui/TrayHost.PetMenu.cs",
+            "packages/core/PetDock.Core/src/Host/UpdateService.cs",
+            "packages/core/PetDock.Core/src/Program.cs"
+          ],
+          "lines": 309
         }
       ]
     }

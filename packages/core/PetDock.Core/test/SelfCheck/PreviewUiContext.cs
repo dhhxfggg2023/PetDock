@@ -173,12 +173,35 @@ internal sealed class PreviewUiContext : IUiPageContext
         return Task.FromResult(UpdateResult);
     }
 
-    public Task<string?> DownloadUpdateAsync()
+    /// <summary>判据可注入的下载结局（默认「解好了，等重启」，好让页面把两个时机按钮摆出来）。</summary>
+    public UpdateInstallLine DownloadResult { get; set; } =
+        UpdateInstallLine.Staged(new UpdateCheckLine("0.0.0", "9.9.9", 1024, string.Empty, null));
+
+    /// <summary>判据可注入的安装结局（默认登记成功）。</summary>
+    public UpdateInstallLine InstallResult { get; set; } =
+        UpdateInstallLine.Staged(new UpdateCheckLine("0.0.0", "9.9.9", 0, string.Empty, null));
+
+    /// <summary>判据可注入的「已下载待装」版本号（默认 null = 磁盘上没有待安装的一份）。</summary>
+    public string? PendingVersion { get; set; }
+
+    /// <summary>判据可注入的「上一次启动装没装上」。</summary>
+    public string? UpdateReport { get; set; }
+
+    public string? PendingUpdateVersion => PendingVersion;
+
+    public string? LastUpdateReport => UpdateReport;
+
+    public Task<UpdateInstallLine> DownloadUpdateAsync()
     {
         Commands.Add("download-update");
-        return Task.FromResult<string?>(null);
+        return Task.FromResult(DownloadResult);
     }
 
+    public Task<UpdateInstallLine> InstallUpdateAsync(bool restartNow)
+    {
+        Commands.Add(restartNow ? "restart-update" : "later-update");
+        return Task.FromResult(InstallResult);
+    }
     public string? OpenUpdateFolder()
     {
         Commands.Add("open-update-folder");

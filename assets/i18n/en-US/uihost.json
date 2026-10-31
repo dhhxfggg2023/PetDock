@@ -31,5 +31,13 @@
   "ui.work.failed": "The operation failed. See the log for details.",
   "ui.workspace.version": "v{0}",
   "ui.companion.missing": "That pet has no companion layer any more; the list may have changed.",
-  "ui.companion.failed": "The companion layer could not finish that action. See the log for details."
+  "ui.companion.failed": "The companion layer could not finish that action. See the log for details.",
+  "ui.tray.restart": "Restart PetDock",
+  "ui.tray.restartConfirm": "Restart PetDock? Your pets disappear for a moment and come back.",
+  "ui.tray.restartConfirmTitle": "PetDock — Confirm restart",
+  "ui.tray.restartFailed": "Restart did not start ({0}); PetDock is still running.",
+  "ui.update.applied": "Updated to {0}.",
+  "ui.update.cancelled": "The last update ({0}) did not finish, so it was cancelled. Your current version still works.",
+  "ui.update.failed": "The last update did not install: {0}",
+  "ui.update.handoffFailed": "The new version could not be handed to the installer, so this time nothing changed. See the log."
 }

@@ -87,15 +87,18 @@ internal sealed class UpdateService
     ///
     /// 旁车格式与 <c>Get-FileHash</c>/<c>sha256sum</c> 一致：一行 `<hex>  <文件名>`。
     /// 对不上、或读不到旁车，一律删文件并返回原因 —— 没有校验值的更新包不能装。
+    ///
+    /// 成功时把**校验通过的那一串**也一并交出去：它是待安装标记里唯一有意义的完整性字段，
+    /// 「用户点了稍后更新、下次启动再装」这一整条路上，那之后没有人会再去核对一遍文件。
     /// </summary>
-    public async Task<(string? File, string? Error)> DownloadAsync(
+    public async Task<(string? File, string? Sha256, string? Error)> DownloadAsync(
         UpdateFeed feed,
         string directory,
         CancellationToken token)
     {
         if (!feed.Url.StartsWith(AllowedDownloadPrefix, StringComparison.Ordinal))
         {
-            return (null, "bad-download-url");
+            return (null, null, "bad-download-url");
         }
 
         Directory.CreateDirectory(directory);
@@ -106,13 +109,13 @@ internal sealed class UpdateService
             {
                 if ((int)response.StatusCode != 200)
                 {
-                    return (null, $"download-status-{(int)response.StatusCode}");
+                    return (null, null, $"download-status-{(int)response.StatusCode}");
                 }
 
                 long declared = response.Content.Headers.ContentLength ?? 0;
                 if (declared > UpdateFeed.MaxBytes)
                 {
-                    return (null, $"size-too-large-{declared}");
+                    return (null, null, $"size-too-large-{declared}");
                 }
 
                 await using FileStream file = File.Create(target);
@@ -123,24 +126,24 @@ internal sealed class UpdateService
             if (actual <= 0 || actual > UpdateFeed.MaxBytes)
             {
                 File.Delete(target);
-                return (null, $"size-bad-{actual}");
+                return (null, null, $"size-bad-{actual}");
             }
 
             (string? expected, string? sidecarError) = await FetchSidecarAsync(feed, token).ConfigureAwait(false);
             if (expected is null)
             {
                 File.Delete(target);
-                return (null, sidecarError ?? "sidecar-missing");
+                return (null, null, sidecarError ?? "sidecar-missing");
             }
 
             PluginMarketIndex.VerifySha256(target, expected, out string? mismatch);
             if (mismatch is not null)
             {
                 File.Delete(target);
-                return (null, mismatch);
+                return (null, null, mismatch);
             }
 
-            return (target, null);
+            return (target, expected, null);
         }
         catch (OperationCanceledException)
         {
@@ -150,7 +153,7 @@ internal sealed class UpdateService
         catch (Exception error) when (error is HttpRequestException or IOException)
         {
             SafeDelete(target);
-            return (null, error.GetType().Name);
+            return (null, null, error.GetType().Name);
         }
     }
 
