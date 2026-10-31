@@ -29,20 +29,16 @@ assets/user/
 .state/
 *.pid
 
-# ---- 本地账本 / harness 状态（是记忆，不是源码） ----
+# ---- 本机账本（2026-10-31 废弃） / harness 状态 ----
+# 账本机制废弃：.dsh-code/ 与 docs/ 交接树都不再使用，唯一的交接文档是仓库根的 HANDOVER.md
+# （入库、跟代码一起走 —— 未入库的记忆这一轮被证明会消失）。
+# 下面三条保留只为挡住误提交；机器上若残留 %USERPROFILE%\petdock-ledger-backup\，那是 2026-10-28
+# 的历史快照，只作历史，不要拿它恢复这套机制。
 .dsh-code/
+ledger/
+docs/handoff/
 .agent-teams/
 .claude/
-# ledger/ 是 tools/ledger-export.mjs 导出的账本快照。**刻意不入库**：私有库以后要转公开，
-# 账本里有本机绝对路径、账号名、出口 IP、路由与凭据位置等只该留在本地的东西
-# （2026-10-16 决定，见账本 decisions.md「账本出库」；历史里的 ledger/ 已用 filter-branch purge）。
-# 持久化靠：.dsh-code/ 本体 + pre-commit 钩子刷新的跨卷副本 %USERPROFILE%\petdock-ledger-backup\。
-ledger/
-
-# docs/handoff/ 是里程碑交接/契约/验证档案（2026-10-19 自 .dsh-code/ 聚合而来）。与 ledger/
-# 同款理由不入库：账本类工作档案、含本机路径；留在磁盘 + 跨卷备份
-# （%USERPROFILE%\petdock-ledger-backup\handoff\）。入口索引：docs/98-ai-handoff.md
-docs/handoff/
 
 # ---- 临时 / 探针输出 ----
 tools/**/*.scan.json
