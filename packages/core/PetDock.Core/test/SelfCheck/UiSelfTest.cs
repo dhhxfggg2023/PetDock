@@ -74,6 +74,8 @@ internal static class UiSelfTest
             PluginManageChecks.Run(Check);
             // 2026-10-28 第三轮：回收站（列出 / 恢复 / 冲突拒绝 / 彻底删除 / 保留策略）。
             PluginTrashChecks.Run(Check);
+            // 2026-10-31 审计：清单 entry 必须留在插件目录内，且只有一个属主在解析它。
+            PluginEntryChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。

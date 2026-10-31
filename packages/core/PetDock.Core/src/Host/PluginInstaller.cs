@@ -107,16 +107,13 @@ internal sealed class PluginInstaller
             }
 
             PluginManifest manifest = result.Ok!;
-            string declaredEntry = Path.GetFullPath(Path.Combine(pluginDir, manifest.Entry));
-            string pluginDirFull = Path.GetFullPath(pluginDir) + Path.DirectorySeparatorChar;
-            if (!declaredEntry.StartsWith(pluginDirFull, StringComparison.OrdinalIgnoreCase))
+            // 入口的「在不在目录内」只有 PluginEntryPath 一个属主：装载、热重载、按 id 启用、
+            // 以及这里的安装校验都走它，免得四个地方各自漂移（2026-10-31 审计）。
+            if (!PluginEntryPath.TryResolve(pluginDir, manifest.Entry, out _, out string? entryWhy))
             {
-                error = I18n.Get("cp.plugins.install.entryOutside");
-                return false;
-            }
-            if (!File.Exists(declaredEntry))
-            {
-                error = I18n.Get("cp.plugins.install.entryMissing", manifest.Entry);
+                error = entryWhy == "entry-missing"
+                    ? I18n.Get("cp.plugins.install.entryMissing", manifest.Entry)
+                    : I18n.Get("cp.plugins.install.entryOutside");
                 return false;
             }
 

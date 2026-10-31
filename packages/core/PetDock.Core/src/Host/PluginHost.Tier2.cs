@@ -23,7 +23,12 @@ public sealed partial class PluginHost
         CapabilityGate gate,
         ISandboxEventSink sink)
     {
-        string command = Path.GetFullPath(Path.Combine(pluginDir, manifest.Entry));
+        // 入口必须是插件目录内的那一个（见 PluginEntry 文件头：绝对路径会吞掉目录前缀）。
+        if (!PluginEntryPath.TryResolve(pluginDir, manifest.Entry, out string command, out string? why))
+        {
+            throw new PluginLoadException(pluginId, new[] { $"tier-2 entry rejected: {why}" });
+        }
+
         Tier2Sandbox sandbox = new(gate, sink, command, workingDir: pluginDir);
         try
         {

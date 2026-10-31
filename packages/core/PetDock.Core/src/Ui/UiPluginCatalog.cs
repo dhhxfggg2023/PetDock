@@ -112,13 +112,19 @@ internal static class UiPluginCatalog
 
     private static string? ResolveAssembly(string dir, string entry)
     {
-        if (!string.IsNullOrWhiteSpace(entry))
+        // 只认「插件目录内的那一个」：绝对路径与 ..\ 一律拒绝（见 PluginEntry 文件头）。
+        if (PluginEntryPath.TryResolve(dir, entry, out string candidate, out string? entryWhy))
         {
-            string candidate = Path.IsPathRooted(entry) ? entry : Path.GetFullPath(Path.Combine(dir, entry));
-            if (File.Exists(candidate) && candidate.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            if (candidate.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
             {
                 return candidate;
             }
+
+            KernelLog.Write($"ui-plugin-entry-skip dir={dir} reason=not-a-dll entry={entry}");
+        }
+        else
+        {
+            KernelLog.Write($"ui-plugin-entry-skip dir={dir} reason={entryWhy} entry={entry}");
         }
 
         // 清单 entry 常写成构建输出路径；发行包里直接是 DLL 文件名。

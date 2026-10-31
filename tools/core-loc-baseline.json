@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 37740,
+  "budget": 37830,
   "history": [
     {
       "date": "2026-10-18",
@@ -3089,6 +3089,38 @@
             "packages/core/PetDock.Core/src/Program.Boot.cs"
           ],
           "lines": 36
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 37795,
+      "budget": 37830,
+      "note": "插件入口只有一个属主（2026-10-31 只读审计的『严重-2 / 高』）：清单里的 entry 是远端可控字符串，会被拼成路径去 Assembly.LoadFrom 与 Process.Start。审计指出两件事 —— ① 安装器只在**安装那一刻**查过「入口在插件目录内」，装载 / 热重载 / 按 id 启用三条路都不复查；② Path.Combine(pluginDir, entry) 遇到绝对路径的第二段会**直接返回它**，于是「在目录内」这个前提被悄悄换掉，任何能写插件目录的人（发行 zip 解出来的目录本身就是用户可写）都能让宿主启动任意 exe（tier-2）或把任意 dll 载进进程（tier-0 界面插件与宠物表面插件）。现在只有一个解析者 Host/PluginEntryPath.cs：空 / 绝对路径 / 跳出目录 / 不存在四类拒绝，四个装载点（tier-2、tier-1 读入口模块、tier-0 界面插件、tier-0 宠物表面）与安装器全部走它。判据：ui-plugin-entry-contained（四类拒绝的行为判据）与 ui-plugin-entry-single-owner（源码级：内核 src 里不许再出现把 manifest.Entry 拼成路径的行 —— 挡的是将来长出来的第五个装载点）。预算 37795 → 37830（余量 35）。",
+      "attribution": [
+        {
+          "slice": "入口解析的唯一属主（四类拒绝 + 前缀检查先挡绝对路径）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginEntryPath.cs"
+          ],
+          "lines": 72
+        },
+        {
+          "slice": "四个装载点改走解析者（tier-2 spawn、tier-1 读模块、tier-0 界面插件、tier-0 宠物表面）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Tier2.cs",
+            "packages/core/PetDock.Core/src/Ui/UiPluginCatalog.cs",
+            "packages/core/PetDock.Core/src/Host/PetSurfaceLoader.cs",
+            "packages/core/PetDock.Core/src/Host/PluginHost.Lifecycle.cs"
+          ],
+          "lines": 18
+        },
+        {
+          "slice": "安装器去掉自己那份包含性检查，改为复用解析者（净删 3 行）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginInstaller.cs"
+          ],
+          "lines": -3
         }
       ]
     }

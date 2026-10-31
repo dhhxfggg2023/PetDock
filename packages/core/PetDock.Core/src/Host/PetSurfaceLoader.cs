@@ -176,10 +176,17 @@ public sealed partial class PetSurfaceRoster
             $"surface-overrun plugin={manifest.Id} tier=0 entry={manifest.Entry}"
             + " spec13-tier0-says-no-code t6-D-08c-pending");
 
+        if (!PluginEntryPath.TryResolve(dir, manifest.Entry, out string entryPath, out string? entryWhy))
+        {
+            _rejected.Add(new SurfaceRejection(manifest.Id, "entry-rejected:" + entryWhy));
+            KernelLog.Write($"surface-reject plugin={manifest.Id} entry={manifest.Entry} why={entryWhy}");
+            return;
+        }
+
         Assembly assembly;
         try
         {
-            assembly = Assembly.LoadFrom(Path.Combine(dir, manifest.Entry));
+            assembly = Assembly.LoadFrom(entryPath);
         }
         catch (Exception error)
         {

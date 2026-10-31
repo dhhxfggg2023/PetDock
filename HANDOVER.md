@@ -23,10 +23,10 @@
 - 门禁（跑法与口径见 `tools/verify.mjs` 头部注释）：
   - `node tools/verify.mjs --config release --only static,build,contract,window` → 9 + 1 + 4 + 1 步，末行 `VERIFY-OK layers=4/6 steps=15`（2026-10-31 实测；默认三层不含 window）
   - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）
-  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 289（判据体在 `test/SelfCheck/`）
+  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 291（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37708/37740 —— 只剩 32 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[82] 是这一片的（+488 = 上一片漏申报的 101 + 本片 387）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37795/37830 —— 只剩 35 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[82] 是这一片的（+488 = 上一片漏申报的 101 + 本片 387）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -52,6 +52,7 @@
 | 2b11e8e | SmartScreen：`InternetMark`（`File.Copy` 会把 `Zone.Identifier` 一起带走 → 搬运工副本自己会弹框，而那时宿主已经退出、没有窗口能提示）+ 判据 `ui-update-helper-copy-unblocked`（正反各验一次） |
 | 3529199 | 修正说明文案：Windows 11 的框上直接就有「仍要运行」，没有「更多信息」 |
 | 27c4f00 | **收起之后取不出来**（见下） |
+| （2026-10-31 下午，三） | **插件入口只有一个属主**：`PluginEntryPath` + 四个装载点与安装器全走它（见 §2.4） |
 | （2026-10-31 下午，二） | **更新搬运的崩溃安全**：覆盖日志 + 启动判回滚 + 搬运工 `--rollback`（见 §2.3） |
 | （2026-10-31 下午，一） | **可达性判据落地**（`tools/i18n-reachability.mjs` + `tools/i18n-keys-manifest.json` + 静态层第九步；i18n-lint 扫描面扩到随包页面插件）；**出网通道合一**（新增 `Host/GitHubHttp.cs`，两个出口改走它，仓库文件改走 contents API，市场索引补 id/version 形状校验与下载上限；新增 5 条 `ui-net-*` 判据）；详见 §2.2 |
 
@@ -134,6 +135,26 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 **仍未证明**：真实的断电。判据造的是「日志在 + 盘上已是半新」的现场，不是真拔电 —— 这一条写进
 `verify.mjs` dist 层的 notProven，不要当成已经证过。
+
+### 2.4 插件入口只有一个属主（2026-10-31 下午，安全）
+
+审计的「严重-2 / 高」：清单里的 `entry` 是**远端可控字符串**，会被拼成路径去 `Assembly.LoadFrom`
+与 `Process.Start`。两件事同时成立才让它变成漏洞：
+
+1. 安装器（`PluginInstaller`）只在**安装那一刻**查过一次「入口必须在插件目录内」，
+   而装载、热重载、按 id 启用三条路都不复查；
+2. `Path.Combine(pluginDir, entry)` 遇到绝对路径的第二段会**直接返回它** ——
+   于是「入口在目录内」这个前提被悄悄换掉：能写插件目录的人（发行 zip 解出来的目录用户可写）
+   可以让宿主启动任意 exe（tier-2，无沙箱裸进程），或把任意 dll 载进宿主进程（tier-0）。
+
+现在只有一个解析者 `Host/PluginEntryPath.cs`：空 / 绝对路径 / 跳出目录 / 不存在，四类拒绝；
+四个装载点（tier-2、tier-1 读入口模块、tier-0 界面插件、tier-0 宠物表面）与安装器全部走它。
+判据：`ui-plugin-entry-contained`（四类拒绝的行为）与 `ui-plugin-entry-single-owner`
+（源码级：内核 src 里不许再出现把 `manifest.Entry` 拼成路径的行 —— 挡的是将来长出来的第五个装载点）。
+
+**仍未修**（审计里同一条的下一半）：tier-2 依然是一个**无沙箱的裸进程**（没有 Job Object、没有能力判定，
+`Tier2Sandbox` 里的 `Gate` 只记账不执行）。入口收敛堵住了「指向任意 exe」，但没给 tier-2 建边界 ——
+一个写得很糟的 tier-2 插件照样能用完整用户权限干任何事。这条需要单独一片（列在 §6）。
 
 ## 3. 查明、但还没修的
 
@@ -276,11 +297,9 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
    `market-plugins/README.md` 第 38 行写的用户路径就是「插件页 →『浏览插件市场…』→ 列表 → 安装」，
    而且 15 条文案一条都不用新增。接上之后把那 11 条 `pending-feature` 从 manifest 删掉。
 5. ~~更新搬运的崩溃安全~~ —— 已完成（§2.3；真进程判据在 `tools/update-helper-selftest.mjs`）。
-6. **tier-2 插件是无沙箱裸进程**（同上审计，未修）：`PluginHost.Tier2.cs` 用
-   `Path.Combine(pluginDir, manifest.Entry)` 解析入口，Entry 为绝对路径时前缀被吞掉，
-   `Tier2Sandbox` 直接 `Process.Start`；包含性检查只在**安装**时做过一次
-   （`PluginInstaller`），装载 / 热重载 / 按 id 启用三条路都不复查。tier-0 界面插件同理（`UiPluginCatalog` 接受绝对路径 entry）。
-   修法方向：把「入口必须在插件目录内」做成一个解析函数，装载的三条路都走它。
+6. ~~tier-2 插件入口包含性~~ —— 入口已收敛（§2.4）。**剩下的**是 tier-2 的**沙箱**：
+   它至今是无 OS 限制的裸进程（`Tier2Sandbox` 里的 `Gate` 只记账不执行）。这条要单独一片，
+   而且要先决定「tier-2 允许做什么」—— 没有那个决定，加限制只会把功能关掉。
 7. §3.5 的五项开放决策各定一次（第 5 项是本机能不能更新/装插件的前提）。
 
 ## 7. 已废弃的东西与失效引用（不要复活它们）
@@ -298,4 +317,4 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 本文件的更新时点：2026-10-31 下午，`HEAD` 见 `git log -1`。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
-（static 9/9、build、contract 4/4、window 289 条 `UI-OK skipped=0`）。
+（static 9/9、build、contract 4/4、window 291 条 `UI-OK skipped=0`）。

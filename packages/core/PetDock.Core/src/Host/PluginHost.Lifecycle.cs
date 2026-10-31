@@ -120,14 +120,14 @@ public sealed partial class PluginHost
 
     private byte[] ReadEntryModule(string pluginDir, PluginManifest manifest)
     {
-        string entryPath = Path.Combine(pluginDir, manifest.Entry);
+        if (!PluginEntryPath.TryResolve(pluginDir, manifest.Entry, out string entryPath, out string? entryWhy))
+        {
+            throw new PluginLoadException(manifest.Id, new[] { $"entry rejected: {entryWhy}" });
+        }
+
         byte[] entryBytes;
         try
         {
-            if (!File.Exists(entryPath))
-            {
-                throw new PluginLoadException(manifest.Id, new[] { $"entry not found: {manifest.Entry}" });
-            }
             var info = new FileInfo(entryPath);
             if (info.Length > MaxEntryBytes)
             {
