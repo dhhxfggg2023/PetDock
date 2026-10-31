@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38400,
+  "budget": 38500,
   "history": [
     {
       "date": "2026-10-18",
@@ -3412,6 +3412,34 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
           ],
           "lines": 9
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38437,
+      "budget": 38500,
+      "note": "R1c：插件管理进入新契约 IPluginsService（Trash / Remove / RestoreAsync / PurgeAsync），插件页的 TrashLine 与 UiCommandResult 只是适配形状。刻意未收：启用/停用（旧实现是 void、只写日志，要进契约先得让它返回成败）、授权复核（要弹窗，属界面）、安装（长任务，等 IWorkService）。LOC 38364 → 38437（+73），预算 38400 → 38500，归还条件同前：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "插件管理契约 IPluginsService",
+          "files": ["packages/core/PetDock.App.Contracts/Services/IPluginsService.cs"],
+          "lines": 28
+        },
+        {
+          "slice": "回收站条目值类型 PluginTrashItem",
+          "files": ["packages/core/PetDock.App.Contracts/Types/PluginTrashItem.cs"],
+          "lines": 14
+        },
+        {
+          "slice": "旧宿主实现插件契约（三态折两态、TrashLine 映射）",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs"],
+          "lines": 19
+        },
+        {
+          "slice": "插件页四条命令改走契约",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"],
+          "lines": 12
         }
       ]
     }

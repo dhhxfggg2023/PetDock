@@ -73,20 +73,25 @@ internal sealed partial class UiHost : IUiPageContext
     Task<UiCommandResult> IUiPageContext.InstallPluginAsync(string source, bool enable) =>
         InstallPluginFromPanelAsync(source, enable);
 
-    string? IUiPageContext.RemovePlugin(string pluginId) => RemovePluginFromPanel(pluginId);
+    string? IUiPageContext.RemovePlugin(string pluginId) =>
+        FailureOf(((IPluginsService)this).Remove(pluginId));
 
     Task<MarketResult> IUiPageContext.LoadMarketAsync() => LoadMarketAsync();
 
     Task<UiCommandResult> IUiPageContext.InstallFromMarketAsync(string pluginId) =>
         InstallFromMarketAsync(pluginId);
 
-    IReadOnlyList<TrashLine> IUiPageContext.TrashPlugins() => TrashPlugins();
+    // 插件管理从 R1c 起走新契约（IPluginsService）：插件页看到的 TrashLine / UiCommandResult
+    // 只是这一层的适配形状，执行路径只有契约一条。
+    IReadOnlyList<TrashLine> IUiPageContext.TrashPlugins() =>
+        ((IPluginsService)this).Trash().Select(item => new TrashLine(
+            item.DirName, item.Id, item.Name, item.Version, item.Bytes, item.RemovedAt, item.Restorable)).ToList();
 
     Task<UiCommandResult> IUiPageContext.RestorePluginAsync(string dirName) =>
-        RestorePluginFromPanelAsync(dirName);
+        ToCommand(((IPluginsService)this).RestoreAsync(dirName));
 
     Task<UiCommandResult> IUiPageContext.PurgePluginAsync(string dirName) =>
-        PurgePluginFromPanelAsync(dirName);
+        ToCommand(((IPluginsService)this).PurgeAsync(dirName));
 
     string? IUiPageContext.ApplySettings(
         double idleFrameBudgetMs,
@@ -116,6 +121,13 @@ internal sealed partial class UiHost : IUiPageContext
 
     /// <summary>新契约的结局 → 旧页面的「null = 成功」形状。</summary>
     private static string? FailureOf(AppResult result) => result.Ok ? null : result.Message;
+
+    /// <summary>新契约的结局 → 旧页面的三态形状（这两条命令走不到取消，按失败报）。</summary>
+    private static async Task<UiCommandResult> ToCommand(Task<AppResult> pending)
+    {
+        AppResult result = await pending;
+        return result.Ok ? UiCommandResult.Success(result.Message) : UiCommandResult.Failure(result.Message);
+    }
 
     /// <summary>重新取快照并通知页面重绑。页面在 Changed 里读 Snapshot，不缓存旧值。</summary>
     private void RefreshUi()
