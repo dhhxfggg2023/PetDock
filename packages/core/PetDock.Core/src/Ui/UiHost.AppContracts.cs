@@ -11,7 +11,7 @@ using PetDock.App;
 
 namespace PetDock.Core.Ui;
 
-internal sealed partial class UiHost : IPetsService, IPluginsService, IMarketService, IUpdateService
+internal sealed partial class UiHost : IPetsService, IPluginsService, IMarketService, IUpdateService, ISettingsService
 {
     AppResult IPetsService.SetOnDesktop(string petId, bool onDesktop) =>
         Translate(SetPetOnDesktopFromPanel(petId, onDesktop));
@@ -38,6 +38,25 @@ internal sealed partial class UiHost : IPetsService, IPluginsService, IMarketSer
 
     async Task<AppResult> IPluginsService.PurgeAsync(string dirName) =>
         Folding(await PurgePluginFromPanelAsync(dirName));
+
+
+    // ── ISettingsService（R1f）─────────────────────────────────────────────
+
+    AppSettings ISettingsService.Read() => FoldingSettings(SettingsView());
+
+    AppResult ISettingsService.SetLanguage(string language) => Translate(SetLanguageFromPanel(language));
+
+    private static AppSettings FoldingSettings(SettingsView view) => new(
+        view.IdleFrameBudgetMs,
+        view.Language,
+        view.StartupEnabled,
+        view.Theme,
+        view.Material,
+        view.PetSize,
+        view.PetName,
+        view.Version,
+        view.SoundEnabled,
+        view.CelestialMode);
 
     // ── IMarketService（R1e）───────────────────────────────────────────────
 

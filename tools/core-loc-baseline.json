@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38600,
+  "budget": 38700,
   "history": [
     {
       "date": "2026-10-18",
@@ -3486,6 +3486,29 @@
           "slice": "旧宿主实现市场契约（无需映射，类型已同源）",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs", "packages/core/PetDock.Core/src/Ui/UiHost.Market.cs"],
           "lines": 9
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38620,
+      "budget": 38700,
+      "note": "R1f：设置进入新契约 ISettingsService（Read / SetLanguage）+ AppSettings 只读快照。**「应用设置」刻意未进契约**：它每一步都可能部分失败（注册表、落盘、DWM 材质、帧阈值、静音、天体），打包成一个 AppResult 会丢掉「哪一项没成」——那是 R3 设置分区之前必须补的设计。LOC 38567 → 38620（+53），预算 38600 → 38700；归还条件：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "设置契约与只读快照（AppSettings / ISettingsService）",
+          "files": ["packages/core/PetDock.App.Contracts/Services/ISettingsService.cs"],
+          "lines": 33
+        },
+        {
+          "slice": "旧宿主实现设置契约（快照映射、换语言）",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs"],
+          "lines": 19
+        },
+        {
+          "slice": "页面上下文的换语言改走契约",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"],
+          "lines": 1
         }
       ]
     }

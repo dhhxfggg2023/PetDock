@@ -111,7 +111,8 @@ internal sealed partial class UiHost : IUiPageContext
     string? IUiPageContext.SetPetSize(string? petId, int size) =>
         FailureOf(((IPetsService)this).SetSize(petId, size));
 
-    string? IUiPageContext.SetLanguage(string language) => SetLanguageFromPanel(language);
+    string? IUiPageContext.SetLanguage(string language) =>
+        FailureOf(((ISettingsService)this).SetLanguage(language));
 
     void IUiPageContext.OpenLogs() => RunDiagnostic(ControlPanel.DiagnosticOpOpenLogs);
 
