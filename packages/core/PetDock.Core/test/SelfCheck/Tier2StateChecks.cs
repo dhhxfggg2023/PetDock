@@ -30,6 +30,71 @@ internal static class Tier2StateChecks
         var gate = new CapabilityGate(new[] { Capability }, null, sink);
         FrameBudgetDoesNotKill(check, gate, sink);
         CrashRecorded(check, gate, sink);
+
+        // 这一条要有自己的 sink/gate：它会真的杀进程，别影响上面两条的计数。
+        var jobSink = new SilentSink();
+        var jobGate = new CapabilityGate(new[] { Capability }, null, jobSink);
+        OrphanKilledByJob(check, jobGate, jobSink);
+    }
+
+    /// <summary>
+    /// tier2-orphan-killed-by-job：**宿主被强杀**时客体不许活下来。
+    ///
+    /// StopProcess 的 Kill(entireProcessTree) 只能证明「宿主还活着时会杀」，证不了「宿主死了以后」——
+    /// 宿主被任务管理器结束、或在更新交接时被杀，进程里的清理代码一行都不会跑。
+    /// 判据做法：正常启动 → 关掉作业句柄（等价于进程死掉、内核回收句柄）→ 客体必须在几秒内消失。
+    /// </summary>
+    private static void OrphanKilledByJob(Check check, CapabilityGate gate, ISandboxEventSink sink)
+    {
+        var sandbox = new Tier2Sandbox(gate, sink, GuestCommand(), GuestArgs(Tier2Guest.SlowMode));
+        bool up = false;
+        bool bound = false;
+        bool closed = false;
+        bool gone = false;
+        int pid = 0;
+        try
+        {
+            up = sandbox.Start();
+            pid = sandbox.Pid;
+            bound = sandbox.JobBound;
+            closed = sandbox.CloseJobForTest();
+            gone = pid != 0 && WaitGone(pid, 5000);
+        }
+        finally
+        {
+            sandbox.Dispose();
+        }
+
+        check("tier2-orphan-killed-by-job", up && bound && closed && gone,
+            $"up={up} pid={pid} job={bound} closed={closed} gone={gone}");
+    }
+
+    /// <summary>等一个 pid 消失（进程不在了 = 已经没了）。不用 sleep 猜时序，只轮询事实。</summary>
+    private static bool WaitGone(int pid, int timeoutMs)
+    {
+        long deadline = Environment.TickCount64 + timeoutMs;
+        while (true)
+        {
+            try
+            {
+                using Process probe = Process.GetProcessById(pid);
+                if (probe.HasExited)
+                {
+                    return true;
+                }
+            }
+            catch (ArgumentException)
+            {
+                return true; // 已经不在进程表里
+            }
+
+            if (Environment.TickCount64 >= deadline)
+            {
+                return false;
+            }
+
+            Thread.Sleep(50);
+        }
     }
 
     private static void FrameBudgetDoesNotKill(Check check, CapabilityGate gate, ISandboxEventSink sink)

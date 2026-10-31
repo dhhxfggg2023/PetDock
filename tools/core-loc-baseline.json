@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 37830,
+  "budget": 38100,
   "history": [
     {
       "date": "2026-10-18",
@@ -3158,6 +3158,35 @@
             "packages/core/PetDock.Core/src/Host/PluginMarketIndex.cs"
           ],
           "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38004,
+      "budget": 38100,
+      "note": "tier-2 的进程边界：作业对象（D-03a 预算抬到 38100，余量 96）。审计的最后一条是「tier-2 至今是无 OS 限制的裸进程」。这一片不去假装能做成沙箱（拦网络/文件/注册表是另一个量级的事，而且要先决定 tier-2 允许做什么），只把**已经承诺过的三条**变成内核里的事实：① 宿主死 → 客体死：宿主终止客体的所有路径都以「宿主还活着」为前提，被强杀/被更新搬运工接管时清理代码一行都不跑，客体变孤儿；KILL_ON_JOB_CLOSE 把这件事交给内核，句柄随进程消失就终止作业里的进程。② 客体只许一个进程（ACTIVE_PROCESS = 1），不许悄悄繁殖。③ 内存上限 1.5 GiB 写在作业上，跑飞的分配不会把整机拖进交换。作业建不起来时照常启动但落一条审计行（job-unbound）——「以为有边界」比「没有边界」更危险。判据 tier2-orphan-killed-by-job：正常启动一个真客体 → 关掉作业句柄（等价于宿主进程死掉）→ 客体必须在 5 秒内从进程表消失；实测 up=True pid=26468 job=True closed=True gone=True。注意这是一次行为收紧：tier-2 客体从此不能再启动子进程。",
+      "attribution": [
+        {
+          "slice": "作业对象：三条限制 + 建不起来返回原因（不是异常）",
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Job.cs"
+          ],
+          "lines": 144
+        },
+        {
+          "slice": "接线成 partial：启动后绑定、Dispose 还句柄、判据钩子",
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.Job.cs"
+          ],
+          "lines": 56
+        },
+        {
+          "slice": "Tier2Sandbox.cs：Start 里一行绑定、Dispose 里一行还句柄（净 +3）",
+          "files": [
+            "packages/core/PetDock.Core/src/Sandbox/Tier2Sandbox.cs"
+          ],
+          "lines": 3
         }
       ]
     }

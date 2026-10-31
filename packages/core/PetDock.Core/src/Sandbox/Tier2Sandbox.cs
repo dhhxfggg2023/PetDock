@@ -138,6 +138,8 @@ public sealed partial class Tier2Sandbox : IDisposable
             _stdout = process.StandardOutput;
             process.BeginErrorReadLine();
 
+            BindJob(process);
+
             Tier2Reply reply = Call(HandshakeMethod, new JsonObject());
             if (!reply.Ok)
             {
@@ -384,6 +386,7 @@ public sealed partial class Tier2Sandbox : IDisposable
             // 句柄可能已被 Kill 收走，Dispose 再抛一次；吞掉。
         }
         _process = null;
+        ReleaseJob();
         Emit(
             SandboxEventKind.Audit,
             ("tier2", "disposed"),
