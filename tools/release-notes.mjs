@@ -21,6 +21,24 @@
 // （它只比指纹，不比「改了什么」说没说）。
 
 /**
+ * 读「这次改了什么」的**主来源**：`release-notes/<version>.md`。
+ *
+ * 为什么不直接用 git log：提交信息是写给开发者的（「更新源去掉指纹字段：它和……是死循环」），
+ * 而 Release 页面是写给**用户**的。前者当正文，等于让用户读开发日志。
+ * 所以主来源是人写的这一份，git log 退到 detail 里作为可核对的明细。
+ *
+ * 缺这一份时**不编**：调用方会把 git log 当兜底，并在正文里如实说明这是自动提取的。
+ */
+export function readCuratedNotes(readFile, version) {
+  try {
+    const text = String(readFile(version) ?? '').trim();
+    return text.length > 0 ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 把 git log 的一行行提交信息变成「这次改了什么」。
  *
  * 规则刻意简单、可预测：
@@ -75,6 +93,7 @@ export function buildNotes({
   changes = [],
   upgrade = [],
   compare = null,
+  curated = null,
 }) {
   const shortCommit = commit ? commit.slice(0, 12) : '(未知)';
   const sizeMb = (bytes / (1024 * 1024)).toFixed(1);
@@ -85,8 +104,12 @@ export function buildNotes({
     '',
     '## 这次改了什么',
     '',
-    // 完整改动的链接由 buildChanges 自己追加（它知道有没有折叠）—— 这里再加一次就会出现两行同样的链接。
-    ...(changes.length > 0 ? changes : ['- 维护性更新（没有面向用户的改动记录）。']),
+    ...(curated
+      // 人写的那份里可能自带 `## 亮点` / `## 改动` 这样的标题。它们挂在「这次改了什么」下面，
+      // 所以整体降一级：否则一页里出现两个平级的 h2，面板上的目录会读成两件互不相干的事。
+      ? curated.split('\n').map((line) => (line.startsWith('## ') ? '#' + line : line))
+      : [...(changes.length > 0 ? changes : ['- 维护性更新（没有面向用户的改动记录）。']), '',
+         '_（这一节是从提交历史自动提取的，还没有人工整理过。）_']),
     '',
     ...(upgrade.length > 0
       ? ['## 怎么升级', '', ...upgrade, '']

@@ -40,7 +40,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildChanges, buildNotes } from './release-notes.mjs';
+import { buildChanges, buildNotes, readCuratedNotes } from './release-notes.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ARTIFACTS = path.join(REPO_ROOT, 'artifacts');
@@ -256,6 +256,9 @@ function localNotes() {
       changes: buildChanges(changes.subjects, { compare: changes.compare }),
       upgrade: UPGRADE_NOTES,
       compare: changes.compare,
+      curated: readCuratedNotes(
+        (v) => fs.readFileSync(path.join(REPO_ROOT, 'release-notes', v + '.md'), 'utf8'),
+        VERSION),
     }),
   };
 }
@@ -394,6 +397,18 @@ async function main() {
       fail(1, 'ix-release-4b 正文缺少「这次改了什么」（Release 页面的第一职责）');
     }
     console.log('ix-release-4b PASS 正文有改动清单（' + (body.slice(changeAt).match(/^-\s+\S/gm) ?? []).length + ' 条列表项）');
+
+    // ix-release-4c：改动清单必须是**人写给用户**的（release-notes/<version>.md 存在），
+    // 不是提交信息自动提取的。提交信息写给开发者（「更新源去掉指纹字段：它和……是死循环」），
+    // 当正文等于让用户读开发日志 —— 那同样不合 GitHub 规范，只是换了一种不合规的方式。
+    const curatedPath = path.join(REPO_ROOT, 'release-notes', VERSION + '.md');
+    if (!notes.curated) {
+      console.log('ix-release-4c FAIL 没有 release-notes/' + VERSION + '.md：');
+      console.log('  正文的「这次改了什么」只能退回提交信息自动提取，用户看不懂。');
+      console.log('  → 写一份 release-notes/' + VERSION + '.md（面向用户，说清这次带来了什么）');
+      fail(1, 'ix-release-4c 缺少面向用户的改动说明（release-notes/' + VERSION + '.md）');
+    }
+    console.log('ix-release-4c PASS 改动说明来自 release-notes/' + VERSION + '.md（' + fs.statSync(curatedPath).size + ' 字节）');
 
     // ix-release-5：tag 与产物必须同一棵树。先打包后提交（2026-10-30 就是），tag 就会指向别的提交。
     if (notes.manifest.source_dirty === true) {
