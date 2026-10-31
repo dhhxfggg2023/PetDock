@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- 界面层用 WPF；托盘仍然只能走 WinForms 的 NotifyIcon（见 src/Tray/NotifyIconTray.cs
+         的文件头：R0 spike 实测托盘通知那条 Win32 调用在本机返回失败且不给错误码）。 -->
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <RootNamespace>PetDock.Ui</RootNamespace>
+    <AssemblyName>PetDock.Ui</AssemblyName>
+    <Product>PetDock</Product>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- 关闭隐式 using：UseWindowsForms 会往每个文件里塞 global using System.Windows.Forms，
+         那样「WinForms 只许出现在托盘适配器」这条边界在编译期就失效了（每个文件都看得见它）。
+         关掉之后每个文件自己声明，谁引了 WinForms 一眼可见，判据也才扫得准。 -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!--
+    新界面层（R1e 起）。依赖方向：PetDock.Ui → PetDock.App.Contracts。
+    它**不许**引用 PetDock.Core：旧层（UiHost / ControlPanel / TrayHost）在 R8 之前还在，
+    新层一旦能摸到它，双轨期就会互相纠缠，「删掉旧层」这一片就永远做不完。
+    判据：test/SelfCheck/NewUiChecks.cs 的 ui-next-winforms-isolated 与
+    PetDock.App.Contracts 的 app-contracts-boundary 一起把两个方向都钉住。
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\PetDock.App.Contracts\PetDock.App.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- 判据缝（R1e）：托盘的适配器是 internal（它不该成为对外契约），但「uitest」要能
+       直接构造它来验「两项菜单、真的交给系统」。Core 的 test/SelfCheck 编进 PetDock.Core，
+       所以只开给这一个程序集 —— 不是开给世界。 -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="PetDock.Core" />
+  </ItemGroup>
+
+</Project>

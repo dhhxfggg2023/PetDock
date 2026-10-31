@@ -46,6 +46,9 @@
        依赖方向 Core → Contracts；新 Ui 只引用 Contracts。 -->
   <ItemGroup>
     <ProjectReference Include="..\PetDock.App.Contracts\PetDock.App.Contracts.csproj" />
+    <!-- 新界面层（R1e）：只是「ui next」那条分支的入口。方向是 Core → Ui，
+         Ui 反过来**不**引用本工程（它只认契约），所以双轨期两边不会互相纠缠。 -->
+    <ProjectReference Include="..\PetDock.Ui\PetDock.Ui.csproj" />
   </ItemGroup>
 
 </Project>

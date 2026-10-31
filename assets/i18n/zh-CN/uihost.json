@@ -1,4 +1,9 @@
 {
+  "ui.next.title": "PetDock",
+  "ui.next.placeholder": "新界面层正在搭建：这里还没有页面。",
+  "ui.next.trayTip": "PetDock — 万物皆可插件",
+  "ui.next.trayOpen": "打开界面",
+  "ui.next.trayExit": "退出 PetDock",
   "ui.singleInstance.title": "PetDock 已在运行",
   "ui.singleInstance.running": "PetDock 已经在运行了，界面在托盘里：双击托盘图标（或双击宠物）就能打开主控面板。",
   "ui.diag.unavailable": "诊断功能不可用：宿主未接管诊断动作。",

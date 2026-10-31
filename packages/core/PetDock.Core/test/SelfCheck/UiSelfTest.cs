@@ -80,6 +80,8 @@ internal static class UiSelfTest
             PluginEntryChecks.Run(Check);
             // R1：新契约程序集不许长出 UI 依赖，也不许反向引用内核（依赖方向只能 Core → Contracts）。
             AppContractsChecks.Run(Check);
+            // R1e：新界面层的边界（WinForms 只在一个文件里、不引用旧内核）与「能建起来」。
+            NewUiChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。

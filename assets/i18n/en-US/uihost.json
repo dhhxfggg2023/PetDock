@@ -1,4 +1,9 @@
 {
+  "ui.next.title": "PetDock",
+  "ui.next.placeholder": "The new interface layer is still being built: no pages here yet.",
+  "ui.next.trayTip": "PetDock — everything is a plugin",
+  "ui.next.trayOpen": "Open the interface",
+  "ui.next.trayExit": "Quit PetDock",
   "ui.singleInstance.title": "PetDock is already running",
   "ui.singleInstance.running": "PetDock is already running; its windows live in the tray. Double-click the tray icon (or the pet) to open the control panel.",
   "ui.diag.unavailable": "Diagnostics are unavailable: the host has not taken over diagnostic actions.",

@@ -117,7 +117,10 @@ internal static partial class Program
                 return 0;
             }
 
-            return RunResident(null, openPanelOnStart);
+            // 双轨期（R1–R7）：--ui next 走新界面层，不带这个旗标一律走旧层。
+            // 两条路都在 Main 里分叉、都抢同一把单实例锁 —— 于是「新层跑着的同时旧层也能起」
+            // 这种最容易被忽略的双开形态在这里就被挡住了。
+            return WantsNewUi(args) ? RunNewUi() : RunResident(null, openPanelOnStart);
         }
 
         return selfTest ? RunSelfTest()

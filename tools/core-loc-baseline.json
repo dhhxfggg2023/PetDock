@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38900,
+  "budget": 39600,
   "history": [
     {
       "date": "2026-10-18",
@@ -3542,6 +3542,39 @@
           "slice": "宿主的接口列表加上 IWorkService / ICompanionService",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs"],
           "lines": 1
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 39202,
+      "budget": 39600,
+      "note": "R1e：新界面层的骨骼 —— 新程序集 PetDock.Ui（WPF 泵）+ Program.Main 的「ui next」分叉 + 判据 3 条。这一片只证「换泵之后进程能起、能退、托盘在」，还没有页面（R4–R6）。三个取舍写进了代码：① 关掉 ImplicitUsings —— UseWindowsForms 会往每个文件塞 global using，WinForms 边界在编译期就失效了；② 新层只引用 PetDock.App.Contracts，不引用内核（Core 反过来引用它，方向单向）；③ 托盘适配器是 internal，只对 PetDock.Core 开判据缝。LOC 38881 → 39202（+321），预算 38900 → 39600（双轨峰值，方案 §6 预计 ~43k）；归还条件：R8 删旧层后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "新层入口：WPF 泵 + 壳窗口 + 托盘接线，退出时先撤托盘图标",
+          "files": ["packages/core/PetDock.Ui/src/UiEntry.cs"],
+          "lines": 73
+        },
+        {
+          "slice": "空窗口（代码建，不用 XAML：R2 会整体替换它）",
+          "files": ["packages/core/PetDock.Ui/src/AppWindow.cs"],
+          "lines": 62
+        },
+        {
+          "slice": "托盘适配器：本工程唯一允许出现 WinForms 的文件",
+          "files": ["packages/core/PetDock.Ui/src/Tray/NotifyIconTray.cs"],
+          "lines": 121
+        },
+        {
+          "slice": "「ui next」分叉的装配：读语言、递文案、异常收成日志",
+          "files": ["packages/core/PetDock.Core/src/Program.NewUi.cs"],
+          "lines": 62
+        },
+        {
+          "slice": "Main 里的二选一（都在单实例锁之内，挡住新层与旧层双开）",
+          "files": ["packages/core/PetDock.Core/src/Program.cs"],
+          "lines": 3
         }
       ]
     }
