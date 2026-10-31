@@ -44,11 +44,36 @@ internal sealed partial class TrayHost
             return;
         }
 
+        ContextMenuStrip menu = RebuildPetMenu(scope);
+        _openMenu = menu;
+        menu.Show(screen);
+        _menuArmed = false;
+        _menuWatch.Start();
+    }
+
+    /// <summary>
+    /// 判据入口（2026-10-31）：只走到「重建条目」为止，不 Show。
+    /// 无人值守的自检桌面上弹一个真菜单没有意义（而且菜单会挡住后续判据），
+    /// 而缺陷恰恰在重建那一半 —— 因此把这一半单独开放，判据连调两次就能钉住它。
+    /// </summary>
+    internal void RebuildPetMenuForCheck(PetScope scope) => RebuildPetMenu(scope);
+
+    /// <summary>把这一只的菜单条目重建成 <paramref name="scope"/> 描述的那一份。</summary>
+    private ContextMenuStrip RebuildPetMenu(PetScope scope)
+    {
         ContextMenuStrip menu = _scopeMenu ??= new ContextMenuStrip();
 
-        // 上一批条目在这里释放：此刻距离「上一次点击」已经隔了完整的打开→点击→关闭，
-        // 没有任何调用栈还引用它们（与旧写法在 Closed 里释放菜单的区别就在这里）。
-        foreach (ToolStripItem old in menu.Items)
+        // 上一批条目在这里释放（2026-10-31 修）：`foreach` 直接遍历 `menu.Items`，
+        // 而 `old.Dispose()` 会把它自己从那个集合里摘掉 —— 边枚举边改集合，
+        // ToolStripItemCollection 的枚举器立刻抛
+        // 「InvalidOperationException: Collection was modified; enumeration operation may not execute」。
+        // 后果不是「菜单画得难看」：异常从 ShowPetMenu 抛回 WndProc 的 try/catch，
+        // 记一行 context-menu-failed 就结束 —— 用户右键宠物**一次菜单都看不到**。
+        // 用户的真机日志（2026-10-31 00:35）里这行出现了 6 次，正是他报的「右键宠物的移动·暂停·移除没用」。
+        // 所以先复制成数组再释放：枚举的是快照，改的是原集合。
+        ToolStripItem[] stale = new ToolStripItem[menu.Items.Count];
+        menu.Items.CopyTo(stale, 0);
+        foreach (ToolStripItem old in stale)
         {
             old.Dispose();
         }
@@ -65,11 +90,7 @@ internal sealed partial class TrayHost
             PetCommand(I18n.Get("ui.tray.exit"), menu, scope.Exit),
         });
         Design.ThemedMenuRenderer.Apply(menu);
-
-        _openMenu = menu;
-        menu.Show(screen);
-        _menuArmed = false;
-        _menuWatch.Start();
+        return menu;
     }
 
     /// <summary>

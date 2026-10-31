@@ -21,12 +21,14 @@ internal static class TrayPetChecks
             TrayPerItem(check);
             TrayCommandTargetsOwn(check);
             TrayLanguageReload(check);
+            PetMenuReopens(check);
         }
         catch (Exception error)
         {
             check("ui-tray-pet-per-item", false, "exception: " + error.GetType().Name);
             check("ui-tray-pet-command-targets-own", false, "exception: " + error.GetType().Name);
             check("ui-tray-language-reload", false, "exception: " + error.GetType().Name);
+            check("ui-tray-pet-menu-reopens", false, "exception: " + error.GetType().Name);
         }
 
         CatalogRemoval(check);
@@ -171,4 +173,48 @@ internal static class TrayPetChecks
         File.WriteAllText(Path.Combine(source, "pack.json"), "{\"name\":\"" + name + "\"}");
         return store.StagePack(source);
     }
+    /// <summary>
+    /// 右键菜单第二次弹出必须成功（2026-10-31；用户真机日志里 context-menu-failed 连出 6 行）。
+    ///
+    /// 要挡的写法：`foreach (ToolStripItem old in menu.Items) old.Dispose();` ——
+    /// Dispose 会把自己从 Items 里摘掉，边枚举边改集合让 ToolStripItemCollection 抛
+    /// InvalidOperationException，异常被 WndProc 吞掉之后**菜单一次都弹不出来**。
+    /// 判据连弹两次：第一次 Items 为空（不触发那条路径），第二次才是有旧条目的那次 ——
+    /// 只弹一次的话，这个缺陷在判据里根本不会出现。
+    /// </summary>
+    private static void PetMenuReopens(Check check)
+    {
+        UiCommand noop = () => { };
+        using var tray = new TrayHost(
+            new List<PetMenuItem> { new("alpha", noop, noop, noop) },
+            noop,
+            noop);
+
+        // 不真的 Show（判据跑在无人值守的桌面上）：只走「重建条目」这一半，
+        // 那半边正是缺陷所在。Show 之后的显示与关闭由 _menuWatch 负责，与本条无关。
+        PetScope scope = new("alpha", Paused: false, noop, noop, noop, noop, noop);
+        string? first = null;
+        string? second = null;
+        try
+        {
+            tray.RebuildPetMenuForCheck(scope);
+        }
+        catch (Exception error)
+        {
+            first = error.GetType().Name + ": " + error.Message;
+        }
+
+        try
+        {
+            tray.RebuildPetMenuForCheck(scope);
+        }
+        catch (Exception error)
+        {
+            second = error.GetType().Name + ": " + error.Message;
+        }
+
+        check("ui-tray-pet-menu-reopens", first is null && second is null,
+            $"first={(first ?? "ok")} second={(second ?? "ok")}");
+    }
+
 }
