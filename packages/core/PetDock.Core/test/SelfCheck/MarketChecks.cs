@@ -92,6 +92,8 @@ internal static class MarketChecks
             // 索引没有签名，它的 sha256 只能证明字节与索引一致，不能证明索引没被改。
             ("traversal-id", """{"schema":1,"plugins":[{"id":"..\\evil","name":"X","version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}]}""", "entry-bad-id"),
             ("traversal-version", """{"schema":1,"plugins":[{"id":"x","name":"X","version":"1.0/../../x","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}]}""", "entry-bad-version"),
+            // 同 UpdateFeed：索引也不许用异常当拒绝语义。
+            ("schema-float", """{"schema":1.5,"plugins":[]}""", "index-schema"),
         };
 
         var got = new List<string>();

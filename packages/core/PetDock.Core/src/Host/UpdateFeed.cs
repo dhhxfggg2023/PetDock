@@ -39,9 +39,11 @@ internal sealed record UpdateFeed(
             return false;
         }
 
+        // TryGetInt32 而不是 GetInt32：这份 JSON 来自网络，`"schema": 1.5` 会让 GetInt32 抛
+        // FormatException 从 TryParse 里穿出去 —— 一个「返回原因码」的函数把进程抛穿是更坏的失败。
         if (!root.TryGetProperty("schema", out JsonElement schema)
-            || schema.ValueKind != JsonValueKind.Number
-            || schema.GetInt32() != 1)
+            || !schema.TryGetInt32(out int schemaVersion)
+            || schemaVersion != 1)
         {
             why = "feed-schema";
             return false;

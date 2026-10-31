@@ -101,6 +101,9 @@ internal static class UpdateChecks
             ("version", """{"schema":1,"version":"1.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip"}""", "feed-bad-version"),
             ("url", """{"schema":1,"version":"1.0.0","url":"https://evil.example.com/x.zip"}""", "feed-bad-url"),
             ("notobject", """[]""", "feed-not-object"),
+            // 2026-10-31：`"schema": 1.5` 曾把 TryParse 抛穿（GetInt32 抛 FormatException）。
+            // 网络来的 JSON 必须只能得到原因码，不能得到异常。
+            ("schema-float", """{"schema":1.5,"version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip"}""", "feed-schema"),
         };
 
         var got = new System.Collections.Generic.List<string>();

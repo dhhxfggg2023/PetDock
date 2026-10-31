@@ -31,10 +31,11 @@ internal sealed record PluginMarketIndex(
         index = null;
         why = null;
 
+        // 同 UpdateFeed：索引也是网络来的，`"schema": 1.5` 不能把 TryParse 抛穿。
         if (root.ValueKind != JsonValueKind.Object ||
             !root.TryGetProperty("schema", out JsonElement schemaElement) ||
-            schemaElement.ValueKind != JsonValueKind.Number ||
-            schemaElement.GetInt32() != 1)
+            !schemaElement.TryGetInt32(out int schemaVersion) ||
+            schemaVersion != 1)
         {
             why = "index-schema";
             return false;

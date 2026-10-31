@@ -3138,6 +3138,28 @@
           "lines": 3
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 37801,
+      "budget": 37830,
+      "note": "网络来的数字字段不许把宿主抛穿（2026-10-31 只读审计里「TryParse 会抛」的那一类）。更新源与市场索引都写 TryGetInt32 而不是 GetInt32：前者对 1.5 返回 false，后者抛 FormatException —— 一个自称「返回原因码」的函数把异常抛到调用方，代价是整条检查路径变成未捕获异常（更新页会崩、市场页会把它误报成「离线」）。两处各加一条负例：schema 是 1.5 时得到 feed-schema / index-schema，而不是异常。实测 37798 → 37801（+3）。",
+      "attribution": [
+        {
+          "slice": "更新源 schema 用 TryGetInt32（1.5 得到 feed-schema，不抛）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateFeed.cs"
+          ],
+          "lines": 2
+        },
+        {
+          "slice": "市场索引 schema 用 TryGetInt32（1.5 得到 index-schema，不抛）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginMarketIndex.cs"
+          ],
+          "lines": 1
+        }
+      ]
     }
   ]
 }
