@@ -161,15 +161,21 @@ internal static partial class Applier
         TryDelete(Path.Combine(options.DataRoot, "_update", "restart.txt"));
         Note($"ok version={version}");
 
-        if (!Relaunch(options, Note))
+        if (!Relaunch(options, Note, out string? relaunchWhy))
         {
             // 装是装好了，只是没能自己开起来。result.txt **仍然写 ok** ——
             // 它是「装没装上」的答案，不是「有没有自己开起来」的答案；
             // 把它写进同一行会让下一次启动显示「已更新到 9.9.9 relaunch-failed」这种半句话。
-            // 没能起来这件事只进 helper.log，下次启动读 result 时顺手把暂存区清掉。
-            return 0;
+            //
+            // 但也**不能**只写 helper.log（2026-10-31 的遗留项）：用户不看日志，他看到的只是
+            // 「点了一次更新、桌宠消失」，隔一会儿自己点开时对刚才发生了什么一无所知。
+            // 所以另留一行原因，宿主下一次启动把它并进那次结局一起显示。
+            WriteRelaunchReport(options, relaunchWhy);
         }
 
+        // 不管有没有开起来，暂存树与备份都已经没用了：装是成功的。
+        // （早先在这之前就 return，于是解出来的整份新程序永远留在用户数据区里。
+        // 一次几百兆，而且下一次装又解一份。）
         DeleteTree(stage);
         DeleteTree(backup);
         return 0;
@@ -218,12 +224,15 @@ internal static partial class Applier
         return restored;
     }
 
-    private static bool Relaunch(Options options, Note note)
+    /// <summary>把新版本开回来。失败时给出一个原因码（宿主会把它显示给用户）。</summary>
+    private static bool Relaunch(Options options, Note note, out string? why)
     {
+        why = null;
         string exe = Path.Combine(options.InstallRoot, "PetDock.Core.exe");
         if (!File.Exists(exe))
         {
-            note("relaunch missing-exe");
+            why = "missing-exe";
+            note("relaunch " + why);
             return false;
         }
 
@@ -239,8 +248,29 @@ internal static partial class Applier
         }
         catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            note($"relaunch-failed {error.GetType().Name}: {error.Message}");
+            why = error.GetType().Name;
+            note($"relaunch-failed {why}: {error.Message}");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// 留下「装好了，但没能自己开回来」的那一行原因，供宿主下一次启动并进结局显示。
+    /// 写不进去就只进 helper.log：宿主那边仍会说「已更新」，不会因此改口。
+    /// </summary>
+    private static void WriteRelaunchReport(Options options, string? why)
+    {
+        try
+        {
+            string dir = Path.Combine(options.DataRoot, "_update");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "relaunch-failed.txt");
+            File.WriteAllText(path + ".tmp", string.IsNullOrEmpty(why) ? "unknown" : why);
+            File.Move(path + ".tmp", path, overwrite: true);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            // 写不进去不影响搬运本身：这条信息本来就是「尽力告知」。
         }
     }
 

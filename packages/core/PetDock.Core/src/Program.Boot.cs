@@ -103,14 +103,15 @@ internal static partial class Program
     }
 
     /// <summary>
-    /// 把搬运工留下的结局翻成人话。四种结局分开说（见 UpdateResult 的注释）：
-    /// 装好了 / 装失败了 / 回滚成功 / 回滚只成功了一部分。
+    /// 把搬运工留下的结局翻成人话。五种结局分开说（见 UpdateResult 的注释）：
+    /// 装好且自己回来了 / 装好了但没回来 / 装失败了 / 回滚成功 / 回滚只成功了一部分。
     /// </summary>
     private static string DescribeUpdate(UpdateResult result)
     {
         if (result.Ok)
         {
-            return I18n.Get("ui.update.applied", string.IsNullOrEmpty(result.Text) ? "?" : result.Text);
+            string version = string.IsNullOrEmpty(result.Text) ? "?" : result.Text;
+            return I18n.Get(result.Restarted ? "ui.update.applied" : "ui.update.appliedNoRelaunch", version);
         }
 
         if (result.RollBack)

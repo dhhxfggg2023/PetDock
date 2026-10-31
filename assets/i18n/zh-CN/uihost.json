@@ -37,6 +37,7 @@
   "ui.tray.restartConfirmTitle": "PetDock — 重启确认",
   "ui.tray.restartFailed": "重启没有成功（{0}），程序仍在运行。",
   "ui.update.applied": "已更新到 {0}。",
+  "ui.update.appliedNoRelaunch": "已更新到 {0}。安装程序没能把它自动打开，所以这次是你自己启动的；原因见日志。",
   "ui.update.cancelled": "上次更新（{0}）没有装完，这次已取消；旧版本照常可用。",
   "ui.update.failed": "上次更新没有装成功：{0}",
   "ui.update.rolledBack": "上次更新没装完（搬运中途被中断），已把原来的版本恢复回来（{0}）。",

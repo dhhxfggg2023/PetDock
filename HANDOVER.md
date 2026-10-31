@@ -23,10 +23,10 @@
 - 门禁（跑法与口径见 `tools/verify.mjs` 头部注释）：
   - `node tools/verify.mjs --config release --only static,build,contract,window` → 9 + 1 + 4 + 1 步，末行 `VERIFY-OK layers=4/6 steps=15`（2026-10-31 实测；默认三层不含 window）
   - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）。**当天下午 `exempt` 已清空**：409 条键全部有产品出口，判据现在跑在 `exempt=0` 上
-  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 291（判据体在 `test/SelfCheck/`）
+  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 293（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **38006/38100 —— 余量 94**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 傍晚实测 **38117/38200 —— 余量 83**（history[91] +101 是「没开回来的出口」这一片）；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -53,6 +53,7 @@
 | 2b11e8e | SmartScreen：`InternetMark`（`File.Copy` 会把 `Zone.Identifier` 一起带走 → 搬运工副本自己会弹框，而那时宿主已经退出、没有窗口能提示）+ 判据 `ui-update-helper-copy-unblocked`（正反各验一次） |
 | 3529199 | 修正说明文案：Windows 11 的框上直接就有「仍要运行」，没有「更多信息」 |
 | 27c4f00 | **收起之后取不出来**（见下） |
+| （2026-10-31 傍晚，七） | **「装好了但没能自己开回来」有了出口**：搬运工留一行原因，宿主并进那一次结局（见 §2.8）；顺带收掉解包树/备份的残留，`UpdateResult` 从 `UpdateStage.cs` 拆出 |
 | （2026-10-31 下午，六） | **tier-2 进程边界**：作业对象（宿主死→客体死、单进程、内存上限），判据 `tier2-orphan-killed-by-job`（见 §2.7） |
 | （2026-10-31 下午，五） | **网络来的数字字段不许把宿主抛穿**：更新源与市场索引的 `schema` 改 `TryGetInt32`（见 §2.6） |
 | （2026-10-31 下午，四） | **插件市场接进插件页**（见 §2.5）；4 条死文案删除、`cp.pets.delete.failed` 接上；豁免表清零 |
@@ -179,7 +180,7 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 - 结果：`tools/i18n-keys-manifest.json` 的 `exempt` **清空**（409 条键全部有产品出口；`dynamic=1` 仍是气泡拼键）。
   机制留着，等下一次「功能没接」时再登记。
 
-诚实的边界：**没有自动化判据证明这页画得对**。窗口层的 291 条用的是假页面（壳本身），
+诚实的边界：**没有自动化判据证明这页画得对**。窗口层的 293 条用的是假页面（壳本身），
 不会实例化插件页，所以这一片能被证明的只有「编译过 + 每条文案都有出处」。要看真样子只能跑起来点一下。
 
 ### 2.6 「返回原因码」的函数不许抛（2026-10-31）
@@ -219,6 +220,35 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 **这是一次行为收紧**：tier-2 客体从此不能再启动子进程（`ACTIVE_PROCESS = 1`）。
 要放开就改 `Tier2Job.Create` 的那一行标志位 —— 但那时「只许一个进程」这条保证也就没了，得一起改文档。
 **仍然不是沙箱**：它照样能读任意文件、连任意网络。界面与文档都不许把它说成「隔离」。
+
+### 2.8 「装好了，但没能自己开回来」要有出口（2026-10-31 傍晚）
+
+审计里「失败说得不够清楚」这一组的第一条，也是唯一一条真正的**盲区**：
+搬运工把新版本装好之后 `Relaunch` 失败，只往 `helper.log` 写一行就去睡了。
+`result.txt` 仍然写 `ok`（这是对的 —— 它回答的是「装没装上」），于是下一次启动界面上只有
+「已更新到 0.4.2」：用户问的却是「刚才桌宠为什么消失了」，而这个问题没有任何地方回答。
+他只能自己再点一次程序，那时连提示都没有。
+
+现在的形状是两份文件、两个问题：
+
+| 文件 | 回答的问题 | 谁写 / 谁读 |
+| --- | --- | --- |
+| `_update/result.txt` | 装上了吗 | 搬运工写，宿主读一次就删 |
+| `_update/relaunch-failed.txt` | 装好之后它自己回来了吗（没回来时为什么） | 搬运工 `WriteRelaunchReport` 写，宿主 `ReadRelaunchReport` 读一次就删 |
+
+宿主把那一行并进**那一次**结局：`UpdateResult.AppliedNotRestarted`（`ok-not-restarted`），
+界面说 `ui.update.appliedNoRelaunch`（两种语言）。`UpdateResult` 因此有了两个问题：
+`Ok` = 装成功了吗，`Restarted` = 那个新进程是自己起来的吗 —— 拆开之后「已更新」不再顺带暗示「它回来过」。
+
+同一处顺手修掉的两件事（都在这条路径上，都是「只有在出事时才看得见」的那一类）：
+
+- `Relaunch` 失败时提前 `return`，`unpacked/` 与 `backup/` 都没收 —— 一次更新在用户数据区留几百兆，
+  下一次更新再解一份。现在无论开没开起来都收（装成功即视为暂存物无用）。
+- `Applier.Rollback` 在 `Relaunch` 已经记下真实异常名之后，又补一句笼统的 `rollback-relaunch-failed`，
+  把有用的那一行挤到上面。多余的这一句删掉。
+
+判据（`--uitest`）：`ui-update-relaunch-reported`（有那行 → `ok=True restarted=False`，读完即删）、
+`ui-update-relaunch-absent-is-normal`（没那行 → 仍是普普通通的「已更新」，不许把正常结局说成异常）。
 
 ## 3. 查明、但还没修的
 
@@ -357,7 +387,7 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 2. ~~可达性判据落地~~ —— 已完成（静态层第九步；见 §3.4）。
 3. ~~两个出口的主机~~ —— **代码已改**（`GitHubHttp` + contents API）；本机还剩 hosts 那一半（§3.2 / §3.5 决策 5）。
 4. ~~插件市场界面~~ —— 已完成（§2.5）：入口进插件页，11 条 `pending-feature` 豁免已删，豁免表清零。
-   **诚实的边界**：没有自动化判据证明这页画得对（窗口层的 291 条用的是假页面），要看外观只能跑起来点一下。
+   **诚实的边界**：没有自动化判据证明这页画得对（窗口层的 293 条用的是假页面），要看外观只能跑起来点一下。
 5. ~~更新搬运的崩溃安全~~ —— 已完成（§2.3；真进程判据在 `tools/update-helper-selftest.mjs`）。
 6. ~~tier-2 插件入口包含性~~ —— 入口已收敛（§2.4）；~~进程边界~~ —— 作业对象已接（§2.7）。
    **剩下的**是真正的**沙箱**：网络/文件/注册表仍然不拦，`Gate` 对能力仍是「记账 + 拒绝未授予」而不是 OS 强制。
@@ -369,8 +399,8 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
      `update-result-unreadable`。返回语义没动（调用方不需要改），先让静音变成有痕迹；
      **还差**给它一个界面出口 —— 那要改 `UpdateStep` 的判定与文案，属于下一小队；
    - ~~`Applier` 清理阶段的 `TryDelete` 失败只进 log~~ —— **已留痕**（2026-10-31）：私有 delegate 的静态兜底 sink，日志行 `cleanup-failed <文件名> <异常类型>`。`RunRollBack` 也接了同一个 sink（2026-10-31 补），回滚路径的清理失败同样有痕；
-   - 搬运工「装好了但没把程序开回来」只写 helper.log，界面照旧说「已更新到 x.y.z」（`Applier.cs` 里那段注释解释了为什么
-     `result.txt` 只回答「装没装上」—— 但「没开回来」需要一个自己的出口，而不是没有出口）；
+   - ~~搬运工「装好了但没把程序开回来」只写 helper.log~~ —— **已修**（2026-10-31 傍晚，§2.8）：
+     `_update/relaunch-failed.txt` + `ui.update.appliedNoRelaunch`，判据 `ui-update-relaunch-reported`；
    - 内置插件的安装/删除失败可能把数据根留一半。
 9. **发布**：7 个本地提交在 `main` 上，等所有者一句「推送 / 发版」。发版按 `release-notes/<版本>.md`
    + 指纹 + 七条正文判据走（见 `tools/verify-release.mjs` 头部注释）。
@@ -388,8 +418,9 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 ---
 
-本文件的更新时点：2026-10-31 下午（收口于第 12 轮），`HEAD` 见 `git log -1`。
-当前 **11 个提交在本地 `main`、未 push**；⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
-仍未做（见 §6 第 8 条）：没开回来的界面出口、内置插件安装/删除的半途状态、`update-request-unreadable` 的界面出口。
+本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮），`HEAD` 见 `git log -1`。
+远端 `main` 停在 `d430014`（v0.4.2 已发布、两个资产已回读核对）；本片是它之后**第 1 个待推提交**。
+⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
+仍未做（见 §6 第 8 条）：内置插件安装/删除的半途状态、`update-request-unreadable` 的界面出口。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
-（static 9/9、build、contract 4/4、window 291 条 `UI-OK skipped=0`）。
+（static 9/9、build、contract 4/4、window 293 条 `UI-OK skipped=0`；2026-10-31 傍晚实测）。

@@ -119,7 +119,7 @@ internal static partial class Applier
             Note("rollback-nothing-to-do no-backup");
             TryDelete(JournalPath(options));
             WriteResult(options, "rolled-back 0");
-            Relaunch(options, Note);
+            Relaunch(options, Note, out _);
             return 0;
         }
 
@@ -188,10 +188,9 @@ internal static partial class Applier
             WriteResult(options, $"rollback-failed {failed}");
         }
 
-        if (!Relaunch(options, Note))
-        {
-            Note("rollback-relaunch-failed");
-        }
+        // 回滚完了也要把程序开回来。开不回来的原因由 Relaunch 自己记一行
+        // （早先这里再补一句笼统的 rollback-relaunch-failed，把真正的异常名挤到了上一行）。
+        Relaunch(options, Note, out _);
 
         return failed == 0 ? 0 : 1;
     }

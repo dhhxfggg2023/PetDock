@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38100,
+  "budget": 38200,
   "history": [
     {
       "date": "2026-10-18",
@@ -3232,6 +3232,39 @@
             "packages/core/PetDock.Update/Applier.Rollback.cs"
           ],
           "lines": 2
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38117,
+      "budget": 38200,
+      "note": "「装好了，但没能自己开起来」从只写 helper.log 变成用户能看到的一行（2026-10-31 遗留项）。顺带两处底层问题：搬运成功却开不起来时解包树与备份没有收掉（每次更新在数据区留几百兆，下一次再解一份）；回滚路径又补一句笼统的 rollback-relaunch-failed，把真正的异常名挤到了上一行。UpdateResult 从 UpdateStage.cs 拆出（那个文件已顶到 400 行上限）。实测 38016 → 38117，预算 38100 → 38200（余量 83）。",
+      "attribution": [
+        {
+          "slice": "UpdateResult 从 UpdateStage.cs 拆出（结局的形状与暂存目录读写分开）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateResult.cs",
+            "packages/core/PetDock.Core/src/Host/UpdateStage.cs"
+          ],
+          "lines": 18
+        },
+        {
+          "slice": "宿主读到那行原因，并把它并进那一次结局的文案",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStage.Report.cs",
+            "packages/core/PetDock.Core/src/Host/UpdateStartup.cs",
+            "packages/core/PetDock.Core/src/Program.Boot.cs"
+          ],
+          "lines": 54
+        },
+        {
+          "slice": "搬运工写出开不起来的原因，并在那之后照样收掉解包树与备份",
+          "files": [
+            "packages/core/PetDock.Update/Applier.cs",
+            "packages/core/PetDock.Update/Applier.Rollback.cs"
+          ],
+          "lines": 29
         }
       ]
     }

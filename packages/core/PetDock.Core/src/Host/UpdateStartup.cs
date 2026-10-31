@@ -268,6 +268,14 @@ internal static class UpdateStartup
         UpdateStage.Delete(UpdateStage.ResultPath(dataRoot));
         UpdateStage.Delete(UpdateStage.RequestPath(dataRoot));
 
+        // 「装好了」与「装好之后它自己回来了」是两件事，用户问的却是同一句：
+        // 刚才桌宠为什么消失了？搬运工开不回来时会留一行原因，并进这一次的结局里。
+        if (result.Value.Ok && ReadRelaunchReport(dataRoot) is { } relaunchWhy)
+        {
+            result = new UpdateResult(UpdateResult.AppliedNotRestarted, result.Value.Text);
+            KernelLog.Write($"update-relaunch-failed reason={relaunchWhy}");
+        }
+
         // 回滚的结局与「装成功」一样，都是这一份待安装的到此为止：
         // 装成功是把旧版本换成新的，回滚是已经把旧版本换回来 —— 两者都不该再让下次开机试一遍。
         if (result.Value.Ok || result.Value.RollBack)
@@ -281,6 +289,31 @@ internal static class UpdateStartup
 
         KernelLog.Write($"update-apply-failed why={result.Value.Text}");
         return result;
+    }
+
+    /// <summary>
+    /// 「装好了，但没能自己开回来」那一行原因：读到就删 —— 与 result.txt 一样只描述**那一次**。
+    /// 删不掉也不拦着启动：留着最多让下一次再说一遍同一句话。
+    /// </summary>
+    private static string? ReadRelaunchReport(string dataRoot)
+    {
+        try
+        {
+            string path = UpdateStage.RelaunchPath(dataRoot);
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            string why = File.ReadAllText(path).Trim();
+            UpdateStage.Delete(path);
+            return string.IsNullOrEmpty(why) ? "unknown" : why;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            KernelLog.Write($"update-relaunch-unreadable {error.GetType().Name}");
+            return null;
+        }
     }
 
     private static string Quote(string value) => '"' + value.TrimEnd('\\') + '"';

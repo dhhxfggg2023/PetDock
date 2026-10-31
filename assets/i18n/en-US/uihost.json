@@ -37,6 +37,7 @@
   "ui.tray.restartConfirmTitle": "PetDock — Confirm restart",
   "ui.tray.restartFailed": "Restart did not start ({0}); PetDock is still running.",
   "ui.update.applied": "Updated to {0}.",
+  "ui.update.appliedNoRelaunch": "Updated to {0}. The installer could not reopen it, so this session was started by hand; see the log for why.",
   "ui.update.cancelled": "The last update ({0}) did not finish, so it was cancelled. Your current version still works.",
   "ui.update.failed": "The last update did not install: {0}",
   "ui.update.rolledBack": "The last update was interrupted while copying files; your previous version was restored ({0}).",

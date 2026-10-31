@@ -1,10 +1,11 @@
 // 新版本「等安装」的那一份状态（2026-10-31 用户要求：「新增下载完选择重启更新或者稍后更新，
 // 稍后更新就是退出程序下次启动时更新」）。
 //
-// 三份极小的文件，都住在 <data>/_update/ 下。它们**不合并成一份**，因为写入者与生命周期各不相同：
-//   pending.json  要装哪一份（版本 + zip 落点 + sha256）。下载校验通过时写，装完删。
-//   restart.txt   这一次的意图是「装完再开」。交给搬运进程之前写。
-//   result.txt    搬运进程的结局（成功 / 失败 + 原因）。下一次启动读一次就删。
+// 四份极小的文件，都住在 <data>/_update/ 下。它们**不合并成一份**，因为写入者与生命周期各不相同：
+//   pending.json       要装哪一份（版本 + zip 落点 + sha256）。下载校验通过时写，装完删。
+//   restart.txt        这一次的意图是「装完再开」。交给搬运进程之前写。
+//   result.txt         搬运进程的结局（成功 / 失败 + 原因）。下一次启动读一次就删。
+//   relaunch-failed.txt 装成功了、但没能自己开起来的原因（见 UpdateStage.Report.cs）。
 //
 // 为什么需要 restart.txt 这份「意图」，而不是只看 pending.json 在不在：
 //   同一份 pending 有两种截然不同的时机 —— 「用户点了立即重启」与「用户下次自己点开程序」。
@@ -22,26 +23,6 @@ namespace PetDock.Hosting;
 
 /// <summary>待安装的那一份：版本、zip 落点、以及下载时算出的 sha256。</summary>
 internal sealed record UpdatePending(string Version, string Zip, string Sha256);
-
-/// <summary>
-/// 搬运工留下的那一行结局：<c>ok 0.4.1</c> / <c>fail sha256</c> /
-/// <c>rolled-back 12</c> / <c>rollback-failed 3</c>。
-///
-/// 为什么要有 Kind 而不是一个 bool：三种结局对用户的下一步完全不同 ——
-/// 装好了（不用做什么）、装失败了（再点一次下载）、回滚了（旧版本已经回来，可以重试）、
-/// 回滚也只回了一半（要人工拿 zip 重新覆盖）。把回滚说成「安装失败」是在撒谎。
-/// </summary>
-internal readonly record struct UpdateResult(string Kind, string Text)
-{
-    /// <summary>装成功了。</summary>
-    internal bool Ok => string.Equals(Kind, "ok", StringComparison.Ordinal);
-
-    /// <summary>这是回滚的结局（不是安装的结局）。</summary>
-    internal bool RollBack => Kind is "rolled-back" or "rollback-failed";
-
-    /// <summary>回滚把每一个要换回去的文件都换回去了。</summary>
-    internal bool Complete => string.Equals(Kind, "rolled-back", StringComparison.Ordinal);
-}
 
 /// <summary>这一次启动与「待安装的那一份」之间的关系。</summary>
 internal enum UpdateStartStep
@@ -65,7 +46,7 @@ internal enum UpdateStartStep
 }
 
 /// <summary>
-/// 暂存目录与三份标记文件的读写。全部是**小文件 + 原子替换**（先写 .tmp 再覆盖），
+/// 暂存目录与四份标记文件的读写。全部是**小文件 + 原子替换**（先写 .tmp 再覆盖），
 /// 因为断电/蓝屏发生在写到一半时，留下的半份 JSON 会让下一次启动读不懂整个目录。
 /// </summary>
 internal static partial class UpdateStage

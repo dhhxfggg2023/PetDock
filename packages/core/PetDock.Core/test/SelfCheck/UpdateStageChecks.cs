@@ -29,6 +29,7 @@ internal static class UpdateStageChecks
             // 2026-10-31 用户双击撞上的那个框：搬运工副本不许带着「来自互联网」标记。
             HelperCopyIsUnblocked(check, root);
             ResultIsReadOnce(check, root);
+            RelaunchFailureIsNotSilent(check, root);
             // 2026-10-31 审计出来的那一刀：覆盖到一半时，唯一的退路不许被清掉。
             ClearPendingKeepsBackup(check, root);
         }
@@ -147,6 +148,40 @@ internal static class UpdateStageChecks
         bool once = first is not null && first.Value.Ok && first.Value.Text == "9.9.9" && second is null;
         check("ui-update-result-once", once,
             $"first={(first is null ? "none" : first.Value.Ok + "/" + first.Value.Text)} second={(second is null ? "none" : "still-there")}");
+    }
+
+    /// <summary>
+    /// 「装好了，但没能自己开回来」不许只留在 helper.log（2026-10-31 审计的遗留项）：
+    /// 搬运工留一行原因，宿主那一次启动把它并进结局 —— 用户要么看到「已更新到 x.y.z」，
+    /// 要么看到「已更新到 x.y.z，但没能自动打开，这次是你自己启动的」，不能再出现
+    /// 「点了一次更新、桌宠消失、之后一句解释都没有」。
+    ///
+    /// 同时判反面：没有那一行时仍然是普普通通的「已更新」，不许把正常结局说成异常。
+    /// </summary>
+    private static void RelaunchFailureIsNotSilent(UpdateChecks.Report check, string root)
+    {
+        string data = Path.Combine(root, "relaunch-report");
+        Directory.CreateDirectory(UpdateStage.Dir(data));
+        File.WriteAllText(UpdateStage.ResultPath(data), "ok 9.9.9");
+        File.WriteAllText(UpdateStage.RelaunchPath(data), "Win32Exception");
+
+        UpdateResult? reported = UpdateStartup.ConsumeResult(data);
+        bool saidSo = reported.HasValue
+            && reported.Value.Ok
+            && !reported.Value.Restarted
+            && reported.Value.Text == "9.9.9"
+            && !File.Exists(UpdateStage.RelaunchPath(data));
+        check("ui-update-relaunch-reported", saidSo,
+            $"ok={(reported.HasValue && reported.Value.Ok)} restarted={(reported.HasValue && reported.Value.Restarted)} "
+            + $"text={(reported.HasValue ? reported.Value.Text : "none")} left={File.Exists(UpdateStage.RelaunchPath(data))}");
+
+        string clean = Path.Combine(root, "relaunch-normal");
+        Directory.CreateDirectory(UpdateStage.Dir(clean));
+        File.WriteAllText(UpdateStage.ResultPath(clean), "ok 9.9.9");
+        UpdateResult? normal = UpdateStartup.ConsumeResult(clean);
+        bool quiet = normal.HasValue && normal.Value.Ok && normal.Value.Restarted;
+        check("ui-update-relaunch-absent-is-normal", quiet,
+            $"ok={(normal.HasValue && normal.Value.Ok)} restarted={(normal.HasValue && normal.Value.Restarted)}");
     }
 
     /// <summary>
