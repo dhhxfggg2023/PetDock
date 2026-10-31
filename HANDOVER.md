@@ -22,11 +22,11 @@
 - 仓库 `E:\projects\PetDock`；`HEAD` 见 `git log -1`，与 `origin/main` 同步，工作树干净。
 - 门禁（跑法与口径见 `tools/verify.mjs` 头部注释）：
   - `node tools/verify.mjs --config release --only static,build,contract,window` → 9 + 1 + 4 + 1 步，末行 `VERIFY-OK layers=4/6 steps=15`（2026-10-31 实测；默认三层不含 window）
-  - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）
+  - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）。**当天下午 `exempt` 已清空**：409 条键全部有产品出口，判据现在跑在 `exempt=0` 上
   - `--uitest`：末行 `UI-OK skipped=0`，条数已到 291（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37795/37830 —— 只剩 35 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[82] 是这一片的（+488 = 上一片漏申报的 101 + 本片 387）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37798/37830 —— 只剩 32 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[85] 记的 +3 是「删除宠物如实报部分失败」；同片的插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -52,6 +52,7 @@
 | 2b11e8e | SmartScreen：`InternetMark`（`File.Copy` 会把 `Zone.Identifier` 一起带走 → 搬运工副本自己会弹框，而那时宿主已经退出、没有窗口能提示）+ 判据 `ui-update-helper-copy-unblocked`（正反各验一次） |
 | 3529199 | 修正说明文案：Windows 11 的框上直接就有「仍要运行」，没有「更多信息」 |
 | 27c4f00 | **收起之后取不出来**（见下） |
+| （2026-10-31 下午，四） | **插件市场接进插件页**（见 §2.5）；4 条死文案删除、`cp.pets.delete.failed` 接上；豁免表清零 |
 | （2026-10-31 下午，三） | **插件入口只有一个属主**：`PluginEntryPath` + 四个装载点与安装器全走它（见 §2.4） |
 | （2026-10-31 下午，二） | **更新搬运的崩溃安全**：覆盖日志 + 启动判回滚 + 搬运工 `--rollback`（见 §2.3） |
 | （2026-10-31 下午，一） | **可达性判据落地**（`tools/i18n-reachability.mjs` + `tools/i18n-keys-manifest.json` + 静态层第九步；i18n-lint 扫描面扩到随包页面插件）；**出网通道合一**（新增 `Host/GitHubHttp.cs`，两个出口改走它，仓库文件改走 contents API，市场索引补 id/version 形状校验与下载上限；新增 5 条 `ui-net-*` 判据）；详见 §2.2 |
@@ -156,16 +157,36 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 `Tier2Sandbox` 里的 `Gate` 只记账不执行）。入口收敛堵住了「指向任意 exe」，但没给 tier-2 建边界 ——
 一个写得很糟的 tier-2 插件照样能用完整用户权限干任何事。这条需要单独一片（列在 §6）。
 
+### 2.5 插件市场接进插件页（2026-10-31）
+
+§3.1 的洞是「后端齐、文案齐、判据绿，就是没有入口」。现在入口在插件页顶部：
+**插件页 →「浏览插件市场…」→ 列表 → 安装**（`market-plugins/README.md` 写的用户路径原样落地），
+与本地列表是同一块区域的两种态，不弹新窗口、不新开导航页。
+
+- 界面全在 `packages/plugins/petdock.ui.default`：`PluginsPage.xaml`（第二态）、
+  `PluginsPage.Market.cs`（拉取 / 安装 / 失败文案）、`RowViewModels.cs` 的 `MarketRow`。
+- 页面**不下载、不解压、不校验**：`InstallFromMarketAsync` 走宿主同一条安装管线；
+  装完只改那一行的动作位（安装 →「已装 x.y.z」，不可点），**不重新联网**。
+- 失败分两种说法：宿主给的 `cp.market.*` 直接翻；`index-not-json` / `bad-download-url` / `entry-bad-*`
+  这类机器码塞进新增的 `cp.market.indexFailed`。把机器码原样丢给用户等于没说，把索引坏了说成「离线」是撒谎。
+- 联网纪律没变：**只有点这一下才联网** —— 构造、刷新、切回都不碰网络（与更新检查同一条）。
+- 顺带清掉的残留：`cp.settings.update.downloaded/appliedNote/cancelledNote/handoffNote`（4 条与 `ui.update.*`
+  重复的死文案）删除；`cp.pets.delete.failed` 接上 —— 清单删掉了、素材删不掉时不再说「已删除」，
+  而是返回「已从列表删除，但素材文件没能删掉（可能被占用）」，页面**先刷新再报**（否则会留下一行不存在的宠物）。
+- 结果：`tools/i18n-keys-manifest.json` 的 `exempt` **清空**（409 条键全部有产品出口；`dynamic=1` 仍是气泡拼键）。
+  机制留着，等下一次「功能没接」时再登记。
+
+诚实的边界：**没有自动化判据证明这页画得对**。窗口层的 291 条用的是假页面（壳本身），
+不会实例化插件页，所以这一片能被证明的只有「编译过 + 每条文案都有出处」。要看真样子只能跑起来点一下。
+
 ## 3. 查明、但还没修的
 
-### 3.1 插件商店根本找不到 —— 它**没有入口**
+### 3.1 插件商店根本找不到 —— 已修（2026-10-31）
 
-| 层 | 状态 |
-| --- | --- |
-| 文案 15 条 `cp.market.*` | 齐（`assets/i18n/zh-CN/controlpanel.json`） |
-| 后端 | 齐（`PluginMarket.cs`、`UiHost.Market.cs`） |
-| 判据 | 绿（`MarketChecks`） |
-| **界面** | **不存在**：`packages/plugins` 下大小写不敏感搜 `market` 零命中；出厂 UI 只有 `PetsPage/PluginsPage/SettingsPage` 三页；15 条里只有 4 条**报错**文案被内核引用（`UiHost.Market.cs`），其余 11 条零引用 |
+原来的洞：文案 15 条 `cp.market.*` 齐、后端 `PluginMarket.cs` / `UiHost.Market.cs` 齐、判据 `MarketChecks` 绿，
+**界面不存在**（15 条里只有 4 条报错文案被内核引用，其余 11 条零引用）。
+现在入口在插件页顶部「浏览插件市场…」，接法见 §2.5；那 11 条 `pending-feature` 豁免随界面一起从 manifest 删除。
+
 
 ### 3.2 检查更新 / 商店拉索引 —— 已修（2026-10-31），只剩本机 hosts 这一半
 
@@ -188,15 +209,16 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 以前这张表是**散文**：一次性扫描的 18 条写在这里，然后它就开始漂。现在它有一个拥有者：
 `node tools/i18n-reachability.mjs`（静态层第九步）+ `tools/i18n-keys-manifest.json`。
-实测口径：409 条键、产品代码引用 393 条、**16 条零引用**、1 条动态拼键（`ui.bubble.poke`，已登记理由）。
+实测口径（2026-10-31 下午）：409 条键、**409 条全部被产品代码引用**、**0 条豁免**、1 条动态拼键（`ui.bubble.poke`，已登记理由）。
 
-16 条的三种性质（照抄判据的 STAT 就能复现）：
+曾经登记过的 16 条现在全部有了归宿（现在的判据一句 `exempt=0` 就能复现）：
 
-| 键 | manifest 里的 status | 性质 |
+| 键 | 原 status | 归宿 |
 | --- | --- | --- |
-| `cp.market.*`（11） | `pending-feature` | 市场界面缺失（§3.1）。**接上入口后必须从 manifest 删除**，否则判据报 `STALE-EXEMPT` |
-| `cp.settings.update.downloaded/appliedNote/cancelledNote/handoffNote`（4） | `dead-copy` | 与 `ui.update.*` 是同一件事的第二份文案；运行期走的是 update-state 的 `ui.update.*` |
-| `cp.pets.delete.failed`（1） | `diagnostic-gap` | 宿主只会回 `cp.pets.delete.missing`，真正写盘失败时用户看不到原因 |
+| `cp.market.*`（11） | `pending-feature` | 插件市场界面接上（§2.5） |
+| `cp.settings.update.downloaded/appliedNote/cancelledNote/handoffNote`（4） | `dead-copy` | 删除（与 `ui.update.*` 重复） |
+| `cp.pets.delete.failed`（1） | `diagnostic-gap` | 宿主在「素材没删掉」时如实返回（§2.5） |
+
 
 那 3 条气泡键（`ui.bubble.poke1/2/3`）**不再是误报**：判据认得 `"ui.bubble.poke" + n` 这种拼接，
 但要求这种动态拼键在 manifest 里带理由登记一次（`UNREGISTERED-DYNAMIC` 会拦住新的拼接）。
@@ -293,9 +315,8 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 1. ~~收起取不出来~~ —— 已完成（`27c4f00`）。
 2. ~~可达性判据落地~~ —— 已完成（静态层第九步；见 §3.4）。
 3. ~~两个出口的主机~~ —— **代码已改**（`GitHubHttp` + contents API）；本机还剩 hosts 那一半（§3.2 / §3.5 决策 5）。
-4. **插件市场界面**（后端与文案都在，缺的就是入口，§3.1）。市场**并入插件页**，不新开导航页：
-   `market-plugins/README.md` 第 38 行写的用户路径就是「插件页 →『浏览插件市场…』→ 列表 → 安装」，
-   而且 15 条文案一条都不用新增。接上之后把那 11 条 `pending-feature` 从 manifest 删掉。
+4. ~~插件市场界面~~ —— 已完成（§2.5）：入口进插件页，11 条 `pending-feature` 豁免已删，豁免表清零。
+   **诚实的边界**：没有自动化判据证明这页画得对（窗口层的 291 条用的是假页面），要看外观只能跑起来点一下。
 5. ~~更新搬运的崩溃安全~~ —— 已完成（§2.3；真进程判据在 `tools/update-helper-selftest.mjs`）。
 6. ~~tier-2 插件入口包含性~~ —— 入口已收敛（§2.4）。**剩下的**是 tier-2 的**沙箱**：
    它至今是无 OS 限制的裸进程（`Tier2Sandbox` 里的 `Gate` 只记账不执行）。这条要单独一片，

@@ -1,4 +1,6 @@
+using System;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using PetDock.Core.Ui;
 
@@ -88,6 +90,84 @@ public sealed class PluginRow : INotifyPropertyChanged
             _enabled = value;
             OnPropertyChanged();
         }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
+/// <summary>
+/// 市场里的一行。装完只改这一行的动作位（不重新联网拉列表）。
+/// 动作位的三种含义：没装过 → 安装；装的是别的版本 → 更新；装的就是这一版 → 已装（不可点）。
+/// </summary>
+public sealed class MarketRow : INotifyPropertyChanged
+{
+    private readonly IUiPageContext _context;
+    private string _actionLabel;
+    private bool _canInstall;
+
+    public MarketRow(MarketEntryLine line, IUiPageContext context)
+    {
+        _context = context;
+        Id = line.Id;
+        Name = line.Name;
+        Version = line.Version;
+        Summary = line.Summary;
+        SizeText = (line.Bytes / 1048576.0).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
+
+        if (string.Equals(line.InstalledVersion, line.Version, StringComparison.Ordinal))
+        {
+            _actionLabel = context.T("cp.market.installed", line.Version);
+            _canInstall = false;
+        }
+        else
+        {
+            _actionLabel = context.T(line.InstalledVersion is null ? "cp.market.install" : "cp.market.update");
+            _canInstall = true;
+        }
+    }
+
+    public string Id { get; }
+    public string Name { get; }
+    public string Version { get; }
+    public string Summary { get; }
+    public string SizeText { get; }
+
+    public string ActionLabel
+    {
+        get => _actionLabel;
+        private set
+        {
+            if (_actionLabel == value)
+            {
+                return;
+            }
+            _actionLabel = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool CanInstall
+    {
+        get => _canInstall;
+        private set
+        {
+            if (_canInstall == value)
+            {
+                return;
+            }
+            _canInstall = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>装好了：动作位变成「已装 本行版本」，不再可点。</summary>
+    public void MarkInstalled()
+    {
+        ActionLabel = _context.T("cp.market.installed", Version);
+        CanInstall = false;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

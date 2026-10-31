@@ -34,6 +34,7 @@ public partial class PluginsPage : UserControl, IUiPage
         ColEnabled.Text = context.T("cp.plugins.col.enabled");
         HintText.Text = context.T("cp.plugins.disableHint");
         DetailLabel.Text = context.T("cp.plugins.detail.label");
+        WireMarket();
 
         Rows.ItemsSource = _rows;
         TrashRows.ItemsSource = _trash;

@@ -128,7 +128,10 @@ internal sealed partial class UiHost
         KernelLog.Write($"pet-deleted id={petId} files-gone={filesGone}");
         RefreshTrayPets();
         RefreshUi();
-        return null;
+
+        // 清单里已经没了，素材却还留在盘上：这不能说「删掉了」。返回一句部分失败，
+        // 让页面在刷新之后把它当问题报出来（否则用户以为文件也清了）。
+        return filesGone ? null : I18n.Get("cp.pets.delete.failed");
     }
 
     /// <summary>

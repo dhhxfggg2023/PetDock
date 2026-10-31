@@ -1,91 +1,10 @@
 {
-  "why": "文案键可达性的显式登记表。判据见 tools/i18n-reachability.mjs：每条键要么被产品代码引用，要么在这里带理由豁免；豁免一旦不再需要（键被接上、键被删掉）本身就是失败，所以这张表不会烂在没有人的角落里。status 取值：pending-feature（功能还没接）、diagnostic-gap（有失败路径没有出口）、dead-copy（同一件事的第二份文案）。",
+  "why": "文案键可达性的显式登记表。判据见 tools/i18n-reachability.mjs：每条键要么被产品代码引用，要么在这里带理由豁免；豁免一旦不再需要（键被接上、键被删掉）本身就是失败，所以这张表不会烂在没有人的角落里。status 取值：pending-feature（功能还没接）、diagnostic-gap（有失败路径没有出口）、dead-copy（同一件事的第二份文案）。当前 exempt 为空：每一条键都有产品出口。",
   "dynamicPrefixes": [
     {
       "prefix": "ui.bubble.poke",
       "reason": "气泡文案按随机数拼键：UiHost.Pets.cs 的 I18n.Get(\"ui.bubble.poke\" + n)，覆盖 poke1..poke3。判据必须认得动态拼接，否则会误报三条死键。"
     }
   ],
-  "exempt": [
-    {
-      "key": "cp.market.browse",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.col.action",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.col.name",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.col.size",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.col.version",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.empty",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.install",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.installed",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.loading",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.title",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.market.update",
-      "status": "pending-feature",
-      "reason": "插件市场界面缺失：后端（PluginMarket / UiHost.Market）与文案都在，界面入口没有（HANDOVER §3.1）。接上入口后必须从本表删除 —— 判据会把不再需要的豁免判红。"
-    },
-    {
-      "key": "cp.pets.delete.failed",
-      "status": "diagnostic-gap",
-      "reason": "删除失败没有出口：宿主目前只会回 cp.pets.delete.missing，真正写盘失败时用户看不到原因（HANDOVER §3.4）。修法二选一：让宿主在失败时回这条键，或删掉这条文案。"
-    },
-    {
-      "key": "cp.settings.update.downloaded",
-      "status": "dead-copy",
-      "reason": "与 ui.update.* 是同一件事的第二份文案（HANDOVER §3.5）；运行期的更新结论走 update-state 的 ui.update.*，这份没有人读。"
-    },
-    {
-      "key": "cp.settings.update.appliedNote",
-      "status": "dead-copy",
-      "reason": "同上：更新结论的第二份文案，运行期走 ui.update.applied。"
-    },
-    {
-      "key": "cp.settings.update.cancelledNote",
-      "status": "dead-copy",
-      "reason": "同上：运行期走 ui.update.cancelled。"
-    },
-    {
-      "key": "cp.settings.update.handoffNote",
-      "status": "dead-copy",
-      "reason": "同上：运行期走 ui.update.handoff。"
-    }
-  ]
+  "exempt": []
 }

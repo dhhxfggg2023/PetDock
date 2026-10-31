@@ -3123,6 +3123,21 @@
           "lines": -3
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 37798,
+      "budget": 37830,
+      "note": "插件市场接上界面（2026-10-31）。这一片把 HANDOVER §3.1 的第一条缺口补完：后端（PluginMarket / UiHost.Market）与 11 条 cp.market.* 文案早就在，唯独没有界面入口，于是那 11 条键一直在显式豁免表里挂着 pending-feature。现在插件页顶部有「浏览插件市场…」，打开是列表的第二态（与本地列表互斥、不弹新窗口）：标题、列头、加载中、空、离线、已装 x.y.z、安装、更新、返回插件列表。失败原因分两种说法：宿主给的 cp.market.* 直接翻；index-not-json / bad-download-url / entry-bad-* 这类机器码塞进新的 cp.market.indexFailed —— 把机器码原样丢给用户等于没说，把索引坏了说成离线是撒谎。页面不下载、不解压、不校验：安装交给 InstallFromMarketAsync，装完只改那一行的动作位，不重新联网。界面 230 行全在 packages/plugins/petdock.ui.default（插件不计入本预算），本预算只 +3：UiHost.Pets.cs 的删除改成如实报部分失败（清单删掉了、素材删不掉时不再说「已删除」）。同片清掉 4 条死文案（cp.settings.update.downloaded / appliedNote / cancelledNote / handoffNote，与 ui.update.* 是同一件事的第二份），豁免表因此清空：409 条键全部有产品出口（判据 i18n-reachability 现在跑在 exempt=0 上）。",
+      "attribution": [
+        {
+          "slice": "删除宠物如实报部分失败（素材没删掉时不说「已删除」，返回 cp.pets.delete.failed）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs"
+          ],
+          "lines": 3
+        }
+      ]
     }
   ]
 }

@@ -227,6 +227,8 @@ public partial class PetsPage : UserControl, IUiPage
         string? problem = _context.DeletePet(id);
         if (problem is not null)
         {
+            // 部分是「已从列表删除、素材没删掉」：那只其实已经没了，不刷新会留下一行不存在的宠物。
+            _context.Refresh();
             ShowError(problem);
             return;
         }

@@ -11,6 +11,8 @@
 
         <DockPanel Grid.Row="0" Margin="0,0,0,14">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="MarketButton" Style="{DynamicResource Pd.SecondaryButton}"
+                        Click="OnMarketClick" Margin="0,0,8,0" />
                 <Button x:Name="InstallButton" Style="{DynamicResource Pd.SecondaryButton}"
                         Click="OnInstallClick" Margin="0,0,8,0" />
                 <Button x:Name="AuthorizeButton" Style="{DynamicResource Pd.SecondaryButton}"
@@ -21,7 +23,7 @@
             <TextBlock x:Name="CountText" Style="{DynamicResource Pd.Dim}" VerticalAlignment="Center" />
         </DockPanel>
 
-        <Border Grid.Row="1" Style="{DynamicResource Pd.Card}" Padding="0">
+        <Border Grid.Row="1" x:Name="ListCard" Style="{DynamicResource Pd.Card}" Padding="0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -194,6 +196,101 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+            </Grid>
+        </Border>
+
+        <!-- 插件市场（2026-11-01）：插件页的第二态，与本地列表互斥显示，不弹新窗口。
+             只在用户点「浏览插件市场…」这一下联网；列表来自 IUiPageContext.LoadMarketAsync，
+             安装走宿主同一条管线（下载/校验/解压留在宿主侧，页面只发意图）。 -->
+        <Border Grid.Row="1" x:Name="MarketCard" Style="{DynamicResource Pd.Card}" Padding="0"
+                Visibility="Collapsed">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Margin="18,14,18,10">
+                    <Button x:Name="MarketCloseButton" DockPanel.Dock="Right"
+                            Style="{DynamicResource Pd.GhostButton}" Click="OnMarketCloseClick"
+                            VerticalAlignment="Center" />
+                    <TextBlock x:Name="MarketTitle" Style="{DynamicResource Pd.Body}"
+                               FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <TextBlock Grid.Row="1" x:Name="MarketStatus" Style="{DynamicResource Pd.Muted}"
+                           Margin="18,0,18,6" TextWrapping="Wrap" Visibility="Collapsed" />
+
+                <Grid Grid.Row="2" Margin="18,4,18,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="0.8*" />
+                        <ColumnDefinition Width="0.8*" />
+                        <ColumnDefinition Width="110" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" x:Name="MarketColName" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="1" x:Name="MarketColVersion" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="2" x:Name="MarketColSize" Style="{DynamicResource Pd.Muted}" />
+                    <TextBlock Grid.Column="3" x:Name="MarketColAction" Style="{DynamicResource Pd.Muted}"
+                               HorizontalAlignment="Right" />
+                </Grid>
+
+                <ListBox Grid.Row="3" x:Name="MarketRows" Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="8,1" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" CornerRadius="10" Padding="10,9" Background="Transparent">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Pd.SurfaceHover}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="110" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" Style="{DynamicResource Pd.Body}"
+                                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Summary}" Style="{DynamicResource Pd.Muted}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding Version}" Style="{DynamicResource Pd.Dim}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{Binding SizeText}" Style="{DynamicResource Pd.Dim}"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="3" Content="{Binding ActionLabel}" Tag="{Binding Id}"
+                                        IsEnabled="{Binding CanInstall}" Click="OnMarketInstallClick"
+                                        Style="{DynamicResource Pd.SecondaryButton}" Padding="12,5"
+                                        HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock Grid.Row="3" x:Name="MarketEmpty" Style="{DynamicResource Pd.Dim}"
+                           Margin="24" TextWrapping="Wrap" Visibility="Collapsed"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
             </Grid>
         </Border>
 
