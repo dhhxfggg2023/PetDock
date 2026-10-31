@@ -248,10 +248,35 @@ internal sealed partial class UserSettingsStore
                 celestialMode = celestialBool;
             }
 
+            // 逐宠物尺寸（2026-10-31；用户：「调整大小应该是每个宠物单独调整」）。
+            // 与 petPositions 同一形态：键是清单 id，单条坏掉只跳过那一条。
+            IReadOnlyDictionary<string, int>? petSizes = null;
+            if (obj["petSizes"] is JsonObject sizes)
+            {
+                var table = new Dictionary<string, int>(StringComparer.Ordinal);
+                foreach (KeyValuePair<string, JsonNode?> pair in sizes)
+                {
+                    if (pair.Key.Length == 0 || pair.Value is not JsonValue sizeValue
+                        || !sizeValue.TryGetValue(out int edge))
+                    {
+                        KernelLog.Write($"settings-field-unreadable field=petSizes key={pair.Key} reason=not-an-integer");
+                        continue;
+                    }
+
+                    table[pair.Key] = edge;
+                }
+
+                petSizes = table;
+            }
+            else if (obj["petSizes"] is JsonNode notSizes)
+            {
+                KernelLog.Write($"settings-field-unreadable field=petSizes reason=not-an-object type={notSizes.GetType().Name}");
+            }
+
             return new UserSettings(
                 period, language, onboarding, petPosition, petPositions,
                 disabledPlugins, material, themeMode, enabledPlugins, petSize, petCatalogInitialized,
-                soundEnabled, celestialMode, hiddenPets).Clamped();
+                soundEnabled, celestialMode, hiddenPets, petSizes).Clamped();
         }
         catch (Exception error)
         {

@@ -110,12 +110,31 @@ internal sealed partial class PetWindowSet
         return areas;
     }
 
-    /// <summary>把一只摆到它的起点（存过的位置优先，否则按索引间距）。</summary>
+    /// <summary>
+    /// 把一只摆到它的起点（存过的位置优先，否则按索引间距）。
+    /// 摆之前先套上**这一只**自己的尺寸（2026-10-31）：尺寸按宠物记在 settings.petSizes 里，
+    /// 装配期统一 SetLogicalSize 一个全局值会让「大猫小老鼠」在重启后变回一样大。
+    /// </summary>
     private void PlaceAtStart(Slot slot, int index)
     {
+        slot.Window.SetLogicalSize(SizeOf(KeyOf(slot)));
         Point? saved = SavedPositions().TryGetValue(KeyOf(slot), out Point hit) ? hit : null;
         (int x, int y) = ResolveStart(saved, _primary.CurrentPosition, index, slot.Window.WindowSize, WorkAreas());
         slot.Window.MoveTo(x, y);
+    }
+
+    /// <summary>这一只存档里的边长（没有设置存储时用默认值）。</summary>
+    private int SizeOf(string id)
+    {
+        try
+        {
+            return Settings?.Load().SizeOf(id) ?? Hosting.UserSettings.DefaultPetSize;
+        }
+        catch (Exception error)
+        {
+            KernelLog.Write($"pet-set-size-load-failed id={id} {error.GetType().Name}: {error.Message}");
+            return Hosting.UserSettings.DefaultPetSize;
+        }
     }
 
     /// <summary>槽位窗口的拖拽落地 → 按宠物记下位置（读-改-写整份设置，只换自己那一条）。</summary>

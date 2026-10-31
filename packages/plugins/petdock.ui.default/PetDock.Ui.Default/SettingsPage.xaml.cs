@@ -35,6 +35,7 @@ public partial class SettingsPage : UserControl, IUiPage
         PetNameHint.Text = context.T("cp.settings.pet.current.hint");
         PetSizeLabel.Text = context.T("cp.settings.pet.size");
         PetSizeHint.Text = context.T("cp.settings.pet.size.hint");
+        PetSizeTarget.Text = context.T("cp.settings.pet.size.target");
         PetSizeSmall.Text = context.T("cp.settings.pet.size.small");
         PetSizeMedium.Text = context.T("cp.settings.pet.size.medium");
         PetSizeLarge.Text = context.T("cp.settings.pet.size.large");
@@ -126,6 +127,12 @@ public partial class SettingsPage : UserControl, IUiPage
                 PetNameText.Text = string.IsNullOrWhiteSpace(view.PetName)
                     ? _context.T("cp.settings.pet.none")
                     : view.PetName;
+
+                // 滑块改的是这一只（2026-10-31）：名字直接写在滑块旁边。
+                // 桌上一只都没有时它改的是「新宠物的默认大小」，所以那行字要说这件事。
+                PetSizeTarget.Text = _context.Snapshot.Pets.Count > 0
+                    ? _context.Snapshot.Pets[0].Name
+                    : _context.T("cp.settings.pet.size.defaultTarget");
                 AboutVersionText.Text = view.Version ?? "—";
             }
         }
@@ -156,7 +163,11 @@ public partial class SettingsPage : UserControl, IUiPage
         MaterialGlass.IsChecked = token == "glass";
     }
 
-    /// <summary>把快照里的尺寸放上滑块；写读数但不触发落盘（_binding 拦住 ValueChanged）。</summary>
+    /// <summary>
+    /// 把快照里的尺寸放上滑块；写读数但不触发落盘（_binding 拦住 ValueChanged）。
+    /// 2026-10-31：尺寸逐只 —— 这里显示的是**第一只**的当前值，拖动时另见 OnPetSizeValueChanged
+    /// 的说明（设置页在没有选中项时改的是默认值）。
+    /// </summary>
     private void BindPetSize(int size)
     {
         int clamped = Math.Clamp(size, (int)PetSizeSlider.Minimum, (int)PetSizeSlider.Maximum);
@@ -189,10 +200,17 @@ public partial class SettingsPage : UserControl, IUiPage
         }
     }
 
-    /// <summary>尺寸改动即生效：主窗与其余几只一起改，窗口不重建。</summary>
+    /// <summary>
+    /// 尺寸改动即生效，但**只改一只**（2026-10-31；用户：「调整大小应该是每个宠物单独调整」）。
+    ///
+    /// 改的是哪一只：快照里的第一只（宠物页与设置页共用同一个「当前宠物」口径）。
+    /// 桌上一只都没有时 petId 为 null，此处的语义退化成「改默认值」—— 新导入的宠物按它开局，
+    /// 已经在桌上的不会被这条命令动到。
+    /// </summary>
     private void ApplyPetSize(int size)
     {
-        string? problem = _context.SetPetSize(size);
+        string? petId = _context.Snapshot.Pets.Count > 0 ? _context.Snapshot.Pets[0].Id : null;
+        string? problem = _context.SetPetSize(petId, size);
         ShowStatus(problem);
         _context.Refresh();
     }

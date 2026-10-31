@@ -44,7 +44,8 @@ internal static class UiRoster
         PluginInventory? inventory = null,
         IReadOnlyList<PetLine>? extraPets = null,
         string? primaryPetId = null,
-        bool primaryOnDesktop = true)
+        bool primaryOnDesktop = true,
+        int? primarySize = null)
     {
         var pets = new List<PetLine>(1);
         if (pet is not null)
@@ -60,6 +61,7 @@ internal static class UiRoster
                 Memory: ProcessMemoryMb())
             {
                 OnDesktop = primaryOnDesktop,
+                SizePx = primarySize ?? 128,
             });
         }
 

@@ -207,8 +207,13 @@ public interface IUiPageContext
         bool soundEnabled,
         bool celestialMode);
 
-    /// <summary>改宠物窗口的像素边长（64..256）。返回 null = 成功；否则是给用户看的原因。</summary>
-    string? SetPetSize(int size);
+    /// <summary>
+    /// 改**这一只**宠物窗口的像素边长（64..256）。返回 null = 成功；否则是给用户看的原因。
+    /// petId 为 null = 没有选中任何一只：只改默认值，不动已经在桌上的。
+    /// 2026-10-31 由全局 <c>SetPetSize(int)</c> 改成逐只 —— 一条滑块把桌上每只一起改，
+    /// 想「大猫小老鼠」做不到（用户原话：「调整大小应该是每个宠物单独调整」）。
+    /// </summary>
+    string? SetPetSize(string? petId, int size);
 
     /// <summary>
     /// 换界面语言（写入设置并立即生效，不重启）。返回 null = 成功；否则是给用户看的原因。

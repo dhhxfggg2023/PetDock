@@ -266,6 +266,7 @@ internal sealed partial class PetWindowSet : IDisposable
         Add(slot);
         if (_started)
         {
+            // PlaceAtStart 会先套上这一只自己的尺寸（settings.petSizes）。
             PlaceAtStart(slot, _slots.Count);
             slot.Loop.Start();
         }
@@ -274,13 +275,30 @@ internal sealed partial class PetWindowSet : IDisposable
         return true;
     }
 
-    /// <summary>把其余几只的窗口一起改成同一逻辑边长（设置页「宠物大小」）。</summary>
+    /// <summary>把其余几只的窗口一起改成同一逻辑边长（旧入口：现在只在装配期做兜底）。</summary>
     public void SetLogicalSize(int edge)
     {
         foreach (Slot slot in _slots)
         {
             slot.Window.SetLogicalSize(edge);
         }
+    }
+
+    /// <summary>
+    /// 只改**这一只**的逻辑边长（2026-10-31；用户：「调整大小应该是每个宠物单独调整」）。
+    /// 返回 false = 桌上没有这一只（收起的 / 已删的），调用方据此决定是不是只记设置。
+    /// </summary>
+    public bool SetLogicalSize(string id, int edge)
+    {
+        Slot? slot = Find(id);
+        if (slot is null)
+        {
+            return false;
+        }
+
+        slot.Window.SetLogicalSize(edge);
+        KernelLog.Write($"pet-set-size id={id} size={edge}");
+        return true;
     }
 
     /// <summary>隐藏所有槽位并停泵（托盘的「隐藏宠物」：隐藏的宠物不该继续烧 CPU）。</summary>

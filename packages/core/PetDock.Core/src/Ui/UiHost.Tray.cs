@@ -176,6 +176,7 @@ internal sealed partial class UiHost
             {
                 OnDesktop = slot is not null,
                 Path = pack.Path,
+                SizePx = _settings?.Load().SizeOf(pack.InstanceId) ?? UserSettings.DefaultPetSize,
             });
         }
 

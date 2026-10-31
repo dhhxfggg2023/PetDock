@@ -151,9 +151,9 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
-    public string? SetPetSize(int size)
+    public string? SetPetSize(string? petId, int size)
     {
-        Commands.Add("pet-size:" + size);
+        Commands.Add("pet-size:" + (petId ?? "(default)") + ":" + size);
         return null;
     }
 

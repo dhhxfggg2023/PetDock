@@ -19,6 +19,7 @@ public sealed class PetRow
         Path = line.Path;
         IconPath = line.IconPath;
         OnDesktop = line.OnDesktop;
+        SizePx = line.SizePx;
     }
 
     public string Id { get; }
@@ -33,6 +34,9 @@ public sealed class PetRow
 
     /// <summary>这一只现在在不在桌面上（决定按钮是「显示到桌面」还是「从桌面收起」）。</summary>
     public bool OnDesktop { get; }
+
+    /// <summary>这一只的窗口边长（每只单独设，2026-10-31）。</summary>
+    public int SizePx { get; }
 }
 
 /// <summary>插件页一行。Enabled 是唯一可写的字段（行内开关）。</summary>

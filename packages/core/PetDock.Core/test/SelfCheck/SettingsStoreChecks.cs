@@ -39,6 +39,7 @@ internal static class SettingsStoreChecks
         WithRoot(check, "ui-settings-update-no-temp-leftover", NoTempLeftover);
         WithRoot(check, "ui-settings-update-skips-unchanged-write", SkipsUnchangedWrite);
         WithRoot(check, "ui-settings-pet-size-persisted", PetSizePersisted);
+        WithRoot(check, "ui-settings-pet-size-per-pet", PerPetSize);
     }
 
     /// <summary>① 两条线程各改一个字段，最后两个字段都得是各自写过的值。</summary>
@@ -110,6 +111,50 @@ internal static class SettingsStoreChecks
             "ui-settings-pet-size-persisted",
             reloaded == 160 && clamped == UserSettings.MaxPetSize && unset is null,
             $"reloaded={reloaded?.ToString() ?? "(none)"} clamped={clamped?.ToString() ?? "(none)"} unset={unset?.ToString() ?? "(none)"}");
+    }
+
+    /// <summary>
+    /// 尺寸按宠物单独记（2026-10-31；用户：「调整大小应该是每个宠物单独调整，你这样我怎么调整」）。
+    ///
+    /// 要挡的写法：一条全局 PetSize —— 拖一次滑块，桌上每只一起变成同一个数，
+    /// 「大猫小老鼠」根本做不到。判据：三只各设一个值 → 重读三只都保住了；
+    /// 没设过的那只回落到全局默认；越界值被夹进 64..256（一个手滑改坏的文件不该把窗口拽到 9999）。
+    /// </summary>
+    private static void PerPetSize(Check check, string root)
+    {
+        var store = new UserSettingsStore(root);
+        // with 表达式后面不能直接接 .Method()（C# 语法），先赋给局部变量再逐只设。
+        UserSettings start = UserSettings.Default with { PetSize = 128 };
+        store.Save(start.WithPetSize("user.big", 224).WithPetSize("user.small", 72));
+
+        UserSettings reloaded = new UserSettingsStore(root).Load();
+        bool keptBig = reloaded.SizeOf("user.big") == 224;
+        bool keptSmall = reloaded.SizeOf("user.small") == 72;
+        bool fallback = reloaded.SizeOf("user.never-set") == 128;
+        bool entries = reloaded.PetSizes is not null && reloaded.PetSizes.Count == 2;
+
+        // 越界：写 9999 之后再读回来必须是上限，不是 9999。
+        store.Update(current => current.WithPetSize("user.big", 9999));
+        int clamped = new UserSettingsStore(root).Load().SizeOf("user.big");
+
+        int big = reloaded.SizeOf("user.big");
+        int small = reloaded.SizeOf("user.small");
+        int never = reloaded.SizeOf("user.never-set");
+        int count = reloaded.PetSizes?.Count ?? 0;
+        check(
+            "ui-settings-pet-size-per-pet",
+            keptBig && keptSmall && fallback && entries && clamped == UserSettings.MaxPetSize,
+            $"big={big} small={small} fallback={never} entries={count} clamped={clamped}");
+
+        // 反向：全局默认改了，逐只设过的那两只不受影响（单独设的值不能被全局值盖掉）。
+        store.Update(current => current with { PetSize = 96 });
+        UserSettings afterGlobal = new UserSettingsStore(root).Load();
+        int smallAfter = afterGlobal.SizeOf("user.small");
+        int neverAfter = afterGlobal.SizeOf("user.never-set");
+        check(
+            "ui-settings-pet-size-not-overridden",
+            smallAfter == 72 && neverAfter == 96,
+            $"small={smallAfter} unset={neverAfter} global={afterGlobal.PetSize}");
     }
 
     /// <summary>

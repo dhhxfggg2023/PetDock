@@ -66,7 +66,9 @@ internal sealed partial class UiHost
             BuildExtraPetLines(),
             _primaryRemoved ? null : _store?.ReadActive()?.InstanceId,
             // 主窗那只也可能被收起（用户点了「从桌面移除」）：页面据此显示它现在的状态。
-            primaryOnDesktop: !_primaryRemoved);
+            primaryOnDesktop: !_primaryRemoved,
+            // 每只自己的尺寸（2026-10-31）：宠物页选中某只之后滑块显示的是**这一只**的数。
+            primarySize: _settings?.Load().SizeOf(PrimaryPetIdOf()));
         return DecoratePetMetadata(snapshot);
     }
 
@@ -181,15 +183,26 @@ internal sealed partial class UiHost
         typeof(UiHost).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 
     /// <summary>
-    /// 改宠物窗口尺寸（设置页「宠物大小」）：主窗与其余几只一起改，落盘后立即生效。
+    /// 改**这一只**宠物的窗口尺寸（2026-10-31；用户：「调整大小应该是每个宠物单独调整，
+    /// 你这样我怎么调整」）。旧实现是一条全局滑块 —— 拖它会把桌上每一只一起改成同一个数，
+    /// 想「大猫小老鼠」做不到。现在尺寸按宠物记（settings.petSizes，键是清单 id）。
+    ///
+    /// petId 为 null = 没有选中任何一只：只改默认值（新导入的宠物按它开局），不动已经在桌上的。
     /// 返回 null = 成功；否则是给用户看的原因。
     /// </summary>
-    private string? SetPetSizeFromPanel(int size)
+    private string? SetPetSizeFromPanel(string? petId, int size)
     {
         int clamped = Math.Clamp(size, UserSettings.MinPetSize, UserSettings.MaxPetSize);
         try
         {
-            _settings?.Update(current => current with { PetSize = clamped });
+            if (petId is null)
+            {
+                _settings?.Update(current => current with { PetSize = clamped });
+            }
+            else
+            {
+                _settings?.Update(current => current.WithPetSize(petId, clamped));
+            }
         }
         catch (Exception error)
         {
@@ -197,9 +210,25 @@ internal sealed partial class UiHost
             return I18n.Get("ui.panel.settingsSaveFailed", error.Message);
         }
 
-        _window.SetLogicalSize(clamped);
-        _petSet?.SetLogicalSize(clamped);
-        KernelLog.Write($"pet-size-applied size={clamped}");
+        if (petId is null)
+        {
+            KernelLog.Write($"pet-size-default-applied size={clamped}");
+            return null;
+        }
+
+        // 主窗那只不归 PetWindowSet 管，按 id 分派；桌面上没有它（收起/已删）就只记设置，
+        // 下次摆上桌时按 settings.petSizes 取尺寸（见 PlaceAtStart / AttachPetSet）。
+        if (!_primaryRemoved && IsPrimary(petId))
+        {
+            _window.SetLogicalSize(clamped);
+        }
+        else
+        {
+            _petSet?.SetLogicalSize(petId, clamped);
+        }
+
+        KernelLog.Write($"pet-size-applied id={petId} size={clamped}");
+        RefreshUi();
         return null;
     }
 

@@ -93,7 +93,8 @@ internal sealed partial class UiHost : ApplicationContext
         {
             UserSettings loaded = _settings.Load();
             _loop.SetTargetFrameMs(loaded.IdleFrameBudgetMs);
-            _window.SetLogicalSize(loaded.PetSize ?? UserSettings.DefaultPetSize);
+            // 主窗那只的尺寸也按宠物取（键是清单 id；还没登记时回落到默认值）。
+            _window.SetLogicalSize(loaded.SizeOf(PrimaryPetIdOf()));
             // 文案表在**任何界面对象构造之前**加载：缺表时每个键显示键名本身（RFC-42 §3.2），
             // 而不是让空字符串把界面画成一片空白。
             I18n.Load(loaded.Language);
@@ -214,7 +215,9 @@ internal sealed partial class UiHost : ApplicationContext
     internal void AttachPetSet(PetWindowSet set)
     {
         _petSet = set;
-        set.SetLogicalSize(_settings?.Load().PetSize ?? UserSettings.DefaultPetSize);
+
+        // 不再统一 SetLogicalSize（2026-10-31）：尺寸按宠物记在 settings.petSizes，
+        // 归 PlaceAtStart 在摆位时逐只套上。这里统一改一个值会把「大猫小老鼠」抹平。
 
         // 右键菜单的接线：先交处理函数，再补接**已经**在集合里的那几只
         //（它们是在处理函数还空着的时候登记的，那时接不上）。

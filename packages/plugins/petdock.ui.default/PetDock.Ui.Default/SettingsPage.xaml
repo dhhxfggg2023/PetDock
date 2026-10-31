@@ -74,6 +74,9 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
                                 <TextBlock x:Name="PetSizeLabel" Style="{DynamicResource Pd.Body}" />
+                                <!-- 2026-10-31：滑块只管一只，名字必须写在旁边，否则用户会以为它管全部。 -->
+                                <TextBlock x:Name="PetSizeTarget" Style="{DynamicResource Pd.Dim}" Margin="0,2,0,0"
+                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="170" />
                                 <TextBlock x:Name="PetSizeHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" MaxWidth="170" TextWrapping="Wrap" />
                             </StackPanel>
                             <Grid Grid.Column="1">

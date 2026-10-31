@@ -17,6 +17,7 @@ public partial class PetsPage : UserControl, IUiPage
     private readonly IUiPageContext _context;
     private readonly ObservableCollection<PetRow> _rows = new();
 
+
     public PetsPage(IUiPageContext context)
     {
         _context = context;
@@ -33,6 +34,13 @@ public partial class PetsPage : UserControl, IUiPage
         ColMemory.Text = context.T("cp.pets.col.memory");
         EmptyTitle.Text = context.T("cp.pets.empty");
         EmptyNote.Text = string.Empty;
+
+        DetailSizeLabel.Text = context.T("cp.pets.detail.size");
+        DetailSizeSlider.ValueChanged += OnDetailSizeChanged;
+        AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,
+            new System.Windows.Controls.Primitives.DragStartedEventHandler((_, _) => _sizeDragging = true));
+        AddHandler(System.Windows.Controls.Primitives.Thumb.DragCompletedEvent,
+            new System.Windows.Controls.Primitives.DragCompletedEventHandler(OnDetailSizeDragCompleted));
 
         Rows.ItemsSource = _rows;
         Rows.SelectionChanged += (_, _) =>
@@ -148,6 +156,8 @@ public partial class PetsPage : UserControl, IUiPage
         DetailAuthor.Text = _context.T("cp.pets.detail.author", ValueOrUnknown(row.Author));
         DetailLicense.Text = _context.T("cp.pets.detail.license", ValueOrUnknown(row.License));
         DetailPath.Text = _context.T("cp.pets.detail.path", ValueOrUnknown(row.Path));
+
+        BindDetailSize(row);
 
         DetailIcon.Source = null;
         DetailIconFrame.Visibility = Visibility.Collapsed;

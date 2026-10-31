@@ -34,7 +34,8 @@ internal sealed record UserSettings(
     bool? PetCatalogInitialized = null,
     bool? SoundEnabled = null,
     bool? CelestialMode = null,
-    IReadOnlyList<string>? HiddenPets = null)
+    IReadOnlyList<string>? HiddenPets = null,
+    IReadOnlyDictionary<string, int>? PetSizes = null)
 {
     /// <summary>清单版本（原规格 17 §2：显式版本，只向前）。</summary>
     public const int SchemaVersion = 1;
@@ -60,6 +61,25 @@ internal sealed record UserSettings(
     /// <summary>宠物尺寸上限（再大就会挡住半个屏幕）。</summary>
     public const int MaxPetSize = 256;
 
+    /// <summary>
+    /// 这一只的尺寸：单独设过就用它，否则用 <see cref="PetSize"/>（默认值），
+    /// 再没有就是 <see cref="DefaultPetSize"/>。插件的窗口层拿到的一定是最终值。
+    /// </summary>
+    public int SizeOf(string? petId) =>
+        petId is not null && PetSizes is { Count: > 0 } sizes && sizes.TryGetValue(petId, out int own)
+            ? Math.Clamp(own, MinPetSize, MaxPetSize)
+            : PetSize is int fallback ? Math.Clamp(fallback, MinPetSize, MaxPetSize) : DefaultPetSize;
+
+    /// <summary>写一只的尺寸进表（返回新实例，不改自己 —— 记录是不可变的）。</summary>
+    public UserSettings WithPetSize(string petId, int size)
+    {
+        var next = PetSizes is null
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            : new Dictionary<string, int>(PetSizes, StringComparer.Ordinal);
+        next[petId] = Math.Clamp(size, MinPetSize, MaxPetSize);
+        return this with { PetSizes = next };
+    }
+
     /// <summary>默认设置（文件缺失或损坏时的回落值）。</summary>
     public static UserSettings Default { get; } =
         new(DefaultIdleFrameBudgetMs, DefaultLanguage);
@@ -83,7 +103,24 @@ internal sealed record UserSettings(
             MaxIdleFrameBudgetMs),
         Language = string.IsNullOrWhiteSpace(Language) ? DefaultLanguage : Language,
         PetSize = PetSize is int size ? Math.Clamp(size, MinPetSize, MaxPetSize) : null,
+        // 逐宠物尺寸逐条夹：一个手滑改坏的条目不该把别的宠物一起拉回默认值。
+        PetSizes = PetSizes is { Count: > 0 } sizes ? ClampSizes(sizes) : null,
     };
+
+    /// <summary>把逐宠物尺寸表里的每个值夹进合法区间（坏值丢弃，其余保留）。</summary>
+    private static IReadOnlyDictionary<string, int> ClampSizes(IReadOnlyDictionary<string, int> sizes)
+    {
+        var clamped = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (KeyValuePair<string, int> pair in sizes)
+        {
+            if (!string.IsNullOrWhiteSpace(pair.Key))
+            {
+                clamped[pair.Key] = Math.Clamp(pair.Value, MinPetSize, MaxPetSize);
+            }
+        }
+
+        return clamped;
+    }
 
     /// <summary>帧周期的可读写法（面板用毫秒整数编辑，这里给一位小数）。</summary>
     public decimal IdleFrameBudgetMsDecimal =>
@@ -100,6 +137,7 @@ internal sealed record UserSettings(
         + " plugins-enabled=" + (EnabledPlugins is null ? 0 : EnabledPlugins.Count)
         + " material=" + (Material ?? "opaque")
         + " pet-size=" + (PetSize?.ToString(CultureInfo.InvariantCulture) ?? "(default)")
+        + " pet-sizes=" + (PetSizes is null ? 0 : PetSizes.Count)
         + " pet-catalog=" + (PetCatalogInitialized == true ? "initialized" : "(new)")
         + " sound=" + (SoundEnabled == false ? "off" : "on")
         + " celestial=" + (CelestialMode == true ? "on" : "off")

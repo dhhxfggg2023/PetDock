@@ -34,6 +34,12 @@ public sealed record PetLine(
     /// 摆着，或者被用户收起。宠物页的按钮必须知道现在是哪一种，否则它只能猜、只能二选一做一个。
     /// </summary>
     public bool OnDesktop { get; init; } = true;
+
+    /// <summary>
+    /// 这一只现在的窗口边长（逻辑像素，2026-10-31）。每只单独记：用户可以在宠物页
+    /// 选中某一只再拖滑块，只改它（旧实现是一条全局滑块，会把桌上每只一起改掉）。
+    /// </summary>
+    public int SizePx { get; init; } = 128;
 }
 
 /// <summary>插件页一行。Granted 是当前有效的能力句柄数（原规格 14 §2「能力是句柄」）。
@@ -78,6 +84,7 @@ public sealed record SettingsView(
     bool StartupEnabled,
     string? Theme = null,
     string? Material = null,
+    /// <summary>新宠物的默认边长（已摆上桌的那几只各自的尺寸在 <see cref="PetLine.SizePx"/>）。</summary>
     int PetSize = 128,
     string? PetName = null,
     string? Version = null,

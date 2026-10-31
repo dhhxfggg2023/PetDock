@@ -119,14 +119,39 @@
                                 Background="{DynamicResource Pd.AccentSoft}" Visibility="Collapsed">
                             <Image x:Name="DetailIcon" Stretch="Uniform" Margin="4" />
                         </Border>
-                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock x:Name="DetailAuthor" Style="{DynamicResource Pd.Body}"
-                                       TextTrimming="CharacterEllipsis" />
-                            <TextBlock x:Name="DetailLicense" Style="{DynamicResource Pd.Dim}"
-                                       Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                            <TextBlock x:Name="DetailPath" Style="{DynamicResource Pd.Muted}"
-                                       Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
+                        <Grid Grid.Column="1" Margin="12,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock x:Name="DetailAuthor" Style="{DynamicResource Pd.Body}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="DetailLicense" Style="{DynamicResource Pd.Dim}"
+                                           Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="DetailPath" Style="{DynamicResource Pd.Muted}"
+                                           Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+
+                            <!-- 这一只自己的大小（2026-10-31；用户：「调整大小应该是每个宠物单独调整，
+                                 你这样我怎么调整」）。滑块放在选中行上，拖谁改谁 —— 设置页那条
+                                 全局滑块已经换成「新宠物的默认大小」口径。 -->
+                            <Grid Grid.Column="1" Width="250" VerticalAlignment="Center" Margin="16,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="46" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" x:Name="DetailSizeLabel" Style="{DynamicResource Pd.Muted}"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <Slider Grid.Column="1" x:Name="DetailSizeSlider" Style="{DynamicResource Pd.Slider}"
+                                        Minimum="64" Maximum="256" SmallChange="8" LargeChange="16"
+                                        TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" x:Name="DetailSizeValue" Style="{DynamicResource Pd.Body}"
+                                           FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           TextAlignment="Right" />
+                            </Grid>
+                        </Grid>
                     </Grid>
                 </Border>
 

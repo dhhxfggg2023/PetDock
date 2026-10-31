@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 34500,
+  "budget": 34710,
   "history": [
     {
       "date": "2026-10-18",
@@ -2886,6 +2886,48 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"
           ],
           "lines": 34
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 34627,
+      "budget": 34710,
+      "note": "用户三条反馈各自对应一处真实缺口：①「右键宠物的移动·暂停·移除没用」—— 菜单边枚举边 Dispose，异常被 WndProc 吞掉，一次都弹不出来；②「插件没有功能解释」—— 清单加可选 description，走 ManifestValidator → PluginManifest → PluginEntry → PluginLine → 插件页说明条；③「调整大小应该是每个宠物单独调整」—— settings 加 petSizes 表，尺寸按清单 id 记，设置页滑块降级为「新宠物默认值」，宠物页选中行自带滑块。归属表把整个文件的净增算给它的主切片，不按行拆分（UiSnapshot.cs 同时带了 PluginLine.Description 与 PetLine.SizePx，记在切片②名下）。",
+      "attribution": [
+        {
+          "slice": "右键菜单：边枚举边释放条目",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/TrayHost.PetMenu.cs"
+          ],
+          "lines": 21
+        },
+        {
+          "slice": "插件清单 description 全链路",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/ManifestValidator.cs",
+            "packages/core/PetDock.Core/src/Host/ManifestValidator.Parts.cs",
+            "packages/core/PetDock.Core/src/Host/HostingTypes.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs",
+            "packages/core/PetDock.Core/src/Ui/UiSnapshot.cs",
+            "packages/core/PetDock.Core/src/Ui/UiRoster.cs"
+          ],
+          "lines": 35
+        },
+        {
+          "slice": "尺寸按宠物单独记",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UserSettings.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.cs",
+            "packages/core/PetDock.Core/src/Host/UserSettingsStore.Write.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.cs",
+            "packages/core/PetDock.Core/src/Ui/PetWindowSet.Positions.cs",
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
+          ],
+          "lines": 153
         }
       ]
     }

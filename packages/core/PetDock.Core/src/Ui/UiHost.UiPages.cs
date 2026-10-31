@@ -98,7 +98,7 @@ internal sealed partial class UiHost : IUiPageContext
             soundEnabled,
             celestialMode);
 
-    string? IUiPageContext.SetPetSize(int size) => SetPetSizeFromPanel(size);
+    string? IUiPageContext.SetPetSize(string? petId, int size) => SetPetSizeFromPanel(petId, size);
 
     string? IUiPageContext.SetLanguage(string language) => SetLanguageFromPanel(language);
 

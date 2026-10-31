@@ -154,6 +154,21 @@ internal sealed partial class UserSettingsStore
             doc["celestialMode"] = celestial;
         }
 
+        // 逐宠物尺寸（2026-10-31）：与 petPositions 同一条纪律 —— 键是清单 id，空表不写键，
+        // 按 key 的 Ordinal 序写（同一份数据每次落盘字节序一致，repro 判据才过得去）。
+        if (value.PetSizes is { Count: > 0 } sizes)
+        {
+            var sizeKeys = new List<string>(sizes.Keys);
+            sizeKeys.Sort(StringComparer.Ordinal);
+            var sizeDoc = new JsonObject();
+            foreach (string key in sizeKeys)
+            {
+                sizeDoc[key] = sizes[key];
+            }
+
+            doc["petSizes"] = sizeDoc;
+        }
+
         // 用户关掉 / 打开的插件（空表 / null 就不写这个键）。排序后写，字节序稳定。
         WriteStringArray(doc, "pluginsDisabled", value.DisabledPlugins);
         WriteStringArray(doc, "pluginsEnabled", value.EnabledPlugins);

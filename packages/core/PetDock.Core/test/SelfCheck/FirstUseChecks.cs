@@ -23,6 +23,7 @@ internal static class FirstUseChecks
             check("ui-settings-pet-size", false, "root=missing");
             check("ui-settings-a11y", false, "root=missing");
             check("ui-pets-duplicate-delete", false, "root=missing");
+            check("ui-pets-per-pet-size", false, "root=missing");
             return;
         }
 
@@ -74,7 +75,8 @@ internal static class FirstUseChecks
             {
                 petSize.Value = 96;
             }
-            bool sizeWired = petContext.Commands.Contains("pet-size:96")
+            // 2026-10-31：尺寸改成逐只 —— 没有选中任何一只时命令带的是 (default)。
+            bool sizeWired = petContext.Commands.Contains("pet-size:(default):96")
                 && petSizeValue?.Text.Contains("96", StringComparison.Ordinal) == true;
             check("ui-settings-pet-size", sizeWired,
                 $"size={petSize?.Value} value={petSizeValue?.Text} commands={string.Join(",", petContext.Commands)}");
@@ -130,6 +132,19 @@ internal static class FirstUseChecks
             check("ui-pets-duplicate-delete", commandsWired,
                 $"selected={selected} commands={string.Join(",", petsContext.Commands)}");
 
+            // 每只单独调大小（2026-10-31）：选中一行之后，行上的滑块必须带出**这一只**的
+            // 当前边长，并且拖它发出去的命令带着**这一行**的 id —— 不带 id 就又变回"改全部"。
+            var sizeSlider = petsView?.FindName("DetailSizeSlider") as Slider;
+            if (sizeSlider is not null)
+            {
+                sizeSlider.Value = 200;
+            }
+
+            bool perPetSize = sizeSlider is not null
+                && petsContext.Commands.Contains("pet-size:user.alpha:200");
+            check("ui-pets-per-pet-size", perPetSize,
+                $"slider={sizeSlider?.Value} commands={string.Join(",", petsContext.Commands)}");
+
             var detailAuthor = petsView?.FindName("DetailAuthor") as TextBlock;
             var detailLicense = petsView?.FindName("DetailLicense") as TextBlock;
             bool detail = detailAuthor?.Text.Contains("Alice", StringComparison.Ordinal) == true
@@ -146,6 +161,7 @@ internal static class FirstUseChecks
             check("ui-settings-a11y", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-duplicate-delete", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-detail", false, error.GetType().Name + ": " + error.Message);
+            check("ui-pets-per-pet-size", false, error.GetType().Name + ": " + error.Message);
         }
     }
 }
