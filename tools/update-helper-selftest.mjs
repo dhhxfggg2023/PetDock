@@ -141,6 +141,15 @@ function main() {
   check('4', backedUp, `backup=${backedUp}`);
   check('5', result === `ok ${version}`, `result="${result}"`);
 
+  // ①b 这个夹具里的「新版本」是一份文本文件，所以 Relaunch 必然失败（Win32 不认它当程序）——
+  // 正好把「装好了但没能自己开回来」这条现场造出来：一行原因必须落盘，解出来的那份要收掉，
+  // 而**旧版本的备份必须留着**（这时它是用户手里唯一那份旧版本）。
+  const reportPath = path.join(updateDir, 'relaunch-failed.txt');
+  const relaunchReport = fs.existsSync(reportPath) ? fs.readFileSync(reportPath, 'utf8').trim() : '';
+  check('12', relaunchReport.length > 0, `report="${relaunchReport}"`);
+  check('13', !fs.existsSync(path.join(updateDir, 'unpacked')), `unpacked=${fs.existsSync(path.join(updateDir, 'unpacked'))}`);
+  check('14', backedUp, `backup-kept=${backedUp}`);
+
   // ② 坏包：sha256 对不上 ⇒ 一个文件都不许换
   const badZip = path.join(updateDir, `PetDock-${version}-win-x64.zip`);
   zipViaPowerShell(badZip, [['PetDock/PetDock.Core.exe', 'tampered']]);

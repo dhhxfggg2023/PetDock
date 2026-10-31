@@ -161,7 +161,8 @@ internal static partial class Applier
         TryDelete(Path.Combine(options.DataRoot, "_update", "restart.txt"));
         Note($"ok version={version}");
 
-        if (!Relaunch(options, Note, out string? relaunchWhy))
+        bool restarted = Relaunch(options, Note, out string? relaunchWhy);
+        if (!restarted)
         {
             // 装是装好了，只是没能自己开起来。result.txt **仍然写 ok** ——
             // 它是「装没装上」的答案，不是「有没有自己开起来」的答案；
@@ -173,11 +174,17 @@ internal static partial class Applier
             WriteRelaunchReport(options, relaunchWhy);
         }
 
-        // 不管有没有开起来，暂存树与备份都已经没用了：装是成功的。
-        // （早先在这之前就 return，于是解出来的整份新程序永远留在用户数据区里。
-        // 一次几百兆，而且下一次装又解一份。）
+        // 解出来的那一份永远没用了（zip 还在，要重装可以直接再来一次）。
         DeleteTree(stage);
-        DeleteTree(backup);
+
+        // 备份则要等到「新版本确实起来了」才删：没起来的时候它是用户手里唯一那份旧版本。
+        // 宿主下一次启动读到 ok 会清掉暂存区；可要是新版本根本起不来，这一步永远不会发生 ——
+        // 那正是备份唯一还救得了人的时候。
+        if (restarted)
+        {
+            DeleteTree(backup);
+        }
+
         return 0;
     }
 
