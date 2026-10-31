@@ -3,6 +3,8 @@
 // 面板只发意图（原规格 18 §2.4「面板只读展示」在这里仍成立）：
 // 判定、落盘、打开目录都在这一侧完成，完成后把一句话回给面板。
 using System;
+using PetDock.App;
+using PetDock.Core.App;
 using PetDock.Core.Compositor;
 using PetDock.Hosting;
 
@@ -13,8 +15,16 @@ internal sealed partial class UiHost
     /// <summary>诊断服务（可空：没有数据区就没有诊断入口；自检形态常常是 null）。</summary>
     private DiagnosticService? _diagnostics;
 
+    private readonly IDiagnosticsService? _diagOps;
+
     /// <summary>诊断服务（自检与宿主侧用）。</summary>
     public DiagnosticService? Diagnostics => _diagnostics;
+
+    /// <summary>
+    /// 诊断在新契约下的口子（R1）。旧面板暂时仍从 <see cref="RunDiagnosticOp"/> 进来，
+    /// 但「打开日志 / 导出诊断包」两条已经只经这个接口执行 —— 新界面层将来直接用它。
+    /// </summary>
+    internal IDiagnosticsService? DiagnosticOps => _diagOps;
 
     /// <summary>
     /// 设置页两个诊断入口的宿主侧执行体（UI 线程）。
@@ -29,14 +39,16 @@ internal sealed partial class UiHost
 
         try
         {
+            // 两条纯服务操作一律走新契约：旧面板只是「另一个调用方」，
+            // 新界面层将来直接拿 DiagnosticOps，不经过这里的 op 字符串分派。
             if (string.Equals(op, ControlPanel.DiagnosticOpOpenLogs, StringComparison.Ordinal))
             {
-                return _diagnostics.OpenLogsDirectory();
+                return Unpack(_diagOps!.OpenLogs());
             }
 
             if (string.Equals(op, ControlPanel.DiagnosticOpExportBundle, StringComparison.Ordinal))
             {
-                return _diagnostics.ExportBundle();
+                return Unpack(_diagOps!.ExportBundle());
             }
 
             if (string.Equals(op, ControlPanel.DiagnosticOpViewAudit, StringComparison.Ordinal))
@@ -52,6 +64,8 @@ internal sealed partial class UiHost
             return (false, I18n.Get("ui.diag.failed", error.GetType().Name, error.Message));
         }
     }
+
+    private static (bool Ok, string Message) Unpack(AppResult result) => (result.Ok, result.Message);
 
     /// <summary>
     /// 审计流水的只读视图（原规格 18 §2.8）。读盘在这里，窗口只负责列。

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 新界面层能看到的宿主服务契约（R1 起）。
+       只放接口与最小的值类型：没有 WPF、没有 WinForms、没有对 PetDock.Core 的引用 ——
+       依赖方向由编译器保证：Core 实现它，新 Ui 只认它。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PetDock.App</RootNamespace>
+    <AssemblyName>PetDock.App.Contracts</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

@@ -42,4 +42,10 @@
     <PackageReference Include="Wasmtime" Version="34.0.2" />
   </ItemGroup>
 
+  <!-- 新界面层的契约（R1 起）：只有接口与值类型，没有 WPF/WinForms，也不引用本工程。
+       依赖方向 Core → Contracts；新 Ui 只引用 Contracts。 -->
+  <ItemGroup>
+    <ProjectReference Include="..\PetDock.App.Contracts\PetDock.App.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

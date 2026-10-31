@@ -14,6 +14,7 @@
 using System;
 using System.IO;
 using System.Windows.Forms;
+using PetDock.Core.App;
 using PetDock.Core.Compositor;
 using PetDock.Core.Input;
 using PetDock.Core.PetRuntime;
@@ -98,6 +99,7 @@ internal sealed partial class UiHost : ApplicationContext
         _consent = consent;
         _settings = settings;
         _diagnostics = diagnostics;
+        _diagOps = diagnostics is null ? null : new DiagnosticsOps(diagnostics);
         _loop = new ResidentFrameLoop(window);
 
         // 启动时读设置：空闲降帧阈值立即套用到帧泵（不用等用户点「应用」）。

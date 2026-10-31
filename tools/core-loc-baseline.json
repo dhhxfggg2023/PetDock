@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38300,
+  "budget": 38400,
   "history": [
     {
       "date": "2026-10-18",
@@ -3346,6 +3346,43 @@
             "packages/core/PetDock.Update/Applier.cs"
           ],
           "lines": 7
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38306,
+      "budget": 38400,
+      "note": "R1 起步：新契约程序集 PetDock.App.Contracts（只放接口与值类型，无 WPF/WinForms、不引用 Core）与第一支服务（诊断）的抽出。旧面板的两条诊断入口改为经新契约执行（只转发、语义不变）。这是双轨期的第一笔预算抬升：R8 删除旧层 9.6k 行后必须归还到 ≤ 38.2k，届时本条备注即是归还条件的凭据。实测 38236 → 38306（+70），预算 38300 → 38400。",
+      "attribution": [
+        {
+          "slice": "新契约程序集：AppResult 与 IDiagnosticsService",
+          "files": [
+            "packages/core/PetDock.App.Contracts/Types/AppResult.cs",
+            "packages/core/PetDock.App.Contracts/Services/IDiagnosticsService.cs"
+          ],
+          "lines": 27
+        },
+        {
+          "slice": "诊断服务在新契约下的实现（纯转发）",
+          "files": [
+            "packages/core/PetDock.Core/src/App/DiagnosticsOps.cs"
+          ],
+          "lines": 27
+        },
+        {
+          "slice": "旧面板两条诊断入口改走契约（不改变行为）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Diagnostics.cs"
+          ],
+          "lines": 14
+        },
+        {
+          "slice": "UiHost 构造期创建契约实现",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 2
         }
       ]
     }
