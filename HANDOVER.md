@@ -178,6 +178,10 @@
 8. PATCH 已发布 Release 的正文时，**sha256/提交号必须用该 Release 自己那份资产的值**，
    不能拿本地重建的指纹；GitHub 读接口在 PATCH 后会短暂返回旧值。
 9. PS 5.1 里 `$req.Headers.Add('User-Agent', …)` 会抛 `ArgumentException`，用 `$req.UserAgent = …`。
+10. **`pwsh` 里的删除/收尾类操作也会挂**（删 `.dsh-code/` 挂了两次、每次都到程序超时）。
+    这类一次性收尾改用 Node 直连：`import("node:fs")` 删目录、`import("node:child_process").execFileSync` 调 git —— 同一条命令反而稳。
+11. `git push` 需要比 `git log` 更全的 env：少了 `USERDOMAIN`/`COMPUTERNAME`/`USERNAME`/`SystemDrive`/`ComSpec`/`PATHEXT` 时，
+    GCM 会抛 `ArgumentException` 然后退成「could not read Username（terminal prompts disabled）」。补齐这些就过（本机凭据是 GCM 里存好的，不需要令牌）。
 
 ## 6. 下一步（按顺序）
 
