@@ -71,6 +71,10 @@ const UPGRADE_NOTES = [
 ];
 const LIST_ONLY = args.includes('--list');
 const NOTES_ONLY = args.includes('--notes');
+
+// 反引号：失败提示里要原样写出命令行。早先这两处直接引用了不存在的 BT —— 「正文不符」这条
+// 判据只在发版出错时才走到，于是它自己一抛 ReferenceError，就把真正的原因盖掉了（2026-10-31 实测）。
+const BT = '`';
 const NAME = 'PetDock-' + VERSION + '-win-x64.zip';
 const API = 'https://api.github.com/repos/' + REPO_SLUG + '/releases/tags/' + TAG;
 const COMMIT_API = 'https://api.github.com/repos/' + REPO_SLUG + '/commits/' + TAG;

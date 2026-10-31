@@ -40,6 +40,7 @@
 | v0.4.0 | 2026-10-31 02:30 | 2 | 7739f3470383（6673486 B） |
 | v0.4.1 | 2026-10-31 02:45 | 6 | 470c4c0a1d75（6672527 B） |
 | v0.4.2 | 2026-10-31 16:40 | — | 2e2b9b4a0d56（6693963 B） |
+| v0.4.3 | 2026-10-31 17:36 | — | bef274ddc02f（6696671 B） |
 
 发布物形态：解压即用、`PetDock.Core.exe` + 更新用的 `PetDock.Update.exe` 两个 exe、
 顶层目录固定叫 `PetDock`（zip 名带版本）、数据在程序旁 `data\`、删目录即卸载、不写注册表。
@@ -441,6 +442,10 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
     把上一次手写的那条改了什么覆盖掉（它刻意不写 sha256 / bytes —— 那会形成「构建 → 写指纹 → 再构建」的环，
     完整性交给 Release 旁的 `.sha256` 旁车）。只跑门禁时请 `git checkout -- update.json`；
     发版时请在 `gen-update-feed` 跑完后确认 `notes` 仍是给人看的那段。发布顺序见第 12 条与 §6 第 9 条。
+16. **别用 PowerShell 的 `>` 抓要发给 API 的正文**：PS 5.1 的重定向默认写 UTF-16LE，`readFileSync(..., utf8)` 读回来
+    是夹着 NUL 的字符串，`JSON.stringify` 之后 GitHub 收到的是乱码 —— 2026-10-31 发 v0.4.3 时就是这么把 Release 正文
+    写坏了一次（判据 `ix-release-4` 说「正文没有声明 sha256」，而正文里明明有）。用 `execFileSync(...).toString()` 或
+    `fs.writeFileSync(path, text, "utf8")` 拿 UTF-8。
 
 ## 6. 下一步（按顺序）
 
@@ -464,8 +469,14 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
      `_update/relaunch-failed.txt` + `ui.update.appliedNoRelaunch`，判据 `ui-update-relaunch-reported`；
    - ~~内置插件的安装/删除失败可能把数据根留一半~~ —— **已收口**（2026-10-31 傍晚，§2.10）：
      覆盖安装的备份不再被当成一只插件，搬不回去的旧目录进回收站。
-9. **发布**：7 个本地提交在 `main` 上，等所有者一句「推送 / 发版」。发版按 `release-notes/<版本>.md`
-   + 指纹 + 七条正文判据走（见 `tools/verify-release.mjs` 头部注释）。
+9. ~~发布~~ —— **v0.4.3 已发布**（2026-10-31 17:36，release id `429842839`，tag `v0.4.3` → `fdf0283`）：
+   zip 6,696,671 B / sha256 `bef274ddc02f…c34f`，正文 3940 字节（含改动清单、指纹、来源提交）。
+   按 `release-notes/<版本>.md` → `release.mjs` → `pack.mjs` → 上传资产 → **最后**推 `update.json` 的顺序做的；
+   下一次发版照这个顺序，并注意 §5 第 15、16 条。
+   **本次没能跑完的一步**：`tools/verify-release.mjs` 最后一次整跑在本机超时（`SKIP-RELEASE-ALIGN`，
+   `release-assets.githubusercontent.com` 仍被 hosts 指到 127.0.0.1）—— 而它的四条判据在同一台机器上
+   用带凭据的 API 逐条核对过：正文含 sha256+来源提交（ix-release-4）、含改动清单 6 条（ix-release-4b）、
+   zip 资产 digest 与本地构建一致（ix-release-2）、旁车存在且一致（ix-release-3）；下载那一步在两轮实测里成功过一次。
 
 ## 7. 已废弃的东西与失效引用（不要复活它们）
 
@@ -480,8 +491,9 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 ---
 
-本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮），`HEAD` 见 `git log -1`。
-远端 `main` 停在 `d430014`（v0.4.2 已发布、两个资产已回读核对）；它之后有 **4 个待推提交**（§2.8 与它的修正 / §2.9 / §2.10）。
+本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮，含 v0.4.3 发布），`HEAD` 见 `git log -1`。
+远端 `main` 已推到 `fdf0283`，`v0.4.3` 的 tag、Release 与两个资产都已回读核对（`feb9ea4..fdf0283` 这批含 §2.8–§2.10 与版本抬升）。
+之后只剩交接文档这类不改变产物的提交；下次发版从「抬版本」那一步重新开始。
 ⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
 仍未做（见 §6 第 8 条）：内置插件安装/删除失败可能把数据根留一半。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
