@@ -11,7 +11,7 @@ using PetDock.App;
 
 namespace PetDock.Core.Ui;
 
-internal sealed partial class UiHost : IPetsService, IPluginsService, IUpdateService
+internal sealed partial class UiHost : IPetsService, IPluginsService, IMarketService, IUpdateService
 {
     AppResult IPetsService.SetOnDesktop(string petId, bool onDesktop) =>
         Translate(SetPetOnDesktopFromPanel(petId, onDesktop));
@@ -38,6 +38,14 @@ internal sealed partial class UiHost : IPetsService, IPluginsService, IUpdateSer
 
     async Task<AppResult> IPluginsService.PurgeAsync(string dirName) =>
         Folding(await PurgePluginFromPanelAsync(dirName));
+
+    // ── IMarketService（R1e）───────────────────────────────────────────────
+
+    // 市场的两个值类型已经搬进契约（只有 3 个文件引用，搬比复制便宜），所以这里不需要映射。
+    Task<MarketResult> IMarketService.LoadAsync() => LoadMarketAsync();
+
+    async Task<AppResult> IMarketService.InstallAsync(string pluginId) =>
+        Folding(await InstallFromMarketAsync(pluginId));
 
     // ── IUpdateService（R1d）───────────────────────────────────────────────
 

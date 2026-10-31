@@ -5,6 +5,7 @@
 //   * 「没拉到」与「市场里没有」分开说：前者是状态行里的原因，后者是空列表提示；
 //   * 页面不下载、不解压、不校验：安装一律交给 InstallFromMarketAsync（宿主同一条安装管线）。
 using System;
+using PetDock.App;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows;
@@ -75,7 +76,7 @@ public partial class PluginsPage
         try
         {
             MarketResult result = await _context.LoadMarketAsync();
-            foreach (MarketEntryLine line in result.Entries)
+            foreach (MarketItem line in result.Entries)
             {
                 _market.Add(new MarketRow(line, _context));
             }

@@ -2,6 +2,7 @@
 // 它不写盘、不弹窗、不碰宿主状态 —— 判据要验的是「壳把页面摆对、命令面接上」，
 // 而不是把宿主再测一遍。
 using System;
+using PetDock.App;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PetDock.Core.Ui;

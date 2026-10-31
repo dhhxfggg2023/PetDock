@@ -1,4 +1,5 @@
 using System;
+using PetDock.App;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -108,7 +109,7 @@ public sealed class MarketRow : INotifyPropertyChanged
     private string _actionLabel;
     private bool _canInstall;
 
-    public MarketRow(MarketEntryLine line, IUiPageContext context)
+    public MarketRow(MarketItem line, IUiPageContext context)
     {
         _context = context;
         Id = line.Id;

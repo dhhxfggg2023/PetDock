@@ -10,6 +10,7 @@
 //     清单校验、入口越界、体积上限、取消、进度全复用同一条。
 using System;
 using System.Collections.Generic;
+using PetDock.App;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,11 +53,11 @@ internal sealed partial class UiHost
             installed[row.Id] = row.Version;
         }
 
-        var lines = new List<MarketEntryLine>(index.Entries.Count);
+        var lines = new List<MarketItem>(index.Entries.Count);
         foreach (MarketEntry entry in index.Entries)
         {
             installed.TryGetValue(entry.Id, out string? localVersion);
-            lines.Add(new MarketEntryLine(
+            lines.Add(new MarketItem(
                 entry.Id,
                 entry.Name,
                 entry.Version,

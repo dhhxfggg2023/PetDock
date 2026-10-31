@@ -76,10 +76,10 @@ internal sealed partial class UiHost : IUiPageContext
     string? IUiPageContext.RemovePlugin(string pluginId) =>
         FailureOf(((IPluginsService)this).Remove(pluginId));
 
-    Task<MarketResult> IUiPageContext.LoadMarketAsync() => LoadMarketAsync();
+    Task<MarketResult> IUiPageContext.LoadMarketAsync() => ((IMarketService)this).LoadAsync();
 
     Task<UiCommandResult> IUiPageContext.InstallFromMarketAsync(string pluginId) =>
-        InstallFromMarketAsync(pluginId);
+        ToCommand(((IMarketService)this).InstallAsync(pluginId));
 
     // 插件管理从 R1c 起走新契约（IPluginsService）：插件页看到的 TrashLine / UiCommandResult
     // 只是这一层的适配形状，执行路径只有契约一条。

@@ -3460,6 +3460,34 @@
           "lines": 29
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38567,
+      "budget": 38600,
+      "note": "R1e：插件市场进入新契约 IMarketService（LoadAsync / InstallAsync）。市场两个值类型**搬**进契约（只有 3 个文件引用，搬比复制便宜），并改名为 MarketItem —— 原名 MarketEntry 与 PetDock.Hosting.MarketEntry（索引条目）撞名，编译器当场拦住。LOC 38533 → 38567（+34），预算 38600 内；归还条件：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "市场契约 IMarketService",
+          "files": ["packages/core/PetDock.App.Contracts/Services/IMarketService.cs"],
+          "lines": 20
+        },
+        {
+          "slice": "市场的值类型搬进契约（MarketResult / MarketItem）",
+          "files": ["packages/core/PetDock.App.Contracts/Types/MarketTypes.cs"],
+          "lines": 22
+        },
+        {
+          "slice": "旧 UiContracts 删掉搬走的两类型",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiContracts.cs"],
+          "lines": -17
+        },
+        {
+          "slice": "旧宿主实现市场契约（无需映射，类型已同源）",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs", "packages/core/PetDock.Core/src/Ui/UiHost.Market.cs"],
+          "lines": 9
+        }
+      ]
     }
   ]
 }
