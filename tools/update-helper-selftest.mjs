@@ -107,9 +107,11 @@ function main() {
 
   // ① 好包：换文件、备份、写结果
   const zip = path.join(updateDir, `PetDock-${version}-win-x64.zip`);
+  // 顶层目录名与真实发布包一致（**不带版本号**，见 tools/pack.mjs）：搬运工只剪掉顶层一格，
+  // 夹具要是用了别的形状，测的就不是它真正会收到的那种包。
   zipViaPowerShell(zip, [
-    [`PetDock-${version}/PetDock.Core.exe`, 'new-core'],
-    [`PetDock-${version}/plugins/x.txt`, 'new-plugin'],
+    ['PetDock/PetDock.Core.exe', 'new-core'],
+    ['PetDock/plugins/x.txt', 'new-plugin'],
   ]);
   fs.writeFileSync(
     path.join(updateDir, 'pending.json'),
@@ -141,7 +143,7 @@ function main() {
 
   // ② 坏包：sha256 对不上 ⇒ 一个文件都不许换
   const badZip = path.join(updateDir, `PetDock-${version}-win-x64.zip`);
-  zipViaPowerShell(badZip, [[`PetDock-${version}/PetDock.Core.exe`, 'tampered']]);
+  zipViaPowerShell(badZip, [['PetDock/PetDock.Core.exe', 'tampered']]);
   fs.writeFileSync(
     path.join(updateDir, 'pending.json'),
     JSON.stringify({ schema: 1, version, zip: badZip, sha256: 'f'.repeat(64) }),

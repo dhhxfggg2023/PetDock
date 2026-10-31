@@ -55,8 +55,10 @@ function tailOf(file, lines) {
 
 async function main() {
   const version = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).version;
-  const top = `PetDock-${version}`;
-  const zipPath = path.join(ARTIFACTS, 'dist', `${top}-win-x64.zip`);
+  // 两个名字分开：zip 名带版本、解压出来的顶层目录不带（见 tools/pack.mjs 里那段说明）。
+  // 这两个不能共用一个变量 —— 共用正是这一版要改掉的那种混同（2026-10-31）。
+  const top = 'PetDock';
+  const zipPath = path.join(ARTIFACTS, 'dist', `PetDock-${version}-win-x64.zip`);
   if (!fs.existsSync(zipPath)) {
     fail(`没有可测的 zip ${path.relative(REPO_ROOT, zipPath)} —— 先跑 npm run dist`);
   }

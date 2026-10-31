@@ -104,8 +104,9 @@ internal static class UpdateStageChecks
         string zip = Path.Combine(root, "good.zip");
         using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
         {
-            Write(archive, "PetDock-9.9.9/PetDock.Core.exe", "exe");
-            Write(archive, "PetDock-9.9.9/plugins/x/petdock-plugin.json", "{}");
+            // 顶层目录不带版本号：与真实发布包同形（见 tools/pack.mjs 里那段说明）。
+            Write(archive, "PetDock/PetDock.Core.exe", "exe");
+            Write(archive, "PetDock/plugins/x/petdock-plugin.json", "{}");
         }
 
         string tree = Path.Combine(root, "tree");
@@ -116,7 +117,7 @@ internal static class UpdateStageChecks
         string badZip = Path.Combine(root, "bad.zip");
         using (ZipArchive archive = ZipFile.Open(badZip, ZipArchiveMode.Create))
         {
-            Write(archive, "PetDock-9.9.9/readme.txt", "x");
+            Write(archive, "PetDock/readme.txt", "x");
         }
 
         string badTree = Path.Combine(root, "bad-tree");

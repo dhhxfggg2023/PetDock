@@ -277,6 +277,15 @@ function totalBytes(dir) {
   return walkFiles(dir).reduce((sum, file) => sum + fs.statSync(file).size, 0);
 }
 
+/** 读一个文本文件；不存在或读不动返回 null（判据据此决定说什么，而不是抛栈）。 */
+function readTextIfExists(file) {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 出口合规检查。与入口 lint 的区别：这里扫的是**要发出去的那棵树**。
  * 返回失败条数。
@@ -383,6 +392,15 @@ function auditOutput(outDir, version) {
     if (!fs.existsSync(path.join(outDir, name))) {
       fail(`发布物缺 ${name}（便携标记/说明未随包，文件夹不自包含）`);
     }
+  }
+
+  // ⑨b 说明书里的**升级口径**必须与实际一致（2026-10-31）。
+  //    旧口径是「解压到新文件夹，把 data 拷过去」—— 那是在没有更新功能的年代写的。
+  //    现在升级是原地覆盖同一个文件夹；说明书还教人搬 data，用户就会在旁边留一个旧版本，
+  //    而那个旧版本里有一个和当前版本抢单实例锁的 exe。这条守的是「说明书没有落后于程序」。
+  const installText = readTextIfExists(path.join(outDir, 'INSTALL.md')) ?? '';
+  if (installText.includes('解压到新文件夹') || installText.includes('拷进新文件夹')) {
+    fail('INSTALL.md 还在教用户「解压到新文件夹再搬 data」，与原地覆盖的升级方式矛盾');
   }
 
   // ⑩ 发布物里不许有非 win-x64 的 RID 资源：它们永远不会被加载，却把包撑到 242 MB

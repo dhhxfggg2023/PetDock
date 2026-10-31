@@ -23,7 +23,7 @@
     <Product>PetDock</Product>
 
     <!-- 版本号唯一事实源是 package.json；这里镜像它，tools/version-parity.mjs 卡住漂移。 -->
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
 
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>

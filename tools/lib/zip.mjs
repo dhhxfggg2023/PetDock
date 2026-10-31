@@ -46,7 +46,7 @@ export function crc32(buf) {
 
 /**
  * 收集一个目录下的全部文件（相对路径用正斜杠）。
- * prefix 是 zip 内的顶层目录名（例如 'PetDock-0.1.0'），空串表示文件放在 zip 根。
+ * prefix 是 zip 内的顶层目录名（例如 'PetDock' —— 不带版本，见 tools/pack.mjs），空串表示文件放在 zip 根。
  */
 export function collectFiles(root, prefix = '') {
   const out = [];

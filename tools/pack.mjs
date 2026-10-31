@@ -55,8 +55,18 @@ function fail(message) {
 
 function main() {
   const version = readVersion();
-  const top = `PetDock-${version}`;
-  const name = `${top}-win-x64.zip`;
+
+  // zip 名带版本、解压出来的文件夹**不带**（2026-10-31 用户：「有更新功能就不要在文件夹后面加版本号了」）。
+  //
+  // 两个名字现在服务两件不同的事：
+  //   zip 名   —— 用来区分解压哪一个包。必须带版本：同一次发布要能并存、sha256 旁车按名对账、
+  //                update.json 里的地址也钉着它。
+  //   文件夹名 —— 是用户长期相处的**安装目录**。更新是**原地覆盖**（搬运工找的是 exe 自己所在的
+  //                目录，与应用名无关），所以从 0.4.0 升到 0.5.0 之后文件夹若还写着 0.4.0，
+  //                名字和里面装的东西就对不上了 —— 而且它永远不会自愈。
+  //                名字里的版本号在「有更新功能」之后不是多余，是**错的**。
+  const top = 'PetDock';
+  const name = `PetDock-${version}-win-x64.zip`;
   const releaseDir = path.join(ARTIFACTS, 'release', version);
   const zipPath = OUT_OVERRIDE ? path.resolve(OUT_OVERRIDE) : path.join(ARTIFACTS, 'dist', name);
   const stagingRoot = path.join(ARTIFACTS, '_pack');
@@ -117,6 +127,15 @@ function main() {
   const selfContained = ['petdock.portable', 'INSTALL.md'];
   const absent = selfContained.filter((file) => !entrySet.has(`${top}/${file}`));
   check('3', absent.length === 0, `absent=${absent.join(',') || 'none'}`);
+
+  // ix-pack-5：解压出来的**顶层目录名不带版本号**（2026-10-31）。
+  //
+  // 这条是**反向**的：它守的不是「有个名字」，而是「名字里不许出现版本」。理由在文件开头那段：
+  // 更新是原地覆盖安装目录，从 0.4.0 升到 0.5.0 之后文件夹还是那个文件夹，名字里写着 0.4.0 的话
+  // 它就和里面的内容对不上了，而且永远不会自愈。所以这条判据在有人把版本号加回去时会红。
+  const tops = [...new Set(entries.map((e) => e.split('/')[0]))];
+  const topClean = tops.length === 1 && tops[0] === 'PetDock' && !/\d+\.\d+\.\d+/.test(tops[0]);
+  check('5', topClean, `tops=${tops.join(',') || 'none'} portable=${top}`);
 
   // ix-pack-4：中央目录与本地头必须一致，且 CRC 与解压结果对得上。
   // 2026-10-30 抓到真缺陷：中央目录把压缩方法写成 0（stored）而数据实际是 deflate。
