@@ -42,6 +42,8 @@ public sealed class AgentCompanion : IPetCompanion
         {
             _host = context.Host;
             _texts = AgentTexts.For(context.Host.Language);
+
+            // 先记下宿主口子再解析路径：ResolvePath 要读 Host.DataRoot（2026-10-31）。
             _path = ResolvePath();
             Reload(announce: false);
         }
@@ -262,7 +264,15 @@ public sealed class AgentCompanion : IPetCompanion
         return string.Format(CultureInfo.InvariantCulture, _texts.AgeHours, (int)(seconds / 3600));
     }
 
-    private static string? ResolvePath()
+    /// <summary>
+    /// 状态文件路径。顺序：显式环境变量 → 宿主给的数据区根 → 最后才回落 %LOCALAPPDATA%。
+    ///
+    /// 2026-10-31 修：以前只有前两者里的第一与最后一段 —— 便携发行版（数据在程序旁的 data\）
+    /// 的 agent 状态文件被写到 C:\Users\…\AppData\Local\PetDock，面板上那条路径
+    /// 就是用户问的「第一个界面 C 盘的宠物怎么回事，不是没有吗」。
+    /// 插件不该自己拼数据区路径：那是宿主的唯一真相（ICompanionHost.DataRoot）。
+    /// </summary>
+    private string? ResolvePath()
     {
         string? fromEnv = Environment.GetEnvironmentVariable("PETDOCK_AGENT_STATE");
         if (!string.IsNullOrWhiteSpace(fromEnv))
@@ -270,6 +280,13 @@ public sealed class AgentCompanion : IPetCompanion
             return fromEnv;
         }
 
+        string? root = _host?.DataRoot;
+        if (!string.IsNullOrWhiteSpace(root))
+        {
+            return Path.Combine(root!, "agent-state.json");
+        }
+
+        // 没有数据区（自检、纯内存用法）：保持旧口径，但这是**回落**，不是主路径。
         string dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PetDock");
         return Path.Combine(dir, "agent-state.json");

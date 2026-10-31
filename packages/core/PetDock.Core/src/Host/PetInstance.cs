@@ -51,7 +51,8 @@ public sealed partial class PetInstance : IDisposable
         string? brainPluginId = null,
         bool imported = false,
         string? displayName = null,
-        bool ownsBrain = false)
+        bool ownsBrain = false,
+        string? dataRoot = null)
     {
         _ownsBrain = ownsBrain;
         Id = instanceId;
@@ -65,12 +66,20 @@ public sealed partial class PetInstance : IDisposable
         SourceKind = sourceKind;
         Imported = imported;
         AssetRoots = assetRoots ?? Array.Empty<string>();
+        DataRoot = dataRoot;
         Display = new DegradationChain();
         Arbiter = new HostArbiter(this);
         Bitmaps = new BitmapRegistry();
         SuspendPort = new NoopSuspendPort();
         Suspended += (instance, reason) => instance.SuspendPort.SuspendPlugin(instance.PluginId, reason);
     }
+
+    /// <summary>
+    /// 数据区根目录（2026-10-31）：陪伴层要往哪儿写自己的状态文件。
+    /// 由装配路径给出，实例不自己解析 —— 自己拼 `%LOCALAPPDATA%` 的插件会让便携版
+    /// 在 C 盘另开一份数据（用户实测就是这么发现的）。
+    /// </summary>
+    public string? DataRoot { get; }
 
     /// <summary>实例 id（原规格 11 §2 PetInstanceId）。</summary>
     public string Id { get; }

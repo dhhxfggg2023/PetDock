@@ -218,6 +218,8 @@ internal static class CompanionChecks
     {
         public string Language => "zh-CN";
 
+        public string? DataRoot => null;
+
         public int Commits { get; private set; }
 
         public List<string> Said { get; } = new();

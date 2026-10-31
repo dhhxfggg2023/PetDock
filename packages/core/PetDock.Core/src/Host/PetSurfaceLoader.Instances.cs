@@ -55,7 +55,8 @@ public sealed partial class PetSurfaceRoster
         // RFC-23 §3.3：行为层可能是另一个插件，日志归属要按各自 id 记（记错了比不记更坏）。
         string? brainPluginId = Find<IBrain>()?.PluginId;
         PetInstance instance = new(
-            $"{instanceIdPrefix}.{pluginId}", view, brain, Surfaces, StateLayer, pluginId, "dll", assetRoots, brainPluginId, imported, displayName, ownsBrain);
+            $"{instanceIdPrefix}.{pluginId}", view, brain, Surfaces, StateLayer, pluginId, "dll", assetRoots,
+            brainPluginId, imported, displayName, ownsBrain, DataRoot);
         AttachStateStore(instance, assetRoots);
         instance.InstallCompanions(CreateCompanions());
         return instance;

@@ -273,6 +273,8 @@ public sealed partial class PetInstance
 
         public string Language => I18n.Language;
 
+        public string? DataRoot => _owner.DataRoot;
+
         public bool CommitState() => _owner.CommitState();
 
         public void Say(string text)

@@ -69,7 +69,13 @@ internal static class FrameComposition
         roster.BrainSelector = BrainSelectorFromEnvironment();
 
         // RFC-24 §6.3：装载期给出状态目录，之后每只实例的落盘都落在它下面。
-        roster.StateDir = PetDataStore.Resolve().StateDir;
+        PetDataStore data = PetDataStore.Resolve();
+        roster.StateDir = data.StateDir;
+
+        // 2026-10-31：数据区**根**也一并给出。陪伴层以前自己拼 %LOCALAPPDATA%，
+        // 于是便携版（数据在程序旁 data）的 agent 状态文件写到了 C 盘，
+        // 面板上就会突然出现一条 C:Users…AppDataLocalPetDock... 的路径。
+        roster.DataRoot = data.Root;
 
         // RFC-37 §3.1：清单里有几只，与现在显示哪一只，是两个问题。前者今天已经是集合
         // （导入按 RegisterActive 追加，见 PetDataStore.ReadPets），后者仍是 1 —— 窗口层未落地。

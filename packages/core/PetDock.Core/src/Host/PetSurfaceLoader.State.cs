@@ -19,6 +19,13 @@ public sealed partial class PetSurfaceRoster
     public string? StateDir { get; set; }
 
     /// <summary>
+    /// 数据区**根**目录（2026-10-31）。StateDir 是它的 <c>state</c> 子目录，两者不能互相推：
+    /// 插件要写自己的文件（agent 状态、缓存）时该落在根下，而 state 目录是内核状态层的私有区。
+    /// 由组合根一次性给出（与 StateDir 同一条纪律：不在装配路径里临时解析）。
+    /// </summary>
+    public string? DataRoot { get; set; }
+
+    /// <summary>
     /// 给实例接上落盘层（RFC-24 §6.3）。没配数据根就不接 —— 自检与纯内存用法保持原样。
     /// 事件出口走实例自己的仲裁器事件口：迁移完成这类事件要能被 brain 看见（原规格 16）。
     /// </summary>

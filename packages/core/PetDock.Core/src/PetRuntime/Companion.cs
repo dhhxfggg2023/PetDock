@@ -70,6 +70,15 @@ public interface ICompanionHost
     /// <summary>当前界面语言码（如 zh-CN / en-US）。</summary>
     string Language { get; }
 
+    /// <summary>
+    /// 数据区根目录（2026-10-31）。便携发行版的数据在程序旁的 <c>data\</c> 里，
+    /// 安装在 C 盘的才用 <c>%LOCALAPPDATA%\PetDock</c>；插件**不能**自己拼后一条路径 ——
+    /// 那会让「解压出来的一大坨文件夹」在 C 盘另开一份数据，用户看到的就是
+    /// 「便携版的陪伴层状态写在 C:Users…AppDataLocalPetDock」。
+    /// null = 宿主没有数据区（自检、纯内存用法）。
+    /// </summary>
+    string? DataRoot { get; }
+
     /// <summary>请求落盘（宿主自己决定是不是现在能写；调用线程上同步返回）。</summary>
     bool CommitState();
 

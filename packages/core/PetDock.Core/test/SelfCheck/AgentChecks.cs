@@ -42,6 +42,7 @@ internal static class AgentChecks
             UnknownState(check, agent.GetType(), root);
             Language(check, agent.GetType(), root);
             Missing(check, agent.GetType(), root);
+            DataRootHonored(check, agent.GetType(), root);
         }
         catch (Exception error)
         {
@@ -157,7 +158,38 @@ internal static class AgentChecks
             $"status={companion.Report.Status} detail={companion.Report.Detail}");
     }
 
-    private static IPetCompanion Init(Type type, Host host, string path)
+    /// <summary>
+    /// 状态文件必须落在**宿主给的数据区**里（2026-10-31）。
+    ///
+    /// 用户第一张截图里那条 C:\Users\…\AppData\Local\PetDock\agent-state.json 就是在问
+    /// 「第一个界面 C 盘的宠物怎么回事，不是没有吗」：便携版的数据全在程序旁的 data\ 里，
+    /// 只有这一层自己拼了 %LOCALAPPDATA%。判据：不给环境变量、只给 DataRoot，路径必须落在其下。
+    /// </summary>
+    private static void DataRootHonored(Report check, Type type, string root)
+    {
+        string? saved = Environment.GetEnvironmentVariable("PETDOCK_AGENT_STATE");
+        try
+        {
+            Environment.SetEnvironmentVariable("PETDOCK_AGENT_STATE", null);
+            string dataRoot = Path.Combine(root, "portable-data");
+            Directory.CreateDirectory(dataRoot);
+            IPetCompanion companion = Init(type, new Host("zh-CN", dataRoot), path: null);
+
+            // 没有状态文件 → Detail 显示的就是它将要读的那个路径。
+            string detail = companion.Report.Detail;
+            string expected = Path.Combine(dataRoot, "agent-state.json");
+            check(
+                "ui-agent-dataroot",
+                string.Equals(detail, expected, StringComparison.OrdinalIgnoreCase),
+                $"detail={detail} expected={expected}");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PETDOCK_AGENT_STATE", saved);
+        }
+    }
+
+    private static IPetCompanion Init(Type type, Host host, string? path)
     {
         Environment.SetEnvironmentVariable("PETDOCK_AGENT_STATE", path);
         if (Activator.CreateInstance(type) is not IPetCompanion companion)
@@ -212,9 +244,16 @@ internal static class AgentChecks
     /// <summary>宿主口子桩件：判据要看语言切换、说话与落盘请求。</summary>
     private sealed class Host : ICompanionHost
     {
-        public Host(string language) => Language = language;
+        public Host(string language, string? dataRoot = null)
+        {
+            Language = language;
+            DataRoot = dataRoot;
+        }
 
         public string Language { get; }
+
+        /// <summary>宿主给的数据区根（2026-10-31 加：插件不许自己拼 %LOCALAPPDATA%）。</summary>
+        public string? DataRoot { get; }
 
         public int Commits { get; private set; }
 
