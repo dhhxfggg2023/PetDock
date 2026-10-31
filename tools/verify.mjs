@@ -153,7 +153,7 @@ function layersFor(config) {
   },
   {
     name: 'dist',
-    title: 'L5 真实发布物：release → pack → 解压后运行 → 摘要',
+    title: 'L5 真实发布物：release → pack → 泄漏扫描 → 解压后运行 → 摘要',
     proves: '发布目录能装配、能封成一个单顶层目录的 zip（顶层目录名不带版本号：更新是原地覆盖，名字带版本就会和内容对不上）、中央目录与本地头说法一致、清单与条目集对账、用 .NET ZipFile（资源管理器同一条路径）解压后 --hosttest 仍全过、同一棵树重跑得到同一份字节。',
     notProven: '不证明签名（本机无 signtool）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。'
       + '更新链条只证明到「搬运工自己按参数搬一次文件是对的」：真实的一次「用户点立即重启更新」'
@@ -161,6 +161,9 @@ function layersFor(config) {
     steps: [
       { id: 'release', ...node('tools/release.mjs'), marker: 'RELEASE-OK', timeoutMs: 20 * 60 * 1000 },
       { id: 'pack', ...node('tools/pack.mjs'), marker: 'PACK-OK' },
+      // 打包之后先问一句「这份东西里有没有**这台构建机**」：0.4.3 之前 dll/pdb 里带着绝对源路径，
+      // 同一个提交换个目录编就变 —— 那种事 recon 不出来（repro 只在同一目录重跑），人也读不出来（压缩包里的二进制）。
+      { id: 'leak-scan', ...node('tools/release-leak-scan.mjs'), marker: 'LEAK-OK' },
       // 顺序有语义：摘要必须描述**已经通过自检的那一个 zip**。先算摘要后跑自检的话，
       // 一个自检失败的 zip 也会拿到 .sha256 旁车文件，下游会把它当作「已验证的产物」发布。
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
