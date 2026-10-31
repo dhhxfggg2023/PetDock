@@ -104,6 +104,8 @@ internal static class UiSelfTest
             MarketChecks.Run(Check);
             // 2026-10-31 程序自身更新：出网边界、版本比较、三种结局（不联网）。
             UpdateChecks.Run(Check);
+            // 2026-10-31 出网通道本身：允许的主机、重定向策略、仓库文件地址（不联网）。
+            NetChecks.Run(Check);
             // 2026-10-29：素材包自带台词（点按/抛掷/落地优先说包里的句子）。
             PackLinesChecks.Run(Check);
             // 2026-10-29 窗口拓扑：抛掷的落点选择（纯几何）。

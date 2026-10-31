@@ -41,9 +41,11 @@ internal static class UpdateChecks
     {
         string endpoint = UpdateService.Endpoint;
         bool https = endpoint.StartsWith("https://", StringComparison.Ordinal);
+        // 2026-10-31 改口径：不再走 raw.githubusercontent.com（所有者这台机器上它被 hosts 指到
+        // 127.0.0.1，永远是 30 秒超时），改走同一台服务的 contents API —— 路径仍写死、仍只走 https。
         bool hosted = endpoint.StartsWith(
-                "https://raw.githubusercontent.com/dhhxfggg2023/PetDock/", StringComparison.Ordinal)
-            && endpoint.EndsWith("/update.json", StringComparison.Ordinal);
+                "https://api.github.com/repos/dhhxfggg2023/PetDock/contents/", StringComparison.Ordinal)
+            && endpoint.EndsWith("/update.json?ref=main", StringComparison.Ordinal);
         bool singleScheme = endpoint.IndexOf("://", 6, StringComparison.Ordinal) < 0;
 
         bool prefixOk = UpdateService.AllowedDownloadPrefix

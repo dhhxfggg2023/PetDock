@@ -37,7 +37,11 @@ market-plugins/
 
 面板 → 插件页 → 「浏览插件市场…」→ 列表出现 → 点「安装」：
 
-程序从 `raw.githubusercontent.com` 拉索引 → 从本仓库 Release 下载 zip →
+程序从 `api.github.com` 的 contents API 拉索引 → 从本仓库 Release 下载 zip →
 **校验 sha256**（对不上就丢弃）→ 交给和本地安装完全相同的管线（清单校验、体积上限、进度、取消）。
+
+出网只有一条通道（`GitHubHttp`）：主机写死、只走 https、重定向自己跟且每一跳先校验主机
+（GitHub 的 Release 资产必然先回一次 302 → `release-assets.githubusercontent.com`，
+不跟这一跳就永远只能拿到 302；2026-10-31 修的就是这个）、索引与下载都有体积上限。
 
 下载失败、离线、索引坏了，三种情况界面分别报，不混成「没有插件」。

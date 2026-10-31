@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 36950,
+  "budget": 37340,
   "history": [
     {
       "date": "2026-10-18",
@@ -3015,6 +3015,48 @@
             "packages/core/PetDock.Core/src/Program.cs"
           ],
           "lines": 309
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 37313,
+      "budget": 37340,
+      "note": "这一片有两件事，且第一件是**上一片漏申报的**：27c4f00（收起取不出来）与 v0.4.1 发布提交的净增从未写进本账本，于是实测从 36825 直接跳到 37313（+488）。按 D-08d 的口径如实分成两条切片：A 段 101 行是上一片（含 v0.4.1 发布提交与上次实测点之间的 10 行差额，按整包裁定并入本片），B 段 387 行是本片。本片做的是「两个出网出口合一 + 一次真实的致命缺陷修复」：更新源与插件市场各自 new 过一个 HttpClient、各自把 AllowAutoRedirect 关掉（理由是只连一个域名），而 GitHub 的 Release 资产必然先回 302 —— 实测 zip 与它的 .sha256 都是 302 → release-assets.githubusercontent.com，于是「下载新版本」「从市场装插件」在真实网络上永远只会拿到 download-status-302，而八道静态门与 282 条 UI 判据全绿（判据只解析 JSON、打包自检自造 zip、联网那一步用的是它自己的下载器）。现在只有一条通道 GitHubHttp：主机写死、只走 https、重定向自己跟且每一跳先校验主机、下载与索引都有搬运上限；仓库文件改走 contents API（raw.githubusercontent.com 在所有者这台机器上被 hosts 指到 127.0.0.1，永远超时）。同时补上市场索引的 id/version 形状校验（它们会被拼进下载文件名，路径穿越此前可以写穿暂存区）、失败原因点名主机与失败种类（loopback/timeout/unreachable）。判据面在 test/ 下（NetChecks.cs 新增 5 条 ui-net-*，MarketChecks 新增两条路径穿越负例），按 D-03a 口径不计。预算 37313 → 37340（余量 27）。",
+      "attribution": [
+        {
+          "slice": "上一片漏申报的净增：SmartScreen 搬运工副本标记 + 面板/托盘接线（含 v0.4.1 发布提交与上次实测点之间的 10 行差额）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/InternetMark.cs",
+            "packages/core/PetDock.Core/src/Host/UpdateStage.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Pets.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.cs"
+          ],
+          "lines": 101
+        },
+        {
+          "slice": "出网通道合一：GitHubHttp（写死主机、每跳校验、重定向自己跟、有上限的搬运、点名主机的失败原因）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/GitHubHttp.cs"
+          ],
+          "lines": 334
+        },
+        {
+          "slice": "市场索引硬化：id/version 必须是安全的文件名材料（路径穿越在这里就被拒）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginMarketIndex.cs"
+          ],
+          "lines": 61
+        },
+        {
+          "slice": "两个出口改走同一条通道（各自删掉私有的 HttpClient 与状态码处理）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateService.cs",
+            "packages/core/PetDock.Core/src/Host/PluginMarket.cs"
+          ],
+          "lines": -8
         }
       ]
     }

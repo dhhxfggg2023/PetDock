@@ -97,6 +97,28 @@ internal sealed record PluginMarketIndex(
             return false;
         }
 
+        // id 与 version 会被拼进下载的临时文件名（PluginMarket.DownloadAsync），所以它们的形状
+        // 必须是**安全的文件名材料**：不许出现路径分隔符，也不许以点开头。2026-10-31 之前只查了
+        // 「非空」，索引里一个 ../ 就能让下载写到暂存区之外 —— 而索引本身没有签名，
+        // 它的 sha256 只能证明「下载到的字节与索引说的一致」，不能证明「索引没被改」。
+        if (!IsSafeSegment(id, maxLength: 64))
+        {
+            why = "entry-bad-id";
+            return false;
+        }
+
+        if (!IsSafeVersion(version))
+        {
+            why = "entry-bad-version";
+            return false;
+        }
+
+        if (name.Length > 120 || (summary?.Length ?? 0) > 600)
+        {
+            why = "entry-too-long";
+            return false;
+        }
+
         if (sha is null || sha.Length != 64 || !IsHex(sha))
         {
             why = "entry-bad-sha256";
@@ -131,6 +153,45 @@ internal sealed record PluginMarketIndex(
         }
 
         entry = new MarketEntry(id, name, version, summary ?? "", url, sha.ToLowerInvariant(), bytes, caps);
+        return true;
+    }
+
+    /// <summary>安全的一段：小写字母/数字/点/横线/下划线，首尾必须是字母或数字，长度受限。</summary>
+    private static bool IsSafeSegment(string value, int maxLength)
+    {
+        if (value.Length == 0 || value.Length > maxLength || !char.IsLetterOrDigit(value[0]) || !char.IsLetterOrDigit(value[^1]))
+        {
+            return false;
+        }
+
+        foreach (char c in value)
+        {
+            bool ok = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c is '.' or '-' or '_';
+            if (!ok)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>版本号只允许数字与点（与更新源同一条纪律：它只进本地文件名，不是路径）。</summary>
+    private static bool IsSafeVersion(string value)
+    {
+        if (value.Length == 0 || value.Length > 32 || !char.IsDigit(value[0]))
+        {
+            return false;
+        }
+
+        foreach (char c in value)
+        {
+            if (!char.IsDigit(c) && c != '.')
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 

@@ -1,22 +1,22 @@
 // 插件市场（2026-10-30 用户要求：其他人下载后能在面板里装到所有者上传的插件）。
 //
-// 边界先说清楚 —— 这是**程序里唯一一处主动联网**：
+// 边界先说清楚 —— 这是**程序里唯一一处用户主动触发的联网之一**（另一处是检查更新），
+// 两条出口共用同一个通道 GitHubHttp：
 //
-//   1. 只连一个写死的域名（见 Endpoint），不接受配置、不接受插件传入的地址。
-//      判据 ui-market-fixed-endpoint 钉住这一点：改地址必须改代码并过门禁。
-//   2. 只走 HTTPS，不跟随重定向到别的域（HttpClient 默认跟随，这里显式关掉再自己判）。
+//   1. 只连一组写死的主机（见 GitHubHttp.AllowedHosts），不接受配置、不接受页面传入的地址；
+//      判据 ui-market-fixed-endpoint 钉住索引地址，改地址必须改代码并过门禁。
+//   2. 只走 HTTPS；重定向自己跟，每一跳的目标主机都要在允许表里。
 //   3. 每个条目都带 sha256；下载完**先校验再交给安装器**，对不上就丢弃。
-//      索引本身也被签名摘要覆盖（见 PluginMarketIndex），改一个字节就整份拒绝。
-//   4. 用户没点「市场」就不联网：本类不持有定时器、不在启动路径上被调用。
+//      索引本身也被逐字段校验（见 PluginMarketIndex），形状不对整份拒绝。
+//   4. 用户没点「浏览插件市场」就不联网：本类不持有定时器、不在启动路径上被调用。
 //
 // 为什么不做「任意 URL 安装」：那等于把程序变成下载器，用户被骗一次就装了别人的东西。
 // 市场是**所有者上传的白名单**，不是通用安装通道。
+//
+// 为什么索引走 contents API 而不是 raw.githubusercontent.com（2026-10-31）：见 GitHubHttp 文件头。
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,13 +35,15 @@ internal sealed record MarketEntry(
 
 /// <summary>
 /// 拉索引 + 下插件包。<see cref="FetchIndexAsync"/> 与 <see cref="DownloadAsync"/> 是仅有的两个出网动作；
-/// 两者都只在用户点「浏览插件市场」之后才被调用。
+/// 两者都只在用户点了「浏览插件市场」或「安装」之后才被调用。
 /// </summary>
 internal sealed class PluginMarket
 {
+    /// <summary>索引在仓库里的路径（写死）。</summary>
+    internal const string IndexPath = "plugins/index.json";
+
     /// <summary>唯一允许的索引地址。写死：判据 ui-market-fixed-endpoint 会读这一行的值。</summary>
-    internal const string Endpoint =
-        "https://raw.githubusercontent.com/dhhxfggg2023/PetDock/main/plugins/index.json";
+    internal static readonly string Endpoint = GitHubHttp.ContentsUrl(IndexPath);
 
     /// <summary>索引里所有下载地址都必须在这个前缀下。</summary>
     internal const string AllowedDownloadPrefix =
@@ -49,56 +51,27 @@ internal sealed class PluginMarket
 
     private const int MaxIndexBytes = 256 * 1024;
 
-    private static readonly HttpClient Http = CreateClient();
-
-    private static HttpClient CreateClient()
-    {
-        var handler = new HttpClientHandler
-        {
-            // 关掉自动跟随：重定向到别的域会让上面的「只连一个域名」失效。
-            AllowAutoRedirect = false,
-        };
-        var client = new HttpClient(handler)
-        {
-            Timeout = TimeSpan.FromSeconds(30),
-        };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("PetDock", "0.1"));
-        return client;
-    }
-
-    /// <summary>拉索引。失败返回 null 并给出原因（调用方翻成界面文案）。</summary>
+    /// <summary>拉索引。失败返回原因串（点名主机与状态码），与「市场是空的」分开报。</summary>
     public async Task<(PluginMarketIndex? Index, string? Error)> FetchIndexAsync(CancellationToken token)
     {
+        (string? text, string? error) = await GitHubHttp
+            .FetchRepoFileAsync(IndexPath, MaxIndexBytes, token)
+            .ConfigureAwait(false);
+        if (text is null)
+        {
+            return (null, error);
+        }
+
         try
         {
-            using HttpResponseMessage response = await Http.GetAsync(Endpoint, token).ConfigureAwait(false);
-            if ((int)response.StatusCode != 200)
-            {
-                return (null, $"index-status-{(int)response.StatusCode}");
-            }
-
-            byte[] body = await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
-            if (body.Length > MaxIndexBytes)
-            {
-                return (null, "index-too-large");
-            }
-
-            // 索引是 JSON；解析只认这个文件自己声明的形状，多余字段直接忽略。
-            JsonDocument doc = JsonDocument.Parse(body);
-            if (!PluginMarketIndex.TryParse(doc.RootElement, out PluginMarketIndex? index, out string? why))
-            {
-                return (null, why);
-            }
-
-            return (index, null);
+            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(text);
+            return PluginMarketIndex.TryParse(doc.RootElement, out PluginMarketIndex? index, out string? why)
+                ? (index, null)
+                : (null, why);
         }
-        catch (OperationCanceledException)
+        catch (System.Text.Json.JsonException)
         {
-            throw;
-        }
-        catch (Exception error) when (error is HttpRequestException or TaskCanceledException or JsonException)
-        {
-            return (null, error.GetType().Name);
+            return (null, "index-not-json");
         }
     }
 
@@ -121,15 +94,35 @@ internal sealed class PluginMarket
         string target = Path.Combine(directory, entry.Id.Replace('/', '_') + "-" + entry.Version + ".zip");
         try
         {
-            using HttpResponseMessage response = await Http.GetAsync(entry.DownloadUrl, token).ConfigureAwait(false);
-            if ((int)response.StatusCode != 200)
+            (System.Net.Http.HttpResponseMessage? response, string? laneError) = await GitHubHttp
+                .GetAsync(entry.DownloadUrl, token)
+                .ConfigureAwait(false);
+            if (response is null)
             {
-                return (null, $"download-status-{(int)response.StatusCode}");
+                SafeDelete(target);
+                return (null, laneError);
             }
 
-            await using (FileStream file = File.Create(target))
+            bool copied;
+            string? copyError;
+            using (response)
             {
-                await response.Content.CopyToAsync(file, token).ConfigureAwait(false);
+                if ((int)response.StatusCode != 200)
+                {
+                    return (null, GitHubHttp.StatusReason(response.RequestMessage?.RequestUri?.Host ?? "github.com", response));
+                }
+
+                // 下载也要有上限：索引里的 bytes 只够界面显示，不能当护栏（坏掉的响应会填满磁盘）。
+                await using FileStream file = File.Create(target);
+                (copied, copyError) = await GitHubHttp
+                    .CopyBoundedAsync(response.Content, file, PluginMarketIndex.MaxEntryBytes, token)
+                    .ConfigureAwait(false);
+            }
+
+            if (!copied)
+            {
+                SafeDelete(target);
+                return (null, copyError);
             }
 
             PluginMarketIndex.VerifySha256(target, entry.Sha256, out string? mismatch);
@@ -146,7 +139,7 @@ internal sealed class PluginMarket
             SafeDelete(target);
             throw;
         }
-        catch (Exception error) when (error is HttpRequestException or IOException)
+        catch (IOException error)
         {
             SafeDelete(target);
             return (null, error.GetType().Name);

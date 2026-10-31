@@ -41,8 +41,9 @@ internal static class MarketChecks
         // 第一次写这条判据时我把 ③ 写成 IndexOf("://", 5) < 0 —— 而 "https://" 本身
         // 就在位置 5 有 "://"，于是合法地址被判成失败。判据写错和代码写错一样危险。
         bool https = endpoint.StartsWith("https://", StringComparison.Ordinal);
-        bool hosted = endpoint.StartsWith("https://raw.githubusercontent.com/dhhxfggg2023/PetDock/", StringComparison.Ordinal)
-            && endpoint.EndsWith("/plugins/index.json", StringComparison.Ordinal);
+        // 2026-10-31 改口径：与更新源同一处修正 —— 索引也走 contents API。
+        bool hosted = endpoint.StartsWith("https://api.github.com/repos/dhhxfggg2023/PetDock/contents/", StringComparison.Ordinal)
+            && endpoint.EndsWith("/plugins/index.json?ref=main", StringComparison.Ordinal);
         bool singleScheme = endpoint.IndexOf("://", 6, StringComparison.Ordinal) < 0;
         bool ok = https && hosted && singleScheme;
         check("ui-market-fixed-endpoint", ok, $"https={https} hosted={hosted} single-scheme={singleScheme} endpoint={endpoint}");
@@ -87,6 +88,10 @@ internal static class MarketChecks
             ("sha", """{"schema":1,"plugins":[{"id":"x","name":"X","version":"1","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x.zip","sha256":"short","bytes":1}]}""", "entry-bad-sha256"),
             ("url", """{"schema":1,"plugins":[{"id":"x","name":"X","version":"1","url":"https://evil.example.com/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}]}""", "entry-bad-url"),
             ("dup", """{"schema":1,"plugins":[{"id":"x","name":"X","version":"1","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1},{"id":"x","name":"X2","version":"2","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x2.zip","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","bytes":2}]}""", "index-duplicate-id"),
+            // 2026-10-31：id/version 会被拼进下载的临时文件名，路径形状必须在这里就被拒 ——
+            // 索引没有签名，它的 sha256 只能证明字节与索引一致，不能证明索引没被改。
+            ("traversal-id", """{"schema":1,"plugins":[{"id":"..\\evil","name":"X","version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}]}""", "entry-bad-id"),
+            ("traversal-version", """{"schema":1,"plugins":[{"id":"x","name":"X","version":"1.0/../../x","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v0.1.0/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}]}""", "entry-bad-version"),
         };
 
         var got = new List<string>();

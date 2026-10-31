@@ -21,10 +21,12 @@
 
 - 仓库 `E:\projects\PetDock`；`HEAD` 见 `git log -1`，与 `origin/main` 同步，工作树干净。
 - 门禁（跑法与口径见 `tools/verify.mjs` 头部注释）：
-  - `node tools/verify.mjs --config release --only static,build,contract` → 8 + 1 + 4 步，末行 `VERIFY-OK layers=3/6 steps=13`
-  - `dotnet exec packages/core/PetDock.Core/bin/Release/net8.0-windows/PetDock.Core.dll --uitest --log <路径>` → 末行 `UI-OK skipped=0`
+  - `node tools/verify.mjs --config release --only static,build,contract,window` → 9 + 1 + 4 + 1 步，末行 `VERIFY-OK layers=4/6 steps=15`（2026-10-31 实测；默认三层不含 window）
+  - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）
+  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 287（判据体在 `test/SelfCheck/`）
+  - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 36926/36950 —— **只剩 24 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37313/37340 —— 只剩 27 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[82] 是这一片的（+488 = 上一片漏申报的 101 + 本片 387）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -50,6 +52,7 @@
 | 2b11e8e | SmartScreen：`InternetMark`（`File.Copy` 会把 `Zone.Identifier` 一起带走 → 搬运工副本自己会弹框，而那时宿主已经退出、没有窗口能提示）+ 判据 `ui-update-helper-copy-unblocked`（正反各验一次） |
 | 3529199 | 修正说明文案：Windows 11 的框上直接就有「仍要运行」，没有「更多信息」 |
 | 27c4f00 | **收起之后取不出来**（见下） |
+| （本地未提交，2026-10-31 下午） | **可达性判据落地**（`tools/i18n-reachability.mjs` + `tools/i18n-keys-manifest.json` + 静态层第九步；i18n-lint 扫描面扩到随包页面插件）；**出网通道合一**（新增 `Host/GitHubHttp.cs`，两个出口改走它，仓库文件改走 contents API，市场索引补 id/version 形状校验与下载上限；新增 5 条 `ui-net-*` 判据）；详见 §2.2 |
 
 ### 2.1 收起取不出来：一个概念两个属主
 
@@ -80,6 +83,31 @@
 判据写法（下次照抄）：`PETDOCK_DATA_ROOT` 指临时目录 → `new PetDataStore(root)` + `StagePack` + `RegisterActive` →
 `PetDriveTest.MakeInstance(out _, out _)` → `new UiHost(window, pet, null, null, null, null)` → `host.TickOnce()` → 断言 `Snapshot()`。
 
+### 2.2 自更新 / 市场下载在真实网络上是 100% 失败的（2026-10-31 查明，修好了一半）
+
+一个从上线起就存在、**九道静态门与 282 条 UI 判据全绿**的致命缺陷：
+`UpdateService` 与 `PluginMarket` 各自 new 了一个 `HttpClient` 并写着 `AllowAutoRedirect = false`
+（理由是「只连一个写死的域名」）。而 GitHub 的 Release 资产**必然**先回一次 302 —— 本机实测：
+
+```
+GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip        → 302 → release-assets.githubusercontent.com
+GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → release-assets.githubusercontent.com
+```
+
+非 200 即失败 → 用户点「下载新版本 / 从市场装插件」永远只会拿到 `download-status-302`。
+门禁为什么看不见：离线判据只解析 JSON；打包自检自造 zip；**唯一碰真实网络的那一层（dist）默认不跑，
+而它自己带着一个会跟随重定向的下载器**（`tools/verify-release.mjs`）——
+产品代码从没被真实流量碰过。又一个「判据视角」的形状（§4.1）。
+
+修法与判据：出网只留一条通道 `Host/GitHubHttp.cs` —— 主机写死、只走 https、
+**重定向自己跟且每一跳先校验主机**、有体积上限、失败原因点名主机与种类（`…-loopback` / `…-timeout` / `…-unreachable-<异常>`）。
+5 条 `ui-net-*` 判据（纯函数，不联网）把这条策略钉住。同一处顺手修掉两个同族缺陷：
+索引里的 `id/version` 会被拼进下载文件名却只查了「非空」（`..\` 能写穿暂存区），以及两处下载都没有体积上限。
+
+**仍未完**：所有者这台机器上 `release-assets.githubusercontent.com` **也被 hosts 指到本机**
+（实测 20 秒无响应）。跟随重定向是「全世界都对」的那一半；本机要真能装，得把这两个域名从 hosts / 加速器里放出来，
+或者做一个编译期写死的镜像前缀（§3.5 决策 5）。
+
 ## 3. 查明、但还没修的
 
 ### 3.1 插件商店根本找不到 —— 它**没有入口**
@@ -91,15 +119,16 @@
 | 判据 | 绿（`MarketChecks`） |
 | **界面** | **不存在**：`packages/plugins` 下大小写不敏感搜 `market` 零命中；出厂 UI 只有 `PetsPage/PluginsPage/SettingsPage` 三页；15 条里只有 4 条**报错**文案被内核引用（`UiHost.Market.cs`），其余 11 条零引用 |
 
-### 3.2 检查更新失败 / 商店拉不到索引 —— 同一个根因
+### 3.2 检查更新 / 商店拉索引 —— 已修（2026-10-31），只剩本机 hosts 这一半
 
-两个出口都写死在 `raw.githubusercontent.com`（`UpdateService.cs:29`、`PluginMarket.cs:43`）。
-在所有者这台机器上：该域名解析到 127.0.0.1（hosts 里 53 条把 GitHub 系域名指到本机），
-本地加速器接了 TCP 但不回话，于是 30 秒超时 →「没查到（网络不通或更新源不可用）」。
-而 `api.github.com` / `github.com` **是通的**（所以 zip 下载成功、元数据失败）。
+**已修**：两个出口不再各写一份，走同一条通道 `Host/GitHubHttp.cs`，索引与更新源都改走
+`api.github.com/repos/dhhxfggg2023/PetDock/contents/<path>?ref=main`（base64 解码；地址照样写死、只走 https）。
+实测：contents API 90 ms 返回 200，解码出的 `update.json` 版本 0.4.1 正确。失败原因现在点名主机与种类。
 
-修法：两个出口改走 `api.github.com/repos/<owner>/<repo>/contents/<path>`（base64 解码；同一台服务、
-地址照样写死、只走 https），或给一个可覆盖的镜像；同时把失败文案改成**点名主机**，别只说「网络不通」。
+**还没修**（本机事实，不是代码问题）：`release-assets.githubusercontent.com` 同样被 hosts 指到
+127.0.0.1，本地加速器接了 TCP 不回话 → 20 秒无响应。所以在这台机器上「下载新版本」仍然会失败，
+只是现在失败信息会说清是哪台主机、为什么不通用。**下一步是所有者侧的**：把这些域名从 hosts / 加速器里放出来，
+或者按 §3.5 决策 5 加一个编译期写死的镜像前缀。
 
 ### 3.3 钩子（已移除）
 
@@ -107,16 +136,22 @@
 `.githooks` 但那里不再有钩子文件。原来的失败不是脚本错：`ledger-export.mjs` 找不到账本目录（源没了）。
 **不要重新引入账本或它的钩子**（§0）。
 
-### 3.4 缺口清单（可达性扫描，算法见 §4.2）
+### 3.4 缺口清单 —— 已交给判据自己维护（2026-10-31）
 
-401 条文案里产品代码零引用的 18 条：
+以前这张表是**散文**：一次性扫描的 18 条写在这里，然后它就开始漂。现在它有一个拥有者：
+`node tools/i18n-reachability.mjs`（静态层第九步）+ `tools/i18n-keys-manifest.json`。
+实测口径：409 条键、产品代码引用 393 条、**16 条零引用**、1 条动态拼键（`ui.bubble.poke`，已登记理由）。
 
-| 键 | 性质 |
-| --- | --- |
-| `cp.market.title/browse/col.*/install/installed/loading/empty/update`（11） | 整个市场页面缺失 |
-| `cp.settings.update.downloaded/appliedNote/cancelledNote/handoffNote`（4） | 与 `ui.update.*` 是同一件事的两份文案 → 死文案 |
-| `cp.pets.delete.failed`（1） | 「删除失败」没有地方显示 |
-| `ui.bubble.poke1/2/3`（3） | **误报**：产品代码拼键 `"ui.bubble.poke" + n` —— 判据必须认得动态拼接 |
+16 条的三种性质（照抄判据的 STAT 就能复现）：
+
+| 键 | manifest 里的 status | 性质 |
+| --- | --- | --- |
+| `cp.market.*`（11） | `pending-feature` | 市场界面缺失（§3.1）。**接上入口后必须从 manifest 删除**，否则判据报 `STALE-EXEMPT` |
+| `cp.settings.update.downloaded/appliedNote/cancelledNote/handoffNote`（4） | `dead-copy` | 与 `ui.update.*` 是同一件事的第二份文案；运行期走的是 update-state 的 `ui.update.*` |
+| `cp.pets.delete.failed`（1） | `diagnostic-gap` | 宿主只会回 `cp.pets.delete.missing`，真正写盘失败时用户看不到原因 |
+
+那 3 条气泡键（`ui.bubble.poke1/2/3`）**不再是误报**：判据认得 `"ui.bubble.poke" + n` 这种拼接，
+但要求这种动态拼键在 manifest 里带理由登记一次（`UNREGISTERED-DYNAMIC` 会拦住新的拼接）。
 
 ### 3.5 开放决策（都还没定）
 
@@ -126,6 +161,12 @@
 3. 代码签名：微软自己的文档说「单纯为避开 SmartScreen 而买 EV 已不再划算」，且 Artifact Signing 的公共信任证书
    只发给美/加/欧/英的组织 —— 这里不符合资格。唯一能让用户**永远**看不到那个框的是上架 Microsoft Store。
    在此之前，正确做法是把说明写在用户会看的那一屏（发布正文开头 + 包内 INSTALL.md 的「怎么用」第 2 步）。
+4. `%SystemDrive%` 字面目录为什么会出现（仓库根那个未展开的环境变量目录）—— 见 §5 第 12 条。
+5. **镜像前缀**（2026-10-31 新增）：本机的 hosts/加速器把 `raw.githubusercontent.com` 与
+   `release-assets.githubusercontent.com` 都指到 127.0.0.1，所以「下载新版本 / 从市场装插件」在本机必然失败。
+   两条路：① 所有者把域名放出来（零代码）；② 在 `GitHubHttp` 里加一个**编译期写死的**镜像前缀
+   （不能做成用户配置 —— 那等于把「只连一组写死的主机」这条纪律换掉，用户被骗一次就装了别人的东西）。
+   决策前先问：这个镜像会不会看到我们的下载（隐私）、以及它挂了之后失败信息还能不能点名主机。
 
 ## 4. 那个「一直想避免、一直没抓到」的东西
 
@@ -152,12 +193,20 @@
 
 可机械化的三族新判据（**都还没落地**）：
 
-1. **可达性** —— 每个 i18n 键必须被产品代码引用；数据驱动的键（如拼键的气泡）必须在显式清单里登记并写明理由。
-   算法已跑通：读 `assets/i18n/zh-CN/*.json` 的键，扫 `packages`+`tools`+`assets` 的产品代码，
-   区分「产品引用 / 只有判据引用 / 谁都不引用」。落成 `tools/i18n-reachability.mjs` + 静态层一步。
+1. **可达性** —— ✅ 已落地（2026-10-31）：`tools/i18n-reachability.mjs` + 静态层第九步 +
+   `tools/i18n-keys-manifest.json`。产品代码面 = 内核 src + 插件 + sdk 的 C#（**不含 tools/** —— 实测
+   本仓自己的注释里写了一句 `"cp.market.title"`，扫 tools 会让一条死键被自己的文档判成「已引用」）。
+   动态拼键（`"ui.bubble.poke" + n`）必须带理由登记；豁免过期本身判红。
 2. **可逆性** —— 每个改变状态的命令必须有一张对应的「反命令」表，并断言反命令能从这个状态的**用户入口**走到。
 3. **可诊断性** —— 每条用户可见的失败文案必须带「哪个操作、哪台主机/哪个文件、下一步做什么」，
    不允许一句孤零零的「失败」。
+
+### 4.3 这一族判据的**第五个**症状（2026-10-31 新增）
+
+§2.2 那个 100% 失败的下载，为什么九个门禁都没有一句话：唯一碰真实网络的是 dist 层，
+而 dist 层**默认不跑**，且在这一层里失败**早已是预期状态**（`release-align` 那条红线人人都知道）。
+一个「已知会红」的门禁，等于没有门禁 —— 它红着的时候没人读，红的原因也没人分。
+教训：判据要么绿、要么被人读；把「预期为红」当成常态，就是把这一层从判据降级成装饰。
 
 ## 5. 本机陷阱（按「会白花一小时」排序；转公开前删掉本节）
 
@@ -182,15 +231,35 @@
     这类一次性收尾改用 Node 直连：`import("node:fs")` 删目录、`import("node:child_process").execFileSync` 调 git —— 同一条命令反而稳。
 11. `git push` 需要比 `git log` 更全的 env：少了 `USERDOMAIN`/`COMPUTERNAME`/`USERNAME`/`SystemDrive`/`ComSpec`/`PATHEXT` 时，
     GCM 会抛 `ArgumentException` 然后退成「could not read Username（terminal prompts disabled）」。补齐这些就过（本机凭据是 GCM 里存好的，不需要令牌）。
+12. **hosts 劫持的不止 raw**：`release-assets.githubusercontent.com` 同样解析到 127.0.0.1，
+    本地加速器**接了 TCP 不回话** → 20 秒无响应（不是连不上，是没回话）。
+    所以「下载更新包 / 市场插件包」在这种机器上必然失败，且症状看起来像「网络不通」。
+    查法：`Resolve-DnsName <host>` 看到 127.0.0.1 就是它。
+13. **同一个 `run_code` 执行体可能会被跑两遍**（2026-10-31 实测：`core-loc-baseline.json` 的同一条 history 进了两次）。
+    写 git 跟踪的文件时，执行体必须是**幂等**的（先查再写），别写「追加」。
+14. `--uitest` 走 pwsh **管道**（`… | Select-Object -Last 5`）会得到 exit=1，即使末行是 `UI-OK`；
+    stdio 重定向到文件时 exit=0（`verify.mjs` 用的是后者）。读末行 marker，别拿管道的 `$LASTEXITCODE` 当结论。
 
 ## 6. 下一步（按顺序）
 
 1. ~~收起取不出来~~ —— 已完成（`27c4f00`）。
-2. **可达性判据落地**：`tools/i18n-reachability.mjs` + 静态层一步 + 显式清单
-   （动态拼键登记；市场那 11 条登记成「功能待建」，让「缺一个页面」变成仓库里看得见的一行）。
-3. **两个出口的主机**改成 `api.github.com` contents API，并把失败文案点名主机（§3.2）。
-4. **插件市场页面**（后端与文案都在，缺的就是那一页，§3.1）。
-5. §3.5 四个开放决策各定一次。
+2. ~~可达性判据落地~~ —— 已完成（静态层第九步；见 §3.4）。
+3. ~~两个出口的主机~~ —— **代码已改**（`GitHubHttp` + contents API）；本机还剩 hosts 那一半（§3.2 / §3.5 决策 5）。
+4. **插件市场界面**（后端与文案都在，缺的就是入口，§3.1）。市场**并入插件页**，不新开导航页：
+   `market-plugins/README.md` 第 38 行写的用户路径就是「插件页 →『浏览插件市场…』→ 列表 → 安装」，
+   而且 15 条文案一条都不用新增。接上之后把那 11 条 `pending-feature` 从 manifest 删掉。
+5. **更新搬运的崩溃安全**（2026-10-31 审计，未修）：`PetDock.Update/Applier.cs` 逐文件覆盖，
+   只对**捕获到的异常**回滚；断电/被杀留下的半覆盖现场，下次启动被判 `Cancel`，
+   而 `UpdateStage.ClearPending(withFiles: true)` **连 backup 一起删** —— 用户既没有旧版本也没有程序，
+   界面还说「已取消」。判据 `UpdateStartupChecks` 只断言标记消失，从不造半覆盖现场。
+   修法方向：覆盖前写「正在搬」标记（journal），启动看到它就**回滚**而不是 Cancel，
+   并且任何路径都不删唯一的回滚副本。
+6. **tier-2 插件是无沙箱裸进程**（同上审计，未修）：`PluginHost.Tier2.cs` 用
+   `Path.Combine(pluginDir, manifest.Entry)` 解析入口，Entry 为绝对路径时前缀被吞掉，
+   `Tier2Sandbox` 直接 `Process.Start`；包含性检查只在**安装**时做过一次
+   （`PluginInstaller`），装载 / 热重载 / 按 id 启用三条路都不复查。tier-0 界面插件同理（`UiPluginCatalog` 接受绝对路径 entry）。
+   修法方向：把「入口必须在插件目录内」做成一个解析函数，装载的三条路都走它。
+7. §3.5 的五项开放决策各定一次（第 5 项是本机能不能更新/装插件的前提）。
 
 ## 7. 已废弃的东西与失效引用（不要复活它们）
 
@@ -205,4 +274,6 @@
 
 ---
 
-本文件的更新时点：2026-10-31，`HEAD` 见 `git log -1`。static 8/8、contract 4/4、uitest 282 全过。
+本文件的更新时点：2026-10-31 下午，`HEAD` 见 `git log -1`。
+`node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
+（static 9/9、build、contract 4/4、window 287 条 `UI-OK skipped=0`）。

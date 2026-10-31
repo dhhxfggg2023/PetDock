@@ -1,21 +1,20 @@
 // 程序自身更新的**联网**那一半（2026-10-31）。
 //
-// 边界与 PluginMarket 同一条纪律（那是本程序另一处主动联网，两者是两个仅有的出口）：
-//   1. 地址写死，不接受配置、不接受页面传入 —— 判据 ui-update-fixed-endpoint 钉住这一行；
-//   2. 只走 https，不跟随重定向到别的域（重定向会让「只连一个域名」失效）；
-//   3. 安装包带 sha256，落盘后**先校验再交给安装器**，对不上就删；
-//   4. 用户不点「检查更新」就不联网：本类不持有定时器，也不在启动路径上被调用。
+// 边界与 PluginMarket 同一条纪律（那是本程序另一处主动联网，两者是两个仅有的出口），
+// 但**通道只有一个**：所有出网都走 GitHubHttp —— 地址写死、只走 https、重定向自己跟且每跳校验主机。
+//
+// 为什么更新源走 contents API 而不是 raw.githubusercontent.com（2026-10-31 的第二处修正）：
+//   所有者这台机器上 raw.githubusercontent.com 被 hosts 指到 127.0.0.1（本地加速器接了 TCP 不回话），
+//   于是「检查更新」永远 30 秒超时，而 api.github.com / github.com 是通的。地址照样写死、只走 https，
+//   换的只是同一台服务上的另一条路径。
 //
 // 为什么这里**不**直接替换正在运行的 exe：
 //   在 Windows 上覆盖自己的映像会失败（文件被占用），要替换得先起一个外部脚本、退出进程、
 //   等它搬文件再重启 —— 一旦中途出错，用户面对的是一台「桌宠没了、原来的 exe 也不见了」的机器。
-//   所以这一版只做到「下载 + 校验 + 解到暂存目录」，然后**把新版本原样摆在那里**，
-//   由用户点「打开所在文件夹」自己去用新版本。少一步自动重启，换掉的是「更新把它自己弄坏了」
-//   这一整类故障。这一步做不做、什么时候做，是所有者的事，不是我在没人要求时替他决定的。
+//   所以联网这一半只做到「下载 + 校验 + 解到暂存目录 + 登记待安装」，真正的搬运在
+//   PetDock.Update.exe 里，且只有用户点了「立即重启更新」或下次启动时才发生。
 using System;
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,9 +24,11 @@ namespace PetDock.Hosting;
 /// <summary>更新源的唯一出处，以及下载/校验两个动作。</summary>
 internal sealed class UpdateService
 {
-    /// <summary>唯一允许的更新源。写死：判据 ui-update-fixed-endpoint 会读这一行的值。</summary>
-    internal const string Endpoint =
-        "https://raw.githubusercontent.com/dhhxfggg2023/PetDock/main/update.json";
+    /// <summary>更新源在仓库里的路径（写死）。判据 ui-update-fixed-endpoint 会读拼出来的那个地址。</summary>
+    internal const string FeedPath = "update.json";
+
+    /// <summary>唯一允许的更新源。写死：改地址必须改代码并过门禁。</summary>
+    internal static readonly string Endpoint = GitHubHttp.ContentsUrl(FeedPath);
 
     /// <summary>安装包地址必须在这个前缀下（本仓库的 Releases）。</summary>
     internal const string AllowedDownloadPrefix =
@@ -35,52 +36,34 @@ internal sealed class UpdateService
 
     private const int MaxFeedBytes = 16 * 1024;
 
-    private static readonly HttpClient Http = CreateClient();
-
-    private static HttpClient CreateClient()
-    {
-        var handler = new HttpClientHandler { AllowAutoRedirect = false };
-        var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("PetDock", "0.2"));
-        return client;
-    }
-
-    /// <summary>拉更新源。失败返回原因短码（调用方翻成人话）；「没有新版本」不是失败。</summary>
+    /// <summary>拉更新源。失败返回原因串（点名主机与状态码，界面再包一层人话）。</summary>
     public async Task<(UpdateFeed? Feed, string? Error)> FetchAsync(CancellationToken token)
     {
+        (string? text, string? error) = await GitHubHttp
+            .FetchRepoFileAsync(FeedPath, MaxFeedBytes, token)
+            .ConfigureAwait(false);
+        if (text is null)
+        {
+            return (null, error);
+        }
+
         try
         {
-            using HttpResponseMessage response = await Http.GetAsync(Endpoint, token).ConfigureAwait(false);
-            if ((int)response.StatusCode != 200)
-            {
-                return (null, $"feed-status-{(int)response.StatusCode}");
-            }
-
-            byte[] body = await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
-            if (body.Length > MaxFeedBytes)
-            {
-                return (null, "feed-too-large");
-            }
-
-            using JsonDocument doc = JsonDocument.Parse(body);
+            using JsonDocument doc = JsonDocument.Parse(text);
             return UpdateFeed.TryParse(doc.RootElement, out UpdateFeed? feed, out string? why)
                 ? (feed, null)
                 : (null, why);
         }
-        catch (OperationCanceledException)
+        catch (JsonException)
         {
-            throw;
-        }
-        catch (Exception error) when (error is HttpRequestException or TaskCanceledException or JsonException)
-        {
-            return (null, error.GetType().Name);
+            return (null, "feed-not-json");
         }
     }
 
     /// <summary>
     /// 下载安装包到 <paramref name="directory"/>，并与同目录的 <c>.sha256</c> 旁车比对。
     ///
-    /// 为什么校验值来自旁的**.sha256 文件**而不是更新源里的字段：
+    /// 为什么校验值来自旁边的**.sha256 文件**而不是更新源里的字段：
     /// 更新源是 git 跟踪文件，若它写着 sha256(zip)，提交它就会让 HEAD 前进、
     /// 下一次构建的 zip 里 source_commit 变了、指纹又变了 —— 那是个无解的环（2026-10-31 实测 repro 红）。
     /// 旁车由发布流程随包上传、不进 git，所以它的指纹永远描述当次发布的那个 zip。
@@ -105,27 +88,40 @@ internal sealed class UpdateService
         string target = Path.Combine(directory, "PetDock-" + feed.Version + "-win-x64.zip");
         try
         {
-            using (HttpResponseMessage response = await Http.GetAsync(feed.Url, token).ConfigureAwait(false))
+            (System.Net.Http.HttpResponseMessage? response, string? laneError) = await GitHubHttp
+                .GetAsync(feed.Url, token)
+                .ConfigureAwait(false);
+            if (response is null)
+            {
+                return (null, null, laneError);
+            }
+
+            bool copied;
+            string? copyError;
+            using (response)
             {
                 if ((int)response.StatusCode != 200)
                 {
-                    return (null, null, $"download-status-{(int)response.StatusCode}");
+                    return (null, null, GitHubHttp.StatusReason(response.RequestMessage?.RequestUri?.Host ?? "github.com", response));
                 }
 
-                long declared = response.Content.Headers.ContentLength ?? 0;
-                if (declared > UpdateFeed.MaxBytes)
-                {
-                    return (null, null, $"size-too-large-{declared}");
-                }
-
+                // 上限在搬运过程里就生效（先看 Content-Length、再按块数），不是读完之后才判。
                 await using FileStream file = File.Create(target);
-                await response.Content.CopyToAsync(file, token).ConfigureAwait(false);
+                (copied, copyError) = await GitHubHttp
+                    .CopyBoundedAsync(response.Content, file, UpdateFeed.MaxBytes, token)
+                    .ConfigureAwait(false);
+            }
+
+            if (!copied)
+            {
+                SafeDelete(target);
+                return (null, null, copyError);
             }
 
             long actual = new FileInfo(target).Length;
-            if (actual <= 0 || actual > UpdateFeed.MaxBytes)
+            if (actual <= 0)
             {
-                File.Delete(target);
+                SafeDelete(target);
                 return (null, null, $"size-bad-{actual}");
             }
 
@@ -150,7 +146,7 @@ internal sealed class UpdateService
             SafeDelete(target);
             throw;
         }
-        catch (Exception error) when (error is HttpRequestException or IOException)
+        catch (IOException error)
         {
             SafeDelete(target);
             return (null, null, error.GetType().Name);
@@ -162,12 +158,19 @@ internal sealed class UpdateService
         UpdateFeed feed,
         CancellationToken token)
     {
-        try
+        (System.Net.Http.HttpResponseMessage? response, string? laneError) = await GitHubHttp
+            .GetAsync(feed.SidecarUrl, token)
+            .ConfigureAwait(false);
+        if (response is null)
         {
-            using HttpResponseMessage response = await Http.GetAsync(feed.SidecarUrl, token).ConfigureAwait(false);
+            return (null, laneError);
+        }
+
+        using (response)
+        {
             if ((int)response.StatusCode != 200)
             {
-                return (null, $"sidecar-status-{(int)response.StatusCode}");
+                return (null, GitHubHttp.StatusReason(response.RequestMessage?.RequestUri?.Host ?? "github.com", response));
             }
 
             string text = (await response.Content.ReadAsStringAsync(token).ConfigureAwait(false)).Trim();
@@ -180,10 +183,6 @@ internal sealed class UpdateService
             }
 
             return (first.ToLowerInvariant(), null);
-        }
-        catch (Exception error) when (error is HttpRequestException or IOException)
-        {
-            return (null, error.GetType().Name);
         }
     }
 
