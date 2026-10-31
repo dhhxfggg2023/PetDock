@@ -57,7 +57,9 @@ internal sealed partial class UiHost
 
         _pendingUpdate = feed;
         KernelLog.Write($"update-available {feed.Describe(current)}");
-        return new UpdateCheckLine(current, feed.Version, feed.Bytes, feed.Notes, null);
+        // 体积在下载之后才知道（更新源里没有它，见 UpdateFeed 文件头）——这里先报 0，
+        // 界面只在「有新版本」那一行显示版本与地址，不编一个体积出来。
+        return new UpdateCheckLine(current, feed.Version, 0, feed.Notes, null);
     }
 
     /// <summary>下载 + 校验。不会替换正在运行的程序（见 UpdateService 文件头）。</summary>
@@ -85,7 +87,8 @@ internal sealed partial class UiHost
                 return I18n.Get("cp.settings.update.downloadFailed", error ?? "?");
             }
 
-            KernelLog.Write($"update-downloaded version={feed.Version} bytes={feed.Bytes} path={file}");
+            long bytes = new FileInfo(file).Length;
+            KernelLog.Write($"update-downloaded version={feed.Version} bytes={bytes} path={file}");
             return null;
         }
         catch (Exception error)

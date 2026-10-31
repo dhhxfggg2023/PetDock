@@ -161,14 +161,19 @@ function layersFor(config) {
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
       // 市场索引必须与发行包同一次构建产出：装的是 zip 里的插件，索引里写的是它们各自的 sha256。
       { id: 'market-index', ...node('tools/gen-market-index.mjs'), marker: 'MARKET-OK' },
-      // 程序自身的更新源也必须与产物同一次构建产出：面板的「检查更新」比的是这个文件里的版本，
-      // 下的也是它声明的 sha256。手写一定会漂移成「声明的指纹和包不一样」。
-      { id: 'update-feed', ...node('tools/gen-update-feed.mjs'), marker: 'UPDATE-OK' },
       { id: 'zip-sha256', kind: 'digest', marker: null },
       // 可复现不是口号，是判据：把同一棵树再装配一遍、再封一遍，产物必须逐字节相同。
       // 2026-10-30 实测过远程包与本地包差 35 个条目（PE 时间戳/PDB GUID 不同），
       // 而当时没有任何判据能说出「哪一次构建是错的」—— 靠人回忆。现在自己跑第二遍。
       { id: 'repro', kind: 'repro', marker: 'REPRO-OK', timeoutMs: 20 * 60 * 1000 },
+      // 程序自身的更新源必须与产物同一次构建产出：面板的「检查更新」比的是这个文件里的版本，
+      // 下的也是它声明的 sha256。手写一定会漂移成「声明的指纹和包不一样」。
+      //
+      // 位置在 repro **之后**，而且不能提前：这一步会改写仓库根的 update.json（一个 git 跟踪文件），
+      // 一旦跑在 repro 前面，repro 重跑 release 时工作树就是脏的（source_dirty=true），
+      // 两次构建必然不一致 —— 2026-10-31 实测就是这么红了一次。
+      // 顺序口径：repro 判「同一棵树两次构建字节相同」，update-feed 是它的**下游**产物描述。
+      { id: 'update-feed', ...node('tools/gen-update-feed.mjs'), marker: 'UPDATE-OK' },
       // 本地产物绿了不代表**发布出去了**：把 zip 传到 Release 是手工的一步。
       // 2026-10-30 真漏过一次（加了市场却忘了重发本体），所以这一步必须机器盯着。
       // 它要联网，且只在 dist 层跑（--only dist / --all）；默认三层不碰它。

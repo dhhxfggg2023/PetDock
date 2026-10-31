@@ -70,28 +70,30 @@ internal static class UpdateChecks
     /// <summary>合法更新源能解析，字段原样带过去。</summary>
     private static void FeedParses(Report check)
     {
+        // 与线上同一份形状（tools/gen-update-feed.mjs）：只有版本、地址、说明。
+        // 让自检吃和用户同一份形状，别测一个自己也造不出来的样例。
         string json = """
-        {"schema":1,"version":"9.9.9","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v9.9.9/PetDock-9.9.9-win-x64.zip",
-         "sha256":"ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789","bytes":1234,"notes":"hello"}
+        {"schema":1,"version":"9.9.9","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v9.9.9/PetDock-9.9.9-win-x64.zip","notes":"hello"}
         """;
         using JsonDocument doc = JsonDocument.Parse(json);
         bool parsed = UpdateFeed.TryParse(doc.RootElement, out UpdateFeed? feed, out string? why);
-        bool lowered = parsed && feed!.Sha256 == feed.Sha256.ToLowerInvariant();
-        bool fields = parsed && feed!.Version == "9.9.9" && feed.Bytes == 1234 && feed.Notes == "hello";
-        check("ui-update-feed-parses", parsed && lowered && fields,
-            $"parsed={parsed} lowered={lowered} fields={fields} why={why ?? "none"}");
+
+        // 旁车地址 = 包地址 + .sha256：校验值来自发布资产，不来自更新源本身（见 UpdateFeed 文件头）。
+        bool sidecar = parsed && feed!.SidecarUrl == feed.Url + ".sha256";
+        bool fields = parsed && feed!.Version == "9.9.9" && feed.Notes == "hello";
+        check("ui-update-feed-parses", parsed && sidecar && fields,
+            $"parsed={parsed} sidecar={sidecar} fields={fields} why={why ?? "none"}");
     }
 
-    /// <summary>五种坏更新源各自被拒，原因码可区分（形状不对就整份拒绝，不做「尽力解析」）。</summary>
+    /// <summary>四种坏更新源各自被拒，原因码可区分（形状不对就整份拒绝，不做「尽力解析」）。</summary>
     private static void FeedRejects(Report check)
     {
         var cases = new (string Name, string Json, string Expect)[]
         {
-            ("schema", """{"schema":2,"version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}""", "feed-schema"),
-            ("version", """{"schema":1,"version":"1.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}""", "feed-bad-version"),
-            ("sha", """{"schema":1,"version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip","sha256":"short","bytes":1}""", "feed-bad-sha256"),
-            ("url", """{"schema":1,"version":"1.0.0","url":"https://evil.example.com/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":1}""", "feed-bad-url"),
-            ("size", """{"schema":1,"version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bytes":0}""", "feed-bad-size"),
+            ("schema", """{"schema":2,"version":"1.0.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip"}""", "feed-schema"),
+            ("version", """{"schema":1,"version":"1.0","url":"https://github.com/dhhxfggg2023/PetDock/releases/download/v1/x.zip"}""", "feed-bad-version"),
+            ("url", """{"schema":1,"version":"1.0.0","url":"https://evil.example.com/x.zip"}""", "feed-bad-url"),
+            ("notobject", """[]""", "feed-not-object"),
         };
 
         var got = new System.Collections.Generic.List<string>();

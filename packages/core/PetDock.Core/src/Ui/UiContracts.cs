@@ -98,6 +98,9 @@ public sealed record CompanionLine(
 /// </summary>
 public sealed record UpdateCheckLine(string Current, string? Latest, long Bytes, string Notes, string? Error)
 {
+    // Bytes 恒为 0：更新源里没有体积 —— 那会是从构建产物量出来的值，与「更新源自己也要被提交」
+    // 冲突（见 UpdateFeed 文件头）。真正的大小在下载完成之后才由宿主读出来。
+
     /// <summary>确实有新版本（且没有查询错误）。</summary>
     public bool HasUpdate => Error is null && Latest is not null;
 

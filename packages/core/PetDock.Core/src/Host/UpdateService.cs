@@ -78,8 +78,15 @@ internal sealed class UpdateService
     }
 
     /// <summary>
-    /// 下载安装包到 <paramref name="directory"/>。**sha256 对上才返回路径**；
-    /// 对不上、体积不符、地址前缀不对都删文件并返回 null。
+    /// 下载安装包到 <paramref name="directory"/>，并与同目录的 <c>.sha256</c> 旁车比对。
+    ///
+    /// 为什么校验值来自旁的**.sha256 文件**而不是更新源里的字段：
+    /// 更新源是 git 跟踪文件，若它写着 sha256(zip)，提交它就会让 HEAD 前进、
+    /// 下一次构建的 zip 里 source_commit 变了、指纹又变了 —— 那是个无解的环（2026-10-31 实测 repro 红）。
+    /// 旁车由发布流程随包上传、不进 git，所以它的指纹永远描述当次发布的那个 zip。
+    ///
+    /// 旁车格式与 <c>Get-FileHash</c>/<c>sha256sum</c> 一致：一行 `<hex>  <文件名>`。
+    /// 对不上、或读不到旁车，一律删文件并返回原因 —— 没有校验值的更新包不能装。
     /// </summary>
     public async Task<(string? File, string? Error)> DownloadAsync(
         UpdateFeed feed,
@@ -95,25 +102,38 @@ internal sealed class UpdateService
         string target = Path.Combine(directory, "PetDock-" + feed.Version + "-win-x64.zip");
         try
         {
-            using HttpResponseMessage response = await Http.GetAsync(feed.Url, token).ConfigureAwait(false);
-            if ((int)response.StatusCode != 200)
+            using (HttpResponseMessage response = await Http.GetAsync(feed.Url, token).ConfigureAwait(false))
             {
-                return (null, $"download-status-{(int)response.StatusCode}");
-            }
+                if ((int)response.StatusCode != 200)
+                {
+                    return (null, $"download-status-{(int)response.StatusCode}");
+                }
 
-            await using (FileStream file = File.Create(target))
-            {
+                long declared = response.Content.Headers.ContentLength ?? 0;
+                if (declared > UpdateFeed.MaxBytes)
+                {
+                    return (null, $"size-too-large-{declared}");
+                }
+
+                await using FileStream file = File.Create(target);
                 await response.Content.CopyToAsync(file, token).ConfigureAwait(false);
             }
 
             long actual = new FileInfo(target).Length;
-            if (actual != feed.Bytes)
+            if (actual <= 0 || actual > UpdateFeed.MaxBytes)
             {
                 File.Delete(target);
-                return (null, $"size-expected-{feed.Bytes}-actual-{actual}");
+                return (null, $"size-bad-{actual}");
             }
 
-            PluginMarketIndex.VerifySha256(target, feed.Sha256, out string? mismatch);
+            (string? expected, string? sidecarError) = await FetchSidecarAsync(feed, token).ConfigureAwait(false);
+            if (expected is null)
+            {
+                File.Delete(target);
+                return (null, sidecarError ?? "sidecar-missing");
+            }
+
+            PluginMarketIndex.VerifySha256(target, expected, out string? mismatch);
             if (mismatch is not null)
             {
                 File.Delete(target);
@@ -132,6 +152,50 @@ internal sealed class UpdateService
             SafeDelete(target);
             return (null, error.GetType().Name);
         }
+    }
+
+    /// <summary>拉旁车并取出其中的 sha256（一行 `<hex>  <文件名>` 的第一段）。</summary>
+    private static async Task<(string? Sha256, string? Error)> FetchSidecarAsync(
+        UpdateFeed feed,
+        CancellationToken token)
+    {
+        try
+        {
+            using HttpResponseMessage response = await Http.GetAsync(feed.SidecarUrl, token).ConfigureAwait(false);
+            if ((int)response.StatusCode != 200)
+            {
+                return (null, $"sidecar-status-{(int)response.StatusCode}");
+            }
+
+            string text = (await response.Content.ReadAsStringAsync(token).ConfigureAwait(false)).Trim();
+            string first = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } parts
+                ? parts[0]
+                : string.Empty;
+            if (first.Length != 64 || !IsHex(first))
+            {
+                return (null, "sidecar-bad-shape");
+            }
+
+            return (first.ToLowerInvariant(), null);
+        }
+        catch (Exception error) when (error is HttpRequestException or IOException)
+        {
+            return (null, error.GetType().Name);
+        }
+    }
+
+    private static bool IsHex(string value)
+    {
+        foreach (char c in value)
+        {
+            bool ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            if (!ok)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void SafeDelete(string path)
