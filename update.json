@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.4.3",
-  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.3/PetDock-0.4.3-win-x64.zip",
-  "notes": "版本 0.4.3。装好了但没能自己开回来时会如实说明；上一次的更新意图读不出来时不再被当成没有意图；覆盖安装失败的残留不再变成一只插件，旧版本的备份也不再被误删。"
+  "version": "0.4.4",
+  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.4/PetDock-0.4.4-win-x64.zip",
+  "notes": "版本 0.4.4。同一个提交在任意检出位置都能编出逐字节相同的产物（以前 dll/pdb 里带着绝对路径，换个目录就变），所以 Release 上的包与你自己重建的那一份可以对上。功能与 0.4.3 相同。"
 }

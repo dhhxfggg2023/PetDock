@@ -1,0 +1,14 @@
+<Project>
+
+  <!-- 可复现构建（2026-10-31）：.NET 默认把**绝对源路径**写进 PDB（以及 DLL 里的 PDB 校验信息），
+       于是同一个提交在 E:\projects\PetDock 与它的一个 worktree 里编出来的 dll/pdb 字节不同 ——
+       dist 层「同一棵树重跑得到同一份字节」这条判据只在同一目录里成立，换成另一个检出位置就红。
+       实测（v0.4.3）：两个 zip 109 个条目里 25 个不同，全是 .dll/.pdb。
+
+       ContinuousIntegrationBuild 让 SDK 打开 DeterministicSourcePaths，把源路径映射成 /_/… ，
+       路径从此不进产物。代价：PDB 里看不到本机绝对路径（排查时按仓库相对路径找，够了）。 -->
+  <PropertyGroup>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+</Project>
