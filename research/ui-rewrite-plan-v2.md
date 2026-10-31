@@ -68,9 +68,12 @@ Program.Main
   └─ （新路径）new Application().Run(new ShellWindow())                 ← WPF 泵 + 单一 Dispatcher
 ```
 
-- 托盘：Win32 `Shell_NotifyIcon`（P/Invoke）+ WPF `ContextMenu`，**不引 WinForms**。
-- 宠物窗口：仍是 `NativeWindow` 分层窗；WPF 的 dispatcher 泵同样泵 Win32 消息，
-  **但这一点必须先证明**（§2.4 spike）。
+- 托盘：**`NotifyIcon` 包一个唯一适配器**（`Ui/Tray/NotifyIconTray.cs`，约 100 行）+ WPF `ContextMenu`。
+  纯 Win32 `Shell_NotifyIcon` 的 spike 探针在本机返回失败且无错误码，不值得继续钻；**「产品零 WinForms」作废**，
+  lint 规则从「禁止 WinForms」改为「WinForms 只许出现在这一个文件里」。
+- 宠物窗口：**是 WinForms `Form`**（`LayeredFrameWindow.cs:17`，v2 初稿写错成 NativeWindow）；
+  spike 已证明 `Form` 在 WPF 泵下照常出帧与命中（见 `research/ui-pump-spike.md`）。
+- **帧泵跑在独立线程**（`FramePump`），UI 泵不决定动画帧率 —— 换泵不会掉帧。
 - 单实例 / 更新交接 / 崩溃上报：时序不变，只是从 `Application.ThreadException` 换成
   `DispatcherUnhandledException`。
 - `--uitest`：改用 `DispatcherFrame` 泵（替换现在的 `Application.DoEvents()`），
@@ -91,9 +94,10 @@ Program.Main
 | 2 | 命中穿透/拖动/双击不变 | 复用 `--selftest` 的命中探针，逐项等价 |
 | 3 | 托盘图标 + 右键菜单可用 | 图标回调进 WPF 菜单，菜单不抢焦点 |
 | 4 | 单实例 / 关闭 / 退出干净 | 关窗后进程退出、无残留窗口 |
-| 5 | `--uitest` 能在无 WinForms 的情况下驱动 | 泵 200 帧 + 合成点击 |
+| 5 | `--uitest` 能在没有 `Application.DoEvents()` 的情况下驱动 | 嵌套 `DispatcherFrame` + 合成点击 |
 
-**任一项不达标 → 走 B 案，不硬上。** 这一条写在最前面，是为了不在 R3 才发现地基不对。
+**R0 已完成（2026-10-31）：4 项通过、1 项待人工确认（托盘图标可见性）。结论：走 A 案。**
+证据与更正见 `research/ui-pump-spike.md`；B 案（纯 WinForms 新壳）**不再需要**。
 
 ---
 
@@ -206,7 +210,7 @@ AppCore 拥有：宠物实例与桌面状态、插件宿主与清单、市场、
 
 | 片 | 产出 | 判据 | 退出条件 |
 | --- | --- | --- | --- |
-| **R0 spike** | `research/ui-pump-spike.md` + 临时探针（不入产品） | 无（人工证据 + 数字） | §2.4 五项达标；否则改走 B 案 |
+| ~~**R0 spike**~~ ✅ | 已完成：`research/ui-pump-spike.md`（探针不入库） | 无 | 4/5 通过；余下托盘可见性交 R1 人眼一次 |
 | **R0b 教训档案** | `research/ui-lessons.md`：把旧层注释里的故障史与新层必须保住的行为逐条抄出来（约 60 条） | 无 | 每条都有出处（文件:行 或 判据 id） |
 | **R1 骨骼** | `PetDock.AppCore` 抽出（旧 UI 变适配器）、`PetDock.Ui.Contracts`、`PetDock.Ui` 空壳、`--ui next` | 骨架 5 条（起窗/退出/单实例/托盘/无 WinForms 引用） | 新旧两条路径都能启动；旧路径行为零变化 |
 | **R2 设计系统** | tokens 生成器、控件库、图标集、焦点/键盘 | 设计系统 8 条（令牌一致、图标兜底、焦点顺序、对比度） | 三页可以只用控件库搭出来 |
