@@ -367,7 +367,7 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
      `UpdateStage.ReadRequest` / `ReadResult` 的 catch 各留一条 `update-request-unreadable` /
      `update-result-unreadable`。返回语义没动（调用方不需要改），先让静音变成有痕迹；
      **还差**给它一个界面出口 —— 那要改 `UpdateStep` 的判定与文案，属于下一小队；
-   - ~~`Applier` 清理阶段的 `TryDelete` 失败只进 log~~ —— **已留痕**（2026-10-31）：私有 delegate 的静态兜底 sink，日志行 `cleanup-failed <文件名> <异常类型>`。**边界**：`RunRollBack` 还没接这个 sink，回滚路径的清理失败仍是静音；
+   - ~~`Applier` 清理阶段的 `TryDelete` 失败只进 log~~ —— **已留痕**（2026-10-31）：私有 delegate 的静态兜底 sink，日志行 `cleanup-failed <文件名> <异常类型>`。`RunRollBack` 也接了同一个 sink（2026-10-31 补），回滚路径的清理失败同样有痕；
    - 搬运工「装好了但没把程序开回来」只写 helper.log，界面照旧说「已更新到 x.y.z」（`Applier.cs` 里那段注释解释了为什么
      `result.txt` 只回答「装没装上」—— 但「没开回来」需要一个自己的出口，而不是没有出口）；
    - 内置插件的安装/删除失败可能把数据根留一半。

@@ -100,6 +100,8 @@ internal static partial class Applier
     {
         string log = Path.Combine(options.DataRoot, "_update", "helper.log");
         void Note(string line) => Write(log, line);
+        _sink = Note;
+
         Note($"rollback-start pid={Environment.ProcessId.ToString(CultureInfo.InvariantCulture)} wait-pid={options.WaitPid} install={options.InstallRoot}");
 
         if (!WaitForExit(options.WaitPid))

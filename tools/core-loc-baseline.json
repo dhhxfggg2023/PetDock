@@ -3219,6 +3219,21 @@
           "lines": 8
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38016,
+      "budget": 38100,
+      "note": "回滚路径的清理失败也留痕（补上一片留下的边界）。上一片给清理路径做了静态 sink，但只在 RunApply 赋值，RunRollBack 的清理仍然静音 —— 而回滚恰恰是「出过事之后」才走的路径，那里删不掉的残留更需要被看见。RunRollBack 定义 Note 之后同样赋值一次（+2 行）。实测 38014 → 38016。",
+      "attribution": [
+        {
+          "slice": "RunRollBack 接同一个 sink（回滚路径的清理失败落 cleanup-failed）",
+          "files": [
+            "packages/core/PetDock.Update/Applier.Rollback.cs"
+          ],
+          "lines": 2
+        }
+      ]
     }
   ]
 }
