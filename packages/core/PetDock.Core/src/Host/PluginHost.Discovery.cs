@@ -17,6 +17,15 @@ public sealed partial class PluginHost
         {
             foreach (string dir in Directory.EnumerateDirectories(pluginsRoot))
             {
+                // 覆盖安装半途失败会留下 <id>.bak-<时间戳> 这一份旧目录：它带着清单，却不是插件。
+                // 早先这里只认「目录里有清单」，于是它被当成同 id 的第二只装进宿主 ——
+                // 用户看到重复项、删掉一只另一只还在，而且再也不会被更新到（2026-10-31 审计）。
+                if (PluginDirBackup.IsLeftover(dir))
+                {
+                    KernelLog.Write($"discover-skipped-leftover dir={dir}");
+                    continue;
+                }
+
                 if (File.Exists(Path.Combine(dir, ManifestValidator.ManifestFileName)))
                 {
                     dirs.Add(Path.GetFullPath(dir));

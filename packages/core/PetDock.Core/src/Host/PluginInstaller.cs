@@ -31,7 +31,7 @@ public sealed record InstallPlan(
     int Files,
     long Bytes);
 
-internal sealed class PluginInstaller
+internal sealed partial class PluginInstaller
 {
     private const int MaxEntries = 5000;
     private const long MaxFileBytes = 64L * 1024 * 1024;
@@ -157,7 +157,7 @@ internal sealed class PluginInstaller
             Directory.CreateDirectory(_userRoot);
             if (Directory.Exists(plan.TargetDir))
             {
-                backup = plan.TargetDir + ".bak-" + DateTime.Now.ToString("yyyy-MM-dd-HHmmss");
+                backup = PluginDirBackup.PathFor(plan.TargetDir);
                 Directory.Move(plan.TargetDir, backup);
             }
 
@@ -187,7 +187,11 @@ internal sealed class PluginInstaller
                 }
                 catch (Exception restoreError)
                 {
-                    KernelLog.Write($"plugin-install-restore-failed id={plan.Id} {restoreError.Message}");
+                    // 搬不回去就别把它留在插件根下：那里它会被当成一只插件背后的幽灵副本，
+                    // 用户既看不到它的版本、也拿不回来。挪进回收站 = 看得见、还能恢复。
+                    string parked = TryPark(plan.Id, backup);
+                    KernelLog.Write(
+                        $"plugin-install-restore-failed id={plan.Id} {restoreError.Message} parked={parked}");
                 }
             }
 

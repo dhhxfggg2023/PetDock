@@ -228,20 +228,27 @@ internal sealed partial class PluginInventory
     /// 扫描只认插件根下**直接**带清单的目录，.removed 里的这一层不会被当成插件再装一遍。
     /// 跨卷时（仓库在 E:、数据在 C:）整棵树搬不过去，退回「复制 → 删源」。
     /// </summary>
-    private string MoveToTrash(PluginEntry entry)
+    private string MoveToTrash(PluginEntry entry) => Park(entry.Dir, entry.Id, _userRoot);
+
+    /// <summary>
+    /// 把一棵目录挪进回收站。删除入口与「覆盖安装半途失败的那份旧目录」共用这一条：
+    /// 两个调用方要的是同一件事（看得见、还拿得回来），各写一遍只会漂。
+    /// 跨卷时 Directory.Move 抛 IOException，退回「复制 → 删源」。
+    /// </summary>
+    internal static string Park(string dir, string pluginId, string userRoot)
     {
         string stamp = DateTime.UtcNow.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture);
-        string trashRoot = Path.Combine(_userRoot, TrashFolder);
+        string trashRoot = Path.Combine(userRoot, TrashFolder);
         Directory.CreateDirectory(trashRoot);
-        string target = Path.Combine(trashRoot, entry.Id + "-" + stamp);
+        string target = Path.Combine(trashRoot, pluginId + "-" + stamp);
         try
         {
-            Directory.Move(entry.Dir, target);
+            Directory.Move(dir, target);
         }
         catch (IOException)
         {
-            CopyTree(entry.Dir, target);
-            Directory.Delete(entry.Dir, recursive: true);
+            CopyTree(dir, target);
+            Directory.Delete(dir, recursive: true);
         }
 
         return target;

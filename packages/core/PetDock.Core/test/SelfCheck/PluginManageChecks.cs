@@ -192,6 +192,32 @@ internal static class PluginManageChecks
             && Directory.GetDirectories(inventory.UserRoot, "*.bak-*").Length == 0;
         check("plugin-install-replace", replaced, $"ok={again} error={replaceError}");
 
+        // 覆盖安装半途失败会留下 <id>.bak-<时间戳>：那份旧目录**不是一只插件**。
+        // 早先发现逻辑只认「目录里有清单」，于是它被当成同 id 的第二只装进宿主。
+        string leftover = Path.Combine(inventory.UserRoot, InstallId + ".bak-2026-10-31-120000");
+        WritePlugin(leftover, InstallId, "1.0.0", "main.js");
+        using (var probe = new PluginHost(
+            inventory.UserRoot,
+            tickIntervalMs: 50,
+            autoLoad: false,
+            consent: null,
+            disabledPlugins: null,
+            enabledPlugins: null,
+            extraRoots: null,
+            trustBuiltins: true))
+        {
+            IReadOnlyList<string> dirs = probe.Discover(inventory.UserRoot);
+            bool hidden = dirs.Count > 0
+                && !dirs.Any(dir => PluginDirBackup.IsLeftover(dir))
+                && PluginDirBackup.IsLeftover(leftover)
+                && !PluginDirBackup.IsLeftover(target);
+            check("plugin-install-backup-not-a-plugin", hidden,
+                $"dirs={dirs.Count} listed-leftover={dirs.Any(dir => PluginDirBackup.IsLeftover(dir))}"
+                + $" leftover={PluginDirBackup.IsLeftover(leftover)} target={PluginDirBackup.IsLeftover(target)}");
+        }
+
+        Directory.Delete(leftover, recursive: true);
+
         // zip 条目 "../evil.txt" 必须整包拒绝，且不落任何文件到 staging 之外。
         string evilZip = Path.Combine(root, "evil.zip");
         using (var archive = ZipFile.Open(evilZip, ZipArchiveMode.Create))

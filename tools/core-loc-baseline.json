@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38200,
+  "budget": 38300,
   "history": [
     {
       "date": "2026-10-18",
@@ -3294,6 +3294,43 @@
             "packages/core/PetDock.Core/src/Program.Boot.cs"
           ],
           "lines": 4
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38229,
+      "budget": 38300,
+      "note": "覆盖安装半途失败的残留不许变成插件：<id>.bak-<时间戳> 有了唯一属主（命名 + 识别），发现逻辑跳过它，搬不回去的旧目录进回收站（Park 与删除共用一份实现）。实测 38151 → 38229，预算 38200 → 38300（余量 71）。",
+      "attribution": [
+        {
+          "slice": "覆盖安装备份的唯一属主（PathFor / IsLeftover）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginDirBackup.cs"
+          ],
+          "lines": 32
+        },
+        {
+          "slice": "发现逻辑跳过安装残留（否则同 id 两只、其中一只永远删不掉）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginHost.Discovery.cs"
+          ],
+          "lines": 9
+        },
+        {
+          "slice": "搬不回去的旧目录进回收站（TryPark 拆到 partial）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginInstaller.Backup.cs",
+            "packages/core/PetDock.Core/src/Host/PluginInstaller.cs"
+          ],
+          "lines": 30
+        },
+        {
+          "slice": "回收站落点只有一份实现（Park 供删除与安装共用）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/PluginInventory.cs"
+          ],
+          "lines": 7
         }
       ]
     }
