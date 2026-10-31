@@ -11,7 +11,7 @@ using PetDock.App;
 
 namespace PetDock.Core.Ui;
 
-internal sealed partial class UiHost : IPetsService, IPluginsService
+internal sealed partial class UiHost : IPetsService, IPluginsService, IUpdateService
 {
     AppResult IPetsService.SetOnDesktop(string petId, bool onDesktop) =>
         Translate(SetPetOnDesktopFromPanel(petId, onDesktop));
@@ -38,6 +38,35 @@ internal sealed partial class UiHost : IPetsService, IPluginsService
 
     async Task<AppResult> IPluginsService.PurgeAsync(string dirName) =>
         Folding(await PurgePluginFromPanelAsync(dirName));
+
+    // ── IUpdateService（R1d）───────────────────────────────────────────────
+
+    string? IUpdateService.PendingVersion => ((IUiPageContext)this).PendingUpdateVersion;
+
+    string? IUpdateService.LastReport => UpdateReport;
+
+    async Task<UpdateCheck> IUpdateService.CheckAsync() => FoldingCheck(await CheckUpdateAsync());
+
+    async Task<UpdateInstall> IUpdateService.DownloadAsync() => FoldingInstall(await DownloadUpdateAsync());
+
+    async Task<UpdateInstall> IUpdateService.InstallAsync(bool restartNow) =>
+        FoldingInstall(await InstallUpdateAsync(restartNow));
+
+    AppResult IUpdateService.OpenFolder() => Translate(OpenUpdateFolder());
+
+    /// <summary>旧的三态类型 → 契约的类型。只在宿主这一层发生，别处都不许映射。</summary>
+    private static UpdateCheck FoldingCheck(UpdateCheckLine line) =>
+        new(line.Current, line.Latest, line.Bytes, line.Notes, line.Error);
+
+    private static UpdateInstall FoldingInstall(UpdateInstallLine line) =>
+        new(FoldingStage(line.State), line.Message, line.Line is null ? null : FoldingCheck(line.Line));
+
+    private static UpdateInstallStage FoldingStage(UpdateInstallState state) => state switch
+    {
+        UpdateInstallState.Queued => UpdateInstallStage.Queued,
+        UpdateInstallState.Restarting => UpdateInstallStage.Restarting,
+        _ => UpdateInstallStage.Failed,
+    };
 
     /// <summary>旧命令的三种结局 → 契约的两种（取消在恢复/清空这两条上走不到，按失败报）。</summary>
     private static AppResult Folding(UiCommandResult result) =>

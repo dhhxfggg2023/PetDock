@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 38500,
+  "budget": 38600,
   "history": [
     {
       "date": "2026-10-18",
@@ -3440,6 +3440,24 @@
           "slice": "插件页四条命令改走契约",
           "files": ["packages/core/PetDock.Core/src/Ui/UiHost.UiPages.cs"],
           "lines": 12
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38533,
+      "budget": 38600,
+      "note": "R1d：程序自身更新进入新契约 IUpdateService（三态显式：Failed/Queued/Restarting；CheckAsync/DownloadAsync/InstallAsync/OpenFolder/PendingVersion/LastReport），并带一份**独立**的值类型（UpdateCheck/UpdateInstall）—— 旧层同名类型在 R7 一并删除，过渡期映射只发生在宿主一处。刻意不搬旧类型：10 个文件 70 处引用，风险大于收益。LOC 38437 → 38533（+96），预算 38500 → 38600；归还条件：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "更新契约与它的值类型（三态显式）",
+          "files": ["packages/core/PetDock.App.Contracts/Services/IUpdateService.cs"],
+          "lines": 67
+        },
+        {
+          "slice": "旧宿主实现更新契约（旧三态→新三态，仅此一处映射）",
+          "files": ["packages/core/PetDock.Core/src/Ui/UiHost.AppContracts.cs"],
+          "lines": 29
         }
       ]
     }
