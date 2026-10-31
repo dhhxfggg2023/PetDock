@@ -387,6 +387,8 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 ---
 
-本文件的更新时点：2026-10-31 下午，`HEAD` 见 `git log -1`。
+本文件的更新时点：2026-10-31 下午（收口于第 12 轮），`HEAD` 见 `git log -1`。
+当前 **11 个提交在本地 `main`、未 push**；⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
+仍未做（见 §6 第 8 条）：没开回来的界面出口、内置插件安装/删除的半途状态、`update-request-unreadable` 的界面出口。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
 （static 9/9、build、contract 4/4、window 291 条 `UI-OK skipped=0`）。
