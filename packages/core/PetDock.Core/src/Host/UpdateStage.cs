@@ -23,6 +23,26 @@ namespace PetDock.Hosting;
 /// <summary>待安装的那一份：版本、zip 落点、以及下载时算出的 sha256。</summary>
 internal sealed record UpdatePending(string Version, string Zip, string Sha256);
 
+/// <summary>
+/// 搬运工留下的那一行结局：<c>ok 0.4.1</c> / <c>fail sha256</c> /
+/// <c>rolled-back 12</c> / <c>rollback-failed 3</c>。
+///
+/// 为什么要有 Kind 而不是一个 bool：三种结局对用户的下一步完全不同 ——
+/// 装好了（不用做什么）、装失败了（再点一次下载）、回滚了（旧版本已经回来，可以重试）、
+/// 回滚也只回了一半（要人工拿 zip 重新覆盖）。把回滚说成「安装失败」是在撒谎。
+/// </summary>
+internal readonly record struct UpdateResult(string Kind, string Text)
+{
+    /// <summary>装成功了。</summary>
+    internal bool Ok => string.Equals(Kind, "ok", StringComparison.Ordinal);
+
+    /// <summary>这是回滚的结局（不是安装的结局）。</summary>
+    internal bool RollBack => Kind is "rolled-back" or "rollback-failed";
+
+    /// <summary>回滚把每一个要换回去的文件都换回去了。</summary>
+    internal bool Complete => string.Equals(Kind, "rolled-back", StringComparison.Ordinal);
+}
+
 /// <summary>这一次启动与「待安装的那一份」之间的关系。</summary>
 internal enum UpdateStartStep
 {
@@ -34,6 +54,14 @@ internal enum UpdateStartStep
 
     /// <summary>上一趟交接没跑完：取消这次更新（并如实告诉用户），本次照常启动。</summary>
     Cancel,
+
+    /// <summary>
+    /// 上一趟**装到一半被打断**（搬运工的覆盖日志还在，说明它已经开始动文件）：
+    /// 必须先把备份换回去，再谈「下次要不要装」。这是 2026-10-31 审计出来的那个洞 ——
+    /// 以前这种情况和「只写了意图、文件没动」一起被当成 Cancel，而 Cancel 会**连唯一的备份一起删**，
+    /// 于是用户既没有旧版本、也没有能跑的程序。
+    /// </summary>
+    RollBack,
 }
 
 /// <summary>
@@ -48,6 +76,14 @@ internal static partial class UpdateStage
     internal const string PendingFile = "pending.json";
     internal const string RequestFile = "restart.txt";
     internal const string ResultFile = "result.txt";
+
+    /// <summary>
+    /// 搬运工「正在覆盖」的日志：在它动第一个文件**之前**写下、装完或回滚完才删。
+    /// 它还在 = 上次的覆盖没走完（断电、蓝屏、被任务管理器结束）—— 这时盘上的树是新旧混杂的，
+    /// 唯一安全的动作是用 backup/ 换回去，而不是把它当「什么都没发生」。
+    /// 内容由搬运工写（第一行版本、其余每行 `file|相对路径`），宿主只判存在与内容。
+    /// </summary>
+    internal const string AppliedFile = "applying.txt";
 
     /// <summary>解压出来的新版本树（平铺：zip 里的顶层目录被剪掉一格）。</summary>
     internal const string TreeFolder = "stage";
@@ -76,6 +112,15 @@ internal static partial class UpdateStage
     internal static string RequestPath(string dataRoot) => Path.Combine(Dir(dataRoot), RequestFile);
 
     internal static string ResultPath(string dataRoot) => Path.Combine(Dir(dataRoot), ResultFile);
+
+    /// <summary>「正在覆盖」日志的路径（搬运工写、宿主读，格式见 <see cref="AppliedFile"/>）。</summary>
+    internal static string AppliedPath(string dataRoot) => Path.Combine(Dir(dataRoot), AppliedFile);
+
+    /// <summary>上次的覆盖是不是没走完（日志还在）。启动闸门与判据都用这一条。</summary>
+    internal static bool HasAppliedJournal(string dataRoot) => File.Exists(AppliedPath(dataRoot));
+
+    /// <summary>备份目录：半覆盖之后唯一能把旧版本换回去的东西。</summary>
+    internal static string BackupDir(string dataRoot) => Path.Combine(Dir(dataRoot), "backup");
 
     /// <summary>搬运工那一份副本所在的目录。</summary>
     internal static string HelperDir(string dataRoot) => Path.Combine(Dir(dataRoot), HelperFolder);
@@ -222,7 +267,7 @@ internal static partial class UpdateStage
     }
 
     /// <summary>搬运工的结局：一行 <c>ok</c> 或 <c>fail</c>，加一个版本号或原因码。</summary>
-    internal static (bool Ok, string Text)? ReadResult(string dataRoot)
+    internal static UpdateResult? ReadResult(string dataRoot)
     {
         try
         {
@@ -234,8 +279,9 @@ internal static partial class UpdateStage
 
             string line = File.ReadAllText(path).Trim();
             string[] parts = line.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            bool ok = parts.Length > 0 && string.Equals(parts[0], "ok", StringComparison.Ordinal);
-            return (ok, parts.Length > 1 ? parts[1].Trim() : string.Empty);
+            return new UpdateResult(
+                parts.Length > 0 ? parts[0] : string.Empty,
+                parts.Length > 1 ? parts[1].Trim() : string.Empty);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -277,6 +323,18 @@ internal static partial class UpdateStage
         }
 
         string dir = Dir(dataRoot);
+
+        // 「正在覆盖」日志还在 = 盘上的树可能是新旧混杂的：这时 backup/ 是**唯一**能把旧版本
+        // 换回去的东西，删掉它等于把用户最后的退路清空（2026-10-31 审计：这条路径真的会删掉 backup）。
+        // 所以留着，等回滚跑完再收。
+        if (HasAppliedJournal(dataRoot))
+        {
+            KernelLog.Write($"update-clear-keeps-backup path={BackupDir(dataRoot)}");
+            DeleteTree(Path.Combine(dir, TreeFolder));
+            DeleteTree(Path.Combine(dir, HelperFolder));
+            return;
+        }
+
         foreach (string folder in ScratchFolders)
         {
             DeleteTree(Path.Combine(dir, folder));

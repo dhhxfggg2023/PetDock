@@ -162,6 +162,83 @@ function main() {
   check('6', run.status === 1 && coreStillOld === 'new-core' && badResult === 'fail sha256',
     `exit=${run.status} core=${coreStillOld} result="${badResult}"`);
 
+  // ④ 回滚（2026-10-31 审计）：上一趟覆盖到一半被打断，盘上是新旧混杂的树。
+  //
+  // 造现场：安装目录里 PetDock.Core.exe 已经是**新**的（说明覆盖动过它），
+  // backup/ 里留着旧的那一份，applying.txt 记着这次覆盖动过哪些文件 ——
+  // 而 plugins/x.txt 是新版本**新增**的，回滚必须把它删掉（否则「回到旧版本」是假的）。
+  const rollbackData = path.join(WORK, 'rollback');
+  const rbUpdate = path.join(rollbackData, '_update');
+  const rbBackup = path.join(rbUpdate, 'backup');
+  const rbInstall = path.join(WORK, 'rollback-install');
+  const rbHelper = path.join(rbUpdate, 'helper');
+  fs.mkdirSync(rbBackup, { recursive: true });
+  fs.mkdirSync(rbInstall, { recursive: true });
+  fs.mkdirSync(rbHelper, { recursive: true });
+  for (const name of fs.readdirSync(releaseDir)) {
+    if (name.startsWith('PetDock.Update.')) {
+      fs.copyFileSync(path.join(releaseDir, name), path.join(rbHelper, name));
+    }
+  }
+  fs.writeFileSync(path.join(rbInstall, 'PetDock.Core.exe'), 'half-new');
+  fs.writeFileSync(path.join(rbInstall, 'keep.txt'), 'unchanged');
+  fs.mkdirSync(path.join(rbInstall, 'plugins'), { recursive: true });
+  fs.writeFileSync(path.join(rbInstall, 'plugins', 'x.txt'), 'new-plugin');
+  fs.writeFileSync(path.join(rbBackup, 'PetDock.Core.exe'), 'old-core');
+  fs.writeFileSync(
+    path.join(rbUpdate, 'applying.txt'),
+    ['version=9.9.9', 'file|PetDock.Core.exe', 'file|plugins/x.txt'].join('\n'),
+  );
+
+  run = spawnSync(
+    path.join(rbHelper, 'PetDock.Update.exe'),
+    ['--apply', rollbackData, '--install', rbInstall, '--wait-pid', String(deadPid()), '--rollback'],
+    { stdio: 'ignore', timeout: 120000 },
+  );
+  const rbCore = fs.readFileSync(path.join(rbInstall, 'PetDock.Core.exe'), 'utf8');
+  const rbAdded = fs.existsSync(path.join(rbInstall, 'plugins', 'x.txt'));
+  const rbJournal = fs.existsSync(path.join(rbUpdate, 'applying.txt'));
+  const rbResult = fs.existsSync(path.join(rbUpdate, 'result.txt'))
+    ? fs.readFileSync(path.join(rbUpdate, 'result.txt'), 'utf8').trim()
+    : '';
+  check('8', run.status === 0 && rbCore === 'old-core' && !rbAdded,
+    'exit=' + run.status + ' core=' + rbCore + ' kept-added=' + rbAdded);
+  check('9', !rbJournal && rbResult.startsWith('rolled-back'),
+    'journal=' + rbJournal + ' result="' + rbResult + '"');
+
+  // ⑤ 没有备份可换（上一次其实还没开始覆盖）：回滚要说「没什么可做」而不是假装换了什么。
+  const emptyData = path.join(WORK, 'rollback-empty');
+  const emptyUpdate = path.join(emptyData, '_update');
+  const emptyInstall = path.join(WORK, 'rollback-empty-install');
+  fs.mkdirSync(emptyUpdate, { recursive: true });
+  fs.mkdirSync(emptyInstall, { recursive: true });
+  fs.writeFileSync(path.join(emptyUpdate, 'applying.txt'), 'version=9.9.9');
+  fs.writeFileSync(path.join(emptyInstall, 'PetDock.Core.exe'), 'old-core');
+  run = spawnSync(
+    path.join(rbHelper, 'PetDock.Update.exe'),
+    ['--apply', emptyData, '--install', emptyInstall, '--wait-pid', String(deadPid()), '--rollback'],
+    { stdio: 'ignore', timeout: 120000 },
+  );
+  const emptyResult = fs.existsSync(path.join(emptyUpdate, 'result.txt'))
+    ? fs.readFileSync(path.join(emptyUpdate, 'result.txt'), 'utf8').trim()
+    : '';
+  check('10', run.status === 0 && emptyResult === 'rolled-back 0', 'exit=' + run.status + ' result="' + emptyResult + '"');
+
+  // ⑥ 两边真的在用同一个文件名：搬运工写 applying.txt，宿主读 applying.txt。
+  // 两个程序集互不引用（搬运工不许依赖内核），所以这个名字只能各写一份 ——
+  // 而「各写一份」正是会漂的那一类东西，用一条源码级判据把它钉住。
+  const hostStage = fs.readFileSync(
+    path.join(REPO_ROOT, 'packages', 'core', 'PetDock.Core', 'src', 'Host', 'UpdateStage.cs'),
+    'utf8',
+  );
+  const helperApply = fs.readFileSync(
+    path.join(REPO_ROOT, 'packages', 'core', 'PetDock.Update', 'Applier.Rollback.cs'),
+    'utf8',
+  );
+  const hostName = /AppliedFile\s*=\s*"([^"]+)"/.exec(hostStage)?.[1];
+  const helperName = /JournalName\s*=\s*"([^"]+)"/.exec(helperApply)?.[1];
+  check('11', Boolean(hostName) && hostName === helperName, 'host=' + hostName + ' helper=' + helperName);
+
   // ③ 参数不合法：什么都不做，退出码 2
   const noArgs = spawnSync(path.join(helperDir, 'PetDock.Update.exe'), ['--apply', data], {
     stdio: 'ignore',

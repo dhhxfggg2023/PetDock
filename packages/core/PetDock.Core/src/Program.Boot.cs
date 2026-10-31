@@ -50,12 +50,8 @@ internal static partial class Program
         // 探针形态一律不参与（门禁里没有人点更新，装了反而让判据跑在一个会变的程序上）。
         // 「上一次启动装没装上」在这里翻成人话：ConsumeResult 只给结构（谁成谁败 + 版本或原因码），
         // 文案属于界面层。
-        (bool Ok, string Text)? lastUpdate = UpdateStartup.ConsumeResult(dataStore.Root);
-        updateReport = lastUpdate is null
-            ? null
-            : lastUpdate.Value.Ok
-                ? I18n.Get("ui.update.applied", string.IsNullOrEmpty(lastUpdate.Value.Text) ? "?" : lastUpdate.Value.Text)
-                : I18n.Get("ui.update.failed", lastUpdate.Value.Text);
+        UpdateResult? lastUpdate = UpdateStartup.ConsumeResult(dataStore.Root);
+        updateReport = lastUpdate is { } last ? DescribeUpdate(last) : null;
         UpdateStartPlan updatePlan = UpdateStartup.Decide(dataStore.Root, probe is not null);
         if (updatePlan.Step == UpdateStartStep.Cancel)
         {
@@ -63,6 +59,25 @@ internal static partial class Program
             // 这一次不装 —— 正在运行的就是要被覆盖的那份文件 —— 并如实告诉用户。
             updateReport = I18n.Get("ui.update.cancelled", updatePlan.Pending?.Version ?? "?");
             KernelLog.Write($"update-start-cancelled detail={updatePlan.Detail}");
+        }
+        else if (updatePlan.Step == UpdateStartStep.RollBack)
+        {
+            // 上一趟装到一半被打断：盘上是新旧混杂的树，先把备份换回去再谈别的。
+            // 回滚和「装」用同一个搬运工、同一条「等宿主退出」的协议（见 UpdateStartup.TryLaunchRollBack）。
+            string bootRoot = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            if (UpdateStartup.TryLaunchRollBack(dataStore.Root, bootRoot, out string? why))
+            {
+                KernelLog.Write($"update-start-rollback detail={updatePlan.Detail} leaving-before-windows");
+                KernelLog.Sink = null;
+                residentLog.Complete();
+                residentLog.Dispose();
+                handoff = true;
+                return residentLog;
+            }
+
+            // 连回滚都交不出去：不删覆盖日志、不动备份，把话说清楚让用户拿 zip 重新覆盖一次。
+            updateReport = I18n.Get("ui.update.rollbackFailed", why ?? "?");
+            KernelLog.Write($"update-start-rollback-failed why={why}");
         }
         else if (updatePlan.Step == UpdateStartStep.HandOff)
         {
@@ -85,6 +100,27 @@ internal static partial class Program
         }
 
         return residentLog;
+    }
+
+    /// <summary>
+    /// 把搬运工留下的结局翻成人话。四种结局分开说（见 UpdateResult 的注释）：
+    /// 装好了 / 装失败了 / 回滚成功 / 回滚只成功了一部分。
+    /// </summary>
+    private static string DescribeUpdate(UpdateResult result)
+    {
+        if (result.Ok)
+        {
+            return I18n.Get("ui.update.applied", string.IsNullOrEmpty(result.Text) ? "?" : result.Text);
+        }
+
+        if (result.RollBack)
+        {
+            return I18n.Get(
+                result.Complete ? "ui.update.rolledBack" : "ui.update.rollbackFailed",
+                result.Text);
+        }
+
+        return I18n.Get("ui.update.failed", result.Text);
     }
 
     /// <summary>

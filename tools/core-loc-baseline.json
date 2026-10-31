@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 37340,
+  "budget": 37740,
   "history": [
     {
       "date": "2026-10-18",
@@ -3057,6 +3057,38 @@
             "packages/core/PetDock.Core/src/Host/PluginMarket.cs"
           ],
           "lines": -8
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 37708,
+      "budget": 37740,
+      "note": "更新搬运的崩溃安全（2026-10-31 只读审计的第一条高危，也是这一片唯一的目标）：搬运工逐文件覆盖，只对**捕获到的异常**回滚；断电/蓝屏/被杀留下的半覆盖现场，下次启动被判 Cancel，而 Cancel 走 ClearPending(withFiles: true) —— 连唯一的那份 backup 一起删。结局是「用户既没有旧版本、也没有能跑的程序」，界面还说「已取消」。本片把「没跑完」拆成两种：覆盖日志（applying.txt）不在 = 一个文件都没动，照旧 Cancel；日志在 = 已经动过文件，判新的 RollBack —— 宿主把这一份交给同一个搬运工（同一条「等宿主退出」的协议），它用 backup/ 把旧版本换回去、删掉新版本新增的文件、写 result.txt（rolled-back N / rollback-failed N），再把程序开回来。清理侧同时收紧：日志还在时任何路径都不许删 backup。回滚结局在界面上与「装失败」分开说（ui.update.rolledBack / ui.update.rollbackFailed，两门语言）。判据：宿主侧 ui-update-start-rollback-interrupted 与 ui-update-clear-keeps-backup；真进程侧 tools/update-helper-selftest.mjs 新增 hs-8..hs-11（旧版本被换回、新增文件被删、日志被清、没有备份时说「没什么可做」，以及「宿主与搬运工用的是同一个文件名」这条源码级对账）。实测 37708/37740，增量 395 全部来自本片。",
+      "attribution": [
+        {
+          "slice": "宿主侧：覆盖日志、RollBack 判定、清理时保住 backup、回滚结局的类型化",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStage.cs",
+            "packages/core/PetDock.Core/src/Host/UpdateStartup.cs"
+          ],
+          "lines": 131
+        },
+        {
+          "slice": "搬运工：--rollback 模式、按日志与备份并集还原、结局写 result.txt",
+          "files": [
+            "packages/core/PetDock.Update/Applier.cs",
+            "packages/core/PetDock.Update/Applier.Rollback.cs",
+            "packages/core/PetDock.Update/Options.cs"
+          ],
+          "lines": 228
+        },
+        {
+          "slice": "启动接线：第四种结局（回滚成功 / 回滚只回了一半）翻成人话",
+          "files": [
+            "packages/core/PetDock.Core/src/Program.Boot.cs"
+          ],
+          "lines": 36
         }
       ]
     }

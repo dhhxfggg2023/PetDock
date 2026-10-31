@@ -11,16 +11,31 @@ using System.IO;
 
 namespace PetDock.Update;
 
+/// <summary>这一次搬运要做什么：把新版本换上去，或者把上一趟没换完的换回来。</summary>
+internal enum ApplyMode
+{
+    /// <summary>装：校验 zip → 重新解包 → 先备份后覆盖。</summary>
+    Apply,
+
+    /// <summary>
+    /// 回滚：2026-10-31 审计出来的那条路 —— 上一趟覆盖到一半被打断（断电、蓝屏、被结束），
+    /// 盘上是新旧混杂的树。这时唯一安全的动作是用 backup/ 把旧版本换回去。
+    /// </summary>
+    RollBack,
+}
+
 /// <summary>一次搬运需要知道的全部事情。</summary>
 internal sealed record Options(
     string DataRoot,
     string InstallRoot,
     int WaitPid,
-    string RelaunchArgs)
+    string RelaunchArgs,
+    ApplyMode Mode)
 {
     internal const string ApplyFlag = "--apply";
     internal const string InstallFlag = "--install";
     internal const string WaitFlag = "--wait-pid";
+    internal const string RollBackFlag = "--rollback";
 
     /// <summary>解析命令行。任一项缺失或不合法都返回 null（调用方退出 2）。</summary>
     internal static Options? Parse(string[] args)
@@ -59,8 +74,10 @@ internal sealed record Options(
             return null;
         }
 
+        ApplyMode mode = Array.IndexOf(args, RollBackFlag) >= 0 ? ApplyMode.RollBack : ApplyMode.Apply;
+
         // 重启后回到「打开主控面板」：用户点的是更新，不该被丢回一个看不见的托盘。
-        return new Options(dataRoot, installRoot, pid, "--open-panel");
+        return new Options(dataRoot, installRoot, pid, "--open-panel", mode);
     }
 
     private static string? Value(string[] args, string flag)

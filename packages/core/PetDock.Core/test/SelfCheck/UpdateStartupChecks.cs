@@ -23,6 +23,8 @@ internal static class UpdateStartupChecks
             NothingToDo(check, root);
             HandOffWhenReady(check, root);
             CancelWhenUnfinished(check, root);
+            // 2026-10-31 审计：`restart.txt` 在有两种截然不同的现场，必须分开处置。
+            RollBackWhenInterrupted(check, root);
             GateIsOffForProbes(check, root);
         }
         finally
@@ -84,6 +86,35 @@ internal static class UpdateStartupChecks
         UpdateStartPlan next = UpdateStartup.Decide(data);
         check("ui-update-start-cancel-unfinished", cancelled && next.Step == UpdateStartStep.None,
             $"step={plan.Step} cleared={cleared} next={next.Step} detail={plan.Detail}");
+    }
+
+    /// <summary>
+    /// 覆盖到一半被打断（搬运工的 applying.txt 还在）：必须判 RollBack，而且**不许**动
+    /// 待安装标记与 backup —— 下一步是把备份换回去，不是「取消并清空」。
+    ///
+    /// 这是审计里那条「用户既没有旧版本、也没有能跑的程序」的入口：
+    /// 旧代码把它和「只写了意图、文件没动」混成一种，判 Cancel，而 Cancel 会连 backup 一起删。
+    /// </summary>
+    private static void RollBackWhenInterrupted(UpdateChecks.Report check, string root)
+    {
+        string data = Path.Combine(root, "interrupted");
+        Stage(data, "1.2.3");
+        UpdateStage.WriteRequest(data, "1.2.3", out _);
+        string backup = UpdateStage.BackupDir(data);
+        Directory.CreateDirectory(backup);
+        string kept = Path.Combine(backup, UpdateStage.EntryName);
+        File.WriteAllText(kept, "old");
+        File.WriteAllText(
+            UpdateStage.AppliedPath(data),
+            "version=1.2.3" + Environment.NewLine + "file|" + UpdateStage.EntryName);
+
+        UpdateStartPlan plan = UpdateStartup.Decide(data);
+        bool pendingKept = UpdateStage.ReadPending(data) is not null;
+        bool backupKept = File.Exists(kept);
+        bool journalKept = UpdateStage.HasAppliedJournal(data);
+        check("ui-update-start-rollback-interrupted",
+            plan.Step == UpdateStartStep.RollBack && pendingKept && backupKept && journalKept,
+            $"step={plan.Step} pending={pendingKept} backup={backupKept} journal={journalKept} detail={plan.Detail}");
     }
 
     /// <summary>

@@ -23,10 +23,10 @@
 - 门禁（跑法与口径见 `tools/verify.mjs` 头部注释）：
   - `node tools/verify.mjs --config release --only static,build,contract,window` → 9 + 1 + 4 + 1 步，末行 `VERIFY-OK layers=4/6 steps=15`（2026-10-31 实测；默认三层不含 window）
   - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）
-  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 287（判据体在 `test/SelfCheck/`）
+  - `--uitest`：末行 `UI-OK skipped=0`，条数已到 289（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37313/37340 —— 只剩 27 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[82] 是这一片的（+488 = 上一片漏申报的 101 + 本片 387）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 实测 **37708/37740 —— 只剩 32 行**；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[82] 是这一片的（+488 = 上一片漏申报的 101 + 本片 387）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -52,7 +52,8 @@
 | 2b11e8e | SmartScreen：`InternetMark`（`File.Copy` 会把 `Zone.Identifier` 一起带走 → 搬运工副本自己会弹框，而那时宿主已经退出、没有窗口能提示）+ 判据 `ui-update-helper-copy-unblocked`（正反各验一次） |
 | 3529199 | 修正说明文案：Windows 11 的框上直接就有「仍要运行」，没有「更多信息」 |
 | 27c4f00 | **收起之后取不出来**（见下） |
-| （本地未提交，2026-10-31 下午） | **可达性判据落地**（`tools/i18n-reachability.mjs` + `tools/i18n-keys-manifest.json` + 静态层第九步；i18n-lint 扫描面扩到随包页面插件）；**出网通道合一**（新增 `Host/GitHubHttp.cs`，两个出口改走它，仓库文件改走 contents API，市场索引补 id/version 形状校验与下载上限；新增 5 条 `ui-net-*` 判据）；详见 §2.2 |
+| （2026-10-31 下午，二） | **更新搬运的崩溃安全**：覆盖日志 + 启动判回滚 + 搬运工 `--rollback`（见 §2.3） |
+| （2026-10-31 下午，一） | **可达性判据落地**（`tools/i18n-reachability.mjs` + `tools/i18n-keys-manifest.json` + 静态层第九步；i18n-lint 扫描面扩到随包页面插件）；**出网通道合一**（新增 `Host/GitHubHttp.cs`，两个出口改走它，仓库文件改走 contents API，市场索引补 id/version 形状校验与下载上限；新增 5 条 `ui-net-*` 判据）；详见 §2.2 |
 
 ### 2.1 收起取不出来：一个概念两个属主
 
@@ -107,6 +108,32 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 **仍未完**：所有者这台机器上 `release-assets.githubusercontent.com` **也被 hosts 指到本机**
 （实测 20 秒无响应）。跟随重定向是「全世界都对」的那一半；本机要真能装，得把这两个域名从 hosts / 加速器里放出来，
 或者做一个编译期写死的镜像前缀（§3.5 决策 5）。
+
+### 2.3 更新搬运的崩溃安全：半覆盖之后必须能回来（2026-10-31 下午）
+
+审计出来的第二条高危（比市场页面更该先做，因为它能把用户的程序搞没）：
+
+- 搬运工是**逐文件覆盖**的，只对「捕获到的异常」回滚。断电 / 蓝屏 / 任务管理器结束留下的是
+  「一半新、一半旧」的安装目录；
+- 更糟的是下一次启动：旧逻辑把「已动过文件」与「只写了意图、一个文件都没动」混成一种，判 `Cancel`，
+  而 `ClearPending(withFiles: true)` **连唯一的那份 `backup/` 一起删** ——
+  用户既没有旧版本、也没有能跑的程序，界面还说「已取消」；
+- 判据只断言「两个标记消失了」，从不造半覆盖现场，所以全绿。
+
+现在的形状（三个概念各一个属主）：
+
+| 概念 | 属主 | 判据 |
+| --- | --- | --- |
+| 覆盖日志 `_update/applying.txt`（动第一个文件**之前**写，装完/回滚完才删） | 搬运工写、宿主读（`UpdateStage.AppliedFile`） | `ui-update-clear-keeps-backup` + 真进程 `hs-11` 对账两边文件名 |
+| 「没跑完」的两种分流 | `UpdateStartup.Decide`：日志不在 → `Cancel`；日志在 → `RollBack` | `ui-update-start-rollback-interrupted` |
+| 回滚执行（用 `backup/` 换回旧版本、删掉新版本新增的文件、写 `result.txt`） | 搬运工 `--rollback`（同一个进程、同一条「等宿主退出」协议） | 真进程 `hs-8/9/10`（旧 core 被换回、新增文件被删、日志被清、没备份时说 `rolled-back 0`） |
+
+另外两件事一起收了：`ClearPending` 在日志还在时**任何路径都不删 `backup/`**（那是唯一的退路）；
+回滚结局在界面上与「装失败」分开说（`ui.update.rolledBack` / `ui.update.rollbackFailed`，两门语言），
+因为「旧版本已经回来」与「装没装上」对用户的下一步完全不同。
+
+**仍未证明**：真实的断电。判据造的是「日志在 + 盘上已是半新」的现场，不是真拔电 —— 这一条写进
+`verify.mjs` dist 层的 notProven，不要当成已经证过。
 
 ## 3. 查明、但还没修的
 
@@ -248,12 +275,7 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 4. **插件市场界面**（后端与文案都在，缺的就是入口，§3.1）。市场**并入插件页**，不新开导航页：
    `market-plugins/README.md` 第 38 行写的用户路径就是「插件页 →『浏览插件市场…』→ 列表 → 安装」，
    而且 15 条文案一条都不用新增。接上之后把那 11 条 `pending-feature` 从 manifest 删掉。
-5. **更新搬运的崩溃安全**（2026-10-31 审计，未修）：`PetDock.Update/Applier.cs` 逐文件覆盖，
-   只对**捕获到的异常**回滚；断电/被杀留下的半覆盖现场，下次启动被判 `Cancel`，
-   而 `UpdateStage.ClearPending(withFiles: true)` **连 backup 一起删** —— 用户既没有旧版本也没有程序，
-   界面还说「已取消」。判据 `UpdateStartupChecks` 只断言标记消失，从不造半覆盖现场。
-   修法方向：覆盖前写「正在搬」标记（journal），启动看到它就**回滚**而不是 Cancel，
-   并且任何路径都不删唯一的回滚副本。
+5. ~~更新搬运的崩溃安全~~ —— 已完成（§2.3；真进程判据在 `tools/update-helper-selftest.mjs`）。
 6. **tier-2 插件是无沙箱裸进程**（同上审计，未修）：`PluginHost.Tier2.cs` 用
    `Path.Combine(pluginDir, manifest.Entry)` 解析入口，Entry 为绝对路径时前缀被吞掉，
    `Tier2Sandbox` 直接 `Process.Start`；包含性检查只在**安装**时做过一次
@@ -276,4 +298,4 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 本文件的更新时点：2026-10-31 下午，`HEAD` 见 `git log -1`。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
-（static 9/9、build、contract 4/4、window 287 条 `UI-OK skipped=0`）。
+（static 9/9、build、contract 4/4、window 289 条 `UI-OK skipped=0`）。

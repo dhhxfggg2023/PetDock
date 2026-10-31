@@ -24,7 +24,11 @@ internal static partial class Applier
     /// <summary>等宿主退出最多这么久。超时就放弃这一次（不装），而不是在它还在跑时硬覆盖。</summary>
     private const int WaitMs = 120_000;
 
-    internal static int Run(Options options)
+    internal static int Run(Options options) => options.Mode == ApplyMode.RollBack
+        ? RunRollBack(options)
+        : RunApply(options);
+
+    private static int RunApply(Options options)
     {
         string log = Path.Combine(options.DataRoot, "_update", "helper.log");
         void Note(string line) => Write(log, line);
@@ -89,6 +93,15 @@ internal static partial class Applier
             return 1;
         }
 
+        // 覆盖之前先把「我要动哪些文件」写下来（applying.txt）：这是唯一能在断电之后
+        // 分清「什么都没发生」与「装到一半」的东西，也是回滚时要知道删掉哪些**新增**文件的依据。
+        if (!WriteJournal(options, stage, Note, out string? journalWhy))
+        {
+            Note($"fail journal {journalWhy}");
+            WriteResult(options, "fail journal");
+            return 1;
+        }
+
         var copied = new List<string>();
         string backup = Path.Combine(options.DataRoot, "_update", "backup");
         try
@@ -126,6 +139,7 @@ internal static partial class Applier
             // 现在的口径：失败一次就说清楚一次，待安装的那一份清掉，用户想装再点一次下载。
             TryDelete(Path.Combine(options.DataRoot, "_update", "restart.txt"));
             TryDelete(Path.Combine(options.DataRoot, "_update", "pending.json"));
+            TryDelete(JournalPath(options));
             DeleteTree(stage);
             WriteResult(options, $"fail copy restored={restored.ToString(CultureInfo.InvariantCulture)}");
             return 1;
@@ -137,6 +151,7 @@ internal static partial class Applier
         // 并把「已更新到 x.y.z」显示给用户，晚一步写它就说不上话了。
         string version = ReadVersion(options) ?? "?";
         WriteResult(options, "ok " + version);
+        TryDelete(JournalPath(options));
         TryDelete(Path.Combine(options.DataRoot, "_update", "restart.txt"));
         Note($"ok version={version}");
 

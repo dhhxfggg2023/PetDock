@@ -29,6 +29,8 @@ internal static class UpdateStageChecks
             // 2026-10-31 用户双击撞上的那个框：搬运工副本不许带着「来自互联网」标记。
             HelperCopyIsUnblocked(check, root);
             ResultIsReadOnce(check, root);
+            // 2026-10-31 审计出来的那一刀：覆盖到一半时，唯一的退路不许被清掉。
+            ClearPendingKeepsBackup(check, root);
         }
         finally
         {
@@ -140,11 +142,38 @@ internal static class UpdateStageChecks
         Directory.CreateDirectory(dir);
         File.WriteAllText(UpdateStage.ResultPath(data), "ok 9.9.9");
 
-        (bool Ok, string Text)? first = UpdateStartup.ConsumeResult(data);
-        (bool Ok, string Text)? second = UpdateStartup.ConsumeResult(data);
+        UpdateResult? first = UpdateStartup.ConsumeResult(data);
+        UpdateResult? second = UpdateStartup.ConsumeResult(data);
         bool once = first is not null && first.Value.Ok && first.Value.Text == "9.9.9" && second is null;
         check("ui-update-result-once", once,
             $"first={(first is null ? "none" : first.Value.Ok + "/" + first.Value.Text)} second={(second is null ? "none" : "still-there")}");
+    }
+
+    /// <summary>
+    /// 覆盖日志（applying.txt）还在时，`ClearPending(withFiles: true)` **不许**删 backup ——
+    /// 那是半覆盖之后唯一能把旧版本换回去的东西。2026-10-31 审计里「用户既没有旧版本也没有程序」
+    /// 那条路的入口，就是这行清理把 backup 一起删掉。
+    ///
+    /// 同时判反面：日志撤掉之后的清理**必须**真的清干净，否则暂存区会一直留着几百兆。
+    /// </summary>
+    private static void ClearPendingKeepsBackup(UpdateChecks.Report check, string root)
+    {
+        string data = Path.Combine(root, "clear-backup");
+        Directory.CreateDirectory(UpdateStage.Dir(data));
+        string backup = UpdateStage.BackupDir(data);
+        Directory.CreateDirectory(backup);
+        string kept = Path.Combine(backup, UpdateStage.EntryName);
+        File.WriteAllText(kept, "old");
+        File.WriteAllText(UpdateStage.AppliedPath(data), "version=1.2.3");
+
+        UpdateStage.ClearPending(data, withFiles: true);
+        bool keptWhileApplying = File.Exists(kept) && UpdateStage.HasAppliedJournal(data);
+
+        UpdateStage.Delete(UpdateStage.AppliedPath(data));
+        UpdateStage.ClearPending(data, withFiles: true);
+        bool clearedAfter = !Directory.Exists(backup);
+        check("ui-update-clear-keeps-backup", keptWhileApplying && clearedAfter,
+            $"kept-while-applying={keptWhileApplying} cleared-after={clearedAfter}");
     }
 
     /// <summary>

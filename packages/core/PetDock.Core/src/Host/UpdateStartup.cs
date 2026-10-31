@@ -54,9 +54,19 @@ internal static class UpdateStartup
 
         // 上一趟交接没跑完：搬运工被结束，或者用户在退出后又自己点开了程序。
         // 这时**绝不能**再装 —— 正在运行的就是要被覆盖的那份文件。
+        //
+        // 但「没跑完」有两种，2026-10-31 之前它们被混成一种（Cancel），而 Cancel 会连唯一的备份一起删：
+        //   覆盖日志还在  → 搬运工**已经动过文件** → 盘上是新旧混杂的树，必须先回滚（RollBack）；
+        //   覆盖日志不在  → 它连一个文件都没碰（或宿主退出后又被人点开）→ 取消这次更新即可。
         string? request = UpdateStage.ReadRequest(dataRoot);
         if (!string.IsNullOrEmpty(request))
         {
+            if (UpdateStage.HasAppliedJournal(dataRoot))
+            {
+                return new UpdateStartPlan(
+                    UpdateStartStep.RollBack, pending, "apply-interrupted-" + request);
+            }
+
             UpdateStage.ClearPending(dataRoot, withFiles: true);
             return new UpdateStartPlan(
                 UpdateStartStep.Cancel, pending, "handoff-unfinished-" + request);
@@ -178,20 +188,78 @@ internal static class UpdateStartup
         TryPrepare(plan, dataRoot, installRoot, out _) && TryLaunch(dataRoot, plan.Pending!.Version, installRoot);
 
     /// <summary>
+    /// 交接的第三种形态：上一趟装到一半被打断，请搬运工在宿主退出之后把备份换回去。
+    ///
+    /// 为什么还是交给搬运工：它要在「本进程已经退出」之后动文件（正在运行的映像被 Windows 锁着），
+    /// 而且它已经有一条被验证过的「等宿主退出 → 搬文件 → 写结局 → 把程序开回来」的通道。
+    /// 回滚是同一个动作换个方向，不该长成第二条独立的路。
+    ///
+    /// 起不来时**不删**覆盖日志：它还在，下一次启动会再试，用户手里至少还留着备份。
+    /// </summary>
+    internal static bool TryLaunchRollBack(string? dataRoot, string installRoot, out string? why)
+    {
+        why = null;
+        if (string.IsNullOrEmpty(dataRoot))
+        {
+            why = "no-root";
+            return false;
+        }
+
+        if (!UpdateStage.HasAppliedJournal(dataRoot))
+        {
+            why = "no-journal";
+            return false;
+        }
+
+        if (!UpdateStage.StageHelper(installRoot, dataRoot, out string? copyWhy))
+        {
+            why = "helper-" + (copyWhy ?? "?");
+            KernelLog.Write($"update-rollback-aborted stage=helper why={copyWhy}");
+            return false;
+        }
+
+        string pid = Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var info = new ProcessStartInfo
+        {
+            FileName = UpdateStage.HelperCopyPath(dataRoot),
+            Arguments = string.Join(' ', new[]
+            {
+                "--apply", Quote(dataRoot), "--install", Quote(installRoot), "--wait-pid", pid, "--rollback",
+            }),
+            WorkingDirectory = installRoot,
+        };
+
+        try
+        {
+            using Process? started = Process.Start(info);
+            KernelLog.Write(
+                $"update-rollback-started wait-pid={pid} helper-pid={started?.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?"}");
+            return true;
+        }
+        catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception
+            or InvalidOperationException or UnauthorizedAccessException)
+        {
+            why = error.GetType().Name;
+            KernelLog.Write($"update-rollback-launch-failed {error.GetType().Name}: {error.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// 上一次启动的结局（搬运工写的 result.txt）。读一次就删：它只描述**那一次**，
     /// 留着会让用户每天开机都看到同一句「已更新到 0.4.0」。
     ///
     /// 返回的是**结构**不是一句话：调用方决定怎么说（这里没法翻文案 —— 本类在 Host 层，
     /// 而文案表在 Ui 层；早先那次把「已是最新」和「没查到」说成一句的教训就来自这种越界）。
     /// </summary>
-    internal static (bool Ok, string Text)? ConsumeResult(string? dataRoot)
+    internal static UpdateResult? ConsumeResult(string? dataRoot)
     {
         if (string.IsNullOrEmpty(dataRoot))
         {
             return null;
         }
 
-        (bool Ok, string Text)? result = UpdateStage.ReadResult(dataRoot);
+        UpdateResult? result = UpdateStage.ReadResult(dataRoot);
         if (result is null)
         {
             return null;
@@ -199,10 +267,15 @@ internal static class UpdateStartup
 
         UpdateStage.Delete(UpdateStage.ResultPath(dataRoot));
         UpdateStage.Delete(UpdateStage.RequestPath(dataRoot));
-        if (result.Value.Ok)
+
+        // 回滚的结局与「装成功」一样，都是这一份待安装的到此为止：
+        // 装成功是把旧版本换成新的，回滚是已经把旧版本换回来 —— 两者都不该再让下次开机试一遍。
+        if (result.Value.Ok || result.Value.RollBack)
         {
             UpdateStage.ClearPending(dataRoot, withFiles: true);
-            KernelLog.Write($"update-applied version={result.Value.Text}");
+            KernelLog.Write(result.Value.Ok
+                ? $"update-applied version={result.Value.Text}"
+                : $"update-rolled-back kind={result.Value.Kind} count={result.Value.Text}");
             return result;
         }
 
