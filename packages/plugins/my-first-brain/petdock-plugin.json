@@ -1,12 +1,21 @@
 {
   "id": "com.petdock.myfirstbrain",
   "name": "我的第一个行为层",
+  "description": "示例第三方行为层，同时演示两种能力申请（读鼠标位置、写自己的状态）。默认关闭，开启时会弹授权窗。",
   "version": "0.1.0",
-  "api": { "major": 1, "minor": 0 },
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
   "kind": "brain",
   "tier": 1,
   "entry": "main.js",
-  "capabilities": ["input.mousePosition", "persist.write:self"],
+  "capabilities": [
+    "input.mousePosition",
+    "persist.write:self"
+  ],
   "defaultEnabled": false,
-  "license": { "spdx": "MIT" }
+  "license": {
+    "spdx": "MIT"
+  }
 }

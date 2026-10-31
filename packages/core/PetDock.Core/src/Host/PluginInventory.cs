@@ -27,7 +27,8 @@ public sealed record PluginEntry(
     bool Removable,
     bool Essential,
     string Origin,
-    string Dir);
+    string Dir,
+    string? Description = null);
 
 /// <summary>插件目录的合并视图 + 开/关/删三个动作。线程模型：方法可以在后台线程调用，
 /// 宿主动作由 PluginHost 自己封送到调度线程；删除只碰扫描到的插件目录，系统必需插件由
@@ -95,7 +96,8 @@ internal sealed partial class PluginInventory
                 !manifest.Essential,
                 manifest.Essential,
                 userOwned ? "user" : "builtin",
-                dir));
+                dir,
+                manifest.Description));
         }
 
         rows.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));

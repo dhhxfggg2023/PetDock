@@ -1,8 +1,12 @@
 {
   "id": "petdock.brain.reaction",
   "name": "默认行为层",
+  "description": "默认行为层：沿水平方向散步，鼠标经过时抬头。内置信任集，启动时不弹授权窗。",
   "version": "0.1.0",
-  "api": { "major": 1, "minor": 0 },
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
   "kind": "brain",
   "defaultBrain": true,
   "tier": 0,
@@ -10,7 +14,9 @@
   "capabilities": [
     "input.mousePosition"
   ],
-  "license": { "spdx": "MIT" },
+  "license": {
+    "spdx": "MIT"
+  },
   "events": [
     "core.clock.tick",
     "input.pointer.move",

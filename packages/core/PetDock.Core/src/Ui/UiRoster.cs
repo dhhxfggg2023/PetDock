@@ -96,7 +96,10 @@ internal static class UiRoster
                     Enabled: entry.Enabled,
                     Loaded: entry.Loaded,
                     Removable: entry.Removable,
-                    Essential: entry.Essential));
+                    Essential: entry.Essential)
+                {
+                    Description = entry.Description,
+                });
             }
         }
         else if (host is not null)

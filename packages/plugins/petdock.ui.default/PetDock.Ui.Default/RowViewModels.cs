@@ -52,6 +52,7 @@ public sealed class PluginRow : INotifyPropertyChanged
         Loaded = line.Loaded;
         Removable = line.Removable;
         Essential = line.Essential;
+        Description = line.Description;
     }
 
     public string Id { get; }
@@ -62,6 +63,9 @@ public sealed class PluginRow : INotifyPropertyChanged
     public string Source { get; }
     public bool Loaded { get; }
     public bool Removable { get; }
+
+    /// <summary>清单声明的「我是干什么的」；null = 没声明（界面显示「未声明」）。</summary>
+    public string? Description { get; }
 
     /// <summary>系统必需插件（清单 essential）：不能停用，也不能删除；界面必须说明原因。</summary>
     public bool Essential { get; }

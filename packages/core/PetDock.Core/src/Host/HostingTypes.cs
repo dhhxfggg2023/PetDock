@@ -70,7 +70,8 @@ public sealed record PluginManifest(
     int? PosePriority = null,
     bool DefaultEnabled = true,
     bool DefaultBrain = false,
-    bool Essential = false)
+    bool Essential = false,
+    string? Description = null)
 {
     public override string ToString() => $"{Id} v{Version} kind={Kind.Value} tier={Tier}";
 }

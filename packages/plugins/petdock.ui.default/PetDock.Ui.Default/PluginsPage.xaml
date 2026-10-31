@@ -27,6 +27,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Margin="18,14,18,10">
@@ -108,12 +109,23 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
 
+                <!-- 功能说明（2026-10-31；用户报「插件没有功能解释」）：
+                     清单 description 一句；没声明就写「未声明」，不从名字或 id 猜一句。 -->
+                <Border Grid.Row="2" x:Name="DetailBar" Visibility="Collapsed" Margin="18,6,18,6"
+                        Background="{DynamicResource Pd.SurfaceHover}" CornerRadius="10" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock x:Name="DetailLabel" Style="{DynamicResource Pd.Muted}" />
+                        <TextBlock x:Name="DetailText" Style="{DynamicResource Pd.Body}"
+                                   Margin="0,4,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Grid.Row="1" x:Name="EmptyText" Style="{DynamicResource Pd.Dim}"
                            Margin="24" TextWrapping="Wrap" Visibility="Collapsed"
                            HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
 
                 <!-- 回收站（2026-10-28 第三轮）：删掉的插件在这里，可恢复或彻底删除。 -->
-                <Border Grid.Row="2" BorderBrush="{DynamicResource Pd.Line}" BorderThickness="0,1,0,0"
+                <Border Grid.Row="3" BorderBrush="{DynamicResource Pd.Line}" BorderThickness="0,1,0,0"
                         Margin="18,0,18,0" Padding="0,10,0,12">
                     <StackPanel>
                         <DockPanel>

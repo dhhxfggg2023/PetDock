@@ -1,6 +1,7 @@
 {
   "id": "com.petdock.brainnull",
   "name": "空白行为层（内置）",
+  "description": "什么都不做的行为层。用来把宠物的自主移动彻底关掉（只保留拖动与抛掷）。",
   "version": "0.1.0",
   "api": {
     "major": 1,
@@ -14,6 +15,8 @@
     "spdx": "CC0-1.0"
   },
   "contributes": {
-    "brains": ["petdock.brain.null"]
+    "brains": [
+      "petdock.brain.null"
+    ]
   }
 }

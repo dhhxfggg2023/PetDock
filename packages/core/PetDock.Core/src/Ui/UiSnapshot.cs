@@ -50,7 +50,14 @@ public sealed record PluginLine(
     bool Enabled = true,
     bool Loaded = true,
     bool Removable = false,
-    bool Essential = false);
+    bool Essential = false)
+{
+    /// <summary>
+    /// 清单里那一句「我是干什么的」（2026-10-31；用户报「插件没有功能解释」）。
+    /// null = 清单没声明 —— 界面显示「未声明」，不从名字或 id 猜一句。
+    /// </summary>
+    public string? Description { get; init; }
+}
 
 /// <summary>
 /// 桌上**某一只**的即时状态（RFC-37 片 4）。「可见」与「在出帧」分开报：隐藏的宠物窗口

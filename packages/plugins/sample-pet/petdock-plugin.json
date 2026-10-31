@@ -1,11 +1,17 @@
 {
   "id": "petdock.sample.petimage",
   "name": "示例图片宠物",
+  "description": "示例图片宠物：把一张静态图当宠物摆到桌面上，用来验证最小可用的视图实现。",
   "version": "0.1.0",
-  "api": { "major": 1, "minor": 0 },
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
   "kind": "presenter",
   "tier": 0,
   "entry": "PetDock.SamplePet/bin/Release/net8.0-windows/PetDock.SamplePet.dll",
   "capabilities": [],
-  "license": { "spdx": "CC0-1.0" }
+  "license": {
+    "spdx": "CC0-1.0"
+  }
 }

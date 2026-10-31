@@ -1,16 +1,24 @@
 {
   "id": "petdock.ui.default",
   "name": "PetDock 默认界面",
+  "description": "随包发行的主控面板：宠物页、插件页、设置页三张页面。系统必需，不能停用也不能删除。",
   "version": "0.1.0",
-  "api": { "major": 1, "minor": 0 },
+  "api": {
+    "major": 1,
+    "minor": 0
+  },
   "kind": "service",
   "tier": 0,
   "capabilities": [],
   "entry": "PetDock.Ui.Default/bin/Release/net8.0-windows/PetDock.Ui.Default.dll",
-  "license": { "spdx": "MIT" },
+  "license": {
+    "spdx": "MIT"
+  },
   "defaultEnabled": true,
   "essential": true,
   "contributes": {
-    "pages": [ "PetDock.Ui.Default.DefaultUiPlugin" ]
+    "pages": [
+      "PetDock.Ui.Default.DefaultUiPlugin"
+    ]
   }
 }

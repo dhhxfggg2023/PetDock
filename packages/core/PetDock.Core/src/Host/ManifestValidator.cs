@@ -100,6 +100,15 @@ internal static partial class ManifestValidator
                         errors.Add(new("name", "must be at most 64 chars"));
                     }
                     break;
+                case "description":
+                    // 2026-10-31（用户：「插件没有功能解释」）：清单可以写一句话说明自己是干什么的。
+                    // 可选字段 —— 没写就是没写，界面显示「未声明」而不是编一句。
+                    string? description = ReadString(prop.Value, "description", errors);
+                    if (description is not null && description.Length > 200)
+                    {
+                        errors.Add(new("description", "must be at most 200 chars"));
+                    }
+                    break;
                 case "version":
                     string? version = ReadString(prop.Value, "version", errors);
                     if (version is not null && !VersionPattern.IsMatch(version))

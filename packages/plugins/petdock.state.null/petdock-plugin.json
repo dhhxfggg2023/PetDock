@@ -1,6 +1,7 @@
 {
   "id": "com.petdock.statenull",
   "name": "空白状态层（内置）",
+  "description": "空白状态层：宠物状态只留在内存里，关掉程序就没了。用来验证「不落盘也能跑」。",
   "version": "0.1.0",
   "api": {
     "major": 1,
@@ -14,6 +15,8 @@
     "spdx": "CC0-1.0"
   },
   "contributes": {
-    "states": ["petdock.state.null"]
+    "states": [
+      "petdock.state.null"
+    ]
   }
 }

@@ -33,6 +33,7 @@ public partial class PluginsPage : UserControl, IUiPage
         ColGranted.Text = context.T("cp.plugins.col.granted");
         ColEnabled.Text = context.T("cp.plugins.col.enabled");
         HintText.Text = context.T("cp.plugins.disableHint");
+        DetailLabel.Text = context.T("cp.plugins.detail.label");
 
         Rows.ItemsSource = _rows;
         TrashRows.ItemsSource = _trash;
@@ -95,11 +96,36 @@ public partial class PluginsPage : UserControl, IUiPage
         }
 
         UpdateButtons();
+        UpdateDetail();
     }
 
     private PluginRow? Selected => Rows.SelectedItem as PluginRow;
 
-    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateButtons();
+    private void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateButtons();
+        UpdateDetail();
+    }
+
+    /// <summary>
+    /// 选中那一行的功能说明（2026-10-31；用户报「插件没有功能解释」）。
+    /// 说明来自清单的 description；没声明就显示「未声明」—— 从名字或 id 猜一句是编造。
+    /// </summary>
+    private void UpdateDetail()
+    {
+        PluginRow? row = Selected;
+        if (row is null)
+        {
+            DetailBar.Visibility = Visibility.Collapsed;
+            DetailText.Text = string.Empty;
+            return;
+        }
+
+        DetailBar.Visibility = Visibility.Visible;
+        DetailText.Text = string.IsNullOrWhiteSpace(row.Description)
+            ? _context.T("cp.plugins.detail.undeclared")
+            : row.Description!;
+    }
 
     private void UpdateButtons()
     {

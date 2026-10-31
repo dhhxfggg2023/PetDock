@@ -1,6 +1,7 @@
 {
   "id": "com.petdock.spriteseq",
   "name": "逐帧序列绘制（内置）",
+  "description": "按帧序列把素材包画到桌面上；读包的动画描述与图片，负责每一帧的合成。",
   "version": "0.1.0",
   "api": {
     "major": 1,
@@ -14,6 +15,8 @@
     "spdx": "CC0-1.0"
   },
   "contributes": {
-    "presenters": ["petdock.presenter.sprite-seq"]
+    "presenters": [
+      "petdock.presenter.sprite-seq"
+    ]
   }
 }

@@ -1,6 +1,7 @@
 {
   "id": "com.petdock.agent",
   "name": "陪伴层：AI / agent 状态（内置）",
+  "description": "每隔一秒读一个本机 JSON 文件，把「agent 正在做什么」显示在宠物页的陪伴层里。不联网、不申请任何能力。",
   "version": "0.1.0",
   "api": {
     "major": 1,
@@ -14,6 +15,8 @@
     "spdx": "CC0-1.0"
   },
   "contributes": {
-    "companions": ["PetDock.Agent.AgentCompanion"]
+    "companions": [
+      "PetDock.Agent.AgentCompanion"
+    ]
   }
 }
