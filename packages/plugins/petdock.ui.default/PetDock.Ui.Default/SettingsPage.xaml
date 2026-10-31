@@ -212,6 +212,32 @@
                                 <TextBlock x:Name="AboutHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0" />
                             </StackPanel>
                         </Grid>
+
+                        <!-- 检查更新（2026-10-31 用户要求「程序内部好像没有更新功能」）：
+                             只有点这一下才联网；不自动检查、不后台轮询。 -->
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="UpdateLabel" Style="{DynamicResource Pd.Body}" />
+                                <TextBlock x:Name="UpdateHint" Style="{DynamicResource Pd.Muted}" Margin="0,3,0,0"
+                                           MaxWidth="170" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="UpdateCheckButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                            Click="OnCheckUpdate" Margin="0,0,8,0" />
+                                    <Button x:Name="UpdateDownloadButton" Style="{DynamicResource Pd.PrimaryButton}"
+                                            Click="OnDownloadUpdate" Margin="0,0,8,0" Visibility="Collapsed" />
+                                    <Button x:Name="UpdateOpenButton" Style="{DynamicResource Pd.SecondaryButton}"
+                                            Click="OnOpenUpdateFolder" Visibility="Collapsed" />
+                                </StackPanel>
+                                <TextBlock x:Name="UpdateStatus" Style="{DynamicResource Pd.Dim}" Margin="0,6,0,0"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>

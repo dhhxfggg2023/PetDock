@@ -12,7 +12,7 @@ namespace PetDock.Hosting;
 
 internal static class FirstUseChecks
 {
-    public static void Run(Report check)
+    public static async void Run(Report check)
     {
         string? root = PluginHost.ProbePluginsRoot();
         if (root is null)
@@ -22,6 +22,8 @@ internal static class FirstUseChecks
             check("ui-settings-pet-card", false, "root=missing");
             check("ui-settings-pet-size", false, "root=missing");
             check("ui-settings-a11y", false, "root=missing");
+            check("ui-settings-update-entry", false, "root=missing");
+            check("ui-settings-update-offline-honest", false, "root=missing");
             check("ui-pets-duplicate-delete", false, "root=missing");
             check("ui-pets-per-pet-size", false, "root=missing");
             return;
@@ -53,6 +55,33 @@ internal static class FirstUseChecks
                 $"wired={auditWired} content={audit?.Content}");
 
             // 宠物/关于两块：显示名与版本来自快照，不是写死的占位符。
+            // 检查更新（2026-10-31）：按钮必须真的把命令发出去，且三种结局分别显示。
+            var updateCheck = settingsView?.FindName("UpdateCheckButton") as System.Windows.Controls.Button;
+            var updateStatus = settingsView?.FindName("UpdateStatus") as TextBlock;
+            updateCheck?.RaiseEvent(new RoutedEventArgs(
+                System.Windows.Controls.Primitives.ButtonBase.ClickEvent, updateCheck));
+            bool updateWired = context.Commands.Contains("check-update")
+                && updateCheck?.Content?.ToString()?.Length > 0;
+            check("ui-settings-update-entry", updateWired,
+                $"wired={updateWired} content={updateCheck?.Content} commands={string.Join(",", context.Commands)}");
+
+            // 「没查到」不许被说成「已是最新」。
+            //
+            // 判的是**渲染出来的那句话是哪一个键**，不是「句子里不许出现这几个字」：
+            // 这条文案本身就写着「这不等于已是最新」，按字面判会把它自己判红
+            // （2026-10-31 第一版判据就是这么红了一次 —— 判据写错和代码写错一样危险）。
+            // 所以这里比的是「它用的是 failedShort 那一句，而不是 current 那一句」。
+            await System.Threading.Tasks.Task.Yield();
+            string failedPrefix = I18n.Get("cp.settings.update.failedShort", "update-offline");
+            string currentPrefix = I18n.Get("cp.settings.update.current", "0.0.0");
+            bool honestFailure = updateStatus is not null
+                && updateStatus.Text.StartsWith(
+                    failedPrefix.Substring(0, Math.Min(8, failedPrefix.Length)), StringComparison.Ordinal)
+                && !updateStatus.Text.StartsWith(
+                    currentPrefix.Substring(0, Math.Min(8, currentPrefix.Length)), StringComparison.Ordinal);
+            check("ui-settings-update-offline-honest", honestFailure,
+                $"status={updateStatus?.Text} uses-failed={updateStatus?.Text.StartsWith(failedPrefix.Substring(0, Math.Min(8, failedPrefix.Length)), StringComparison.Ordinal)}");
+
             var petContext = new PreviewUiContext(new UiSnapshot(
                 Array.Empty<PetLine>(),
                 Array.Empty<PluginLine>(),
@@ -159,6 +188,8 @@ internal static class FirstUseChecks
             check("ui-settings-pet-card", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-pet-size", false, error.GetType().Name + ": " + error.Message);
             check("ui-settings-a11y", false, error.GetType().Name + ": " + error.Message);
+            check("ui-settings-update-entry", false, error.GetType().Name + ": " + error.Message);
+            check("ui-settings-update-offline-honest", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-duplicate-delete", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-detail", false, error.GetType().Name + ": " + error.Message);
             check("ui-pets-per-pet-size", false, error.GetType().Name + ": " + error.Message);

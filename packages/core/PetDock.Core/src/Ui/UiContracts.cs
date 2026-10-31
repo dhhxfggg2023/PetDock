@@ -91,6 +91,20 @@ public sealed record CompanionLine(
     string Detail,
     IReadOnlyList<CompanionCommandLine> Commands);
 
+/// <summary>
+/// 一次「检查更新」的结局（2026-10-31）。三种必须分开：
+/// <see cref="Latest"/> 有值 = 确实有更新；<see cref="Current"/> == <see cref="Latest"/> = 已是最新；
+/// <see cref="Error"/> 非 null = **没查到**（离线 / 源坏了），这时 Latest 必为 null。
+/// </summary>
+public sealed record UpdateCheckLine(string Current, string? Latest, long Bytes, string Notes, string? Error)
+{
+    /// <summary>确实有新版本（且没有查询错误）。</summary>
+    public bool HasUpdate => Error is null && Latest is not null;
+
+    /// <summary>查到了而且就是当前版本。</summary>
+    public bool UpToDate => Error is null && Latest is null;
+}
+
 /// <summary>状态条的口吻：info 是计数与提示，success 是「做成了」，problem 是「没做成，原因在这里」。</summary>
 public enum UiStatusKind
 {
@@ -221,6 +235,28 @@ public interface IUiPageContext
     /// 与「材质/亮度」的生效路径和失败面都不同，混在一个参数里会让两条路径互相污染。
     /// </summary>
     string? SetLanguage(string language);
+
+    /// <summary>
+    /// 检查有没有新版本（2026-10-31）。**只有调用这一下才联网** —— 与插件市场同一条纪律：
+    /// 本程序只有两个主动出网的地方，都不在启动路径上、都没有定时器。
+    ///
+    /// 返回的 <see cref="UpdateCheckLine"/> 把「有新版本」「已是最新」「没查到」三种结局分开说：
+    /// 把「没查到」显示成「已是最新」是在撒谎，用户会在一个其实有更新的版本上永远不再检查。
+    /// </summary>
+    Task<UpdateCheckLine> CheckUpdateAsync();
+
+    /// <summary>
+    /// 下载新版本到暂存目录并校验 sha256（校验不过就删掉）。返回 null = 成功。
+    /// 非空 = 给用户看的原因。
+    ///
+    /// **不会替换正在运行的程序**：它只把校验通过的新版本摆到 <c>_update/</c> 下，
+    /// 然后由用户自己去用（页面给「打开所在文件夹」）。自动换掉正在运行的 exe 需要
+    /// 一个外部脚本先等进程退出再搬文件 —— 中途失败就是「旧版本没了、新版本也没装好」。
+    /// </summary>
+    Task<string?> DownloadUpdateAsync();
+
+    /// <summary>在资源管理器里打开下载好的新版本所在目录。返回 null = 成功。</summary>
+    string? OpenUpdateFolder();
 
     /// <summary>打开日志目录。</summary>
     void OpenLogs();

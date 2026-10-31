@@ -179,7 +179,7 @@ internal sealed partial class UiHost
     }
 
     /// <summary>程序版本（设置页「关于」与左下角版本位共用；三段式，不带构建元数据）。</summary>
-    private static string AppVersion =>
+    internal static string AppVersion =>
         typeof(UiHost).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 
     /// <summary>

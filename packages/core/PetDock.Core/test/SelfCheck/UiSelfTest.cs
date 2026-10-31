@@ -100,6 +100,8 @@ internal static class UiSelfTest
             AgentChecks.Run(Check);
             // 2026-10-30 插件市场：地址写死、索引结构、sha256 校验（不联网）。
             MarketChecks.Run(Check);
+            // 2026-10-31 程序自身更新：出网边界、版本比较、三种结局（不联网）。
+            UpdateChecks.Run(Check);
             // 2026-10-29：素材包自带台词（点按/抛掷/落地优先说包里的句子）。
             PackLinesChecks.Run(Check);
             // 2026-10-29 窗口拓扑：抛掷的落点选择（纯几何）。

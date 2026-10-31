@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 34710,
+  "budget": 35230,
   "history": [
     {
       "date": "2026-10-18",
@@ -2928,6 +2928,43 @@
             "packages/core/PetDock.Core/src/Ui/UiHost.Tray.cs"
           ],
           "lines": 153
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 35135,
+      "budget": 35230,
+      "note": "用户要求「程序内部没有更新功能」。这一片把「检查更新」做成和插件市场同一套纪律的第二个出网口：地址写死、只走 https、sha256 先校验再交出去、用户不点就不联网。刻意**不**自动替换正在运行的 exe —— 那需要一个外部脚本先等进程退出再搬文件，中途失败就是「旧版本没了、新版本也没装好」；这一版只下载+校验并把新包摆在 _update/ 下，由用户自己用。归属按文件整体算：三个新文件各自只服务这一片，UiContracts 的 36 行是页面契约（三个方法 + UpdateCheckLine）。",
+      "attribution": [
+        {
+          "slice": "更新源解析与版本比较（纯函数）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateFeed.cs"
+          ],
+          "lines": 162
+        },
+        {
+          "slice": "拉更新源 + 下载 + 校验",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateService.cs"
+          ],
+          "lines": 151
+        },
+        {
+          "slice": "宿主接线（查/下/开文件夹）",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiHost.Update.cs"
+          ],
+          "lines": 125
+        },
+        {
+          "slice": "页面契约与版本读数开放",
+          "files": [
+            "packages/core/PetDock.Core/src/Ui/UiContracts.cs",
+            "packages/core/PetDock.Core/src/Ui/UiHost.Panel.cs"
+          ],
+          "lines": 70
         }
       ]
     }

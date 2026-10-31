@@ -152,7 +152,7 @@ function layersFor(config) {
     name: 'dist',
     title: 'L5 真实发布物：release → pack → 解压后运行 → 摘要',
     proves: '发布目录能装配、能封成一个单顶层目录的 zip、中央目录与本地头说法一致、清单与条目集对账、用 .NET ZipFile（资源管理器同一条路径）解压后 --hosttest 仍全过、同一棵树重跑得到同一份字节。',
-    notProven: '不证明签名（本机无 signtool）、不证明自动更新（无规格）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。',
+    notProven: '不证明签名（本机无 signtool）、不证明自动替换自身（这一版只下载+校验，不换正在运行的文件）、不证明另一台干净的 Windows 上能跑——只证明这台机器解压后能跑。',
     steps: [
       { id: 'release', ...node('tools/release.mjs'), marker: 'RELEASE-OK', timeoutMs: 20 * 60 * 1000 },
       { id: 'pack', ...node('tools/pack.mjs'), marker: 'PACK-OK' },
@@ -161,6 +161,9 @@ function layersFor(config) {
       { id: 'portable-selftest', ...node('tools/portable-selftest.mjs'), marker: 'PORTABLE-OK' },
       // 市场索引必须与发行包同一次构建产出：装的是 zip 里的插件，索引里写的是它们各自的 sha256。
       { id: 'market-index', ...node('tools/gen-market-index.mjs'), marker: 'MARKET-OK' },
+      // 程序自身的更新源也必须与产物同一次构建产出：面板的「检查更新」比的是这个文件里的版本，
+      // 下的也是它声明的 sha256。手写一定会漂移成「声明的指纹和包不一样」。
+      { id: 'update-feed', ...node('tools/gen-update-feed.mjs'), marker: 'UPDATE-OK' },
       { id: 'zip-sha256', kind: 'digest', marker: null },
       // 可复现不是口号，是判据：把同一棵树再装配一遍、再封一遍，产物必须逐字节相同。
       // 2026-10-30 实测过远程包与本地包差 35 个条目（PE 时间戳/PDB GUID 不同），

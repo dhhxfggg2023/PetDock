@@ -163,6 +163,28 @@ internal sealed class PreviewUiContext : IUiPageContext
         return null;
     }
 
+    /// <summary>判据可注入的检查结果（默认「没查到」，好让漏接线的页面判红）。</summary>
+    public UpdateCheckLine UpdateResult { get; set; } =
+        new("0.0.0", null, 0, string.Empty, "update-offline");
+
+    public Task<UpdateCheckLine> CheckUpdateAsync()
+    {
+        Commands.Add("check-update");
+        return Task.FromResult(UpdateResult);
+    }
+
+    public Task<string?> DownloadUpdateAsync()
+    {
+        Commands.Add("download-update");
+        return Task.FromResult<string?>(null);
+    }
+
+    public string? OpenUpdateFolder()
+    {
+        Commands.Add("open-update-folder");
+        return null;
+    }
+
     public void OpenLogs() => Commands.Add("logs");
 
     public void ExportDiagnostics(IntPtr owner) => Commands.Add("export");

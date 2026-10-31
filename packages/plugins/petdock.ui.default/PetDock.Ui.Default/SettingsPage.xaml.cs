@@ -61,6 +61,11 @@ public partial class SettingsPage : UserControl, IUiPage
         MaterialFrosted.Content = context.T("cp.settings.material.frosted");
         MaterialGlass.Content = context.T("cp.settings.material.glass");
         AboutSection.Text = context.T("cp.settings.section.about");
+        UpdateLabel.Text = context.T("cp.settings.update.label");
+        UpdateHint.Text = context.T("cp.settings.update.hint");
+        UpdateCheckButton.Content = context.T("cp.settings.update.check");
+        UpdateDownloadButton.Content = context.T("cp.settings.update.download");
+        UpdateOpenButton.Content = context.T("cp.settings.update.open");
         AboutVersionLabel.Text = context.T("cp.settings.about.version");
         AboutHint.Text = context.T("cp.settings.about.hint");
 
@@ -73,6 +78,9 @@ public partial class SettingsPage : UserControl, IUiPage
         AutomationProperties.SetName(OpenLogsButton, OpenLogsButton.Content?.ToString() ?? "logs");
         AutomationProperties.SetName(ExportButton, ExportButton.Content?.ToString() ?? "export");
         AutomationProperties.SetName(AuditButton, AuditButton.Content?.ToString() ?? "audit");
+        AutomationProperties.SetName(UpdateCheckButton, UpdateCheckButton.Content?.ToString() ?? "update");
+        AutomationProperties.SetName(UpdateDownloadButton, UpdateDownloadButton.Content?.ToString() ?? "download");
+        AutomationProperties.SetName(UpdateOpenButton, UpdateOpenButton.Content?.ToString() ?? "open");
 
         // 页面会被壳缓存：切走时 Unloaded 退订，切回时 Loaded 重新订阅。
         Loaded += (_, _) =>
@@ -273,6 +281,93 @@ public partial class SettingsPage : UserControl, IUiPage
     private void OnOpenLogs(object sender, RoutedEventArgs e) => _context.OpenLogs();
 
     private void OnOpenAudit(object sender, RoutedEventArgs e) => _context.OpenAudit();
+
+    /// <summary>
+    /// 检查更新（2026-10-31）。三种结局必须分开显示：有新版本 / 已是最新 / **没查到**。
+    /// 把「没查到」画成「已是最新」是撒谎 —— 用户会在一个其实有更新的版本上永远不再检查。
+    /// </summary>
+    private async void OnCheckUpdate(object sender, RoutedEventArgs e)
+    {
+        UpdateCheckButton.IsEnabled = false;
+        UpdateStatus.Text = _context.T("cp.settings.update.checking");
+        UpdateDownloadButton.Visibility = Visibility.Collapsed;
+        UpdateOpenButton.Visibility = Visibility.Collapsed;
+        try
+        {
+            UpdateCheckLine result = await _context.CheckUpdateAsync();
+            if (result.Error is not null)
+            {
+                UpdateStatus.Text = _context.T("cp.settings.update.failedShort", result.Error);
+                return;
+            }
+
+            if (result.HasUpdate)
+            {
+                // T() 只有 0/1 个占位符的重载；这一条有三个，先取模板再自己填（不变的是键与占位符形状）。
+                UpdateStatus.Text = string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    _context.T("cp.settings.update.available"),
+                    result.Current,
+                    result.Latest!,
+                    SizeText(result.Bytes));
+                UpdateDownloadButton.Visibility = Visibility.Visible;
+                return;
+            }
+
+            UpdateStatus.Text = _context.T("cp.settings.update.current", result.Current);
+        }
+        catch (Exception)
+        {
+            UpdateStatus.Text = _context.T("cp.settings.update.failed");
+        }
+        finally
+        {
+            UpdateCheckButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>
+    /// 下载并校验新版本。**不替换正在运行的程序** —— 校验通过的包摆到数据区的 _update/ 下，
+    /// 由用户自己去用（下一个按钮）。原因见 UpdateService 文件头。
+    /// </summary>
+    private async void OnDownloadUpdate(object sender, RoutedEventArgs e)
+    {
+        UpdateDownloadButton.IsEnabled = false;
+        UpdateStatus.Text = _context.T("cp.settings.update.downloading");
+        try
+        {
+            string? problem = await _context.DownloadUpdateAsync();
+            if (problem is not null)
+            {
+                UpdateStatus.Text = problem;
+                return;
+            }
+
+            UpdateStatus.Text = _context.T("cp.settings.update.downloaded");
+            UpdateDownloadButton.Visibility = Visibility.Collapsed;
+            UpdateOpenButton.Visibility = Visibility.Visible;
+        }
+        catch (Exception)
+        {
+            UpdateStatus.Text = _context.T("cp.settings.update.failed");
+        }
+        finally
+        {
+            UpdateDownloadButton.IsEnabled = true;
+        }
+    }
+
+    private void OnOpenUpdateFolder(object sender, RoutedEventArgs e)
+    {
+        string? problem = _context.OpenUpdateFolder();
+        if (problem is not null)
+        {
+            UpdateStatus.Text = problem;
+        }
+    }
+
+    private static string SizeText(long bytes) =>
+        (bytes / (1024.0 * 1024.0)).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " MB";
 
     private void OnExport(object sender, RoutedEventArgs e)
     {
