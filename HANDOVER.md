@@ -26,7 +26,7 @@
   - `--uitest`：末行 `UI-OK skipped=0`，条数已到 295（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
   - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
-  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 傍晚实测 **38229/38300 —— 余量 71**（history[91] +101「没开回来的出口」、[92] +34「意图读不出来」、[93] +78「安装残留不变成插件」）；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
+  - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 傍晚实测 **38236/38300 —— 余量 64**（history[91] +101「没开回来的出口」、[92] +34「意图读不出来」、[93] +78「安装残留不变成插件」、[94] +7「失败时只收解包树」）；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
 - 已发布（都还在）：
@@ -55,7 +55,8 @@
 | 27c4f00 | **收起之后取不出来**（见下） |
 | （2026-10-31 傍晚，九） | **覆盖安装失败的残留不许变成一只插件**：`.bak-` 命名与识别各一个属主、发现逻辑跳过、搬不回去的旧目录进回收站（见 §2.10） |
 | （2026-10-31 傍晚，八） | **「上次的更新意图读不出来」不再等于「没有意图」**：三种状态显式分开、判成一次取消、文案单独一句（见 §2.9） |
-| （2026-10-31 傍晚，七） | **「装好了但没能自己开回来」有了出口**：搬运工留一行原因，宿主并进那一次结局（见 §2.8）；顺带收掉解包树/备份的残留，`UpdateResult` 从 `UpdateStage.cs` 拆出 |
+| （2026-10-31 傍晚，十） | **装好但没开起来时，旧版本的备份不许一起删**：只收 `unpacked/`，`backup/` 等到确认新版本起来了才收；真进程判据 `hs-12/13/14`（见 §2.8） |
+| （2026-10-31 傍晚，七） | **「装好了但没能自己开回来」有了出口**：搬运工留一行原因，宿主并进那一次结局（见 §2.8）；`UpdateResult` 从 `UpdateStage.cs` 拆出 |
 | （2026-10-31 下午，六） | **tier-2 进程边界**：作业对象（宿主死→客体死、单进程、内存上限），判据 `tier2-orphan-killed-by-job`（见 §2.7） |
 | （2026-10-31 下午，五） | **网络来的数字字段不许把宿主抛穿**：更新源与市场索引的 `schema` 改 `TryGetInt32`（见 §2.6） |
 | （2026-10-31 下午，四） | **插件市场接进插件页**（见 §2.5）；4 条死文案删除、`cp.pets.delete.failed` 接上；豁免表清零 |
@@ -245,12 +246,19 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 同一处顺手修掉的两件事（都在这条路径上，都是「只有在出事时才看得见」的那一类）：
 
 - `Relaunch` 失败时提前 `return`，`unpacked/` 与 `backup/` 都没收 —— 一次更新在用户数据区留几百兆，
-  下一次更新再解一份。现在无论开没开起来都收（装成功即视为暂存物无用）。
+  下一次更新再解一份。**切法要分清楚**：`unpacked/` 一定收（解出来的那份永远没用了，zip 还在），
+  `backup/` 只在「确认新版本真的起来了」之后才收 —— 没起来时它是用户手里唯一那份旧版本，
+  而「新版本根本起不来」时宿主永远不会来清暂存区。第一版修法把两样一起收了，真进程判据 `hs-14` 当场拦住。
 - `Applier.Rollback` 在 `Relaunch` 已经记下真实异常名之后，又补一句笼统的 `rollback-relaunch-failed`，
   把有用的那一行挤到上面。多余的这一句删掉。
 
-判据（`--uitest`）：`ui-update-relaunch-reported`（有那行 → `ok=True restarted=False`，读完即删）、
-`ui-update-relaunch-absent-is-normal`（没那行 → 仍是普普通通的「已更新」，不许把正常结局说成异常）。
+判据两处：
+
+- `--uitest`：`ui-update-relaunch-reported`（有那行 → `ok=True restarted=False`，读完即删）、
+  `ui-update-relaunch-absent-is-normal`（没那行 → 仍是普普通通的「已更新」，不许把正常结局说成异常）；
+- dist 层真进程 `tools/update-helper-selftest.mjs`（夹具里的「新版本」是一份文本文件，`Relaunch` 必然失败，
+  正好造出这条现场）：`hs-12` 原因行必须落盘、`hs-13` `unpacked/` 已收、`hs-14` `backup/` 还在。
+  实测 `report="Win32Exception" unpacked=false backup-kept=true`，14 条全过（`HELPER-OK`）。
 
 ### 2.9 「上一次的更新意图读不出来」不再等于「没有意图」（2026-10-31 傍晚）
 
@@ -469,8 +477,10 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 ---
 
 本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮），`HEAD` 见 `git log -1`。
-远端 `main` 停在 `d430014`（v0.4.2 已发布、两个资产已回读核对）；它之后有 **3 个待推提交**（§2.8 / §2.9 / §2.10）。
+远端 `main` 停在 `d430014`（v0.4.2 已发布、两个资产已回读核对）；它之后有 **4 个待推提交**（§2.8 与它的修正 / §2.9 / §2.10）。
 ⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
 仍未做（见 §6 第 8 条）：内置插件安装/删除失败可能把数据根留一半。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
 （static 9/9、build、contract 4/4、window 295 条 `UI-OK skipped=0`；2026-10-31 傍晚实测）。
+dist 层的两步单独跑过：`node tools/release.mjs` → `RELEASE-OK`（108 文件 / 17.3 MB，`dirty=false`），
+`node tools/update-helper-selftest.mjs` → `HELPER-OK`（14 条）。
