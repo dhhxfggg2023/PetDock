@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.4.2",
-  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.2/PetDock-0.4.2-win-x64.zip",
-  "notes": "版本 0.4.2。修好「下载更新 / 从市场装插件」在真实网络上的必然失败；插件市场接进插件页；搬运工崩溃后能把旧版本换回来。"
+  "version": "0.4.3",
+  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.3/PetDock-0.4.3-win-x64.zip",
+  "notes": "版本 0.4.3。装好了但没能自己开回来时会如实说明；上一次的更新意图读不出来时不再被当成没有意图；覆盖安装失败的残留不再变成一只插件，旧版本的备份也不再被误删。"
 }
