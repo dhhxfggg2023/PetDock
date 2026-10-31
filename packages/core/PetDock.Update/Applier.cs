@@ -24,6 +24,11 @@ internal static partial class Applier
     /// <summary>等宿主退出最多这么久。超时就放弃这一次（不装），而不是在它还在跑时硬覆盖。</summary>
     private const int WaitMs = 120_000;
 
+    /// <summary>helper.log 的 sink 兜底：清理函数没有 note 参数，也要能留痕。</summary>
+    private delegate void CleanupNote(string line);
+
+    private static CleanupNote? _sink;
+
     internal static int Run(Options options) => options.Mode == ApplyMode.RollBack
         ? RunRollBack(options)
         : RunApply(options);
@@ -32,6 +37,7 @@ internal static partial class Applier
     {
         string log = Path.Combine(options.DataRoot, "_update", "helper.log");
         void Note(string line) => Write(log, line);
+        _sink = Note;
 
         Note($"start pid={Environment.ProcessId.ToString(CultureInfo.InvariantCulture)} wait-pid={options.WaitPid} install={options.InstallRoot}");
 
@@ -312,6 +318,8 @@ internal static partial class Applier
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             // 删不掉就留着：下一次交接会把它读成「上一趟没跑完」，那是安全的那一侧。
+            // 但「没删掉」要有痕：暂存区与备份区长期残留，只有 helper.log 能说清是谁留下的。
+            _sink?.Invoke($"cleanup-failed {Path.GetFileName(path)} {error.GetType().Name}");
         }
     }
 

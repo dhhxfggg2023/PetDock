@@ -3204,6 +3204,21 @@
           "lines": 2
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38014,
+      "budget": 38100,
+      "note": "搬运工的清理失败要留痕（§6-8 第二小队）。Applier.TryDelete 的 catch 原本只有一行注释：删不掉就留着 —— 留着本身是安全的一侧（下一次交接会读成「上一趟没跑完」），但「没删掉」在 helper.log 里一个字都没有，暂存区与备份区长期残留时没人说得清是谁留下的。难点是 sink：helper.log 的写入口在 RunApply 里是**局部函数**，而 TryDelete/DeleteTree 没有它。解法定成一个私有 delegate 的静态兜底（不能叫 Action —— D-03b 的概念黑名单里有 action），在 RunApply 定义 Note 之后赋值一次；清理路径统一走它，日志行是 cleanup-failed <文件名> <异常类型>（只记文件名，不记完整路径）。边界如实写在这里：RunRollBack 仍然没有赋这个 sink，回滚路径的清理失败目前还是静音 —— 下一步补。实测 38006 → 38014（+8）。",
+      "attribution": [
+        {
+          "slice": "清理路径的日志 sink：私有 delegate + 静态兜底 + TryDelete 的 catch 落一行",
+          "files": [
+            "packages/core/PetDock.Update/Applier.cs"
+          ],
+          "lines": 8
+        }
+      ]
     }
   ]
 }
