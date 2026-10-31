@@ -22,10 +22,13 @@
 - 仓库 `E:\projects\PetDock`；`HEAD` 见 `git log -1`，与 `origin/main` 同步，工作树干净。
 - 门禁（跑法与口径见 `tools/verify.mjs` 头部注释）：
   - `node tools/verify.mjs --config release --only static,build,contract,window` → 9 + 1 + 4 + 1 步，末行 `VERIFY-OK layers=4/6 steps=15`（2026-10-31 实测；默认三层不含 window）
+  - 同一晚把 perf 也并进来跑过：`--only static,build,contract,window,perf` → **`VERIFY-OK layers=5/6 steps=17`**；
+    `--only dist`（含 `release-align`）则在**发布点那个提交**上整跑 **9/9 PASS**（`VERIFY-OK layers=1/6 steps=9`）。
+    两层分开跑是因为 §2.11 那条：dist 会按当前 HEAD 重新构建，HEAD 一旦比发布点多了提交，`release-align` 必然红。
   - 静态层 2026-10-31 由八步变**九步**：新增 `i18n-reachability`（每条文案键要么被产品代码引用，要么带着理由在 `tools/i18n-keys-manifest.json` 里豁免；豁免不再需要本身就是失败）。**当天下午 `exempt` 已清空**：409 条键全部有产品出口，判据现在跑在 `exempt=0` 上
   - `--uitest`：末行 `UI-OK skipped=0`，条数已到 295（判据体在 `test/SelfCheck/`）
   - **注意**：`--uitest` 经 pwsh **管道**（`| Select-Object …`）跑会得到 exit=1；stdio 重定向到文件时 exit=0（verify.mjs 用的是后者）。读末行 marker，别读管道的退出码
-  - `--only dist` 九步里 `release-align` **预期为红**：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变 —— 只有 HEAD 正是已发布那一版时才绿。**不要为了消这个红点去发版**。
+  - `--only dist` 九步里 `release-align` 只在 **HEAD 正是已发布那一版**时绿：`release-manifest.json` 在 zip 里且嵌着来源提交，任何提交都会让 zip 变。要验就在发布点那个提交上验（`git worktree add --detach <tmp> <tag>`），**不要为了消这个红点去发版**。
   - LOC：`node tools/lint-core.mjs` 末行 `STAT core-loc <实测>/<预算>`。2026-10-31 傍晚实测 **38236/38300 —— 余量 64**（history[91] +101「没开回来的出口」、[92] +34「意图读不出来」、[93] +78「安装残留不变成插件」、[94] +7「失败时只收解包树」）；下次改内核 src 必须抬预算，并给 `tools/core-loc-baseline.json` 的 history 写一条归属精确到行的记录（各切片之和必须等于实测增量）。history[87] 记的 +203 是 tier-2 进程边界；history[85] +3、history[86] +3 分别是「删除宠物如实报部分失败」与「远程数字字段不抛」。插件市场界面 170 行 + XAML 90 行在 `packages/plugins` 下，**不计入本预算**（口径只算 `packages/core`）。
   - D-03c：单文件 ≤400 行。D-03b：`packages/core/**` 逐行不许出现黑名单子串（`shell/action/sprite/presenter/balloon/ghost/pet.json/行为树` 等，大小写不敏感）。
   - 自检里 `--selftest` 在本机因自身控制台窗口挡住探针而红（`SELF-FAIL hit opaque=miss`），它不在任何门禁层里。
@@ -510,7 +513,8 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮，含 v0.4.3 / v0.4.4 两次发布），`HEAD` 见 `git log -1`。
 远端 `main` 已推到 `73bbeea`；`v0.4.3` 与 `v0.4.4` 的 tag、Release、两个资产都回读核对过，
-`RELEASE-VERIFY-OK`（7 条）在 0.4.4 上是整跑通过的。之后只剩交接文档这类不改变产物的提交。
+`RELEASE-VERIFY-OK`（7 条）在 0.4.4 上是整跑通过的，dist 层九步也在 `73bbeea` 的 worktree 里整跑 9/9。
+之后只剩交接文档这类不改变产物的提交。
 ⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
 仍未做（见 §6 第 8 条）：内置插件安装/删除失败可能把数据根留一半。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
