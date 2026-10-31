@@ -57,7 +57,11 @@ internal static partial class Program
         {
             // 上一趟交接没跑完（搬运工被结束，或用户退出后又自己点开了程序）。
             // 这一次不装 —— 正在运行的就是要被覆盖的那份文件 —— 并如实告诉用户。
-            updateReport = I18n.Get("ui.update.cancelled", updatePlan.Pending?.Version ?? "?");
+            // 「意图读不出来」是同一个处置、另一种说法：那份文件写的哪个版本我们并不知道，
+            // 拿待装版本去冒充它，等于替用户编了一句话。
+            updateReport = I18n.Get(
+                updatePlan.IntentUnreadable ? "ui.update.intentUnreadable" : "ui.update.cancelled",
+                updatePlan.Pending?.Version ?? "?");
             KernelLog.Write($"update-start-cancelled detail={updatePlan.Detail}");
         }
         else if (updatePlan.Step == UpdateStartStep.RollBack)

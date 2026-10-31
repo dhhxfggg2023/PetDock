@@ -39,6 +39,7 @@
   "ui.update.applied": "Updated to {0}.",
   "ui.update.appliedNoRelaunch": "Updated to {0}. The installer could not reopen it, so this session was started by hand; see the log for why.",
   "ui.update.cancelled": "The last update ({0}) did not finish, so it was cancelled. Your current version still works.",
+  "ui.update.intentUnreadable": "The hand-off record for the pending update ({0}) could not be read, so nothing was installed this time. Your current version still works; see the log.",
   "ui.update.failed": "The last update did not install: {0}",
   "ui.update.rolledBack": "The last update was interrupted while copying files; your previous version was restored ({0}).",
   "ui.update.rollbackFailed": "The last update was interrupted and could not be fully rolled back: {0}. Unpack the new zip over this folder once.",

@@ -93,9 +93,9 @@ internal static class UpdateStageChecks
         string data = Path.Combine(root, "receipt");
         Directory.CreateDirectory(UpdateStage.Dir(data));
         bool written = UpdateStage.WriteRequest(data, "9.9.9", out string? why);
-        string? read = UpdateStage.ReadRequest(data);
+        string? read = UpdateStage.ReadRequest(data, out _);
         UpdateStage.ClearPending(data, withFiles: false);
-        string? afterClear = UpdateStage.ReadRequest(data);
+        string? afterClear = UpdateStage.ReadRequest(data, out _);
 
         bool ok = written && read == "9.9.9" && afterClear is null;
         check("ui-update-request-is-receipt", ok,

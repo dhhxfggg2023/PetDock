@@ -3267,6 +3267,35 @@
           "lines": 29
         }
       ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 38151,
+      "budget": 38200,
+      "note": "重启意图的三种状态落地：restart.txt 在、但读不出来时不再被当成「没有意图」（那会让下一次启动在可能已有搬运工等着本进程退出时再起第二个），并给这件事一句自己的话（ui.update.intentUnreadable）。实测 38117 → 38151，预算不变（38200，余量 49）。",
+      "attribution": [
+        {
+          "slice": "ReadRequest 分出「读不出来」这一种（out bool，三种状态）",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStage.cs"
+          ],
+          "lines": 7
+        },
+        {
+          "slice": "Decide 把「读不出来」判成一次取消（覆盖日志在时仍判回滚），并记下 IntentUnreadable",
+          "files": [
+            "packages/core/PetDock.Core/src/Host/UpdateStartup.cs"
+          ],
+          "lines": 23
+        },
+        {
+          "slice": "启动报告按「意图读不出来」选文案",
+          "files": [
+            "packages/core/PetDock.Core/src/Program.Boot.cs"
+          ],
+          "lines": 4
+        }
+      ]
     }
   ]
 }

@@ -234,8 +234,14 @@ internal static partial class UpdateStage
     internal static bool WriteRequest(string dataRoot, string version, out string? why) =>
         WriteAtomic(RequestPath(dataRoot), version, out why);
 
-    internal static string? ReadRequest(string dataRoot)
+    /// <summary>
+    /// 读「装完再开」的意图。三种状态，而「读不出来」**不等于**「没有」：
+    /// 把它当成没有，启动路径就会在可能已经有一个搬运工正等着本进程退出时，
+    /// 再起第二个去覆盖同一批文件。所以这里把这件事显式交给调用方（unreadable）。
+    /// </summary>
+    internal static string? ReadRequest(string dataRoot, out bool unreadable)
     {
+        unreadable = false;
         try
         {
             string path = RequestPath(dataRoot);
@@ -243,6 +249,7 @@ internal static partial class UpdateStage
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            unreadable = true;
             KernelLog.Write($"update-request-unreadable {error.GetType().Name}: {error.Message}");
             return null;
         }

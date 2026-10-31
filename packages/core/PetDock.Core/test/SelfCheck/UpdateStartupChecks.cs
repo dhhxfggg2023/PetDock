@@ -25,6 +25,7 @@ internal static class UpdateStartupChecks
             CancelWhenUnfinished(check, root);
             // 2026-10-31 审计：`restart.txt` 在有两种截然不同的现场，必须分开处置。
             RollBackWhenInterrupted(check, root);
+            UnreadableIntentStopsTheInstall(check, root);
             GateIsOffForProbes(check, root);
         }
         finally
@@ -79,7 +80,7 @@ internal static class UpdateStartupChecks
         UpdateStage.WriteRequest(data, "1.2.3", out _);
 
         UpdateStartPlan plan = UpdateStartup.Decide(data);
-        bool cleared = UpdateStage.ReadPending(data) is null && UpdateStage.ReadRequest(data) is null;
+        bool cleared = UpdateStage.ReadPending(data) is null && UpdateStage.ReadRequest(data, out _) is null;
         bool cancelled = plan.Step == UpdateStartStep.Cancel && cleared;
 
         // 清干净之后，下一次启动应当回到「什么也没有」，而不是一直取消下去。
@@ -124,6 +125,36 @@ internal static class UpdateStartupChecks
     /// 还有一半更重要：探针**不消费**那份待安装的文件。它只是不参与，不是放弃 ——
     /// 用户跑过一次诊断之后，下次正常启动照样该把新版本装上。
     /// </summary>
+    /// <summary>
+    /// 意图文件在、但读不出来：必须当成「这一次不装」，并且**对用户说出来**。
+    /// 早先这条路径把它读成「没有意图」—— 于是下一次启动会在可能已经有一个搬运工正等着
+    /// 本进程退出时，再起第二个去覆盖同一批文件，而界面上一个字都不说。
+    /// </summary>
+    private static void UnreadableIntentStopsTheInstall(UpdateChecks.Report check, string root)
+    {
+        string data = Path.Combine(root, "intent-unreadable");
+        Directory.CreateDirectory(UpdateStage.Dir(data));
+        string zip = Path.Combine(UpdateStage.Dir(data), "pack.zip");
+        File.WriteAllBytes(zip, new byte[] { 1, 2, 3 });
+        UpdateStage.WritePending(data, new UpdatePending("9.9.9", zip, "x"), out _);
+        File.WriteAllText(UpdateStage.RequestPath(data), "9.9.9");
+
+        // 独占打开 = 任何一次读都会失败。造的就是「文件在、但读不出来」这一个现场。
+        bool stopped;
+        bool saidSo;
+        bool rolledBackAvailable;
+        using (new FileStream(UpdateStage.RequestPath(data), FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            UpdateStartPlan plan = UpdateStartup.Decide(data);
+            stopped = plan.Step == UpdateStartStep.Cancel && plan.IntentUnreadable;
+            saidSo = plan.Detail == "request-unreadable";
+            rolledBackAvailable = plan.Pending?.Version == "9.9.9";
+        }
+
+        check("ui-update-start-intent-unreadable", stopped && saidSo && rolledBackAvailable,
+            $"step={stopped} detail={saidSo} pending={rolledBackAvailable}");
+    }
+
     private static void GateIsOffForProbes(UpdateChecks.Report check, string root)
     {
         string data = Path.Combine(root, "probe");

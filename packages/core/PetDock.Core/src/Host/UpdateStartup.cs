@@ -22,6 +22,12 @@ namespace PetDock.Hosting;
 internal sealed record UpdateStartPlan(UpdateStartStep Step, UpdatePending? Pending, string Detail)
 {
     internal static UpdateStartPlan None { get; } = new(UpdateStartStep.None, null, "none");
+
+    /// <summary>
+    /// 「上一次的意图读不出来」。与 <see cref="UpdateStartStep.Cancel"/> 同一个处置（这次不装），
+    /// 但不是同一句话：那份意图写的哪个版本我们并不知道，所以不能对用户说「上次更新（x.y.z）」。
+    /// </summary>
+    internal bool IntentUnreadable { get; init; }
 }
 
 internal static class UpdateStartup
@@ -58,7 +64,24 @@ internal static class UpdateStartup
         // 但「没跑完」有两种，2026-10-31 之前它们被混成一种（Cancel），而 Cancel 会连唯一的备份一起删：
         //   覆盖日志还在  → 搬运工**已经动过文件** → 盘上是新旧混杂的树，必须先回滚（RollBack）；
         //   覆盖日志不在  → 它连一个文件都没碰（或宿主退出后又被人点开）→ 取消这次更新即可。
-        string? request = UpdateStage.ReadRequest(dataRoot);
+        string? request = UpdateStage.ReadRequest(dataRoot, out bool unreadable);
+        if (unreadable)
+        {
+            // 意图文件在、但读不出来：这一次**不装**。上一次那个搬运工可能正等着本进程退出，
+            // 再起一个会和它抢同一批文件；而盘上是不是新旧混杂，仍然只看覆盖日志。
+            if (UpdateStage.HasAppliedJournal(dataRoot))
+            {
+                return new UpdateStartPlan(
+                    UpdateStartStep.RollBack, pending, "apply-interrupted-unknown");
+            }
+
+            UpdateStage.ClearPending(dataRoot, withFiles: true);
+            return new UpdateStartPlan(UpdateStartStep.Cancel, pending, "request-unreadable")
+            {
+                IntentUnreadable = true,
+            };
+        }
+
         if (!string.IsNullOrEmpty(request))
         {
             if (UpdateStage.HasAppliedJournal(dataRoot))
