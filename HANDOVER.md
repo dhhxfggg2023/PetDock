@@ -41,6 +41,7 @@
 | v0.4.1 | 2026-10-31 02:45 | 6 | 470c4c0a1d75（6672527 B） |
 | v0.4.2 | 2026-10-31 16:40 | — | 2e2b9b4a0d56（6693963 B） |
 | v0.4.3 | 2026-10-31 17:36 | — | bef274ddc02f（6696671 B） |
+| v0.4.4 | 2026-10-31 17:52 | — | cc85f5c61886（6695930 B） |
 
 发布物形态：解压即用、`PetDock.Core.exe` + 更新用的 `PetDock.Update.exe` 两个 exe、
 顶层目录固定叫 `PetDock`（zip 名带版本）、数据在程序旁 `data\`、删目录即卸载、不写注册表。
@@ -308,6 +309,24 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 **仍然的情形**：跨卷与权限同时出问题时 `Park` 也会失败，那时只留一行 `plugin-install-park-failed`，
 备份仍在原地 —— 但至少不会变成一只幽灵插件。
 
+### 2.11 同一提交在哪个目录编都应当是同一份字节（2026-10-31 傍晚）
+
+所有者关掉加速器之后，`tools/verify-release.mjs` 第一次**整跑**通过（v0.4.3 那一步此前只在本机超时后 SKIP）。
+顺手在「已发布提交」的 worktree 里跑 `--only dist`，`release-align` 红在 `ix-release-2`：
+**它在 worktree 里重建出来的包与 Release 上那一份不是同一串字节**。
+
+对账（两个 zip 各 109 个条目）：**25 个不同，全部是 `.dll` / `.pdb`**。原因是 .NET 默认把
+**绝对源路径**写进 PDB，而 DLL 里带着 PDB 的校验信息 —— 同一个提交，`E:\projects\PetDock` 与
+`…\artifacts\wt-react` 编出来就是两份。于是 dist 层那句「同一棵树重跑得到同一份字节」只在同一目录里成立，
+而 `repro` 判据（同目录重跑一遍）永远看不见这件事。
+
+修法：根目录 `Directory.Build.props` 打开 `ContinuousIntegrationBuild`（SDK 随之打开 `DeterministicSourcePaths`，
+源路径映射成 `/_/…` 不再进产物）。判据就是这次实测本身：同一提交 `73bbeea` 在两个不同目录各跑一遍
+`release.mjs` + `pack.mjs`，两边 `sha256=cc85f5c61886…`、`6695930` 字节，逐字节相同。
+
+**代价说清楚**：PDB 里不再有本机绝对路径，排查时按仓库相对路径找。**没有一起改的**：
+`repro` 仍然只在同一目录重跑 —— 跨路径这条由发版实测覆盖（每次发版都会重建一份并回读比对），不另设门。
+
 ## 3. 查明、但还没修的
 
 ### 3.1 插件商店根本找不到 —— 已修（2026-10-31）
@@ -323,10 +342,10 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 `api.github.com/repos/dhhxfggg2023/PetDock/contents/<path>?ref=main`（base64 解码；地址照样写死、只走 https）。
 实测：contents API 90 ms 返回 200，解码出的 `update.json` 版本 0.4.1 正确。失败原因现在点名主机与种类。
 
-**还没修**（本机事实，不是代码问题）：`release-assets.githubusercontent.com` 同样被 hosts 指到
-127.0.0.1，本地加速器接了 TCP 不回话 → 20 秒无响应。所以在这台机器上「下载新版本」仍然会失败，
-只是现在失败信息会说清是哪台主机、为什么不通用。**下一步是所有者侧的**：把这些域名从 hosts / 加速器里放出来，
-或者按 §3.5 决策 5 加一个编译期写死的镜像前缀。
+~~**还没修**（本机事实）~~ —— **2026-10-31 傍晚已解除**：所有者关掉加速器后，`release-assets.githubusercontent.com`
+解析回 185.199.108–111.133，`tools/verify-release.mjs` 真下载 6.7 MB 通过、`RELEASE-VERIFY-OK`。
+所以这条从头到尾都是环境问题，代码侧没有需要改的；失败信息仍会点名主机，便于下次一眼认出同样的环境。
+（留档：`Resolve-DnsName` 看到 127.0.0.1 就是劫持，恢复后应看到 185.199.x.x。）
 
 ### 3.3 钩子（已移除）
 
@@ -469,14 +488,12 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
      `_update/relaunch-failed.txt` + `ui.update.appliedNoRelaunch`，判据 `ui-update-relaunch-reported`；
    - ~~内置插件的安装/删除失败可能把数据根留一半~~ —— **已收口**（2026-10-31 傍晚，§2.10）：
      覆盖安装的备份不再被当成一只插件，搬不回去的旧目录进回收站。
-9. ~~发布~~ —— **v0.4.3 已发布**（2026-10-31 17:36，release id `429842839`，tag `v0.4.3` → `fdf0283`）：
-   zip 6,696,671 B / sha256 `bef274ddc02f…c34f`，正文 3940 字节（含改动清单、指纹、来源提交）。
-   按 `release-notes/<版本>.md` → `release.mjs` → `pack.mjs` → 上传资产 → **最后**推 `update.json` 的顺序做的；
-   下一次发版照这个顺序，并注意 §5 第 15、16 条。
-   **本次没能跑完的一步**：`tools/verify-release.mjs` 最后一次整跑在本机超时（`SKIP-RELEASE-ALIGN`，
-   `release-assets.githubusercontent.com` 仍被 hosts 指到 127.0.0.1）—— 而它的四条判据在同一台机器上
-   用带凭据的 API 逐条核对过：正文含 sha256+来源提交（ix-release-4）、含改动清单 6 条（ix-release-4b）、
-   zip 资产 digest 与本地构建一致（ix-release-2）、旁车存在且一致（ix-release-3）；下载那一步在两轮实测里成功过一次。
+9. ~~发布~~ —— **v0.4.3（17:36）与 v0.4.4（17:52）都已发布**；0.4.4 是「可复现构建」那一片（§2.11）。
+   0.4.4：tag `v0.4.4` → `73bbeea`，release id `429848930`，zip 6,695,930 B / sha256 `cc85f5c61886…`，
+   `tools/verify-release.mjs` **整跑 PASS**（`RELEASE-VERIFY-OK`，7 条全过，含 ix-release-5 的 tag 同源）。
+   顺序照旧：`release-notes/<版本>.md` → `release.mjs` → `pack.mjs` → 上传资产 → **最后**推 `update.json`；
+   注意 §5 第 15、16 条。**发完版再跑 `--only dist` 一定红**（`ix-release-2`）：那一层会按当前 HEAD 重新构建，
+   而 HEAD 已经比发布点多了文档提交 —— 要验就在发布点那个提交上验（本次是在 worktree 里做的）。
 
 ## 7. 已废弃的东西与失效引用（不要复活它们）
 
@@ -491,9 +508,9 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 ---
 
-本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮，含 v0.4.3 发布），`HEAD` 见 `git log -1`。
-远端 `main` 已推到 `fdf0283`，`v0.4.3` 的 tag、Release 与两个资产都已回读核对（`feb9ea4..fdf0283` 这批含 §2.8–§2.10 与版本抬升）。
-之后只剩交接文档这类不改变产物的提交；下次发版从「抬版本」那一步重新开始。
+本文件的更新时点：2026-10-31 傍晚（收口于第 13 轮，含 v0.4.3 / v0.4.4 两次发布），`HEAD` 见 `git log -1`。
+远端 `main` 已推到 `73bbeea`；`v0.4.3` 与 `v0.4.4` 的 tag、Release、两个资产都回读核对过，
+`RELEASE-VERIFY-OK`（7 条）在 0.4.4 上是整跑通过的。之后只剩交接文档这类不改变产物的提交。
 ⑦ 只剩「获得所有者同意后发布」，其余 ①–⑥ 已完成并有判据。
 仍未做（见 §6 第 8 条）：内置插件安装/删除失败可能把数据根留一半。
 `node tools/verify.mjs --config release --only static,build,contract,window` → `VERIFY-OK layers=4/6 steps=15`
