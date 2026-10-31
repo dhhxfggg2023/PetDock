@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.4.1",
-  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip",
-  "notes": "版本 0.4.1。解压后双击 PetDock.Core.exe；数据与宠物都在程序旁的 data\\ 里。"
+  "version": "0.4.2",
+  "url": "https://github.com/dhhxfggg2023/PetDock/releases/download/v0.4.2/PetDock-0.4.2-win-x64.zip",
+  "notes": "版本 0.4.2。修好「下载更新 / 从市场装插件」在真实网络上的必然失败；插件市场接进插件页；搬运工崩溃后能把旧版本换回来。"
 }
