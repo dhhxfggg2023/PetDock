@@ -344,8 +344,8 @@ GET .../releases/download/v0.4.1/PetDock-0.4.1-win-x64.zip.sha256 → 302 → re
 
 | 东西 | 状态 |
 | --- | --- |
-| `.dsh-code/`、`docs/` 树、`docs/handoff/`、`ledger/` | **废弃**（2026-10-31）。机器上只有一份 2026-10-28 的历史快照 `%USERPROFILE%\petdock-ledger-backup\`，**不要恢复它来重建这套机制** |
-| `tools/ledger-export.mjs` | 随账本停用（钩子已删）。留着只为读懂历史 |
+| `.dsh-code/`、`docs/` 树、`docs/handoff/`、`ledger/` | **已删除**（2026-10-31）。仓库里的 `ledger/` 目录（本机未入库的账本）与本机历史快照 `%USERPROFILE%\petdock-ledger-backup\` 都不再是工作输入，**不要恢复它们来重建这套机制** |
+| `tools/ledger-export.mjs` | **已删除**（2026-10-31）：它是那套账本的唯一读取者，随账本一起下线；历史在 git 与快照里 |
 | `.githooks/pre-commit` | 已删除（它只为账本服务） |
 | `.dsh-code/HANDOFF-2026-10-31-releases-and-ux-audit.md` | 已被本文件取代（内容并入这里） |
 | 代码注释里的 `原规格 NN §M` / `RFC-NN §M` / `docs/NN §M` | 那些文档**不在仓库里**（随 `docs/` 树一起没了）。它们只是当年的**设计理由**，不是可查的现行规格；判读到它们时按注释本身的意思理解，不要去找原文 |
