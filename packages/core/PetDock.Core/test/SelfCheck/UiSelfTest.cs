@@ -84,6 +84,8 @@ internal static class UiSelfTest
             NewUiChecks.Run(Check);
             // R2：设计系统（令牌唯一源、对比度、图标覆盖、主题切换）。
             DesignSystemChecks.Run(Check);
+            // R2c/R2d：控件库（主题跟随、订阅不增长、按钮用途、进度两态、焦点）。
+            ControlsChecks.Run(Check);
             // RFC-35 §4：窗口鼠标消息 → 交互会话（ui-pointer-*）。
             PointerWiringChecks.Run((name, ok, detail) => Check(name, ok, detail));
             // RFC-31 §4：命中图参与穿透（ui-hitmap-*，RFC-41 §4.2b 已删掉 alpha-only 那一族）。

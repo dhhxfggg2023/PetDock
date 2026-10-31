@@ -1,6 +1,6 @@
 {
   "$comment": "D-03a 内核 LOC 预算的单一事实源（RFC-11）。人工维护，永不自动生成——地板跟着最近一次实测一起下沉就不再是地板（RFC-04 §4.3 同一纪律）。抬升预算 = 在 history 追加一条带逐切片归属表的记录，不走 RFC。校验见 tools/lint-core.mjs：归属表行数求和必须等于相邻两条 measured 之差，且归属文件必须真实存在。",
-  "budget": 39700,
+  "budget": 40200,
   "history": [
     {
       "date": "2026-10-18",
@@ -3603,6 +3603,34 @@
           "slice": "空窗口改走令牌：不再写十六进制色值与魔法间距，顺手长出一枚图标",
           "files": ["packages/core/PetDock.Ui/src/AppWindow.cs"],
           "lines": 19
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "measured": 40024,
+      "budget": 40200,
+      "note": "R2c/R2d：控件库（按钮四用途、卡片、分段标题、横幅四语气、空状态、表单行、进度两态）+ 主题订阅中枢。两条关键取舍：① 控件**不许自己订阅 Theme.Changed** —— 统一走 ThemeHub 的弱引用表，判据 ui-controls-subscriptions-bounded 建 200 个再丢掉，看表必须降回去（实测 1→201→1），旧层「开合一次多一份处理器」的老毛病在这里被堵死；② 按钮不写 ControlTemplate：上一版写了圆角壳模板，撞上 D-03b 的三字母词表（WPF 的粗细依赖属性名里含那三个字母），于是改成默认模板 + 焦点进来时加粗边框 —— 词表是硬约束，改设计比改规则便宜。判据 6 条（313）。LOC 39465 → 40024（+559），预算 39700 → 40200；归还条件：R8 后 ≤ 38.2k。",
+      "attribution": [
+        {
+          "slice": "主题订阅中枢：弱引用表 + 剪枝 + Repaint（控件只实现 ApplyTheme）",
+          "files": ["packages/core/PetDock.Ui/src/Design/ThemeHub.cs"],
+          "lines": 92
+        },
+        {
+          "slice": "按钮：四种用途 + 图标 + 键盘焦点框（不用模板）",
+          "files": ["packages/core/PetDock.Ui/src/Controls/UiButton.cs"],
+          "lines": 100
+        },
+        {
+          "slice": "卡片 / 分段标题 / 横幅四语气 / 空状态 / 表单行",
+          "files": ["packages/core/PetDock.Ui/src/Controls/Surfaces.cs"],
+          "lines": 252
+        },
+        {
+          "slice": "进度条两态 + 取消按钮",
+          "files": ["packages/core/PetDock.Ui/src/Controls/ProgressView.cs"],
+          "lines": 115
         }
       ]
     }
